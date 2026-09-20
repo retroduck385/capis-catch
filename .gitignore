@@ -1,2 +1,16 @@
 
+# Source PDFs (docs/*.md are the working specs)
 docs/*.pdf
+
+# Confidential bank policy text and secrets
+data/policies/
+services/api/.env
+.env
+.env.*
+
+# Dependencies and build artifacts
+node_modules/
+__pycache__/
+.venv/
+venv/
+*.pyc
