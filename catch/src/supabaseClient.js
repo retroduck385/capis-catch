@@ -1,4 +1,4 @@
-import {createClient} from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
 const {SUPABASE_URL, SUPABASE_ANON_KEY} = import.meta.env
 
