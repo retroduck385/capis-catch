@@ -106,7 +106,7 @@ Gap: Module 5's transcript, routing links and decision controls (1.4.2.5) have n
 - **Offline data continuity cache.** Browser local storage for active form inputs.
 
 ## Technology (Sec. 1.4.4-1.4.6, 3.2.4.2)
-- React front end. The applicant portal, if any, is a separate restricted route on the same component library (Q-02).
+- React front end, with Tailwind CSS v4 and React Router. The applicant portal, if any, is a separate restricted route on the same component library (Q-02).
 - Supabase (PostgreSQL) with Row Level Security and auth.
 - LangGraph orchestration with pause-and-resume human gates.
 - Claude Vision API for extraction.

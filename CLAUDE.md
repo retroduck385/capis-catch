@@ -38,6 +38,9 @@ Also: the system never auto-rejects, and auto-approval is not in the paper's des
 ## Stack
 
 - Frontend: React + Vite, plain JavaScript (JSX), in `catch/` (paper Sec. 3.2.4.2)
+- Styling: Tailwind CSS v4 (via @tailwindcss/vite)
+- Routing: React Router (react-router-dom, createBrowserRouter in src/router.jsx)
+- Auth (frontend): Supabase Auth email/password via src/context/authContext.jsx
 - Backend API and agents: Python, FastAPI, LangGraph, LangChain, in `services/api`
 - Database and auth: Supabase (PostgreSQL + Auth + Row Level Security), in `supabase/`
 - OCR: Claude Vision API
@@ -55,12 +58,13 @@ Also: the system never auto-rejects, and auto-approval is not in the paper's des
 ## Folder map
 
 ```
-catch/                      Vite + React app, JavaScript. Currently the scaffold plus empty stubs.
-  src/main.jsx              entry point (exists)
-  src/App.jsx               root component (exists, empty stub)
-  src/login-page.jsx        (exists, empty)
-  src/supabaseClient.js     (exists, empty; anon key only)
-  src/app/                  PLANNED: routes and role-based route guards
+catch/                      Vite + React app, JavaScript, Tailwind CSS v4.
+  src/main.jsx              entry point; wraps the app in AuthContextProvider and RouterProvider
+  src/router.jsx            route table: /, /signUpPage, /signInPage, /applicationHomePage
+  src/App.jsx               root component (empty stub, served at /)
+  src/context/authContext.jsx  Supabase session plus signUp / signIn / signOut
+  src/pages/                page components: signUpPage (working), signInPage and applicantHomePage (placeholders)
+  src/supabaseClient.js     Supabase client; reads VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from catch/.env (anon key only)
   src/features/             PLANNED: one folder per module: intake, workflow, computation, policy, dashboard, committee
   src/components/ui/        PLANNED: shared UI (tray, status badge, document panel)
   src/lib/api.js            PLANNED: FastAPI client
@@ -131,10 +135,13 @@ Full text in [`docs/open-questions.md`](docs/open-questions.md). Do not pick an 
 | Q-09, Q-10 | Turnaround target; stage and status names |
 | Q-14 | Ratio names and thresholds (DBR, DTI, LTV, LCR) |
 | Q-19, Q-20, Q-23, Q-24 | MRAC failure outcome; who reviews policy flags (HITL #2); approver actions; approval tiers |
+| Q-41 | How roles get assigned at sign-up and where they're stored |
 
 ## Current sprint
 
 Sprint 0: foundation (schema, auth and RBAC via RLS, audit trail, LangGraph runtime, vector store). No user-facing feature. Blocked by Q-01 to Q-05 and depends on the ERD, which is not written yet. Update this line when the sprint changes.
+
+Main already has a working email/password sign-up that sends users to an applicant home page. This assumes Q-02 (applicant as system user) is decided, and it isn't. Sign-up assigns no role (Q-41).
 
 ## Working style for Claude Code
 

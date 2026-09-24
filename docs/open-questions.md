@@ -6,7 +6,7 @@ Found by comparing the diagrams (BPMN, Figure 1-3, Appendix L, tracker screensho
 
 | Group | Items |
 |---|---|
-| 1. Blocks Sprint 0 | Q-01 to Q-05 |
+| 1. Blocks Sprint 0 | Q-01 to Q-05, Q-41 |
 | 2. Needed before a later sprint | Q-06 to Q-28, Q-38 to Q-40 |
 | 3. Paper edit only, no code impact | Q-29 to Q-37 |
 
@@ -23,6 +23,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 **Q-02. Is the Loan Applicant a system user?**
 - Evidence: P1.4.2.1, P1.6.2 and Sprint 1 build a customer-facing portal with status view. App. G, I, J say the client endpoint was discontinued, the QR code went unused, clients chose the two-page paper form over the 36-page online form, and the team prefers internal entry for maker-checker control and to avoid public-facing downtime.
 - Suggested: keep the Applicant in the role enum, but build Sprint 1 as AO-entered intake and defer applicant self-service unless the bank confirms demand. Decide before Sprint 0 auth work.
+- Note: main's current sign-up flow routes new users to an applicant home page, which builds applicant self-service before this is decided.
 
 **Q-03. Which parties get their own records, and how does the "master profile" relate to a loan application?**
 - Evidence: KYC / FP have principal, spouse, co-borrower, attorney-in-fact and mortgagor; the FP also has an "AIF" column; F1 (Applicant Profile Page) implies a profile that outlives one application; Sec. 1.2 says applications may have multiple co-borrowers; developer and referrer records also appear.
@@ -35,6 +36,11 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 **Q-05. Where does "pre-approval" end?**
 - Evidence: P1.7.3 excludes release, servicing and collections and the BPMN ends at approval. The Home Loan Tracker has RED Endorsement, Clearance, Booking, Release and Lock tabs; App. G maps the flow to first release; the checklist has post-approval sections; App. G says its confirmed scope was "up to first release".
 - Suggested: end at "Approved / Deferred / Declined" and stop before the Notice of Approval. Leave the post-approval tabs and checklists out of the schema.
+
+**Q-41. How does a user get a role, and where is it stored?**
+- Evidence: main's sign-up page (`catch/src/pages/signUpPage.jsx`) creates a Supabase Auth user with email and password only, and assigns no role. Sprint 0 requires RBAC via RLS for the role types (Q-01). Roles-and-permissions notes a single shared login is a current pain point (App. H).
+- Options: (a) an admin creates staff accounts and assigns the role; (b) the user picks a role at sign-up; (c) mixed: self sign-up only for `loan_applicant` (depends on Q-02), admin-assigned for staff. Storage: a `profiles`/`user_roles` table keyed to `auth.users`, or Supabase `app_metadata` claims read by RLS, or both.
+- Depends on: Q-01, Q-02. Not decided.
 
 ---
 
