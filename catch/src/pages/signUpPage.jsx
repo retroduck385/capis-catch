@@ -21,7 +21,7 @@ const handleSignUp = async (e) => {
         const result = await signUpNewUser(email, password)
 
         if(result.success){
-            navigate('/applicationHomepage')
+            navigate('/applicantHomepage')
         } else {
             setError(result.error.message)
         }

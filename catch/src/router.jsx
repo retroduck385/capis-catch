@@ -1,9 +1,11 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import PrivateRoute from "./components /privateRoute";
 import App from "./App";
 import SignUpPage from "./pages/signUpPage";
 import LoginPage from "./pages/loginPage";
 import ApplicantHomePage from "./pages/applicantHomePage";
-import PrivateRoute from "./components /privateRoute";
+import ApplicationFormPage from "./pages/applicationFormPage";
+
 
 export const router = createBrowserRouter([
     { path: "/", element: <Navigate to="/LoginPage" replace /> },
@@ -11,5 +13,7 @@ export const router = createBrowserRouter([
     { path: "/loginPage", element: <LoginPage /> },
 
     // add <PrivateRoute> for private pages 
-    { path: "/applicationHomePage", element: <PrivateRoute><ApplicantHomePage /> </PrivateRoute>},
+    { path: "/applicantHomePage", element: <PrivateRoute><ApplicantHomePage /> </PrivateRoute>},
+    { path: "/applicationFormPage", element: <PrivateRoute><ApplicationFormPage /> </PrivateRoute>},
+
 ]);

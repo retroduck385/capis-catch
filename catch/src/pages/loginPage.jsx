@@ -21,7 +21,7 @@ const LoginPage = () => {
         const result = await signInUser(email, password)
 
         if(result.success){
-            navigate('/applicationHomepage')
+            navigate('/applicantHomepage')
         } else {
             setError(result.error.message)
         }
