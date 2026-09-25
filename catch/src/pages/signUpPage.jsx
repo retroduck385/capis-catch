@@ -8,7 +8,7 @@ const [password, setPassword] = useState ("");
 const [error, setError] = useState (null);
 const [loading, setLoading] = useState (false);
 
-const { session, signUpNewUser, signOut, signInUser } = UserAuth();
+const { session, signUpNewUser } = UserAuth();
 const navigate = useNavigate();
 
 console.log(session);
@@ -31,7 +31,7 @@ const handleSignUp = async (e) => {
     } finally {
         setLoading(false);
     }
-}
+    }
 
 return(
     <div> 
