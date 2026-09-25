@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
 
-const SignInPage = () => {
+const LoginPage = () => {
     const [email, setEmail] = useState ("");
     const [password, setPassword] = useState ("");
     const [error, setError] = useState (null);
@@ -62,4 +62,4 @@ const SignInPage = () => {
 );
 };
 
-export default SignInPage;
+export default LoginPage;

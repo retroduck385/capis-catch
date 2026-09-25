@@ -12,7 +12,7 @@ const ApplicantHomePage = () => {
         e.preventDefault()
         try{
             await signOut();
-            navigate('/signUpPage');
+            navigate('/loginPage');
         } catch (err){
             console.error(err);
         }
@@ -28,6 +28,14 @@ const ApplicantHomePage = () => {
                 onClick={handleSignOut}
                 className='hover:cursor-pointer border inline-block px-4 py-3. mt-4'> 
                     Signout
+                </p>
+            </div>
+
+            <div className='py-3'>
+                <p 
+                onClick={handleSignOut}
+                className='hover:cursor-pointer border inline-block px-4 py-3. mt-4'> 
+                    Apply Housing Loan
                 </p>
             </div>
 

@@ -37,7 +37,7 @@ return(
     <div> 
         <form onSubmit={ handleSignUp } className = "max-w-md m-auto pt-24">
             <h2> Sign Up here! </h2>
-            <p> already have an account? <Link to ="/signInPage"> Sign in!</Link></p>
+            <p> already have an account? <Link to ="/loginPage"> Login here!</Link></p>
 
             <div className= "flex flex-col py-4">
                 <input 
