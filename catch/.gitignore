@@ -1,5 +1,4 @@
-.env 
-catch/supabase/
+.env
 
 # Logs
 logs
