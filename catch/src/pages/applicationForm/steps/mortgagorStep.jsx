@@ -1,21 +1,10 @@
 import { useState } from 'react';
 import { deleteParty, getAddress, getParty, toForm, upsertAddress, upsertParty } from '../api';
-import { AddressFields, FormError, PersonFields, Section, StepButtons } from '../fields';
+import { AddressFields, FormError, PersonFields, Section, StepButtons, YesNo } from '../fields';
 import { ADDRESS_FIELDS, PARTY_FIELDS } from '../options';
 import { hasErrors, validateAddress, validatePerson } from '../validators';
 
 const CONTACT_ADDRESS_KEYS = Object.keys(ADDRESS_FIELDS);
-
-const YesNo = ({ name, value, onChange }) => (
-    <div className="py-2">
-        <label className="pr-4">
-            <input type="radio" name={name} checked={value === true} onChange={() => onChange(true)} /> Yes
-        </label>
-        <label>
-            <input type="radio" name={name} checked={value === false} onChange={() => onChange(false)} /> No
-        </label>
-    </div>
-);
 
 const MortgagorStep = ({ app, onSaved, onBack }) => {
     const mortgagor = getParty(app, 'MORTGAGOR');

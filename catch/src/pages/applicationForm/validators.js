@@ -2,7 +2,7 @@
 // and returns { field: message }. An empty object means the block is complete.
 // The same functions decide whether a wizard step can be left, and whether it's done.
 
-import { PARTY_FIELDS, PERSON_FIELDS } from './options';
+import { MAX_DEPENDENTS, PARTY_FIELDS, PERSON_FIELDS } from './options';
 
 export const isBlank = (v) => v === null || v === undefined || String(v).trim() === '';
 
@@ -66,13 +66,19 @@ export const validatePerson = (person, role) => {
     return e;
 };
 
-// Comma-separated ages, the way the KYC tab stores "Age of Dependents"
-export const parseDependentAges = (text) =>
-    isBlank(text) ? [] : String(text).split(',').map((s) => s.trim()).filter((s) => s !== '');
-
-export const validateDependentAges = (text) => {
-    const bad = parseDependentAges(text).some((s) => !/^\d{1,3}$/.test(s) || Number(s) > 120);
-    return bad ? { dependent_ages: 'Enter ages as whole numbers separated by commas, e.g. 4, 9' } : {};
+// "How many dependents?" then one age box per dependent. Errors: dependent_count, dependent_age_<i>
+export const validateDependents = (count, ages) => {
+    const e = {};
+    const n = Number(count);
+    if (isBlank(count)) e.dependent_count = 'Enter 0 if you have no dependents';
+    else if (!Number.isInteger(n) || n < 0 || n > MAX_DEPENDENTS) e.dependent_count = `Whole number, 0 to ${MAX_DEPENDENTS}`;
+    else {
+        Array.from({ length: n }, (_, i) => ages[i]).forEach((age, i) => {
+            if (isBlank(age)) e[`dependent_age_${i}`] = 'Required';
+            else if (!/^\d{1,3}$/.test(String(age).trim()) || Number(age) > 120) e[`dependent_age_${i}`] = 'Whole number, 0 to 120';
+        });
+    }
+    return e;
 };
 
 // kind: PRESENT (with ownership + move-in), PERMANENT (with move-in), EMPLOYER, CONTACT (address only)
@@ -170,3 +176,6 @@ export const validateReferral = (row) => {
 };
 
 export const hasErrors = (errors) => Object.keys(errors).length > 0;
+
+// Applicants must complete their master profile before applying
+export const isProfileComplete = (profile) => !!profile && !hasErrors(validatePerson(profile, 'PROFILE'));

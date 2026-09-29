@@ -288,11 +288,12 @@ Differences from the diagram above, made while building the application form:
 
 | Change | Why |
 |---|---|
-| `applicants` unique on `(application_id, role)` | KYC has one block per party, and the form upserts by role. |
+| `applicants` unique on `(application_id, role, party_no)`; `party_no` > 1 only for `CO_BORROWER` (20260929 migration) | One block per party, except co-borrowers, which are numbered 1..n. The form upserts by role + number. |
 | `addresses` unique on `(applicant_id, address_type)`; `application_requirements` unique on `(applicant_id, requirement_type)`; `character_references` unique on `(application_id, reference_no)` | Lets each step save with an upsert instead of creating duplicates. |
 | `employment_type` enum = the Document Checklist income sources + `UNEMPLOYED` (spouse only) | Drives which documents are required. |
 | `status` enum: DRAFT, SUBMITTED, FOR_CLARIFICATION, UNDER_CI, UNDER_CREDIT_EVALUATION, DEFERRED, UNDER_REVIEW, FOR_APPROVAL, APPROVED, REJECTED | First pass at the As-Is BPMN stages; revisit with the workflow side. |
-| `documents.file_name` added | Original file name to show the applicant (the storage key is sanitized and prefixed). |
+| `documents.file_name` + `original_file_name`; `name_document()` trigger (20260929 migration) | The server renames every upload to `{FIRST-MIDDLE-LAST-EXT}_{ROLE[n]}_{REQUIREMENT}_{n}.{ext}` (e.g. `JUAN-SANTOS-DELA-CRUZ-JR_COBORROWER2_VALID_ID_PASSPORT_1.pdf`) and keeps the applicant's original name. The storage key is `{user_id}/{application_id}/{requirement_id}/{timestamp}.{ext}`. |
+| `users.phone_number` updatable by its owner (column grant only) (20260929 migration) | Master profile mobile number. `role` / `is_active` stay locked. The rest of the profile is `user_profile`, which pre-fills the principal borrower. |
 | Unique index: one `DRAFT` per user | An applicant resumes their draft instead of starting duplicates. |
 | `required_documents(employment_type, loan_amount)` SQL function | Single source for the document checklist; the app calls `sync_requirements()` and `submit_application()` uses it too. |
 | `submit_application()` RPC | The only way out of `DRAFT`. Re-checks completeness on the server and returns what's missing; assigns `application_no` (`HL-YYYY-000001`). |

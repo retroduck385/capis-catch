@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { listMyApplications } from './applicationForm/api';
+import { fetchProfile, listMyApplications } from './applicationForm/api';
+import { isProfileComplete } from './applicationForm/validators';
 
 const ApplicantHomePage = () => {
     const { session, signOut } = UserAuth();
-    const navigate = useNavigate(); 
+    const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
+    const [profileComplete, setProfileComplete] = useState(null); // null = still loading
     const [error, setError] = useState(null);
 
     useEffect(() => {
         if (!session?.user?.id) return;
         listMyApplications(session.user.id)
             .then(setApplications)
+            .catch((err) => setError(err.message));
+        fetchProfile(session.user.id)
+            .then((profile) => setProfileComplete(isProfileComplete(profile)))
             .catch((err) => setError(err.message));
     }, [session?.user?.id]);
 
@@ -34,7 +39,7 @@ const ApplicantHomePage = () => {
         e.preventDefault()
         console.log('clicked') // delete when deploying 
         try{
-            navigate('/applicationFormPage');
+            navigate(profileComplete ? '/applicationFormPage' : '/profilePage?next=apply');
         } catch (err){
             console.error(err);
         }
@@ -53,8 +58,19 @@ const ApplicantHomePage = () => {
                 </p>
             </div>
 
+            {profileComplete === false && (
+                <div className='border border-yellow-500 bg-yellow-50 p-3 mt-4 inline-block'>
+                    Please update your user information before applying for a loan.{' '}
+                    <Link className='underline' to='/profilePage'>Update it here</Link>
+                </div>
+            )}
+
             <div className='py-3'>
-                <p 
+                <Link className='underline' to='/profilePage'>My Profile</Link>
+            </div>
+
+            <div className='py-3'>
+                <p
                 onClick={applyHousingLoan}
                 className='hover:cursor-pointer border inline-block px-4 py-3 mt-4'> 
                     {hasDraft ? 'Continue Housing Loan Application' : 'Apply Housing Loan'}

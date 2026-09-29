@@ -1,5 +1,21 @@
 // Plain inputs for the application form. Styling is placeholder until the UI pass.
-import { ADDRESS_FIELDS, EMPLOYMENT_FIELDS, EMPLOYMENT_KEYS, EMPLOYMENT_TYPES, HOME_OWNERSHIP, PARTY_FIELDS, PERSON_FIELDS } from './options';
+import { useState } from 'react';
+import {
+    ADDRESS_FIELDS, EMPLOYMENT_FIELDS, EMPLOYMENT_KEYS, EMPLOYMENT_TYPES, formatMoney, HOME_OWNERSHIP, PARTY_FIELDS,
+    parseMoney, PERSON_FIELDS,
+} from './options';
+
+// Shows commas while typing (1,500,000.5) and always 2 decimals once you leave the box (1,500,000.50).
+// The value passed to onChange has no commas, so validators and Postgres get a plain number.
+const MoneyInput = ({ id, value, onChange, placeholder, disabled }) => {
+    const [focused, setFocused] = useState(false);
+    return (
+        <input id={id} className="p-2 mt-1 border" type="text" inputMode="decimal"
+            value={formatMoney(value, { fixed: !focused })} placeholder={placeholder ?? '0.00'} disabled={disabled}
+            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+            onChange={(e) => onChange(parseMoney(e.target.value))} />
+    );
+};
 
 export const Field = ({ name, label, value, onChange, error, required, type = 'text', options, placeholder, disabled }) => {
     if (type === 'checkbox') {
@@ -23,6 +39,9 @@ export const Field = ({ name, label, value, onChange, error, required, type = 't
                     <option value="">-- Select --</option>
                     {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
+            ) : type === 'money' ? (
+                <MoneyInput id={name} value={value} placeholder={placeholder} disabled={disabled}
+                    onChange={(v) => onChange(name, v)} />
             ) : (
                 <input id={name} className="p-2 mt-1 border" type={type} value={value ?? ''}
                     placeholder={placeholder} disabled={disabled} step={type === 'number' ? 'any' : undefined}
@@ -74,7 +93,7 @@ export const AddressFields = ({ kind, values, errors, onChange, idPrefix }) => {
                         value={values.home_ownership} error={errors.home_ownership}
                         onChange={(_, v) => onChange('home_ownership', v)} />
                     {values.home_ownership === 'RENTED' && (
-                        <Field name={`${idPrefix}-monthly_rent`} label="Monthly Rent (PHP)" type="number" required
+                        <Field name={`${idPrefix}-monthly_rent`} label="Monthly Rent (PHP)" type="money" required
                             value={values.monthly_rent} error={errors.monthly_rent}
                             onChange={(_, v) => onChange('monthly_rent', v)} />
                     )}
@@ -137,3 +156,15 @@ export const StepButtons = ({ onBack, saving, nextLabel = 'Save & Continue', dis
 );
 
 export const FormError = ({ error }) => (error ? <p className="text-red-600 py-2">{error}</p> : null);
+
+// value: true | false | null (not answered yet)
+export const YesNo = ({ name, value, onChange }) => (
+    <div className="py-2">
+        <label className="pr-4">
+            <input type="radio" name={name} checked={value === true} onChange={() => onChange(true)} /> Yes
+        </label>
+        <label>
+            <input type="radio" name={name} checked={value === false} onChange={() => onChange(false)} /> No
+        </label>
+    </div>
+);

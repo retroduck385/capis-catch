@@ -1,10 +1,10 @@
 // Read-only view of a whole application (review step and submitted view)
 import React from 'react';
-import { getAddress, getParty, one } from './api';
+import { getAddress, getParties, getParty, one } from './api';
 import {
     ADDRESS_FIELDS, BANK_ACCOUNT_FIELDS, CIVIL_STATUSES, COLLATERAL_FIELDS, CREDIT_CARD_FIELDS, EMPLOYMENT_FIELDS,
-    EMPLOYMENT_TYPES, EXISTING_LOAN_FIELDS, GENDERS, HOME_OWNERSHIP, labelFor, PARTY_FIELDS, PARTY_LABELS,
-    PERSON_FIELDS, REFERENCE_FIELDS, REFERRAL_CHANNELS, REFERRAL_FIELDS, REQUIREMENT_LABELS,
+    EMPLOYMENT_TYPES, EXISTING_LOAN_FIELDS, formatMoney, GENDERS, HOME_OWNERSHIP, labelFor, PARTY_FIELDS,
+    partyLabel, PERSON_FIELDS, REFERENCE_FIELDS, REFERRAL_CHANNELS, REFERRAL_FIELDS, REQUIREMENT_LABELS,
 } from './options';
 
 const ENUM_OPTIONS = {
@@ -12,10 +12,11 @@ const ENUM_OPTIONS = {
     home_ownership: HOME_OWNERSHIP, channel: REFERRAL_CHANNELS,
 };
 
-const display = (field, value) => {
+const display = (field, value, type) => {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (ENUM_OPTIONS[field]) return labelFor(ENUM_OPTIONS[field], value);
+    if (type === 'money') return `₱${formatMoney(value)}`;
     return String(value);
 };
 
@@ -24,7 +25,7 @@ const Rows = ({ config, row, fields = Object.keys(config) }) => (
         {fields.map((f) => (
             <React.Fragment key={f}>
                 <dt className="font-semibold">{config[f]?.label ?? f}</dt>
-                <dd>{display(f, row?.[f])}</dd>
+                <dd>{display(f, row?.[f], config[f]?.type)}</dd>
             </React.Fragment>
         ))}
     </dl>
@@ -41,7 +42,7 @@ const ADDRESS_CONFIG = {
     ...ADDRESS_FIELDS,
     living_in_ph: { label: 'Living in the Philippines?' },
     home_ownership: { label: 'Home Ownership' },
-    monthly_rent: { label: 'Monthly Rent' },
+    monthly_rent: { label: 'Monthly Rent', type: 'money' },
     date_move_in: { label: 'Date of Move-In' },
 };
 
@@ -55,10 +56,13 @@ const AddressRows = ({ address }) => {
 const PartyBlock = ({ party }) => {
     const job = one(party.employment_info);
     return (
-        <Block title={PARTY_LABELS[party.role]}>
+        <Block title={partyLabel(party)}>
             <Rows config={PERSON_FIELDS} row={party} fields={PARTY_FIELDS[party.role].map(([f]) => f)} />
             {party.role === 'PRINCIPAL' && (
-                <p className="pt-1">Age of Dependents: {(party.dependents ?? []).map((d) => d.age).join(', ') || 'None'}</p>
+                <p className="pt-1">
+                    Number of Dependents: {(party.dependents ?? []).length}
+                    {(party.dependents ?? []).length > 0 && ` (ages ${party.dependents.map((d) => d.age).join(', ')})`}
+                </p>
             )}
             {['PRESENT', 'PERMANENT'].map((type) => getAddress(party, type) && (
                 <div key={type} className="pt-2">
@@ -99,8 +103,7 @@ const ListBlock = ({ title, config, rows }) => (
 
 const ApplicationSummary = ({ app }) => {
     const principal = getParty(app, 'PRINCIPAL');
-    const order = ['PRINCIPAL', 'SPOUSE', 'CO_BORROWER', 'MORTGAGOR', 'ATTORNEY_IN_FACT'];
-    const parties = order.map((role) => getParty(app, role)).filter(Boolean);
+    const parties = getParties(app);
 
     return (
         <div>
@@ -108,7 +111,7 @@ const ApplicationSummary = ({ app }) => {
                 <Rows
                     config={{
                         purpose: { label: 'Purpose' }, property_address: { label: 'Property Address' },
-                        loan_amount: { label: 'Loan Amount (PHP)' }, loan_term_years: { label: 'Loan Term (years)' },
+                        loan_amount: { label: 'Loan Amount', type: 'money' }, loan_term_years: { label: 'Loan Term (years)' },
                     }}
                     row={{ ...app, purpose: app.loan_purposes?.label ?? app.loan_purpose_other }} />
             </Block>

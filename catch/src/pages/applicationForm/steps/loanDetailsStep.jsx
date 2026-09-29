@@ -66,7 +66,7 @@ const LoanDetailsStep = ({ app, onSaved, onBack }) => {
                 )}
                 <Field name="property_address" label="Property Address" required
                     value={form.property_address} error={errors.property_address} onChange={set} />
-                <Field name="loan_amount" label="Loan Amount (PHP)" type="number" required
+                <Field name="loan_amount" label="Loan Amount (PHP)" type="money" required
                     value={form.loan_amount} error={errors.loan_amount} onChange={set} />
                 <Field name="loan_term_years" label="Loan Term (years)" type="number" required
                     value={form.loan_term_years} error={errors.loan_term_years} onChange={set} />

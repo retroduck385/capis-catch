@@ -5,6 +5,7 @@ import SignUpPage from "./pages/signUpPage";
 import LoginPage from "./pages/loginPage";
 import ApplicantHomePage from "./pages/applicantHomePage";
 import ApplicationFormPage from "./pages/applicationFormPage";
+import ProfilePage from "./pages/profilePage";
 
 
 export const router = createBrowserRouter([
@@ -15,5 +16,6 @@ export const router = createBrowserRouter([
     // add <PrivateRoute> for private pages 
     { path: "/applicantHomePage", element: <PrivateRoute><ApplicantHomePage /> </PrivateRoute>},
     { path: "/applicationFormPage", element: <PrivateRoute><ApplicationFormPage /> </PrivateRoute>},
+    { path: "/profilePage", element: <PrivateRoute><ProfilePage /> </PrivateRoute>},
 
 ]);

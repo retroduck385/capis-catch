@@ -63,7 +63,14 @@ export const PARTY_LABELS = {
     ATTORNEY_IN_FACT: 'Attorney-in-Fact',
 };
 
+// "Co-borrower 2" for co-borrowers, the plain role label for everyone else
+export const partyLabel = (party) =>
+    PARTY_LABELS[party.role] + (party.role === 'CO_BORROWER' ? ` ${party.party_no ?? 1}` : '');
+
 export const BORROWER_ROLES = ['PRINCIPAL', 'SPOUSE', 'CO_BORROWER'];
+
+export const MAX_CO_BORROWERS = 5;
+export const MAX_DEPENDENTS = 20;
 
 // Person fields in KYC order
 export const PERSON_FIELDS = {
@@ -110,6 +117,13 @@ export const PARTY_FIELDS = {
         ['relationship_to_principal', true], ['date_of_birth', true], ['civil_status', true],
         ['mobile_number', true], ['email_address', false], ['sss_no', false], ['tin', false],
     ],
+    // Not a party role: the applicant's own master profile, which pre-fills PRINCIPAL.
+    // Email comes from the login account.
+    PROFILE: [
+        ['first_name', true], ['middle_name', false], ['last_name', true], ['name_extension', false],
+        ['mobile_number', true], ['gender', true], ['date_of_birth', true], ['birth_place', true],
+        ['civil_status', true], ['citizenship', true], ['sss_no', false], ['tin', true],
+    ],
 };
 
 export const ADDRESS_FIELDS = {
@@ -126,19 +140,19 @@ export const EMPLOYMENT_FIELDS = {
     employer_business_name: { label: "Employer's / Business Name" },
     occupation: { label: 'Occupation' },
     employment_date: { label: 'Employment Date', type: 'date' },
-    contact_number: { label: 'Contact Number' },
-    email_address: { label: 'Email Address', type: 'email' },
-    employer_tin: { label: 'TIN' },
+    contact_number: { label: 'Contact Number of Employer / Business' },
+    email_address: { label: 'Email Address of Employer / Business', type: 'email' },
+    employer_tin: { label: "Employer's / Business TIN" },
     ctc_no: { label: 'CTC No.' },
     ctc_date_issued: { label: 'CTC Date Issued', type: 'date' },
     ctc_place_issued: { label: 'CTC Place Issued' },
-    gross_monthly_income: { label: 'Gross Monthly Income (PHP)', type: 'number' },
+    gross_monthly_income: { label: 'Gross Monthly Income (PHP)', type: 'money' },
 };
 
 export const COLLATERAL_FIELDS = {
     project_name: { label: 'Project Name' },
     property_type: { label: 'Property Type', placeholder: 'House and Lot, Condominium, Townhouse, Vacant Lot' },
-    selling_price: { label: 'Selling Price (PHP)', type: 'number' },
+    selling_price: { label: 'Selling Price (PHP)', type: 'money' },
     registered_owner: { label: 'Registered Owner' },
     tct_cct_no: { label: 'TCT / CCT No.' },
     lot_area: { label: 'Lot Area (sqm)', type: 'number' },
@@ -170,13 +184,13 @@ export const BANK_ACCOUNT_FIELDS = {
 export const EXISTING_LOAN_FIELDS = {
     loan_type: { label: 'Loan Type', placeholder: 'Auto, Personal, Salary' },
     lending_institution: { label: 'Name of Bank / Lending Institution' },
-    monthly_payment: { label: 'Monthly Payment (PHP)', type: 'number' },
+    monthly_payment: { label: 'Monthly Payment (PHP)', type: 'money' },
     term_over_6_months: { label: 'Term longer than 6 months?', type: 'checkbox' },
 };
 
 export const CREDIT_CARD_FIELDS = {
     issuing_bank: { label: 'Issuing Bank' },
-    credit_limit: { label: 'Credit Limit (PHP)', type: 'number' },
+    credit_limit: { label: 'Credit Limit (PHP)', type: 'money' },
     expiry_date: { label: 'Expiry Date', type: 'date' },
 };
 
@@ -185,3 +199,17 @@ export const ADDRESS_KEYS = [...Object.keys(ADDRESS_FIELDS), 'living_in_ph', 'ho
 export const EMPLOYMENT_KEYS = Object.keys(EMPLOYMENT_FIELDS);
 
 export const labelFor = (options, value) => options.find((o) => o.value === value)?.label ?? value;
+
+// Money: inputs keep a plain numeric string ("1500000.5"); these add the commas for display
+export const formatMoney = (value, { fixed = true } = {}) => {
+    if (value === null || value === undefined || value === '') return '';
+    if (fixed) return Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const [whole, cents] = String(value).split('.');
+    return Number(whole || 0).toLocaleString('en-US') + (cents !== undefined ? `.${cents}` : '');
+};
+
+// What the user typed ("1,500,000.505") -> plain numeric string with at most 2 decimals ("1500000.50")
+export const parseMoney = (text) => {
+    const [whole, ...rest] = String(text).replace(/[^\d.]/g, '').split('.');
+    return rest.length ? `${whole}.${rest.join('').slice(0, 2)}` : whole;
+};

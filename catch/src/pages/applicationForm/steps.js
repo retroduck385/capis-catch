@@ -1,6 +1,6 @@
 // Wizard step order and "is this step done?" checks, computed from the saved record.
 // A step can only be opened once every step before it is complete (and was visited).
-import { getAddress, getParty, one } from './api';
+import { getAddress, getParties, getParty, one } from './api';
 import { minFilesFor } from './options';
 import {
     hasErrors, validateAddress, validateBankAccount, validateCollateral, validateCreditCard,
@@ -11,6 +11,7 @@ import PrincipalInfoStep from './steps/principalInfoStep';
 import PrincipalAddressStep from './steps/principalAddressStep';
 import PrincipalEmploymentStep from './steps/principalEmploymentStep';
 import PartyStep from './steps/partyStep';
+import CoBorrowersStep from './steps/coBorrowersStep';
 import MortgagorStep from './steps/mortgagorStep';
 import ObligationsStep from './steps/obligationsStep';
 import ReferencesStep from './steps/referencesStep';
@@ -34,14 +35,13 @@ const otherBorrowerComplete = (party, role) =>
     && jobComplete(party, role);
 
 const documentsComplete = (app) =>
-    (app.applicants ?? [])
-        .filter((p) => ['PRINCIPAL', 'SPOUSE', 'CO_BORROWER'].includes(p.role))
+    getParties(app, ['PRINCIPAL', 'SPOUSE', 'CO_BORROWER'])
         .every((p) => (p.application_requirements ?? [])
             .every((r) => (r.documents ?? []).length >= minFilesFor(r.requirement_type)));
 
 export const buildSteps = (app) => {
     const principal = getParty(app, 'PRINCIPAL');
-    const coBorrower = getParty(app, 'CO_BORROWER');
+    const coBorrowers = getParties(app, ['CO_BORROWER']);
     const mortgagor = getParty(app, 'MORTGAGOR');
     const aif = getParty(app, 'ATTORNEY_IN_FACT');
     const married = principal?.civil_status === 'MARRIED';
@@ -67,19 +67,25 @@ export const buildSteps = (app) => {
         },
     ];
 
-    // "Married" expands the checklist with a required spouse step
-    if (married) {
-        steps.push({
-            key: 'spouse', title: 'Spouse', Component: PartyStep, props: { role: 'SPOUSE' },
-            complete: otherBorrowerComplete(getParty(app, 'SPOUSE'), 'SPOUSE'),
-        });
-    }
-
+    // Always asks "Are you married?"; a Yes requires the spouse's details
     steps.push(
         {
-            key: 'coBorrower', title: 'Co-borrower', Component: PartyStep, props: { role: 'CO_BORROWER', optional: true },
-            complete: !coBorrower || otherBorrowerComplete(coBorrower, 'CO_BORROWER'),
+            key: 'spouse', title: 'Spouse', Component: PartyStep, props: { role: 'SPOUSE' },
+            complete: !!principal?.civil_status && (!married || otherBorrowerComplete(getParty(app, 'SPOUSE'), 'SPOUSE')),
         },
+        {
+            key: 'coBorrowers', title: 'Co-borrowers', Component: CoBorrowersStep,
+            complete: true, // the count is always valid; the step just has to be visited
+        },
+        // One step per co-borrower
+        ...coBorrowers.map((p) => ({
+            key: `coBorrower-${p.party_no}`, title: `Co-borrower ${p.party_no}`, Component: PartyStep,
+            props: { role: 'CO_BORROWER', partyNo: p.party_no },
+            complete: otherBorrowerComplete(p, 'CO_BORROWER'),
+        })),
+    );
+
+    steps.push(
         {
             key: 'mortgagor', title: 'Mortgagor / Attorney-in-Fact', Component: MortgagorStep,
             complete: (!mortgagor || ok(validatePerson(mortgagor, 'MORTGAGOR')))

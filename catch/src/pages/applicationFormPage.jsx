@@ -1,11 +1,12 @@
 // Step-by-step housing loan application. Each step saves to Supabase as a DRAFT;
 // the next step only unlocks once the current one is complete.
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
-import { getOrCreateDraft, refreshApplication } from './applicationForm/api';
+import { fetchProfile, getOrCreateDraft, refreshApplication } from './applicationForm/api';
 import ApplicationSummary from './applicationForm/applicationSummary';
 import { buildSteps } from './applicationForm/steps';
+import { isProfileComplete } from './applicationForm/validators';
 
 // Which steps the applicant has saved at least once (so optional steps can't be skipped unseen)
 const visitedKey = (applicationId) => `catch:visitedSteps:${applicationId}`;
@@ -39,6 +40,8 @@ const ApplicationFormPage = () => {
     const userId = session?.user?.id;
 
     const [app, setApp] = useState(null);
+    const [profile, setProfile] = useState(null);
+    const [needsProfile, setNeedsProfile] = useState(false);
     const [visited, setVisited] = useState([]);
     const [currentKey, setCurrentKey] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -48,6 +51,13 @@ const ApplicationFormPage = () => {
         let cancelled = false;
         const load = async () => {
             try {
+                const myProfile = await fetchProfile(userId);
+                // Starting or continuing a draft needs a complete profile; viewing a specific one doesn't
+                if (!requestedId && !isProfileComplete(myProfile)) {
+                    if (!cancelled) setNeedsProfile(true);
+                    return;
+                }
+                if (!cancelled) setProfile(myProfile);
                 const id = requestedId ? Number(requestedId) : await getOrCreateDraft(userId);
                 const data = await refreshApplication(id);
                 if (cancelled) return;
@@ -66,6 +76,7 @@ const ApplicationFormPage = () => {
         return () => { cancelled = true; };
     }, [requestedId, userId]);
 
+    if (needsProfile) return <Navigate to="/profilePage?next=apply" replace />;
     if (loading) return <p>Loading application...</p>;
     if (error) return <p className="text-red-600">{error}</p>;
     if (!app) return null;
@@ -131,6 +142,7 @@ const ApplicationFormPage = () => {
                     {...step.props}
                     app={app}
                     session={session}
+                    profile={profile}
                     complete={step.complete}
                     onSaved={handleSaved}
                     onRefresh={refresh}
