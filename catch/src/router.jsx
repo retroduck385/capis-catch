@@ -6,6 +6,9 @@ import LoginPage from "./pages/loginPage";
 import ApplicantHomePage from "./pages/applicantHomePage";
 import ApplicationFormPage from "./pages/applicationFormPage";
 import ProfilePage from "./pages/profilePage";
+import AdminHomePage from "./pages/adminHomePage";
+import HomeRedirect from "./components /homeRedirect";
+import { STAFF_ROLES } from "./roles";
 
 
 export const router = createBrowserRouter([
@@ -14,8 +17,10 @@ export const router = createBrowserRouter([
     { path: "/loginPage", element: <LoginPage /> },
 
     // add <PrivateRoute> for private pages 
-    { path: "/applicantHomePage", element: <PrivateRoute><ApplicantHomePage /> </PrivateRoute>},
-    { path: "/applicationFormPage", element: <PrivateRoute><ApplicationFormPage /> </PrivateRoute>},
-    { path: "/profilePage", element: <PrivateRoute><ProfilePage /> </PrivateRoute>},
+    { path: "/homePage", element: <PrivateRoute><HomeRedirect /></PrivateRoute>},
+    { path: "/adminHomePage", element: <PrivateRoute roles={STAFF_ROLES}><AdminHomePage /> </PrivateRoute>},
+    { path: "/applicantHomePage", element: <PrivateRoute roles={["APPLICANT"]}><ApplicantHomePage /> </PrivateRoute>},
+    { path: "/applicationFormPage", element: <PrivateRoute roles={["APPLICANT"]}><ApplicationFormPage /> </PrivateRoute>},
+    { path: "/profilePage", element: <PrivateRoute roles={["APPLICANT"]}><ProfilePage /> </PrivateRoute>},
 
 ]);

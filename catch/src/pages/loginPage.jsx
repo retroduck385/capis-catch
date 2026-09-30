@@ -21,9 +21,9 @@ const LoginPage = () => {
         const result = await signInUser(email, password)
 
         if(result.success){
-            navigate('/applicantHomepage')
+            navigate('/homePage') // HomeRedirect picks applicant or admin home by role
         } else {
-            setError(result.error.message)
+            setError(result.error)
         }
     } catch (err){
         console.error(err) // delete this after 

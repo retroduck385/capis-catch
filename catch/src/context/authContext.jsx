@@ -5,6 +5,7 @@ const AuthContext = createContext()
 
 export const AuthContextProvider = ({children}) => {
     const [session, setSession] = useState(undefined)
+    const [loadedRole, setLoadedRole] = useState({ userId: null, role: null })
 
     // Sign up 
     const signUpNewUser = async (email, password) => {
@@ -51,6 +52,24 @@ export const AuthContextProvider = ({children}) => {
 
     },[]);
 
+    // Role comes from public.users (set to APPLICANT by the sign-up trigger)
+    const userId = session?.user?.id;
+    useEffect(() => {
+        if (!userId) return;
+        let cancelled = false;
+        supabase.from('users').select('role').eq('id', userId).maybeSingle()
+            .then(({ data, error }) => {
+                if (error) console.error("could not load user role", error);
+                if (!cancelled) setLoadedRole({ userId, role: data?.role ?? null });
+            });
+        return () => { cancelled = true; };
+    }, [userId]);
+
+    // undefined = still loading, null = signed out / no role
+    const role = session === undefined ? undefined
+        : !userId ? null
+        : loadedRole.userId === userId ? loadedRole.role : undefined;
+
     // Sign out 
     const signOut = () => {
         const { error } = supabase.auth.signOut();
@@ -60,7 +79,7 @@ export const AuthContextProvider = ({children}) => {
     };
 
     return(
-        <AuthContext.Provider value={{session, signUpNewUser, signOut, signInUser}}>
+        <AuthContext.Provider value={{session, role, signUpNewUser, signOut, signInUser}}>
             {children}
         </AuthContext.Provider>
     )
