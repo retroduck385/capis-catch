@@ -1,7 +1,8 @@
 import { UserAuth } from '../context/authContext';
 import { useNavigate } from 'react-router-dom';
+import WorkTray from './workTray/workTray';
 
-// Placeholder home for all staff roles (AO, CI, Dispatch Admin, CO, Reviewer, Approver, Dept Head)
+// Home for all staff roles (AO, CI, Dispatch Admin, CO, Reviewer, Approver, Dept Head): the work tray
 const AdminHomePage = () => {
     const { session, role, signOut } = UserAuth();
     const navigate = useNavigate();
@@ -27,6 +28,10 @@ const AdminHomePage = () => {
                 className='hover:cursor-pointer border inline-block px-4 py-3 mt-4'>
                     Signout
                 </p>
+            </div>
+
+            <div className='py-3'>
+                <WorkTray />
             </div>
         </div>
     )
