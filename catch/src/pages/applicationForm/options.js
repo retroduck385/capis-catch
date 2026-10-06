@@ -124,6 +124,12 @@ export const PARTY_FIELDS = {
         ['mobile_number', true], ['gender', true], ['date_of_birth', true], ['birth_place', true],
         ['civil_status', true], ['citizenship', true], ['sss_no', false], ['tin', true],
     ],
+    // Staff profile: just enough to show who is assigned / who acted. No SSS/TIN —
+    // nothing in the workflow uses them for staff. Email comes from the login account.
+    STAFF_PROFILE: [
+        ['first_name', true], ['middle_name', false], ['last_name', true], ['name_extension', false],
+        ['mobile_number', true],
+    ],
 };
 
 export const ADDRESS_FIELDS = {

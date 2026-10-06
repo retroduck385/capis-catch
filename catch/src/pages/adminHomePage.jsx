@@ -28,7 +28,22 @@ const AdminHomePage = () => {
                 className='hover:cursor-pointer border inline-block px-4 py-3 mt-4'>
                     Signout
                 </p>
+                <p
+                onClick={() => navigate('/staffProfilePage')}
+                className='hover:cursor-pointer border inline-block px-4 py-3 mt-4 ml-2'>
+                    My Profile
+                </p>
             </div>
+
+            {role === 'ACCOUNT_OFFICER' && (
+                <div>
+                    <p
+                    onClick={() => navigate('/accountOfficerApplicationInputPage')}
+                    className='hover:cursor-pointer border inline-block px-4 py-3 mt-4'>
+                        Create Application
+                    </p>
+                </div>
+            )}
 
             <div className='py-3'>
                 <WorkTray />

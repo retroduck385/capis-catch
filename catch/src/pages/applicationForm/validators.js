@@ -177,5 +177,6 @@ export const validateReferral = (row) => {
 
 export const hasErrors = (errors) => Object.keys(errors).length > 0;
 
-// Applicants must complete their master profile before applying
-export const isProfileComplete = (profile) => !!profile && !hasErrors(validatePerson(profile, 'PROFILE'));
+// Applicants must complete their master profile before applying; staff before using the work tray
+// role: PROFILE (applicant) or STAFF_PROFILE
+export const isProfileComplete = (profile, role = 'PROFILE') => !!profile && !hasErrors(validatePerson(profile, role));
