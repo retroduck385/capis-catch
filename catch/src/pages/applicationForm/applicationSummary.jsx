@@ -1,4 +1,5 @@
-// Read-only view of a whole application (review step and submitted view)
+// Read-only view of a whole application (review step, submitted view, staff loan folder).
+// Pass onViewDocument to make uploaded file names openable.
 import React from 'react';
 import { getAddress, getParties, getParty, one } from './api';
 import {
@@ -53,7 +54,7 @@ const AddressRows = ({ address }) => {
     return <Rows config={ADDRESS_CONFIG} row={address} fields={fields} />;
 };
 
-const PartyBlock = ({ party }) => {
+const PartyBlock = ({ party, onViewDocument }) => {
     const job = one(party.employment_info);
     return (
         <Block title={partyLabel(party)}>
@@ -84,7 +85,14 @@ const PartyBlock = ({ party }) => {
                     <ul className="list-disc pl-6">
                         {party.application_requirements.map((r) => (
                             <li key={r.id}>
-                                {REQUIREMENT_LABELS[r.requirement_type]}: {(r.documents ?? []).map((d) => d.file_name).join(', ') || 'none'}
+                                {REQUIREMENT_LABELS[r.requirement_type]}:{' '}
+                                {(r.documents ?? []).length === 0 && 'none'}
+                                {!onViewDocument && (r.documents ?? []).map((d) => d.file_name).join(', ')}
+                                {onViewDocument && (r.documents ?? []).map((d) => (
+                                    <button key={d.id} type="button" className="underline pr-2" onClick={() => onViewDocument(d)}>
+                                        {d.file_name}
+                                    </button>
+                                ))}
                             </li>
                         ))}
                     </ul>
@@ -101,7 +109,7 @@ const ListBlock = ({ title, config, rows }) => (
     </Block>
 );
 
-const ApplicationSummary = ({ app }) => {
+const ApplicationSummary = ({ app, onViewDocument }) => {
     const principal = getParty(app, 'PRINCIPAL');
     const parties = getParties(app);
 
@@ -116,7 +124,7 @@ const ApplicationSummary = ({ app }) => {
                     row={{ ...app, purpose: app.loan_purposes?.label ?? app.loan_purpose_other }} />
             </Block>
 
-            {parties.map((p) => <PartyBlock key={p.id} party={p} />)}
+            {parties.map((p) => <PartyBlock key={p.id} party={p} onViewDocument={onViewDocument} />)}
 
             <ListBlock title="Existing Bank Accounts" config={BANK_ACCOUNT_FIELDS} rows={principal?.bank_accounts} />
             <ListBlock title="Existing Loans" config={EXISTING_LOAN_FIELDS} rows={principal?.existing_loans} />

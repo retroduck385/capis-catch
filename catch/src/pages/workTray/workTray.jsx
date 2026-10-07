@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { ASSIGNABLE_ROLES, ASSIGNING_HEADS } from '../../roles';
 import { EMPLOYMENT_TYPES } from '../applicationForm/options';
@@ -51,6 +52,7 @@ const WorkTray = () => {
     const myId = session?.user?.id;
     const isHead = ASSIGNING_HEADS.includes(role);
     const isAssignable = ASSIGNABLE_ROLES.includes(role);
+    const navigate = useNavigate();
 
     const [rows, setRows] = useState([]);
     const [staff, setStaff] = useState([]);
@@ -179,7 +181,14 @@ const WorkTray = () => {
                         <tr><td colSpan={9} className='border px-2'>No applications match these filters.</td></tr>
                     )}
                     {visible.map((r) => (
-                        <tr key={r.application_id}>
+                        // The whole row opens the loan folder when you have access
+                        <tr
+                            key={r.application_id}
+                            tabIndex={r.can_open ? 0 : undefined}
+                            onClick={r.can_open ? () => navigate(`/loanFolderPage?id=${r.application_id}`) : undefined}
+                            onKeyDown={r.can_open ? (e) => e.key === 'Enter' && e.target === e.currentTarget
+                                && navigate(`/loanFolderPage?id=${r.application_id}`) : undefined}
+                            className={r.can_open ? 'cursor-pointer hover:bg-gray-100' : ''}>
                             <td className='border px-2'>{rows.indexOf(r) + 1}</td>
                             <td className='border px-2'>
                                 {r.application_no}
@@ -200,7 +209,8 @@ const WorkTray = () => {
                             <td className='border px-2'>
                                 {r.tat_days != null ? `${r.days_in_stage}d of ${r.tat_days}d · ${TAT_LABELS[r.tat_state]}` : '-'}
                             </td>
-                            <td className='border px-2'>
+                            {/* Assign / release controls: don't open the folder when using them */}
+                            <td className='border px-2' onClick={(e) => e.stopPropagation()}>
                                 {ASSIGNABLE_ROLES.map((slotRole) => (
                                     <AssigneeSlot
                                         key={slotRole}

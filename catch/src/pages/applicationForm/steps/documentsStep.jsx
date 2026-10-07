@@ -5,7 +5,7 @@ import { deleteDocument, getDocumentUrl, getParties, uploadDocument } from '../a
 import { FormError, Section, StepButtons } from '../fields';
 import { BORROWER_ROLES, minFilesFor, partyLabel, REQUIREMENT_LABELS } from '../options';
 
-const DocumentsStep = ({ app, session, complete, onSaved, onRefresh, onBack }) => {
+const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
     const [busy, setBusy] = useState(null); // requirement id or doc id being worked on
     const [error, setError] = useState(null);
 
@@ -17,7 +17,8 @@ const DocumentsStep = ({ app, session, complete, onSaved, onRefresh, onBack }) =
         try {
             for (const file of files) {
                 await uploadDocument({
-                    userId: session.user.id, applicationId: app.id, applicantId: party.id, requirement, file,
+                    // Always the applicant's folder, so files the AO uploads stay visible to the applicant
+                    userId: app.user_id, applicationId: app.id, applicantId: party.id, requirement, file,
                 });
             }
             await onRefresh();
