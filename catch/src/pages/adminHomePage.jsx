@@ -45,6 +45,16 @@ const AdminHomePage = () => {
                 </div>
             )}
 
+            {role === 'DEPT_HEAD' && (
+                <div>
+                    <p
+                    onClick={() => navigate('/staffAccountsPage')}
+                    className='hover:cursor-pointer border inline-block px-4 py-3 mt-4'>
+                        Add Account
+                    </p>
+                </div>
+            )}
+
             <div className='py-3'>
                 <WorkTray />
             </div>
