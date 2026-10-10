@@ -1,4 +1,5 @@
-"""CATCH OCR worker: OCRs uploaded IDs queued in Supabase and saves the raw lines.
+"""CATCH OCR worker: OCRs uploaded documents (IDs, COE / ITR, payslips / remittances)
+queued in Supabase and saves the raw lines.
 
   python worker.py              poll the queue every 5 s (Ctrl+C to stop)
   python worker.py --once       process what's queued now, then exit

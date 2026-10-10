@@ -17,8 +17,8 @@ def _get_engine():
     if _engine is None:
         _engine = PaddleOCR(
             lang="en",
-            use_doc_orientation_classify=True,  # phone photos of IDs are often rotated 90/180
-            use_doc_unwarping=False,            # unwarping tends to distort flat ID cards
+            use_doc_orientation_classify=True,  # phone photos are often rotated 90/180
+            use_doc_unwarping=False,            # unwarping tends to distort flat IDs and scans
             use_textline_orientation=True,      # upside-down text lines
         )
     return _engine

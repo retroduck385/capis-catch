@@ -1,8 +1,8 @@
 # CATCH OCR worker (PaddleOCR)
 
-Raw OCR of uploaded IDs. No LLM, no field mapping yet — every text line PaddleOCR finds is saved so extraction quality can be checked in Supabase.
+Raw OCR of uploaded IDs, COE / ITR and payslips / remittances. No LLM, no field mapping yet — every text line PaddleOCR finds is saved so extraction quality can be checked in Supabase.
 
-Flow: applicant/AO uploads a Valid ID → trigger queues a `PENDING` row in `ocr_runs` → this worker claims it, downloads the file from Storage, runs PaddleOCR, writes the lines to `ocr_lines` and marks the run `DONE` (or `FAILED` with the error).
+Flow: applicant/AO uploads one of those documents → trigger queues a `PENDING` row in `ocr_runs` → this worker claims it, downloads the file from Storage, runs PaddleOCR, writes the lines to `ocr_lines` and marks the run `DONE` (or `FAILED` with the error).
 
 ## Setup (once)
 
@@ -16,7 +16,7 @@ uv pip install --python .venv/bin/python -r requirements.txt
 cp .env.example .env                  # then paste the service role key
 ```
 
-Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`).
+Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`.
 
 ## Run
 
@@ -36,6 +36,8 @@ The first run downloads the models (~100 MB, to `~/.paddlex/`).
 
 Re-OCR a document (new run, old one kept): `select requeue_ocr(<document_id>);` in the SQL Editor.
 
-Only `VALID_ID_PASSPORT` is queued for now; add types in `ocr_document_types()` in the migration.
+Queued types: `VALID_ID_PASSPORT`, `COE_ITR`, `PAYSLIPS_REMITTANCES`; add more in `ocr_document_types()` (latest definition is in `20261010_ocr_income_docs.sql`).
 
-Test with synthetic IDs only — never real borrower documents.
+`line_no` is PaddleOCR's reading order. On tables (payslips) a slightly tilted photo can interleave the columns, so pair labels with amounts using `bbox`, not `line_no`.
+
+Test with synthetic documents only — never real borrower documents.
