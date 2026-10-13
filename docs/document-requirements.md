@@ -1,7 +1,7 @@
 # Document requirements
 
 Sources: App. E.4 (Document Checklist tab, "Class B Credit Requirements (Mandatory)"), BPMN AO lane notes (App. A), KYC tab (E.1), interviews (App. G, I, J).
-The checklist has an **AO** and a **CO** checkbox column per document: presumably AO collected and CO verified (the paper does not say). Requirements conditionally expand with borrower type (Sec. 1.4.2.1); the base path in Sprint 1 is **salaried single applicant** and the rest arrive in Sprint 6 (Q-08, Q-27).
+The checklist has an **AO** and a **CO** checkbox column per document: presumably AO collected and CO verified (the paper does not say). Requirements conditionally expand with borrower type (Sec. 1.4.2.1). The paper planned salaried single applicants for Sprint 1 and the rest for Sprint 6. **Decided by implementation on 2026-10-13 (Q-08, Q-27):** the intake form already covers all 10 types and every party. See "Implemented checklist vs this doc" at the end for how the code differs from the lists below.
 
 ## Always (BPMN AO lane, "Collate Client Requirements")
 - Fully accomplished Credit Application Form
@@ -55,3 +55,26 @@ Per principal, spouse and co-borrower: Valid ID / Passport, SPA, FS / Bank State
 - Each claim is bound to its evidence: declared income requires the ITR, COE or payslips before submission proceeds (1.3.3.3).
 - File-type and legibility checks on upload (1.4.2.1, 1.3.3.3).
 - A missing item triggers a targeted deficiency notice, not a generic one.
+
+## Implemented checklist vs this doc
+Source: `required_documents()` and `required_document_min()` in `catch/supabase/migrations/20260928_application_side.sql`. The code is not changed here; this section only records the differences.
+
+**How it works.** The checklist is a SQL function of employment type and loan amount (Q-08). It applies to the principal, spouse and each co-borrower. Its rows are the 6 KYC-tab categories above (Valid ID / Passport, SPA, FS / Bank Statements, COE / ITR, Payslips / Remittances, SEC / DTI / Mayor's Permit), not the individual documents in the Checklist tab. `submit_application()` blocks submission until every row has at least one file (Valid ID: at least two).
+
+| Borrower type | Code requires | Differs from the Checklist tab above |
+|---|---|---|
+| Locally employed | ID, COE / ITR, Payslips | Same categories. The BPMN's "ITR if loan > 3M" for employed is not applied (code applies it to self-employed only) |
+| Licensed professional | ID, FS / Bank Statements | PRC ID has no slot of its own |
+| Seafarer | ID, SPA, COE / ITR, Payslips | POEA contract, seaman's book and manning-agency certification (Q-40) have no slot |
+| Virtual assistant | ID, FS / Bank Statements, COE / ITR, Payslips | Matches |
+| Commission-based | ID, FS / Bank Statements, Payslips | Check vouchers have no slot |
+| OFW | ID, SPA, COE / ITR, Payslips / Remittances | Matches |
+| Self-employed | ID, FS / Bank Statements, SEC / DTI / Mayor's Permit, plus COE / ITR if loan > P3M | Articles / By-Laws, GIS, supplier and customer list, 3-year audited FS have no slot of their own |
+| Rental business | ID, FS / Bank Statements | **Mismatch:** doc says notarized lease contract and TCT |
+| Jeepney / taxi / UV operator (`PUV_OPERATOR`) | ID, FS / Bank Statements | **Mismatch:** doc says LTO franchise and LTO OR/CR |
+| Pensioner | ID, FS / Bank Statements | Pension notification letter has no slot |
+| Unemployed (spouse only) | ID | Not in the doc |
+
+**"Always" items not enforced in code:** proof of marital status, Letter of Authorization for CI, Miscellaneous items (PSA birth certificate, CENOMAR, PSA marriage certificate), developer requirements. Mortgagor and attorney-in-fact have no document requirements.
+
+**What matches:** two valid IDs; SPA for OFW and seafarer; ITR above P3M for self-employed; upload limit 10 MB (JPEG, PNG, PDF only).

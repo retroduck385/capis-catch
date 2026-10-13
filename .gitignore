@@ -14,3 +14,16 @@ __pycache__/
 .venv/
 venv/
 *.pyc
+
+# Team-local files
+supplementary_files/
+
+HANDOFF.md
+
+fake_accounts.md
+josh-notes.md
+FUTURE_TODO.md
+
+
+# macOS
+.DS_Store

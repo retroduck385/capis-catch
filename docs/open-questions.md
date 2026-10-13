@@ -1,13 +1,14 @@
 # Open questions
 
-**Every item here is NOT decided.** "Suggested" is a proposal for the team to accept or reject, not a decision.
+Items marked **DECIDED** were settled by implementation (main's code); their old Evidence and Suggested lines are kept for history. **Everything else here is NOT decided.** "Suggested" is a proposal for the team to accept or reject, not a decision.
 Sources: main paper (**P** + section), appendices (**App.** + letter or tab). "The bank" = the partner bank.
 Found by comparing the diagrams (BPMN, Figure 1-3, Appendix L, tracker screenshots) against the text and the interview transcripts.
 
 | Group | Items |
 |---|---|
-| 1. Blocks Sprint 0 | Q-01 to Q-05, Q-41 |
-| 2. Needed before a later sprint | Q-06 to Q-28, Q-38 to Q-40 |
+| 1. Blocks Sprint 0 | Q-04, Q-05 |
+| 2. Needed before a later sprint | Q-06, Q-07, Q-11, Q-13 to Q-22, Q-24 to Q-26, Q-28, Q-38 to Q-40 |
+| Decided by implementation | Q-01, Q-02, Q-03, Q-08, Q-09 (structure only), Q-10, Q-12, Q-23, Q-27, Q-41 |
 | 3. Paper edit only, no code impact | Q-29 to Q-37 |
 
 ---
@@ -15,19 +16,21 @@ Found by comparing the diagrams (BPMN, Figure 1-3, Appendix L, tracker screensho
 ## 1. Blocks Sprint 0
 Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and vector store. These decide their shape.
 
-**Q-01. Which roles exist?**
+**DECIDED. Q-01. Which roles exist?**
 - Evidence: four lists disagree. P1.3 and the BPMN show 6 roles; P1.4.1 and Figure 2 list 7 (adds Credit Evaluator, Dept Head, Applicant; drops Reviewer and Dispatch Admin); Sprint 0 lists 8; P1.4.2.3 adds "Committee Members". The Dispatch Admin is "Credit Officer Admin" in the BPMN and App. K. Interviews add "Credit Evaluation Officer", "Credit Underwriter", Marketing, Secretary, Support.
 - Suggested: adopt Sprint 0's eight as the RBAC enum, treat Credit Evaluator = Credit Officer, and make Committee Members an approval-tier attribute rather than a role. Confirm with the bank's contact.
 - Files: `roles-and-permissions.md`.
+- **Decided by implementation, 2026-10-13:** enum `user_role` with 8 values: APPLICANT, ACCOUNT_OFFICER, CREDIT_INVESTIGATOR, DISPATCH_ADMIN, CREDIT_OFFICER, REVIEWER, APPROVER, DEPT_HEAD. Credit Evaluator is not a separate role; Committee Members are not modeled.
 
-**Q-02. Is the Loan Applicant a system user?**
+**DECIDED. Q-02. Is the Loan Applicant a system user?**
 - Evidence: P1.4.2.1, P1.6.2 and Sprint 1 build a customer-facing portal with status view. App. G, I, J say the client endpoint was discontinued, the QR code went unused, clients chose the two-page paper form over the 36-page online form, and the team prefers internal entry for maker-checker control and to avoid public-facing downtime.
 - Suggested: keep the Applicant in the role enum, but build Sprint 1 as AO-entered intake and defer applicant self-service unless the bank confirms demand. Decide before Sprint 0 auth work.
-- Note: main's current sign-up flow routes new users to an applicant home page, which builds applicant self-service before this is decided.
+- **Decided by implementation, 2026-10-13:** yes. Applicants sign up and fill in a self-service multi-step form with uploads. An AO-entered intake page exists only as a placeholder. See `decisions/applicant-portal.md`.
 
-**Q-03. Which parties get their own records, and how does the "master profile" relate to a loan application?**
+**DECIDED. Q-03. Which parties get their own records, and how does the "master profile" relate to a loan application?**
 - Evidence: KYC / FP have principal, spouse, co-borrower, attorney-in-fact and mortgagor; the FP also has an "AIF" column; F1 (Applicant Profile Page) implies a profile that outlives one application; Sec. 1.2 says applications may have multiple co-borrowers; developer and referrer records also appear.
 - Suggested: one `person` table with per-application roles (principal, spouse, co-borrower, attorney-in-fact, mortgagor, reference), plus `application`, `employment`, `obligation`, `collateral`. Needs the ERD (Phase 3, not started).
+- **Decided by implementation, 2026-10-13:** a master profile (`user_profile`) per login, plus one `applicants` row per party per application (PRINCIPAL, SPOUSE, CO_BORROWER numbered 1..n, MORTGAGOR, ATTORNEY_IN_FACT). References live in `character_references`.
 
 **Q-04. Pending data-handling constraints.**
 - Evidence: P3.2.2.1 says the Data Privacy Officer, IT Risk and Security Department sessions are still to be held, and that they govern RBAC rules and external model calls. P3.2.2.4: only synthetic documents may be sent to the external vision model.
@@ -37,10 +40,11 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Evidence: P1.7.3 excludes release, servicing and collections and the BPMN ends at approval. The Home Loan Tracker has RED Endorsement, Clearance, Booking, Release and Lock tabs; App. G maps the flow to first release; the checklist has post-approval sections; App. G says its confirmed scope was "up to first release".
 - Suggested: end at "Approved / Deferred / Declined" and stop before the Notice of Approval. Leave the post-approval tabs and checklists out of the schema.
 
-**Q-41. How does a user get a role, and where is it stored?**
+**DECIDED. Q-41. How does a user get a role, and where is it stored?**
 - Evidence: main's sign-up page (`catch/src/pages/signUpPage.jsx`) creates a Supabase Auth user with email and password only, and assigns no role. Sprint 0 requires RBAC via RLS for the role types (Q-01). Roles-and-permissions notes a single shared login is a current pain point (App. H).
 - Options: (a) an admin creates staff accounts and assigns the role; (b) the user picks a role at sign-up; (c) mixed: self sign-up only for `loan_applicant` (depends on Q-02), admin-assigned for staff. Storage: a `profiles`/`user_roles` table keyed to `auth.users`, or Supabase `app_metadata` claims read by RLS, or both.
-- Depends on: Q-01, Q-02. Not decided.
+- Depends on: Q-01, Q-02.
+- **Decided by implementation, 2026-10-13:** option (c). Self sign-up creates an APPLICANT via a trigger; the Dept Head creates staff logins and calls `grant_staff_role()`, logged in `staff_role_grants`. The role is stored in `public.users.role`; clients can't change it. See `decisions/role-storage.md`.
 
 ---
 
@@ -55,9 +59,10 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Evidence: the KYC tab already has Extracted / Corrected / Remarks / Finalized columns and a documented manual LLM extraction routine with a fixed prompt (data-fields.md). App. J says an LLM was tried by one team member and not adopted (see Q-35).
 - Suggested: use the KYC tab's row list as the extraction schema and its five columns as the staging-plus-confirmation model. Do not port the manual prompt as-is.
 
-**Q-08. Borrower-type taxonomy and checklist conditions.**
+**DECIDED. Q-08. Borrower-type taxonomy and checklist conditions.**
 - Evidence: the checklist has ten types (locally employed, seafarer, OFW, self-employed, licensed professional, virtual assistant, commission-based, rental, transport operator, pensioner). Sprint 1 covers salaried single only; Sprint 6 names self-employed, co-borrower and OFW. "ITR if loan amount > 3M" is a value-conditional rule.
 - Suggested: model the checklist as data (type x document x condition) so Sprint 6 adds rows, not code. Confirm which types are in Sprint 1 vs later.
+- **Decided by implementation, 2026-10-13:** the checklist is the SQL function `required_documents(employment_type, loan_amount)`. Rows are the 6 KYC-tab document categories; the ITR-above-P3M rule is built in (self-employed only). It is a function, not a data table. Differences from the paper: `document-requirements.md`.
 
 **Q-38. What do "Class B" and "Class C" mean?**
 - Evidence: printed on the CI Request, Checklist, Credit_Score and AMD tabs ("Class B") and the Cashflow tab ("Class C"). Never explained.
@@ -72,21 +77,24 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Suggested: treat as "Manning Agency certification" plus "COEC" until confirmed.
 
 ### Sprint 2 (Workflow and Queue Management)
-**Q-09. What is the turnaround target?**
+**DECIDED (structure only). Q-09. What is the turnaround target?**
 - Evidence: 7-day prescribed TAT (P1.2); 2-hour KRI commitment (Ishikawa figure, App. J); 1 day employed / 2 days self-employed (App. H); 2 PM cutoff and statuses return-in / within / beyond / returned (App. I); 3.12-day average.
 - Suggested: make it configuration, one target per stage and borrower type, and get the bank's answer. The 2-hour figure looks like a per-application processing commitment, not end-to-end.
+- **Decided by implementation, 2026-10-13 (structure only):** one TAT per stage in table `stage_tat`, with a "near" warning at 75 %. **The day values (Intake 1, CI 3, Credit Evaluation 3, Review 2, Approval 2) are placeholders** until the bank gives its SLA; that part stays open.
 
-**Q-10. Stage list and status names.**
+**DECIDED. Q-10. Stage list and status names.**
 - Evidence: the as-is stages come from the BPMN. Tracker statuses (Requested, Pending, Done, Not Applicable, Endorsed, Deferred) and the paper's states ("Pending Customer Correction", "Pending Committee Review") differ. No to-be BPMN exists yet.
 - Suggested: use `status-flow.md`'s seven stages as a starting lookup table and name statuses per stage. Confirm in the Phase 3 to-be BPMN.
+- **Decided by implementation, 2026-10-13:** two layers. `workflow_stage`: INTAKE, CREDIT_INVESTIGATION, CREDIT_EVALUATION, REVIEW, APPROVAL, DECIDED. `stage_status`: PENDING, IN_PROGRESS, REQUESTED, RETURNED, DONE. `application_status` is the applicant-facing status. No separate Dispatch stage. Details: `status-flow.md`.
 
 **Q-11. CI: one request or two, who encodes results, and the "verified" threshold.**
 - Evidence: App. G has the AO request NFIS / TU / BRAS after collation; the BPMN has a second Desk and Field CI request at the first Reviewer. P1.3.1.4 says CI has no access to the shared sheet, yet the BPMN shows CI updating Home Loan Tracker v3.0 (they may be two different sheets). App. I asks whether CI should encode its own results. The 3-of-5 or 4-of-5 threshold is not tied to specific checks.
 - Suggested: model CI requests as separate typed requests (Initial: NFIS / TU / BRAS; Desk; Field), CI writes results itself, and store the "verified" threshold as configuration.
 
-**Q-12. Assignment: automatic FIFO or Dispatch Admin?**
+**DECIDED. Q-12. Assignment: automatic FIFO or Dispatch Admin?**
 - Evidence: F8 auto-assigns by FIFO; today the Dispatch Admin assigns Credit Officers and is the single gatekeeper (App. I, K).
 - Suggested: FIFO proposes, Dispatch Admin can override, and both are audited.
+- **Decided by implementation, 2026-10-13:** AOs and COs claim files themselves from a FIFO work tray; Dispatch Admin, Reviewer, Approver and Dept Head can assign, reassign or unassign any AO/CO. History is in `application_assignments`. No automatic assignment.
 
 **Q-13. Reviewer rules.**
 - Evidence: the BPMN loops "Is there another reviewer?" and has a "first reviewer" branch that requests Desk and Field CI. The number of reviewers and the rule for who counts as first are not stated. App. I: reviewer re-checks the underwriter's computation and supporting documents.
@@ -131,9 +139,10 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Suggested: score display only after the bank supplies the sheet; any scoring stays advisory.
 
 ### Sprint 5 (Dashboard and Committee Decision Support)
-**Q-23. Approver action set.**
+**DECIDED. Q-23. Approver action set.**
 - Evidence: Approve / Decline / Defer (P2.1.2.1.4); Approve / Reject / Defer / Refer (P1.4.1, Sprint 5); Approve / Reject / Defer (Figure 2); endorse / not endorse / deferred (evaluator, App. I).
 - Suggested: Approve, Reject (with reason code), Defer, Refer, matching Sprint 5, and keep "endorse / not endorse" as the evaluator's recommendation.
+- **Decided by implementation, 2026-10-13:** `application_status` has APPROVED, REJECTED, DEFERRED. Refer is not modeled. No approver action or screen is built yet.
 
 **Q-24. Approval tiers beyond Stage 1 and Stage 2.**
 - Evidence: only the P3.0M and P5.0M bands are printed. Nothing for above P5.0M or for deviations above P3.0M. "CRMD" and "RPS" are undefined. "Refer / Escalate" names Senior Credit Committee or Board level, which do not match the tracker tiers.
@@ -148,9 +157,10 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Suggested: out of scope until the bank confirms; do not model as a role (see Q-01).
 
 ### Sprint 6 (Complex Borrower Profile Extension)
-**Q-27. Which borrower profiles are in scope?**
+**DECIDED. Q-27. Which borrower profiles are in scope?**
 - Evidence: Sprint 6 and P3.3: self-employed, co-borrower, OFW. P3.4.2: spouse and co-borrowers only. The checklist has ten types, including seafarer, virtual assistant, commission-based, rental, transport and pensioner.
 - Suggested: Sprint 6 = self-employed, co-borrower, OFW, seafarer (which shares the OFW path and has its own formula); list the others as Won't-have until confirmed.
+- **Decided by implementation, 2026-10-13:** all 10 checklist types plus co-borrowers, spouse, mortgagor and attorney-in-fact are in the intake form now, not phased by sprint.
 
 **Q-28. OFW and seafarer specifics.**
 - Evidence: SPA required for OFWs and seafarers; clarification by email for OFWs (not phone); employment verification is hard across time zones; the attorney-in-fact fields exist for SPA cases.

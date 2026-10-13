@@ -8,7 +8,7 @@ const [password, setPassword] = useState ("");
 const [error, setError] = useState (null);
 const [loading, setLoading] = useState (false);
 
-const { session, signUpNewUser, signOut, signInUser } = UserAuth();
+const { session, signUpNewUser } = UserAuth();
 const navigate = useNavigate();
 
 console.log(session);
@@ -21,7 +21,7 @@ const handleSignUp = async (e) => {
         const result = await signUpNewUser(email, password)
 
         if(result.success){
-            navigate('/applicationHomepage')
+            navigate('/applicantHomepage')
         } else {
             setError(result.error.message)
         }
@@ -31,13 +31,13 @@ const handleSignUp = async (e) => {
     } finally {
         setLoading(false);
     }
-}
+    }
 
 return(
     <div> 
         <form onSubmit={ handleSignUp } className = "max-w-md m-auto pt-24">
             <h2> Sign Up here! </h2>
-            <p> already have an account? <Link to ="/signInPage"> Sign in!</Link></p>
+            <p> already have an account? <Link to ="/loginPage"> Login here!</Link></p>
 
             <div className= "flex flex-col py-4">
                 <input 
