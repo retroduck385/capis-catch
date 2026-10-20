@@ -16,6 +16,13 @@ const TABLE_LABELS = {
     referral_details: 'Referral',
     documents: 'Document',
     application_requirements: 'Document requirement',
+    financial_packages: 'Financial Package',
+    fp_party_details: 'FP borrower details',
+    fp_exceptions: 'FP exception',
+    fp_deposit_checks: 'FP deposit check',
+    fp_loan_checks: 'FP loan verification',
+    fp_trade_checks: 'FP trade check',
+    fp_title_verifications: 'FP title verification',
 };
 
 const ACTION_LABELS = { INSERT: 'Added', UPDATE: 'Changed', DELETE: 'Removed' };

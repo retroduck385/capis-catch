@@ -45,14 +45,18 @@ const AssigneeSlot = ({ row, slotRole, myId, myRole, isHead, staff, busy, onAssi
     );
 };
 
-// Every submitted application, FIFO by submission. AOs/COs see the summary of all of them
-// (so they can claim unassigned ones) but can only open the ones assigned to them.
+// Every submitted application, FIFO by submission. AOs and COs can open all of them (view only until
+// they're assigned).
 const WorkTray = () => {
     const { session, role } = UserAuth();
     const myId = session?.user?.id;
     const isHead = ASSIGNING_HEADS.includes(role);
     const isAssignable = ASSIGNABLE_ROLES.includes(role);
     const navigate = useNavigate();
+    // The CI only gets applications an AO sent them (see get_work_tray()) and opens the NFIS / TU request;
+    // the CO opens the Financial Package
+    const folderPath = (id) => (role === 'CREDIT_INVESTIGATOR' ? `/ciRequestPage?id=${id}`
+        : role === 'CREDIT_OFFICER' ? `/financialPackagePage?id=${id}` : `/loanFolderPage?id=${id}`);
 
     const [rows, setRows] = useState([]);
     const [staff, setStaff] = useState([]);
@@ -185,14 +189,15 @@ const WorkTray = () => {
                         <tr
                             key={r.application_id}
                             tabIndex={r.can_open ? 0 : undefined}
-                            onClick={r.can_open ? () => navigate(`/loanFolderPage?id=${r.application_id}`) : undefined}
+                            onClick={r.can_open ? () => navigate(folderPath(r.application_id)) : undefined}
                             onKeyDown={r.can_open ? (e) => e.key === 'Enter' && e.target === e.currentTarget
-                                && navigate(`/loanFolderPage?id=${r.application_id}`) : undefined}
+                                && navigate(folderPath(r.application_id)) : undefined}
                             className={r.can_open ? 'cursor-pointer hover:bg-gray-100' : ''}>
                             <td className='border px-2'>{rows.indexOf(r) + 1}</td>
                             <td className='border px-2'>
                                 {r.application_no}
                                 {!r.can_open && <div>(locked: not assigned to you)</div>}
+                                {r.can_open && isAssignable && r[SLOT_ID[role]] !== myId && <div>(view only)</div>}
                             </td>
                             <td className='border px-2'>
                                 {r.applicant_name ?? '-'}
