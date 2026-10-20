@@ -1,12 +1,14 @@
 // Sections of the Financial Package & Credit Recommendation (KYC-FP "FP" tab, pages 1 and 2).
 // Values copied from the KYC are shown read-only from the record; the CO's inputs come in through
 // `form` / `on*` props and are disabled when the viewer can't edit.
+import { Link } from 'react-router-dom';
 import { getAddress, getParties, one } from '../applicationForm/api';
 import { joinAddress, presentAddressOf, tenure, wholeYears } from '../applicationForm/derived';
 import { Field, Section } from '../applicationForm/fields';
 import {
     BORROWER_ROLES, CIVIL_STATUSES, HOME_OWNERSHIP, REFERRAL_CHANNELS, formatMoney, labelFor, partyLabel,
 } from '../applicationForm/options';
+import RoutingSummary from '../review/routingSummary';
 import { percent } from './compute';
 import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS } from './options';
 
@@ -41,7 +43,7 @@ const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required }
 const KycNote = () => <p className="italic text-sm pb-1">From the KYC (read-only). The AO corrects these in the loan folder.</p>;
 
 // ---------- Header ----------
-export const HeaderSection = ({ app, aoName, form, onPkg, disabled }) => {
+export const HeaderSection = ({ app, aoName, form, onPkg, disabled, score, scoreLink, approvalLink, onOpenScore }) => {
     const referral = one(app.referral_details);
     return (
         <Section title="Financial Package and Credit Recommendation — Housing Loans">
@@ -52,7 +54,14 @@ export const HeaderSection = ({ app, aoName, form, onPkg, disabled }) => {
                     <Field name="dosri_rpt" label="DOSRI / RPT" value={form.dosri_rpt} onChange={onPkg} disabled={disabled}
                         options={[{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }]} />
                     <p className="py-2"><span className="font-semibold">Credit Risk Rating:</span>{' '}
-                        <span className="italic">Credit scoring not built yet</span></p>
+                        {score.riskRating ? `${score.riskRating} (${score.total} / 100)`
+                            : <span className="italic">Credit scoring not finished ({score.scored} of {score.count} scored)</span>}</p>
+                    <Link to={scoreLink} onClick={onOpenScore} className="inline-block border px-3 py-1">
+                        Open Credit Scoring
+                    </Link>{' '}
+                    <Link to={approvalLink} onClick={onOpenScore} className="inline-block border px-3 py-1">
+                        VII. Approval (pick reviewers / approvers)
+                    </Link>
                 </div>
                 <Info rows={[
                     ['Channel', referral?.channel ? labelFor(REFERRAL_CHANNELS, referral.channel) : null],
@@ -185,6 +194,14 @@ export const CreditCheckingSection = ({ app }) => (
             </tbody>
         </table>
         <p className="italic text-sm pt-1">Filled in from the Credit Investigator's results once that step exists.</p>
+    </Section>
+);
+
+// ---------- VII. Approval (picked on its own page) ----------
+export const ApprovalSection = ({ tier, rows, names, link, onOpen }) => (
+    <Section title="VII. Approval">
+        <RoutingSummary tier={tier} rows={rows} names={names} />
+        <Link to={link} onClick={onOpen} className="inline-block border px-3 py-1 mt-2">Open VII. Approval</Link>
     </Section>
 );
 
@@ -390,6 +407,6 @@ export const CreditResultSection = ({ form, onPkg, disabled }) => (
         <TextArea name="waiver_and_acceptance" label="Waiver and Acceptance" rows={2} value={form.waiver_and_acceptance}
             onChange={onPkg} disabled={disabled} />
         <TextArea name="deferrals" label="Deferral(s)" rows={2} value={form.deferrals} onChange={onPkg} disabled={disabled} />
-        <p className="italic text-sm">Saved on the FP only for now; it doesn't move the application to Review yet. Approval sign-offs (VII) come with the Reviewer / Approver stages.</p>
+        <p className="italic text-sm">Saved on the FP. To send it to the reviewers and approvers, save the FP, then open VII. Approval.</p>
     </Section>
 );

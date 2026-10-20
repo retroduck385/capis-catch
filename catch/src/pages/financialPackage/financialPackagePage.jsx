@@ -10,10 +10,12 @@ import { FormError } from '../applicationForm/fields';
 import { BORROWER_ROLES, formatMoney, partyLabel } from '../applicationForm/options';
 import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
 import ChangeHistory from '../loanFolder/changeHistory';
-import { fetchAssignedAo, fetchCoCanEdit, fetchFinancialPackage, saveFinancialPackage } from './api';
+import { fetchReviewAssignments } from '../review/api';
+import { fetchAssignedAo, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage } from './api';
 import { computeFp } from './compute';
+import { totalCreditScore } from './creditScore';
 import {
-    CashFlowSection, CollateralSection, CreditCheckingSection, CreditResultSection, CustomerSection, EmploymentSection,
+    ApprovalSection, CashFlowSection, CollateralSection, CreditCheckingSection, CreditResultSection, CustomerSection, EmploymentSection,
     FacilitySection, HeaderSection, HighlightsSection, RowsSection, TermsSection, TitleSection,
 } from './fpSections';
 import {
@@ -92,6 +94,9 @@ const FinancialPackagePage = () => {
     const applicationId = Number(searchParams.get('id'));
 
     const [app, setApp] = useState(null);
+    const [rules, setRules] = useState(null);
+    const [savedScore, setSavedScore] = useState({}); // { [criterion]: { band } }, for the header's risk rating
+    const [routing, setRouting] = useState({ tier: null, rows: [], names: {} }); // VII. Approval
     const [form, setForm] = useState(null);
     const [canEdit, setCanEdit] = useState(false);
     const [aoName, setAoName] = useState(null);
@@ -106,12 +111,16 @@ const FinancialPackagePage = () => {
     // Saved FP + its change history (+ the staff names in it)
     const loadFp = useCallback(async (record) => {
         const ids = getParties(record, BORROWER_ROLES).map((p) => p.id);
-        const [savedFp, log, aoId] = await Promise.all([
-            fetchFinancialPackage(record.id, ids), fetchAuditLog(record.id), fetchAssignedAo(record.id)]);
+        const [savedFp, log, aoId, reviewRows] = await Promise.all([
+            fetchFinancialPackage(record.id, ids), fetchAuditLog(record.id), fetchAssignedAo(record.id),
+            fetchReviewAssignments(record.id)]);
         const fpLog = log.filter((e) => FP_TABLES.includes(e.table_name)
             || (e.table_name === 'loan_applications' && ('interest_rate' in (e.new_data ?? {}) || 'fixing_period' in (e.new_data ?? {}))));
-        const staff = await fetchStaffNames([aoId, ...fpLog.map((e) => e.changed_by)]);
+        const staff = await fetchStaffNames([aoId, ...fpLog.map((e) => e.changed_by),
+            ...reviewRows.filter((r) => !r.unassigned_at).map((r) => r.user_id)]);
         setForm(buildForm(record, savedFp));
+        setSavedScore(Object.fromEntries(savedFp.creditScore.map((r) => [r.criterion, r])));
+        setRouting({ tier: savedFp.pkg?.approval_tier ?? null, rows: reviewRows, names: staff });
         setAudit(fpLog);
         setNames(staff);
         setAoName(aoId ? staff[aoId] ?? 'Account Officer' : null);
@@ -122,9 +131,11 @@ const FinancialPackagePage = () => {
         let cancelled = false;
         const load = async () => {
             try {
-                const [record, editable] = await Promise.all([fetchApplication(applicationId), fetchCoCanEdit(applicationId)]);
+                const [record, editable, scoreRules] = await Promise.all([
+                    fetchApplication(applicationId), fetchCoCanEdit(applicationId), fetchCreditScoreRules()]);
                 if (cancelled) return;
                 setApp(record);
+                setRules(scoreRules);
                 setCanEdit(editable);
                 await loadFp(record);
             } catch (err) {
@@ -139,10 +150,12 @@ const FinancialPackagePage = () => {
 
     const computed = useMemo(() => (app && form ? computeFp(app, form.parties, form.pkg, form.pricing) : null),
         [app, form]);
+    // Saved credit score (scored on its own page)
+    const score = useMemo(() => (rules ? totalCreditScore(rules, savedScore) : null), [rules, savedScore]);
 
     if (loading) return <p>Loading financial package...</p>;
     if (error && !form) return <p className="text-red-600">{error}</p>;
-    if (!app || !form) return null;
+    if (!app || !form || !rules) return null;
 
     const disabled = !canEdit || saving;
     const change = (next) => {
@@ -158,6 +171,11 @@ const FinancialPackagePage = () => {
     const onTitle = (kind, field, value) =>
         change({ ...form, titles: { ...form.titles, [kind]: { ...form.titles[kind], [field]: value } } });
     const resetTerms = () => onPkg('terms_and_conditions', templateFor(app, form.pricing));
+    // The score and VII. Approval pages read the saved FP (income basis, rate, appraised value, credit result),
+    // so unsaved edits would be lost
+    const confirmLeave = (e) => {
+        if (dirty && !window.confirm('The Financial Package has unsaved changes. Leave without saving?')) e.preventDefault();
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -196,7 +214,9 @@ const FinancialPackagePage = () => {
                 </p>
             )}
 
-            <HeaderSection app={app} aoName={aoName} form={form.pkg} onPkg={onPkg} disabled={disabled} />
+            <HeaderSection app={app} aoName={aoName} form={form.pkg} onPkg={onPkg} disabled={disabled} score={score}
+                scoreLink={`/creditScorePage?id=${app.id}`} approvalLink={`/approvalRoutingPage?id=${app.id}`}
+                onOpenScore={confirmLeave} />
             <HighlightsSection app={app} computed={computed} />
             <FacilitySection app={app} computed={computed} form={form.pkg} pricing={form.pricing}
                 onPkg={onPkg} onPricing={onPricing} disabled={disabled} />
@@ -205,6 +225,8 @@ const FinancialPackagePage = () => {
             <RowsSection title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
                 onChange={onList('exceptions')} disabled={disabled} />
             <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
+            <ApprovalSection tier={routing.tier} rows={routing.rows} names={routing.names}
+                link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
 
             <h3 className="font-semibold pt-4">Page 2: Credit Application Information</h3>
             <EmploymentSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
