@@ -10,6 +10,12 @@ export const ASSIGNING_HEADS = ['DISPATCH_ADMIN', 'REVIEWER', 'APPROVER', 'DEPT_
 // Roles that are assigned to applications and may claim / release them themselves
 export const ASSIGNABLE_ROLES = ['ACCOUNT_OFFICER', 'CREDIT_OFFICER'];
 
+// Picked by the CO in VII. Approval (review_assignments in 20261021_review_routing.sql)
+export const REVIEW_ROLES = ['REVIEWER', 'APPROVER'];
+
+// Can change the reviewers / approvers after the CO has sent the application (update_review_routing())
+export const ROUTING_HEADS = ['DEPT_HEAD', 'DISPATCH_ADMIN'];
+
 export const ROLE_LABELS = {
     APPLICANT: 'Loan Applicant',
     ACCOUNT_OFFICER: 'Account Officer',

@@ -1,5 +1,5 @@
 // Loan folder: staff view of one submitted application, opened from the work tray.
-// The assigned AO (while in Intake) edits each section with the same forms the applicant
+// The assigned AO (while in Intake or Credit Investigation) edits each section with the same forms the applicant
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -7,18 +7,21 @@ import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getDocumentUrl, refreshApplication } from '../applicationForm/api';
 import ApplicationSummary from '../applicationForm/applicationSummary';
 import { buildSteps } from '../applicationForm/steps';
+import { fetchCiRequests } from '../ciRequest/api';
+import RequestCiPanel from '../ciRequest/requestCiPanel';
 import { fetchAuditLog, fetchCanEdit, fetchKycChecks, fetchStaffNames } from './api';
 import ChangeHistory from './changeHistory';
 import KycCheckPanel, { CheckSummary } from './kycCheckPanel';
 import { RESULT_LABELS } from './options';
 
 const OVERVIEW = 'overview';
+const REQUEST_CI = 'request-ci';
 
 // Form sections the AO verifies (the wizard's steps without Review & Submit)
 const sectionsFor = (app) => buildSteps(app).filter((s) => s.key !== 'review');
 
 const LoanFolderPage = () => {
-    const { session } = UserAuth();
+    const { session, role } = UserAuth();
     const [searchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
 
@@ -27,17 +30,22 @@ const LoanFolderPage = () => {
     const [checks, setChecks] = useState([]);
     const [audit, setAudit] = useState([]);
     const [names, setNames] = useState({});
+    const [ciRequest, setCiRequest] = useState(null);
     const [currentKey, setCurrentKey] = useState(OVERVIEW);
     const [saved, setSaved] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Checks + history (+ the names of whoever made them)
+    // Checks + history + latest CI request (+ the names of whoever made them)
     const loadTrail = useCallback(async () => {
-        const [nextChecks, nextAudit] = await Promise.all([fetchKycChecks(applicationId), fetchAuditLog(applicationId)]);
+        const [nextChecks, nextAudit, ciRequests] = await Promise.all([
+            fetchKycChecks(applicationId), fetchAuditLog(applicationId), fetchCiRequests(applicationId)]);
+        const latestCi = ciRequests.at(-1) ?? null;
         setChecks(nextChecks);
         setAudit(nextAudit);
-        setNames(await fetchStaffNames([...nextChecks.map((c) => c.checked_by), ...nextAudit.map((a) => a.changed_by)]));
+        setCiRequest(latestCi);
+        setNames(await fetchStaffNames([...nextChecks.map((c) => c.checked_by), ...nextAudit.map((a) => a.changed_by),
+            ...nextAudit.map((a) => (a.new_data ?? a.old_data)?.user_id), latestCi?.requested_by]));
     }, [applicationId]);
 
     useEffect(() => {
@@ -87,6 +95,11 @@ const LoanFolderPage = () => {
         setSaved(false);
     };
 
+    // The AO keeps editing after the request (Intake -> Credit Investigation); just reload
+    const handleCiRequested = async () => {
+        await refresh();
+    };
+
     const handleViewDocument = async (doc) => {
         try {
             window.open(await getDocumentUrl(doc), '_blank', 'noopener');
@@ -97,12 +110,19 @@ const LoanFolderPage = () => {
 
     const header = (
         <div className="pb-2">
-            <p><Link to="/adminHomePage" className="underline">Back to work tray</Link></p>
+            <p>
+                <Link to="/adminHomePage" className="underline">Back to work tray</Link>
+                {' · '}
+                <Link to={`/financialPackagePage?id=${app.id}`} className="underline">Financial Package</Link>
+            </p>
             <h2>Application {app.application_no}</h2>
             <p>Submitted: {app.submitted_at ? new Date(app.submitted_at).toLocaleString() : '—'}</p>
             <p>KYC: {verifiedCount} of {sections.length} sections verified</p>
+            {ciRequest && (
+                <p>CI requested {new Date(ciRequest.requested_at).toLocaleString()} by {names[ciRequest.requested_by] ?? 'Account Officer'}</p>
+            )}
             {!canEdit && (
-                <p className="italic">Read-only. Only the assigned Account Officer can edit, while the application is in Intake.</p>
+                <p className="italic">Read-only. Only the assigned Account Officer can edit, while the application is in Intake or Credit Investigation.{role === 'ACCOUNT_OFFICER' && ' Assign yourself in the work tray to edit.'}</p>
             )}
         </div>
     );
@@ -164,12 +184,26 @@ const LoanFolderPage = () => {
                                 </li>
                             );
                         })}
+                        <li>
+                            <button type="button" onClick={() => open(REQUEST_CI)}
+                                className={`py-1 text-left ${currentKey === REQUEST_CI ? 'font-bold underline' : ''}`}>
+                                Request CI (NFIS & TU)
+                            </button>
+                        </li>
                     </ol>
                 </nav>
 
                 <main className="flex-1">
                     {error && <p className="text-red-600">{error}</p>}
-                    {!section ? overview : (
+                    {currentKey === REQUEST_CI ? (
+                        <RequestCiPanel
+                            app={app}
+                            ciRequest={ciRequest}
+                            requesterName={names[ciRequest?.requested_by]}
+                            verifiedCount={verifiedCount}
+                            sectionCount={sections.length}
+                            onRequested={handleCiRequested} />
+                    ) : !section ? overview : (
                         <>
                             <h2>{section.title}</h2>
                             <KycCheckPanel

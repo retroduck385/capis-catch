@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
-import { ASSIGNABLE_ROLES, ASSIGNING_HEADS } from '../../roles';
+import { ASSIGNABLE_ROLES, ASSIGNING_HEADS, REVIEW_ROLES } from '../../roles';
 import { EMPLOYMENT_TYPES } from '../applicationForm/options';
+import { fetchStaffNames } from '../loanFolder/api';
+import { fetchActiveReviewAssignments } from '../review/api';
 import { assignApplication, fetchAssignableStaff, fetchWorkTray, unassignApplication } from './api';
 import { SLOT_LABELS, STAGES, STAGE_STATUS_LABELS, TAT_LABELS, stageLabel } from './options';
 
@@ -10,6 +12,28 @@ const employmentLabel = (type) => EMPLOYMENT_TYPES.find((t) => t.value === type)
 
 const SLOT_ID = { ACCOUNT_OFFICER: 'ao_id', CREDIT_OFFICER: 'co_id' };
 const SLOT_NAME = { ACCOUNT_OFFICER: 'ao_name', CREDIT_OFFICER: 'co_name' };
+
+// Tray rows + who each application is routed to for review / approval (VII. Approval):
+// routing = { [application_id]: [{ assignee_role, user_id, seq }] }, names = { [user_id]: name }
+const fetchTray = async () => {
+    const [rows, review] = await Promise.all([fetchWorkTray(), fetchActiveReviewAssignments()]);
+    const names = await fetchStaffNames(review.map((r) => r.user_id));
+    const routing = {};
+    review.forEach((r) => { (routing[r.application_id] ??= []).push(r); });
+    return { rows, routing, names };
+};
+
+const isRoutedTo = (routing, row, userId) => (routing[row.application_id] ?? []).some((x) => x.user_id === userId);
+
+// The CI only gets applications an AO sent them (see get_work_tray()) and opens the NFIS / TU request;
+// the CO opens the Financial Package; a reviewer / approver opens the review summary of what's routed to them
+const folderPath = (role, row, routedToMe) => {
+    const id = row.application_id;
+    if (role === 'CREDIT_INVESTIGATOR') return `/ciRequestPage?id=${id}`;
+    if (role === 'CREDIT_OFFICER') return `/financialPackagePage?id=${id}`;
+    if (REVIEW_ROLES.includes(role) && routedToMe) return `/reviewSummaryPage?id=${id}`;
+    return `/loanFolderPage?id=${id}`;
+};
 
 // One AO or CO slot in the "Assigned to" column
 const AssigneeSlot = ({ row, slotRole, myId, myRole, isHead, staff, busy, onAssign, onUnassign }) => {
@@ -45,16 +69,30 @@ const AssigneeSlot = ({ row, slotRole, myId, myRole, isHead, staff, busy, onAssi
     );
 };
 
-// Every submitted application, FIFO by submission. AOs/COs see the summary of all of them
-// (so they can claim unassigned ones) but can only open the ones assigned to them.
+// Reviewers (in order) and approvers the CO picked in VII. Approval; changed on that page, not here
+const ReviewSlots = ({ routing, names, myId }) => {
+    const nameOf = (x) => (x.user_id === myId ? 'You' : names[x.user_id] ?? 'Unknown');
+    const reviewers = routing.filter((x) => x.assignee_role === 'REVIEWER');
+    const approvers = routing.filter((x) => x.assignee_role === 'APPROVER');
+    return (
+        <>
+            {reviewers.length > 0 && <div>Reviewers: {reviewers.map((x) => `${x.seq}. ${nameOf(x)}`).join(', ')}</div>}
+            {approvers.length > 0 && <div>Approvers: {approvers.map(nameOf).join(', ')}</div>}
+        </>
+    );
+};
+
+// Every submitted application, FIFO by submission. AOs and COs can open all of them (view only until
+// they're assigned).
 const WorkTray = () => {
     const { session, role } = UserAuth();
     const myId = session?.user?.id;
     const isHead = ASSIGNING_HEADS.includes(role);
     const isAssignable = ASSIGNABLE_ROLES.includes(role);
     const navigate = useNavigate();
+    const [tray, setTray] = useState({ rows: [], routing: {}, names: {} });
+    const { rows, routing, names } = tray;
 
-    const [rows, setRows] = useState([]);
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState(null);
@@ -62,22 +100,23 @@ const WorkTray = () => {
 
     const [search, setSearch] = useState('');
     const [tat, setTat] = useState('ALL');           // ALL / NEAR / BEYOND
-    const [assignment, setAssignment] = useState('ALL'); // ALL / MINE / UNASSIGNED
+    // Reviewers / approvers start on what's routed to them
+    const [assignment, setAssignment] = useState(REVIEW_ROLES.includes(role) ? 'MINE' : 'ALL'); // ALL / MINE / UNASSIGNED
     const [stage, setStage] = useState('OPEN');      // OPEN = everything not yet decided
 
     // Refresh after an action or on the Refresh button
     const load = async () => {
         try {
             setError(null);
-            setRows(await fetchWorkTray());
+            setTray(await fetchTray());
         } catch (err) {
             setError(err.message);
         }
     };
 
     useEffect(() => {
-        fetchWorkTray()
-            .then(setRows)
+        fetchTray()
+            .then(setTray)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
     }, []);
@@ -120,10 +159,10 @@ const WorkTray = () => {
             (stage === 'OPEN' ? r.stage !== 'DECIDED' : stage === 'ALL' || r.stage === stage)
             && (tat === 'ALL' || r.tat_state === tat)
             && (assignment === 'ALL'
-                || (assignment === 'MINE' && (r.ao_id === myId || r.co_id === myId))
+                || (assignment === 'MINE' && (r.ao_id === myId || r.co_id === myId || isRoutedTo(routing, r, myId)))
                 || (assignment === 'UNASSIGNED' && isUnassigned(r)))
             && (!q || [r.application_no, r.applicant_name].some((v) => v?.toLowerCase().includes(q))));
-    }, [rows, search, tat, assignment, stage, myId, isUnassigned]);
+    }, [rows, routing, search, tat, assignment, stage, myId, isUnassigned]);
 
     if (loading) return <p>Loading work tray...</p>;
 
@@ -180,53 +219,60 @@ const WorkTray = () => {
                     {visible.length === 0 && (
                         <tr><td colSpan={9} className='border px-2'>No applications match these filters.</td></tr>
                     )}
-                    {visible.map((r) => (
-                        // The whole row opens the loan folder when you have access
-                        <tr
-                            key={r.application_id}
-                            tabIndex={r.can_open ? 0 : undefined}
-                            onClick={r.can_open ? () => navigate(`/loanFolderPage?id=${r.application_id}`) : undefined}
-                            onKeyDown={r.can_open ? (e) => e.key === 'Enter' && e.target === e.currentTarget
-                                && navigate(`/loanFolderPage?id=${r.application_id}`) : undefined}
-                            className={r.can_open ? 'cursor-pointer hover:bg-gray-100' : ''}>
-                            <td className='border px-2'>{rows.indexOf(r) + 1}</td>
-                            <td className='border px-2'>
-                                {r.application_no}
-                                {!r.can_open && <div>(locked: not assigned to you)</div>}
-                            </td>
-                            <td className='border px-2'>
-                                {r.applicant_name ?? '-'}
-                                <div>{[employmentLabel(r.employment_type), r.branch].filter(Boolean).join(' · ')}</div>
-                            </td>
-                            <td className='border px-2'>{stageLabel(r.stage)}</td>
-                            <td className='border px-2'>{STAGE_STATUS_LABELS[r.stage_status] ?? '-'}</td>
-                            <td className='border px-2'>
-                                {r.loan_amount != null
-                                    ? `₱${Number(r.loan_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
-                                    : '-'}
-                            </td>
-                            <td className='border px-2'>{r.days_in_stage}d</td>
-                            <td className='border px-2'>
-                                {r.tat_days != null ? `${r.days_in_stage}d of ${r.tat_days}d · ${TAT_LABELS[r.tat_state]}` : '-'}
-                            </td>
-                            {/* Assign / release controls: don't open the folder when using them */}
-                            <td className='border px-2' onClick={(e) => e.stopPropagation()}>
-                                {ASSIGNABLE_ROLES.map((slotRole) => (
-                                    <AssigneeSlot
-                                        key={slotRole}
-                                        row={r}
-                                        slotRole={slotRole}
-                                        myId={myId}
-                                        myRole={role}
-                                        isHead={isHead}
-                                        staff={staff}
-                                        busy={busyId === r.application_id}
-                                        onAssign={handleAssign}
-                                        onUnassign={handleUnassign} />
-                                ))}
-                            </td>
-                        </tr>
-                    ))}
+                    {visible.map((r) => {
+                        const routedToMe = isRoutedTo(routing, r, myId);
+                        const path = folderPath(role, r, routedToMe);
+                        return (
+                            // The whole row opens the loan folder when you have access
+                            <tr
+                                key={r.application_id}
+                                tabIndex={r.can_open ? 0 : undefined}
+                                onClick={r.can_open ? () => navigate(path) : undefined}
+                                onKeyDown={r.can_open ? (e) => e.key === 'Enter' && e.target === e.currentTarget
+                                    && navigate(path) : undefined}
+                                className={r.can_open ? 'cursor-pointer hover:bg-gray-100' : ''}>
+                                <td className='border px-2'>{rows.indexOf(r) + 1}</td>
+                                <td className='border px-2'>
+                                    {r.application_no}
+                                    {!r.can_open && <div>(locked: not assigned to you)</div>}
+                                    {r.can_open && isAssignable && r[SLOT_ID[role]] !== myId && <div>(view only)</div>}
+                                    {routedToMe && <div>(assigned to you: {role === 'APPROVER' ? 'approval' : 'review'})</div>}
+                                </td>
+                                <td className='border px-2'>
+                                    {r.applicant_name ?? '-'}
+                                    <div>{[employmentLabel(r.employment_type), r.branch].filter(Boolean).join(' · ')}</div>
+                                </td>
+                                <td className='border px-2'>{stageLabel(r.stage)}</td>
+                                <td className='border px-2'>{STAGE_STATUS_LABELS[r.stage_status] ?? '-'}</td>
+                                <td className='border px-2'>
+                                    {r.loan_amount != null
+                                        ? `₱${Number(r.loan_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+                                        : '-'}
+                                </td>
+                                <td className='border px-2'>{r.days_in_stage}d</td>
+                                <td className='border px-2'>
+                                    {r.tat_days != null ? `${r.days_in_stage}d of ${r.tat_days}d · ${TAT_LABELS[r.tat_state]}` : '-'}
+                                </td>
+                                {/* Assign / release controls: don't open the folder when using them */}
+                                <td className='border px-2' onClick={(e) => e.stopPropagation()}>
+                                    {ASSIGNABLE_ROLES.map((slotRole) => (
+                                        <AssigneeSlot
+                                            key={slotRole}
+                                            row={r}
+                                            slotRole={slotRole}
+                                            myId={myId}
+                                            myRole={role}
+                                            isHead={isHead}
+                                            staff={staff}
+                                            busy={busyId === r.application_id}
+                                            onAssign={handleAssign}
+                                            onUnassign={handleUnassign} />
+                                    ))}
+                                    <ReviewSlots routing={routing[r.application_id] ?? []} names={names} myId={myId} />
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

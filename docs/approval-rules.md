@@ -1,7 +1,28 @@
 # Approval rules
 
 Sources: Home Loan Tracker Approval tab (App. F.8) and RED Endorsement tab (F.9), Signatures tab (E.7), interviews (App. I, J), main paper Sec. 1.4.2.3, 1.4.2.5, 2.1.2.1.4, 2.1.2.4, 2.1.3.3, Figure 3, Sprint 4-5.
-Anything not listed is **not stated**. Nothing here is decided.
+Anything not listed is **not stated**. The sections below describe the sources. What the code does was **decided by implementation on 2026-10-21**: see "Implemented" right below.
+
+## Implemented (decided by implementation, 2026-10-21)
+Code: `catch/supabase/migrations/20261021_review_routing.sql`, `catch/src/pages/review/approval.js`.
+
+**Approval authority** (enum `approval_tier`, stored on `financial_packages.approval_tier`), from the FP sheet's VII. Approval block (Q-24):
+| Tier | Without deviation | With deviation |
+|---|---|---|
+| President (or alternate) | Up to P10M | |
+| Senior Credit Committee | More than P10M to P30M | Up to P10M |
+| Executive Committee | More than P30M | More than P10M to P30M |
+| Board | | More than P30M |
+
+- A deviation = at least one row in the FP's V. Exceptions.
+- The page suggests the tier; the assigned CO picks it. The code notes two readings to confirm with the bank: the President's range (not printed on the sheet) and "Upto 3M to P10M" read as up to P10M.
+- These tiers differ from the tracker's Stage 1 / Stage 2 bands below (P3.0M / P5.0M); the code follows the FP sheet.
+
+**Routing:** the CO picks one or more reviewers (in review order) and one or more approvers, all active REVIEWER / APPROVER accounts, and sends the file to Review with `send_for_review()`. This needs a Credit Result of Endorsed or Not endorsed. After that only the Dept Head or Dispatch Admin can change the tier or the people (`update_review_routing()`). Committees are named as tiers; committee members are not modeled (individual APPROVER accounts are picked).
+
+**CO recommendation:** `financial_packages.credit_result` = ENDORSED / NOT_ENDORSED / DEFERRED, with a required justification. The credit score's recommendation is a guide only.
+
+**Not built:** reviewer sign-off (mark reviewed / request revision), approver decisions (Approve / Reject / Defer), MRAC checks. Reviewers and approvers only view a summary page.
 
 ## Approval tiers on the tracker (Approval tab)
 | Tier | Applies to | Approvers shown |

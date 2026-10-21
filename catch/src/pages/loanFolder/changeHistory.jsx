@@ -16,14 +16,27 @@ const TABLE_LABELS = {
     referral_details: 'Referral',
     documents: 'Document',
     application_requirements: 'Document requirement',
+    financial_packages: 'Financial Package',
+    fp_party_details: 'FP borrower details',
+    fp_exceptions: 'FP exception',
+    fp_deposit_checks: 'FP deposit check',
+    fp_loan_checks: 'FP loan verification',
+    fp_trade_checks: 'FP trade check',
+    fp_title_verifications: 'FP title verification',
+    credit_score_entries: 'Credit score',
+    review_assignments: 'Reviewer / approver',
 };
 
 const ACTION_LABELS = { INSERT: 'Added', UPDATE: 'Changed', DELETE: 'Removed' };
 
 // Keys and bookkeeping columns aren't useful to show
-const HIDDEN = new Set(['id', 'application_id', 'applicant_id', 'requirement_id', 'file_path', 'uploaded_by']);
+const HIDDEN = new Set(['id', 'application_id', 'applicant_id', 'requirement_id', 'file_path', 'uploaded_by',
+    'assigned_by', 'assigned_at', 'unassigned_by']);
+// Columns holding a staff user id: shown by name (`names` must include them)
+const STAFF_FIELDS = new Set(['user_id']);
 
-const fieldLabel = (key) => key.replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase());
+const fieldLabel = (key) => (STAFF_FIELDS.has(key) ? 'Staff'
+    : key.replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase()));
 const show = (value) => (value === null || value === undefined || value === '' ? '—' : String(value));
 
 // Whose record a row belongs to (principal, spouse, co-borrower n, ...), when it still exists
@@ -51,12 +64,15 @@ const ChangeHistory = ({ app, entries, names }) => {
                             {' '}by {names[e.changed_by] ?? 'unknown'} on {new Date(e.changed_at).toLocaleString()}
                         </p>
                         <ul className="pl-4 text-sm">
-                            {fields.map((k) => (
-                                <li key={k}>
-                                    {fieldLabel(k)}:{' '}
-                                    {e.action === 'UPDATE' ? `${show(e.old_data[k])} → ${show(e.new_data[k])}` : show(data[k])}
-                                </li>
-                            ))}
+                            {fields.map((k) => {
+                                const value = (v) => show(STAFF_FIELDS.has(k) ? names[v] ?? v : v);
+                                return (
+                                    <li key={k}>
+                                        {fieldLabel(k)}:{' '}
+                                        {e.action === 'UPDATE' ? `${value(e.old_data[k])} → ${value(e.new_data[k])}` : value(data[k])}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </li>
                 );

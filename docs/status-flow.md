@@ -3,7 +3,7 @@
 Sources: As-Is BPMN (App. A, A.1-A.6), Home Loan Tracker tabs (App. F), interviews (App. G-K), main paper Sec. 1.3, 1.4.2.2, 1.4.2.4.
 **The paper has no to-be BPMN yet.** Phase 3 has not started (Sec. 3.2.3.4). Stage and status names were **decided by implementation on 2026-10-13** (Q-10): see "Implemented model" below. The as-is table that follows is kept as the source the implemented stages map from.
 
-## Implemented model (`catch/supabase/migrations/20261005_work_tray.sql`)
+## Implemented model (`catch/supabase/migrations/20261005_work_tray.sql`, moves in `20261020_ci_request.sql` and `20261021_review_routing.sql`)
 Two layers, plus an applicant-facing status.
 
 | Layer | Enum | Values |
@@ -29,9 +29,12 @@ Two layers, plus an applicant-facing status.
 **Transitions built so far**
 - `submit_application()`: DRAFT → SUBMITTED once nothing required is missing; a trigger opens INTAKE with status PENDING.
 - `assign_application()`: an AO claiming (or being assigned) in INTAKE, or a CO in CREDIT_EVALUATION, moves PENDING → IN_PROGRESS. `unassign_application()` moves it back.
+- `request_ci()` (`20261020_ci_request.sql`, decided by implementation 2026-10-21): the assigned AO, while the file is in INTAKE. INTAKE → DONE and closed; CREDIT_INVESTIGATION opens as REQUESTED; status SUBMITTED → UNDER_CI. KYC sections don't have to be Verified first. The AO can keep editing the record during CREDIT_INVESTIGATION.
+- `send_for_review()` (`20261021_review_routing.sql`, decided by implementation 2026-10-21): the assigned CO, while the file is in CREDIT_INVESTIGATION or CREDIT_EVALUATION, once the FP has a Credit Result of Endorsed or Not endorsed. Records the approval tier, reviewers and approvers, closes the current stage as DONE, opens REVIEW as PENDING; status → UNDER_REVIEW. A Deferred result does not go to review.
 
 **Gaps (not built yet)**
-- No function moves a file from one stage to the next after INTAKE; no REQUESTED / RETURNED / DONE transitions.
+- Nothing moves a file into CREDIT_EVALUATION (the CI results step isn't built), so today a file goes from CREDIT_INVESTIGATION straight to REVIEW. Nothing moves a file out of REVIEW (no reviewer sign-off or approver decision). No RETURNED transitions.
+- The CO's Credit Result (Endorsed / Not endorsed / Deferred) is saved on the FP only; Deferred does not return the file to an earlier stage.
 - No notifications to the next role.
 - No guard against a silent "Done" reversal.
 - Stage changes are logged in `stage_status_changes`, not in `audit_log`.
@@ -70,4 +73,4 @@ A check-and-return loop exists at three roles (AO, CO, Reviewer). One applicatio
 - Nothing an agent produces moves the file forward without a recorded human confirmation.
 
 ## Open items
-Q-05 (end state), Q-09 (TAT values only), Q-11 (one or two CI requests), Q-13 (reviewer rules), Q-25 (physical vs digital sign-off).
+Q-05 (end state), Q-09 (TAT values only), Q-11 (CI results, Desk / Field CI; the initial request is decided), Q-13 (first reviewer's CI request; reviewer list and order are decided), Q-25 (physical vs digital sign-off).

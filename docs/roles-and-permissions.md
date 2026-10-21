@@ -21,9 +21,13 @@ Committee Members are not modeled.
 
 **Who sees what (RLS)**
 - **Applicant:** reads their own applications and edits them only while DRAFT. After submission, read-only.
-- **CI, Dispatch Admin, Reviewer, Approver, Dept Head:** read every submitted application in full.
-- **AO, CO:** see the work tray summary of every submitted application. They see the full record only when assigned to it.
-- **Assigned AO, while the file is in INTAKE:** edits the submitted record in place, uploads files into the applicant's folder, and records a KYC check per form section (Verified / Needs clarification + remarks, table `kyc_checks`). Every edit after submission is logged in `audit_log`. Everyone else with access is read-only.
+- **AO, CO, Dispatch Admin, Reviewer, Approver, Dept Head:** read every submitted application in full (AOs and COs since 2026-10-21; they edit only once assigned).
+- **CI:** sees and reads only applications an AO has sent a CI request for (`ci_requests`). Opens the NFIS / TU request page, view only.
+- **Assigned AO, while the file is in INTAKE or CREDIT_INVESTIGATION:** edits the submitted record in place, uploads files into the applicant's folder, and records a KYC check per form section (Verified / Needs clarification + remarks, table `kyc_checks`). While in INTAKE, sends the CI request (`request_ci()`). Every edit after submission is logged in `audit_log`. Everyone else with access is read-only.
+- **Assigned CO, at any stage before DECIDED:** fills in the Financial Package (`save_financial_package()`), including interest rate, fixing period and Credit Result, and the credit score (`save_credit_score()`). While in CREDIT_INVESTIGATION or CREDIT_EVALUATION, picks the approval tier, reviewers and approvers and sends the file to REVIEW (`send_for_review()`).
+- **Dept Head, Dispatch Admin, while in REVIEW or APPROVAL:** change the approval tier, reviewers and approvers (`update_review_routing()`).
+- **Reviewers / approvers routed to a file:** see it under "Mine" in the work tray and open a read-only review summary. No sign-off or decision yet.
+- The applicant does not see the Financial Package or the credit score.
 - **Staff profile gate:** staff must enter a first and last name before using staff pages, and before they can be assigned (enforced in the database too).
 - **OCR output** (`ocr_runs`, `ocr_lines`): readable by staff with access to the application. Only the OCR worker writes it.
 
@@ -67,16 +71,20 @@ Other names in interviews: "Credit Evaluation Officer" (CEO), "Credit Underwrite
 | Capability | AO | CI | Admin | CO | Reviewer | Approver | Dept Head | Applicant |
 |---|---|---|---|---|---|---|---|---|
 | Start / submit application | Y (AO input page is a placeholder) | | | | | | | Y (built) |
-| Edit submitted record (built) | Y (assigned, INTAKE only) | | | | | | | |
-| Record KYC check per section (built) | Y (assigned, INTAKE only) | | | | | | | |
+| Edit submitted record (built) | Y (assigned, INTAKE or CI) | | | | | | | |
+| Record KYC check per section (built) | Y (assigned, INTAKE or CI) | | | | | | | |
 | Assign AO / CO (built) | self only | | Y | self only | Y | Y | Y | |
 | Create staff accounts (built) | | | | | | | Y | |
 | Confirm extracted fields (HITL #1) | Y | | | | | | | ? (1.4.2.1 says "or Applicant") |
-| Request CI | Y | | | | Y (first reviewer, Desk/Field) | | | |
+| Request CI | Y (built: assigned, INTAKE, NFIS + TU) | | | | Y (first reviewer, Desk/Field; not built) | | | |
+| View CI request (built) | | Y (requested files only) | | | | | | |
 | Enter CI results | | ? (Q-11) | | Y (as-is) | | | | |
-| Compute income / ratios | | | | Y | | | | |
-| Endorse / not endorse / defer | | | | Y | | | | |
-| Review FP, request revision | | | | | Y | | | |
+| Compute income / ratios | | | | Y (built: FP, assigned) | | | | |
+| Score credit (built) | | | | Y (assigned) | | | | |
+| Endorse / not endorse / defer | | | | Y (built: Credit Result on the FP) | | | | |
+| Pick approval tier, reviewers, approvers; send to Review (built) | | | | Y (assigned) | | | | |
+| Change tier, reviewers, approvers after sending (built) | | | Y | | | | Y | |
+| Review FP, request revision | | | | | Y (view built; sign-off not built) | | | |
 | Approve / Reject / Defer | | | | | | Y (Q-23; not built) | Y (Stage 2) | |
 | Review policy flags (HITL #2) | ? (App. L) | | | ? (3.2.4.2) | | ? (1.4.2.3) | | (Q-20) |
 | Aggregate dashboard | | | | | | Y | Y | |

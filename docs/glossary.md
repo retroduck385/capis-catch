@@ -33,10 +33,12 @@ Only terms that appear in the documents. "(not defined)" = used but never expand
 | CENOMAR | Certificate of No Marriage Record |
 | COE / COEC | Certificate of Employment / Certificate of Employment with Compensation |
 | CTC / TCT / CCT | Community Tax Certificate / Transfer Certificate of Title / Condominium Certificate of Title |
+| DOSRI / RPT | Directors, Officers, Stockholders and Related Interests / Related Party Transaction: a yes / no field on the FP header (`financial_packages.dosri_rpt`) |
 | DOU | "DOU in ___ days": deadline field on the checklist (not defined) |
 | DTI | Two meanings in the documents: **Department of Trade and Industry** business registration (documents, CI checks) and **debt-to-income ratio** (Sec. 1.4.1, 1.4.2.3, 1.4.2.5). Q-14 |
 | FP | Financial Package (financial information package; the summary profile used by credit, mirroring the KYC sheet) |
 | GIS | General Information Sheet |
+| HGC | "HGC Eligibility" field on the FP (`financial_packages.hgc_eligibility`). Not defined; standard Philippine meaning is Home Guaranty Corporation (inferred) |
 | ISF | Income, Stability and Financial Capacity network (Sec. 2.1.2.3) |
 | ITR | Income Tax Return |
 | KYC / CDD | Know Your Customer / Customer Due Diligence |
@@ -51,6 +53,7 @@ Only terms that appear in the documents. "(not defined)" = used but never expand
 | REM | Real Estate Mortgage |
 | SPA | Special Power of Attorney |
 | TAT / TaT | Turnaround time |
+| TCP | Total contract price; in the code, the collateral's selling price on the KYC. Used for LCR when no appraised value is entered |
 
 ## Credit and data sources
 | Term | Meaning |
@@ -59,10 +62,10 @@ Only terms that appear in the documents. "(not defined)" = used but never expand
 | NFIS | Negative File Information System: shared database of adverse credit behavior; checks credit-card hits, including maiden names |
 | TU | TransUnion Philippines credit bureau |
 | BSP | Bangko Sentral ng Pilipinas (source of the daily conversion rate) |
-| DBR | Debt Burden Ratio = Amortization-to-Net-Income Ratio (Sec. 2.1.2.6) |
+| DBR | Debt Burden Ratio = Amortization-to-Net-Income Ratio (Sec. 2.1.2.6). As built: (new + existing monthly amortizations) / total gross income of all borrowers (`computations.md`, Q-14) |
 | DPR | "Debt/Payment Ratio" in interviews (Q-14) |
-| LTV / LCR / AV | Loan-to-Value / appears as LCR (loan-to-collateral ratio in interviews, inferred) and AV on the Cashflow tab (not defined). Q-14 |
-| NDI | Net Disposable Income (Cashflow tab) |
+| LTV / LCR / AV | Loan-to-Value / appears as LCR (loan-to-collateral ratio in interviews, inferred) and AV on the Cashflow tab (not defined). Q-14. As built: **LCR** = loan amount / appraised value, or / TCP when no appraisal is entered; LTV is not used |
+| NDI | Net Disposable Income (Cashflow tab). The Credit_Score sheet's NDI criterion scores Total Gross Income (D), and the code follows it |
 | MRAC / RAC | Minimum Risk Acceptance Criteria / Risk Acceptance Criteria. Interview transcript also writes "RAAC" (transcription unclear, Q-36) |
 | KRI | Two expansions: "Key Risk Indicator" (Sec. 2.1.2.1.4) and "Key Result Indicator" (Sprint 5, App. J). Q-31 |
 | SLA | Service-level agreement / alarm indicators (Module 4) |

@@ -7,8 +7,8 @@ Found by comparing the diagrams (BPMN, Figure 1-3, Appendix L, tracker screensho
 | Group | Items |
 |---|---|
 | 1. Blocks Sprint 0 | Q-04, Q-05 |
-| 2. Needed before a later sprint | Q-06, Q-07, Q-11, Q-13 to Q-22, Q-24 to Q-26, Q-28, Q-38 to Q-40 |
-| Decided by implementation | Q-01, Q-02, Q-03, Q-08, Q-09 (structure only), Q-10, Q-12, Q-23, Q-27, Q-41 |
+| 2. Needed before a later sprint | Q-06, Q-07, Q-11 (rest), Q-13 (rest), Q-14 (caps), Q-15 (seafarer), Q-16, Q-17, Q-18 (effective date), Q-19 to Q-21, Q-25, Q-26, Q-28, Q-38, Q-39 (CI Field), Q-40 |
+| Decided by implementation | Q-01, Q-02, Q-03, Q-08, Q-09 (structure only), Q-10, Q-12, Q-22, Q-23, Q-24, Q-27, Q-41; in part: Q-11, Q-13, Q-14, Q-15, Q-18, Q-39 |
 | 3. Paper edit only, no code impact | Q-29 to Q-37 |
 
 ---
@@ -68,9 +68,10 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Evidence: printed on the CI Request, Checklist, Credit_Score and AMD tabs ("Class B") and the Cashflow tab ("Class C"). Never explained.
 - Suggested: ask the bank. Do not model until answered.
 
-**Q-39. Illegible or incomplete tracker tabs.**
+**DECIDED IN PART. Q-39. Illegible or incomplete tracker tabs.**
 - Evidence: E.5 (FP) and E.10 (CI Field) are too low-resolution; E.8 (Credit_Score) shows only the header.
 - Suggested: request the source spreadsheet, or accept the FP and CI Field field lists as incomplete. Sprint 4 needs the score criteria (see Q-22).
+- **Decided by implementation, 2026-10-21 (FP and Credit_Score only):** the team has the KYC-FP sheet. The FP sections are built from it (`20261020_financial_package.sql`) and the Credit_Score criteria and points are seeded from it (`20261021_credit_scoring.sql`). **E.10 CI (Field) stays open.**
 
 **Q-40. Seafarer checklist item.**
 - Evidence: prints "Certification from Manning Agency of" and "COEC" on separate lines with 5 checkboxes for 4-5 lines.
@@ -87,27 +88,31 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Suggested: use `status-flow.md`'s seven stages as a starting lookup table and name statuses per stage. Confirm in the Phase 3 to-be BPMN.
 - **Decided by implementation, 2026-10-13:** two layers. `workflow_stage`: INTAKE, CREDIT_INVESTIGATION, CREDIT_EVALUATION, REVIEW, APPROVAL, DECIDED. `stage_status`: PENDING, IN_PROGRESS, REQUESTED, RETURNED, DONE. `application_status` is the applicant-facing status. No separate Dispatch stage. Details: `status-flow.md`.
 
-**Q-11. CI: one request or two, who encodes results, and the "verified" threshold.**
+**DECIDED IN PART. Q-11. CI: one request or two, who encodes results, and the "verified" threshold.**
 - Evidence: App. G has the AO request NFIS / TU / BRAS after collation; the BPMN has a second Desk and Field CI request at the first Reviewer. P1.3.1.4 says CI has no access to the shared sheet, yet the BPMN shows CI updating Home Loan Tracker v3.0 (they may be two different sheets). App. I asks whether CI should encode its own results. The 3-of-5 or 4-of-5 threshold is not tied to specific checks.
 - Suggested: model CI requests as separate typed requests (Initial: NFIS / TU / BRAS; Desk; Field), CI writes results itself, and store the "verified" threshold as configuration.
+- **Decided by implementation, 2026-10-21 (initial request only):** the assigned AO sends one CI request covering NFIS and TU (no BRAS) with `request_ci()`, while the file is in Intake. KYC sections don't have to be Verified first. The NFIS and TU forms are built live from the record, not stored; only the AO's remarks are kept (`ci_requests`). A file can be requested again. The CI sees only files with a request. **Still open:** who encodes the results, Desk / Field CI requests, and the "verified" threshold.
 
 **DECIDED. Q-12. Assignment: automatic FIFO or Dispatch Admin?**
 - Evidence: F8 auto-assigns by FIFO; today the Dispatch Admin assigns Credit Officers and is the single gatekeeper (App. I, K).
 - Suggested: FIFO proposes, Dispatch Admin can override, and both are audited.
 - **Decided by implementation, 2026-10-13:** AOs and COs claim files themselves from a FIFO work tray; Dispatch Admin, Reviewer, Approver and Dept Head can assign, reassign or unassign any AO/CO. History is in `application_assignments`. No automatic assignment.
 
-**Q-13. Reviewer rules.**
+**DECIDED IN PART. Q-13. Reviewer rules.**
 - Evidence: the BPMN loops "Is there another reviewer?" and has a "first reviewer" branch that requests Desk and Field CI. The number of reviewers and the rule for who counts as first are not stated. App. I: reviewer re-checks the underwriter's computation and supporting documents.
 - Suggested: one or more reviewers configurable per application; only the first triggers the Desk / Field CI request. Confirm.
+- **Decided by implementation, 2026-10-21:** the assigned CO picks one or more reviewers, in review order (seq 1 = first reviewer), and one or more approvers, per application (`review_assignments`, `send_for_review()`). After sending, only the Dept Head or Dispatch Admin can change them (`update_review_routing()`). **Still open:** the first reviewer's Desk / Field CI request, and the review sign-off (mark reviewed / request revision) is not built.
 
 ### Sprint 3 (Automated Financial Computation)
 **Q-14. Ratio names, definitions and thresholds.**
 - Evidence: P1.4.1 / 1.4.2.5 use DTI and DBR; P1.4.3 lists LTV, AMD, DBR; Sprint 3 lists LTV, DBR and Amortization-to-Net-Income as three ratios; P2.1.2.6 says DBR = Amortization-to-Net-Income Ratio; the Cashflow tab shows LCR, AV, DBR; interviews say DPR and "loan-to-collateral ratio". No cap or maximum values appear anywhere. Sprint 3 makes computation a Credit Officer tool; P1.4.3 calls it a silent background overlay.
 - Suggested: implement DBR (= amortization / net income) and LTV (loan / appraised value), label LCR as the same as LTV only after the bank confirms, and drop DTI from the UI. Make thresholds configuration.
+- **Decided by implementation, 2026-10-21 (names and definitions):** the FP computes **DBR** = (new monthly amortization + existing monthly amortizations with more than 6 months left) / Total Gross Income (D) of all borrowers, and **LCR** = loan amount / appraised value (or the selling price / TCP when no appraisal is entered). DTI and LTV are not used. See `computations.md`. **Still open:** cap values. Thresholds appear only as credit-score bands (Q-22).
 
-**Q-15. Meaning of 80 % / 90 %, and the seafarer factor.**
+**DECIDED IN PART. Q-15. Meaning of 80 % / 90 %, and the seafarer factor.**
 - Evidence: interviews and BPMN: COE-based income counts at 80 %, payslip-based at 90 %. P2.1.3.1: a DBR cap of 80-90 % of net disposable income. Seafarer: 80 % (interview, P2.1.3.1) vs "80 or 90%" (BPMN note; blurry).
 - Suggested: implement the interview / BPMN reading (haircut on income) and treat seafarer as 80 % until confirmed.
+- **Decided by implementation, 2026-10-21:** the interview / BPMN reading. The CO picks an income basis per borrower (`fp_party_details.income_basis`): COE = 80 %, payslip = 90 %, as declared = 100 % of the KYC gross monthly income. **Still open:** the seafarer factor (no seafarer formula is built).
 
 **Q-16. AMD window and the self-employed risk factor.**
 - Evidence: AMD over 3 months (App. J), Jan-May on the AMD tab, 6-month statements on the checklist; ADB appears beside AMD. The 10-15 % factor depends on business nature; the mapping from business type to factor is not given, nor whether it reduces the AMD.
@@ -117,9 +122,10 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Evidence: BPMN "Check Daily BSP Conversion Rate"; Figure 2 I5 lists "daily reference exchange rates". Whether it is fetched or typed is not stated.
 - Suggested: manual entry with date and source recorded; automate later.
 
-**Q-18. Amortization inputs.**
+**DECIDED IN PART. Q-18. Amortization inputs.**
 - Evidence: the schedule needs rate, term, principal; the KYC has an interest rate and a fixing period; rate memos change about every 2 weeks; term and amount amendments recalculate. The source of the rate is not stated.
 - Suggested: store the rate with its effective date; recomputation on amendment is audited.
+- **Decided by implementation, 2026-10-21:** the assigned CO enters the interest rate (% per annum) and fixing period in the FP; they are stored on `loan_applications` and every change is in `audit_log`. Amortization is recomputed on the page from the current loan amount, term and rate (Excel PMT). **Still open:** no effective date is stored for the rate, and no amortization schedule is built.
 
 ### Sprint 4 (Policy Compliance and Evaluation Support)
 **Q-19. What happens when an application fails MRAC?**
@@ -134,19 +140,22 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Evidence: not yet handed over; P1.7.3 and P3.2.4.3.5 give a fallback (rules-based checker on criteria in interviews). Examples given without values: minimum age, income thresholds, tenure, debt caps. Interviews add: 70 % house completion, alternative proof for residence verification.
 - Suggested: hold Sprint 4 retrieval until turnover; the rules checker needs a written rule list from the bank. Track turnover as a dependency.
 
-**Q-22. Credit scoring scope and criteria.**
+**DECIDED. Q-22. Credit scoring scope and criteria.**
 - Evidence: F10 includes a "Scoring Component"; interviews describe a manual score mapped to a risk classification and recommended loan amount; the older automated tool was abandoned; the Credit_Score tab shows only its header.
 - Suggested: score display only after the bank supplies the sheet; any scoring stays advisory.
+- **Decided by implementation, 2026-10-21:** the Credit_Score sheet's 17 criteria in four categories (Capacity 30, Character 20, Collateral 20, Condition 30) and their points per band are seeded in `credit_score_criteria` / `credit_score_bands`. The page suggests a band per criterion from the record; nothing counts until the CO picks or accepts a band, and the suggestion is stored beside the pick (`credit_score_entries.suggested_band`). Total, description, risk rating and recommendation follow the sheet's legend and are a guide only; the CO still sets the Credit Result. No recommended loan amount is computed.
 
 ### Sprint 5 (Dashboard and Committee Decision Support)
 **DECIDED. Q-23. Approver action set.**
 - Evidence: Approve / Decline / Defer (P2.1.2.1.4); Approve / Reject / Defer / Refer (P1.4.1, Sprint 5); Approve / Reject / Defer (Figure 2); endorse / not endorse / deferred (evaluator, App. I).
 - Suggested: Approve, Reject (with reason code), Defer, Refer, matching Sprint 5, and keep "endorse / not endorse" as the evaluator's recommendation.
 - **Decided by implementation, 2026-10-13:** `application_status` has APPROVED, REJECTED, DEFERRED. Refer is not modeled. No approver action or screen is built yet.
+- **Decided by implementation, 2026-10-21:** the CO's recommendation is built as `financial_packages.credit_result`: ENDORSED, NOT_ENDORSED, DEFERRED, with a required justification. Approvers have a read-only summary page; their decision is still not built.
 
-**Q-24. Approval tiers beyond Stage 1 and Stage 2.**
+**DECIDED. Q-24. Approval tiers beyond Stage 1 and Stage 2.**
 - Evidence: only the P3.0M and P5.0M bands are printed. Nothing for above P5.0M or for deviations above P3.0M. "CRMD" and "RPS" are undefined. "Refer / Escalate" names Senior Credit Committee or Board level, which do not match the tracker tiers.
 - Suggested: encode the two printed tiers as configuration; anything else is a Refer to a named committee until the bank supplies the rest.
+- **Decided by implementation, 2026-10-21:** four approval authorities from the FP sheet's VII. Approval block (enum `approval_tier`): President (or alternate), Senior Credit Committee, Executive Committee, Board. The page suggests one from the loan amount (up to P10M / more than P10M to P30M / more than P30M) and whether there is a deviation (at least one row in the FP's V. Exceptions); the CO picks it. Rules in `approval-rules.md`. The code notes two readings to confirm with the bank: the President's range (not printed) and "Upto 3M to P10M" read as up to P10M.
 
 **Q-25. Physical vs digital sign-off.**
 - Evidence: BPMN A.6 shows physical review and signing and a secretary ticking the tracker; App. G plans checkbox-based digital approvals for LIDS; the Signatures tab is checkbox-based.

@@ -4,6 +4,8 @@ Sources: App. C/D (intake form), E.1 (KYC tab), E.2 (CI Request), E.5 (FP), E.6/
 Field names are as printed. "(derived)" = highlighted yellow on the KYC tab, so calculated from other fields; the formula is not shown. Unreadable areas are listed at the end (Q-39).
 Template values in the screenshots are placeholders.
 
+**Built (decided by implementation, 2026-10-21):** the FP sections the CO fills in are tables in `20261020_financial_package.sql`: `financial_packages` (header, facility, collateral appraisal, T&Cs, Credit Result, approval tier), `fp_party_details` (IX income basis and other income, VIII / IX / XIV remarks per borrower), `fp_exceptions` (V), `fp_deposit_checks` (X), `fp_loan_checks` (XI), `fp_trade_checks` (XII), `fp_title_verifications` (XIII). FP fields copied from the KYC (names, employer, loan, collateral) are not stored again; the page reads them live from the record. Credit score: `credit_score_entries` (see `computations.md`).
+
 ## 0. Intake form: Appendices C and D
 Appendix C ("Housing Loan Application Form") and Appendix D ("COF AO Forms") are **one image**: the Google Form titled **"CAF (AO endpoint)"**. The paper's own captions call it two things. The 36-page application form itself is not reproduced (Q-33).
 It captures only:
@@ -80,6 +82,7 @@ The FP also has columns for Principal Borrower / Mortgagor, Spouse, Co-borrower 
 References #1, #2, #3: Name, Address, Contact Number, Relationship with Principal Borrower.
 
 ## 11. CI request (App. E.2)
+**Built (decided by implementation, 2026-10-21):** the NFIS Request Form and TU Request Template are built live from the application record, not stored; `ci_requests` keeps only who requested, when, and the AO's NFIS / TU remarks. TU ID type / number / expiry are left blank until ID OCR labeling exists. The Request for Credit Investigation, Desk and Field CI parts are not built.
 - **NFIS Request Form:** individual (Last Name, First Name, Middle Name, Complete Address, Birth Date, Inquiry Results; include maiden name if married); corporate (Corporate / Business Name, Complete Address, Inquiry Results); Remarks
 - **TransUnion (TU) Request Template:**
   - Loan Type, Desired amount to be loaned
@@ -124,7 +127,7 @@ Columns are Subject | Spouse / Co-borrower | Business. Each section ends with Sa
 - **F.10-F.13** (Clearance, Booking, Release, Lock): post-approval, out of stated scope (Q-05)
 
 ## Not readable in the source (Q-39)
-- **E.5 FP tab:** native image is 530x806 px. Section headings and most labels are legible, but small cells (e.g. "Other information" prefixes) are not.
-- **E.8 Credit_Score tab:** only the header is shown (Housing Loan Credit Scoring Sheet, Class B, Name of Borrower/s, Loan Amount, SCORE / ACTUAL / REMARKS). The criteria rows are absent.
+- **E.5 FP tab:** native image is 530x806 px. Section headings and most labels are legible, but small cells (e.g. "Other information" prefixes) are not. **Resolved 2026-10-21:** the FP sections are built from the full sheet (Q-39).
+- **E.8 Credit_Score tab:** only the header is shown (Housing Loan Credit Scoring Sheet, Class B, Name of Borrower/s, Loan Amount, SCORE / ACTUAL / REMARKS). The criteria rows are absent. **Resolved 2026-10-21:** the team has the full sheet; criteria and bands are in `20261021_credit_scoring.sql` and `computations.md` (Q-22, Q-39).
 - **E.10 CI (Field) tab:** native image is too small to read. Only three section titles are visible: Residence, Business and Employment Verification.
 - **E.7 Signatures:** approval checkbox labels are partly redacted (see `approval-rules.md`).
