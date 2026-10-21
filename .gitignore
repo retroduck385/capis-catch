@@ -1,4 +1,8 @@
-supplementary_files/
+# Confidential (NDA) — keep everything out of git except the synthetic test data
+supplementary_files/*
+!supplementary_files/Test Datas # 1/
+!supplementary_files/Test Datas # 2/
+.DS_Store
 
 CLAUDE.md
 HANDOFF.md
