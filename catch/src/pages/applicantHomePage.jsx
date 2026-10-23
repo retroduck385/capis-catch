@@ -3,6 +3,7 @@ import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchProfile, listMyApplications } from './applicationForm/api';
 import { isProfileComplete } from './applicationForm/validators';
+import { applicantStatusLabel } from './notifications/applicantStatus';
 
 const ApplicantHomePage = () => {
     const { session, signOut } = UserAuth();
@@ -84,7 +85,7 @@ const ApplicantHomePage = () => {
                 <ul>
                     {applications.map((a) => (
                         <li key={a.id}>
-                            {a.application_no ?? 'Draft'} | {a.status}
+                            {a.application_no ?? 'Draft'} | {applicantStatusLabel(a.status)}
                             {a.loan_amount ? ` | PHP ${Number(a.loan_amount).toLocaleString()}` : ''}
                             {' '}
                             <Link className='underline' to={`/applicationFormPage?id=${a.id}`}>
