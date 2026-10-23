@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import PrivateRoute from "./components /privateRoute";
+import PrivateRoute from "./components/privateRoute";
 import App from "./App";
 import SignUpPage from "./pages/signUpPage";
 import LoginPage from "./pages/loginPage";
@@ -8,8 +8,8 @@ import ApplicationFormPage from "./pages/applicationFormPage";
 import ProfilePage from "./pages/profilePage";
 import AdminHomePage from "./pages/adminHomePage";
 import AccountOfficerApplicationInputPage from "./pages/accountOfficerApplicationInputPage";
-import HomeRedirect from "./components /homeRedirect";
-import StaffProfileGate from "./components /staffProfileGate";
+import HomeRedirect from "./components/homeRedirect";
+import StaffProfileGate from "./components/staffProfileGate";
 import StaffProfilePage from "./pages/staffProfilePage";
 import StaffAccountsPage from "./pages/staffAccounts/staffAccountsPage";
 import LoanFolderPage from "./pages/loanFolder/loanFolderPage";
