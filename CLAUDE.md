@@ -22,7 +22,7 @@ CATCH is a decision SUPPORT system. It prepares and flags; people decide. Every 
 | [sprints.md](docs/sprints.md) | Sprint scope and definition of done |
 | [pain-points.md](docs/pain-points.md) | Interview findings and baselines |
 | [glossary.md](docs/glossary.md) | Terms and abbreviations |
-| [decisions/](docs/decisions/) | applicant-portal, role-storage, ocr-engine |
+| [decisions/](docs/decisions/) | applicant-portal, role-storage, ocr-engine, notifications |
 
 ## Hard rules (never break these)
 
@@ -55,6 +55,7 @@ Also: the system never auto-rejects, and auto-approval is not in the paper's des
 - Today, the frontend WRITES directly to Supabase, either to tables RLS allows or through `security definer` Postgres functions (`submit_application`, `assign_application`, `grant_staff_role`, ...). FastAPI does not exist yet. Once it does, important writes (status changes, uploads that trigger AI, computations, decisions) are meant to go through it.
 - Simple low-risk writes (posting a folder message, marking a notification read) may go direct to Supabase if RLS covers them.
 - The OCR worker talks to Supabase with the service role key: it claims queued runs with `claim_ocr_runs()` and writes `ocr_lines`.
+- Notifications are created only by `send_notification()` (security definer): from triggers, other SQL functions, or the service role (OCR worker, FastAPI). Never from the browser. Users read their own (RLS), get new ones live through Supabase Realtime, and mark them read with `mark_notifications_read()`. See [decisions/notifications.md](docs/decisions/notifications.md).
 - Planned: FastAPI verifies the user's Supabase JWT on every request and checks the role before acting. LangGraph graphs run inside FastAPI, pause at human gates (interrupts) and resume when a user confirms in the UI.
 
 ## Folder map
@@ -66,7 +67,7 @@ catch/                      Vite + React app, JavaScript, Tailwind CSS v4.
   src/roles.js              role lists (STAFF_ROLES, ASSIGNING_HEADS, ASSIGNABLE_ROLES, REVIEW_ROLES, ROUTING_HEADS), labels, home path per role
   src/context/authContext.jsx  Supabase session, role (from public.users), signUp / signIn / signOut
   src/supabaseClient.js     Supabase client (anon key only, from catch/.env), plus a detached client for creating staff logins
-  src/components/           privateRoute (session + role guard), homeRedirect, staffProfileGate
+  src/components/           privateRoute (session + role guard; renders the notification bell), homeRedirect, staffProfileGate, notificationBell
   src/pages/
     loginPage, signUpPage
     applicantHomePage, profilePage           applicant home and master profile
@@ -77,6 +78,7 @@ catch/                      Vite + React app, JavaScript, Tailwind CSS v4.
     ciRequest/                               AO's "Request CI" panel; CI's view of the NFIS / TU request forms
     financialPackage/                        CO's Financial Package, computations (compute.js), credit scoring
     review/                                  CO's approval routing (tier, reviewers, approvers); reviewer / approver summary
+    notifications/                           notification data for the bell (api, useNotifications with Realtime), applicant status labels
     staffProfilePage                         staff fill in their name (required before use)
     staffAccounts/                           Dept Head creates staff logins
     accountOfficerApplicationInputPage       AO-entered intake (placeholder)
@@ -95,7 +97,7 @@ data/policies/              real policy text, gitignored
 
 Routes: `/` → `/loginPage`; `/signUpPage`; `/homePage` (redirects by role); staff only: `/adminHomePage`, `/loanFolderPage?id=`, `/staffProfilePage`, `/staffAccountsPage` (DEPT_HEAD), `/accountOfficerApplicationInputPage` (ACCOUNT_OFFICER), `/ciRequestPage?id=` (CREDIT_INVESTIGATOR), `/financialPackagePage?id=`, `/creditScorePage?id=`, `/approvalRoutingPage?id=`, `/reviewSummaryPage?id=`; applicant only: `/applicantHomePage`, `/applicationFormPage`, `/profilePage`.
 
-Existing table names: `users`, `user_profile`, `loan_applications`, `applicants`, `documents`, `application_requirements`, `application_stages`, `stage_status_changes`, `stage_tat`, `application_assignments`, `audit_log`, `kyc_checks`, `staff_role_grants`, `ocr_runs`, `ocr_lines`, `ci_requests`, `financial_packages`, `fp_party_details`, `fp_exceptions`, `fp_deposit_checks`, `fp_loan_checks`, `fp_trade_checks`, `fp_title_verifications`, `credit_score_criteria`, `credit_score_bands`, `credit_score_entries`, `review_assignments`. `extraction_staging` is still planned.
+Existing table names: `users`, `user_profile`, `loan_applications`, `applicants`, `documents`, `application_requirements`, `application_stages`, `stage_status_changes`, `stage_tat`, `application_assignments`, `audit_log`, `kyc_checks`, `staff_role_grants`, `ocr_runs`, `ocr_lines`, `ci_requests`, `financial_packages`, `fp_party_details`, `fp_exceptions`, `fp_deposit_checks`, `fp_loan_checks`, `fp_trade_checks`, `fp_title_verifications`, `credit_score_criteria`, `credit_score_bands`, `credit_score_entries`, `review_assignments`, `notifications`, `notification_switches`. `extraction_staging` is still planned.
 
 ## Roles (enum `user_role`)
 
@@ -112,6 +114,7 @@ Full detail in [status-flow.md](docs/status-flow.md). Two layers plus an applica
 - Stage (`workflow_stage`): INTAKE → CREDIT_INVESTIGATION → CREDIT_EVALUATION → REVIEW → APPROVAL → DECIDED. Dispatch is an assignment action, not a stage.
 - Status inside a stage (`stage_status`): PENDING, IN_PROGRESS, REQUESTED, RETURNED, DONE.
 - Applicant-facing (`application_status`): DRAFT, SUBMITTED, FOR_CLARIFICATION, UNDER_CI, UNDER_CREDIT_EVALUATION, DEFERRED, UNDER_REVIEW, FOR_APPROVAL, APPROVED, REJECTED. Outcomes are Approved / Rejected / Deferred; Refer is not modeled.
+- What the applicant actually sees: Draft, or one of four statuses (Submitted / Incomplete submission / Under review / Decision), never the internal value. Mapping in `applicant_status_bucket()` (SQL) and `src/pages/notifications/applicantStatus.js`.
 - Assignment: AOs and COs claim files from the FIFO tray; Dispatch Admin, Reviewer, Approver and Dept Head assign, reassign or unassign.
 - Review routing: the assigned CO picks the approval tier, the reviewers (in order) and the approvers, then sends the file to Review (`review_assignments`). After that only the Dept Head or Dispatch Admin can change them.
 - Turnaround: one target per stage in `stage_tat`, "near" at 75 %. Day values are placeholders until the bank's SLA is known (Q-09).
@@ -119,8 +122,8 @@ Full detail in [status-flow.md](docs/status-flow.md). Two layers plus an applica
 
 Rules from the docs:
 - Check-and-return loops exist at the AO, CO and Reviewer. A deferral returns the file to the earlier stage that owes the information. "Pending Customer Correction" is the paper's example state.
-- Every transition writes a system timestamp, one stage-status row and one audit row, then notifies the next role. (Notifications not built yet.)
-- A "Done" status must not silently revert; the reversal must notify. (Not enforced yet.)
+- Every transition writes a system timestamp, one stage-status row and one audit row, then notifies the next role. (Notifications built in `20261024_notifications.sql`, in-app only, by triggers on the workflow tables.)
+- A "Done" status must not silently revert; the reversal must notify. (Not prevented. A reopened Done now notifies (DONE_REVERTED), but nothing reopens one today.)
 - Submission is blocked while a required decision input is absent. (Built: `submit_application()`.)
 - Nothing an agent produces moves the file forward without a recorded human confirmation.
 
@@ -142,6 +145,7 @@ Full text in [`docs/open-questions.md`](docs/open-questions.md). Do not pick an 
 | Q-11, Q-13 | Partly decided. Still open: who encodes CI results, Desk / Field CI, the threshold; the first reviewer's CI request |
 | Q-14 | Partly decided (DBR and LCR definitions). Still open: cap values |
 | Q-19, Q-20 | MRAC failure outcome; who reviews policy flags (HITL #2) |
+| Q-42 | What applicants are told about decisions and deferrals (notices built, switched off) |
 
 ## Current sprint
 
@@ -156,12 +160,14 @@ Built on main (Sprint 0 foundation plus parts of Sprints 1, 2, 3 and 5):
 - Review routing: the CO picks the approval tier, reviewers and approvers and sends the file to Review; reviewers and approvers get a read-only summary
 - Audit log of changes made after submission
 - Raw PaddleOCR for IDs, COE / ITR and payslips
+- In-app notifications: a bell on every signed-in page, updated live through Realtime, for workflow events; applicant notices limited to the four statuses (decision and deferral notices switched off); `send_notification()` for other modules
 
 Not built yet:
 - FastAPI, LangGraph, Chroma
 - `extraction_staging` and the extraction confirmation step
 - OCR field mapping
-- CI results entry, the move into Credit Evaluation, reviewer sign-off, approver decisions, notifications
+- CI results entry, the move into Credit Evaluation, reviewer sign-off, approver decisions
+- Email / SMS notices (F5) and TAT near / beyond alerts
 - Policy checks (MRAC / RAG flags), AMD and seafarer income rules
 
 Update this section when the sprint changes.

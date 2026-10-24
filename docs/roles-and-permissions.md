@@ -30,6 +30,7 @@ Committee Members are not modeled.
 - The applicant does not see the Financial Package or the credit score.
 - **Staff profile gate:** staff must enter a first and last name before using staff pages, and before they can be assigned (enforced in the database too).
 - **OCR output** (`ocr_runs`, `ocr_lines`): readable by staff with access to the application. Only the OCR worker writes it.
+- **Notifications** (`notifications`, 2026-10-24): every user, applicants included, reads only their own and marks them read (`mark_notifications_read()`). No one writes them from the browser; only `send_notification()` creates them (triggers, SQL, service role). Applicants only ever receive the five `APPLICANT_*` kinds, which carry no internal detail. Staff notices carry the application number only, no borrower names or amounts. Per-kind on / off switches (`notification_switches`) are set in the SQL Editor only.
 
 **Assignment (Q-12).** Only AOs and COs are assigned to files. AOs and COs claim or release files themselves. Dispatch Admin, Reviewer, Approver and Dept Head can assign, reassign or unassign any AO/CO. History is in `application_assignments`.
 

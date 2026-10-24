@@ -15,6 +15,7 @@ Two layers, plus an applicant-facing status.
 - Each stage visit is a row in `application_stages` (an application can come back to a stage). Status history per visit is in `stage_status_changes`; the latest row is the current status.
 - Mapping from the as-is stages below: 1 → INTAKE, 2 → CREDIT_INVESTIGATION, 3 (Dispatch) → **no stage**; it is an assignment action (see `roles-and-permissions.md`), 4 → CREDIT_EVALUATION, 5 → REVIEW, 6 → APPROVAL, 7 → DECIDED.
 - Approver outcomes (Q-23): APPROVED, REJECTED, DEFERRED. Refer is not modeled.
+- **What the applicant sees** (meeting 2026-10-23, built 2026-10-24): Draft, or one of four statuses, never the internal value. Submitted (SUBMITTED); Incomplete submission (FOR_CLARIFICATION, DEFERRED); Under review (UNDER_CI, UNDER_CREDIT_EVALUATION, UNDER_REVIEW, FOR_APPROVAL); Decision (APPROVED, REJECTED). Anything else shows "In progress". Same mapping in `applicant_status_bucket()` (`20261024_notifications.sql`) and `catch/src/pages/notifications/applicantStatus.js`. DEFERRED counts as "Incomplete submission" because at the bank a deferral usually means missing information.
 
 **Turnaround (Q-09, structure decided, values open).** Table `stage_tat`, one target per stage, "near" at 75 % of it. Near / beyond is computed from time in stage, not stored. Values are **placeholders** until the bank's SLA is known:
 
@@ -35,7 +36,7 @@ Two layers, plus an applicant-facing status.
 **Gaps (not built yet)**
 - Nothing moves a file into CREDIT_EVALUATION (the CI results step isn't built), so today a file goes from CREDIT_INVESTIGATION straight to REVIEW. Nothing moves a file out of REVIEW (no reviewer sign-off or approver decision). No RETURNED transitions.
 - The CO's Credit Result (Endorsed / Not endorsed / Deferred) is saved on the FP only; Deferred does not return the file to an earlier stage.
-- No notifications to the next role.
+- ~~No notifications to the next role.~~ **Built 2026-10-24** (`20261024_notifications.sql`, in-app only, see `decisions/notifications.md`): new submission → every AO; AO / CO assigned or removed by a head; CI request → every CI; Credit Result saved as Deferred → assigned AO; the AO edits a deferred file → assigned CO; routed to / removed from review → that reviewer; applicant notices for the four statuses. Already wired but nothing triggers them yet: Credit Evaluation opened (assigned CO, else Dispatch Admins), Approval opened (routed approvers), Decided (AO, CO, Dispatch Admins), a stage returned (its owner), a Done status reopened (owner + Dispatch Admins).
 - No guard against a silent "Done" reversal.
 - Stage changes are logged in `stage_status_changes`, not in `audit_log`.
 
@@ -66,8 +67,8 @@ A check-and-return loop exists at three roles (AO, CO, Reviewer). One applicatio
 ## Rules the system must enforce (from the paper)
 - FIFO by submission timestamp (Sprint 2). **Built:** the work tray orders by submission time. The interviews mention a 2 PM daily cutoff for CO endorsements (not built). Assignment decided by implementation (Q-12): AO/CO self-claim, heads assign.
 - Every stage transition writes a system timestamp (1.4.2.4) and an audit entry.
-- Notify the next role the moment a milestone changes, including: CI result completed, and a deferred account updated by the AO (the CO has no trigger today, App. H).
-- A "Done" status must not silently revert. The reversal must notify (App. K).
+- Notify the next role the moment a milestone changes, including: CI result completed, and a deferred account updated by the AO (the CO has no trigger today, App. H). **Built** (2026-10-24): the CO gets DEFERRED_ACCOUNT_UPDATED when the assigned AO edits a file whose Credit Result is Deferred; "CI result completed" will notify through the Credit Evaluation stage-opened trigger once that move exists.
+- A "Done" status must not silently revert. The reversal must notify (App. K). **Notifies** (DONE_REVERTED) since 2026-10-24; the revert itself is not prevented.
 - Submission is blocked while a required decision input is absent (Sprint 1).
 - Turnaround alarm: per-stage `stage_tat` with a "near" warning (built). The target values are still **unresolved** (Q-09: 7 days, 2 hours, 1 or 2 days); current numbers are placeholders.
 - Nothing an agent produces moves the file forward without a recorded human confirmation.
