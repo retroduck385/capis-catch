@@ -2,6 +2,7 @@ import React from "react";
 import { UserAuth } from "../context/authContext";
 import { Navigate } from "react-router-dom";
 import { homePathFor } from "../roles";
+import NotificationBell from "./notificationBell";
 
 // roles (optional): only these user_role values may open the page, e.g. ['APPLICANT']; others go to their own home
 const PrivateRoute = ({ children, roles }) => {
@@ -19,7 +20,7 @@ const PrivateRoute = ({ children, roles }) => {
         // wrong role -> send them to their own home page
         if (!roles.includes(role)) return <Navigate to = {homePathFor(role)} replace />;
     }
-    return <> {children} </>;
+    return <> <NotificationBell /> {children} </>;
 
 };
 
