@@ -31,7 +31,7 @@ CATCH is a decision SUPPORT system. It prepares and flags; people decide. Every 
 3. **Secrets** (Supabase service role key, Anthropic API key) live only in `services/api/.env` and `ocr-service/.env` (the OCR worker uses the service role key). The frontend only gets the Supabase anon key. No docs file covers this; related: Q-04.
 4. **Staging first.** AI extraction output goes to `extraction_staging`, never straight into the application record. A human confirms first. See F15 in [requirements.md](docs/requirements.md) and Sprint 1 in [sprints.md](docs/sprints.md). Who confirms: AO per Sprint 1; the paper says "AO or Applicant" in one place (Q-06). Today the OCR worker writes only raw lines to `ocr_runs` / `ocr_lines`; field mapping and `extraction_staging` are not built yet.
 5. **One status path.** `loan_applications.status` and stage status change only through Postgres functions (`submit_application`, `assign_application`, `unassign_application`, `request_ci`, `send_for_review`) and the `open_intake_on_submit` trigger. Clients have no direct write access to them. No other code may update them. `services/api/app/services/transitions.py` is the planned home once FastAPI exists. Built moves: Intake → Credit Investigation (`request_ci`), Credit Investigation or Credit Evaluation → Review (`send_for_review`). **Open gap:** nothing moves a file into Credit Evaluation or out of Review yet. See [status-flow.md](docs/status-flow.md).
-6. **Append-only audit.** `audit_log` allows no UPDATE or DELETE, ever. It must cover data changes, agent executions, human confirmations (with the confirming role) and file views. See [requirements.md](docs/requirements.md) (Sec. 1.4.3) and [roles-and-permissions.md](docs/roles-and-permissions.md). **Open gap:** `audit_log` exists (`20261007_ao_kyc_verification.sql`). Triggers log every change to a submitted application (including the Financial Package, credit score and review-routing tables), and clients can't write to it. But no trigger blocks UPDATE or DELETE by the table owner or service role. It does not log agent runs, human confirmations or file views. Stage changes (`stage_status_changes`) and role grants (`staff_role_grants`) are logged in their own tables.
+6. **Append-only audit.** `audit_log` allows no UPDATE or DELETE, ever. It must cover data changes, agent executions, human confirmations (with the confirming role) and file views. See [requirements.md](docs/requirements.md) (Sec. 1.4.3) and [roles-and-permissions.md](docs/roles-and-permissions.md). **Open gap:** `audit_log` exists (`20261007_ao_kyc_verification.sql`). Triggers log every change to a submitted application (including the Financial Package, credit score and review-routing tables), and clients can't write to it. But no trigger blocks UPDATE or DELETE by the table owner or service role. It does not log agent runs, human confirmations or file views. Stage changes (`stage_status_changes`) and role grants (`staff_role_grants`) are logged in their own tables. Folder messages are their own append-only trail (`messages`, guarded against UPDATE / DELETE / TRUNCATE for everyone, owner and service role included) and are not copied into `audit_log`.
 7. **Policy text only in Chroma.** Only institutional policy text is embedded. No applicant data. See [requirements.md](docs/requirements.md) (Technology) and [sprints.md](docs/sprints.md).
 8. **Cited flags.** Every RAG risk flag carries the policy passage it came from. A flag without a citation is a bug. See F16 in [requirements.md](docs/requirements.md) and MRAC in [approval-rules.md](docs/approval-rules.md).
 
@@ -53,7 +53,8 @@ Also: the system never auto-rejects, and auto-approval is not in the paper's des
 
 - Frontend READS data directly from Supabase. Row Level Security decides what each role can see (masking and access at the database layer: [roles-and-permissions.md](docs/roles-and-permissions.md)).
 - Today, the frontend WRITES directly to Supabase, either to tables RLS allows or through `security definer` Postgres functions (`submit_application`, `assign_application`, `grant_staff_role`, ...). FastAPI does not exist yet. Once it does, important writes (status changes, uploads that trigger AI, computations, decisions) are meant to go through it.
-- Simple low-risk writes (posting a folder message, marking a notification read) may go direct to Supabase if RLS covers them.
+- Simple low-risk writes (marking a notification read) may go direct to Supabase if RLS covers them.
+- Folder messages are written only by `post_message()` (security definer; the browser cannot insert into `messages`). They are staff only and can never be edited or deleted. See [decisions/messages.md](docs/decisions/messages.md).
 - The OCR worker talks to Supabase with the service role key: it claims queued runs with `claim_ocr_runs()` and writes `ocr_lines`.
 - Notifications are created only by `send_notification()` (security definer): from triggers, other SQL functions, or the service role (OCR worker, FastAPI). Never from the browser. Users read their own (RLS), get new ones live through Supabase Realtime, and mark them read with `mark_notifications_read()`. See [decisions/notifications.md](docs/decisions/notifications.md).
 - Planned: FastAPI verifies the user's Supabase JWT on every request and checks the role before acting. LangGraph graphs run inside FastAPI, pause at human gates (interrupts) and resume when a user confirms in the UI.
@@ -79,6 +80,7 @@ catch/                      Vite + React app, JavaScript, Tailwind CSS v4.
     financialPackage/                        CO's Financial Package, computations (compute.js), credit scoring
     review/                                  CO's approval routing (tier, reviewers, approvers); reviewer / approver summary
     notifications/                           notification data for the bell (api, useNotifications with Realtime), applicant status labels
+    messages/                                staff-only message panel for one loan file (api, useMessages with Realtime, messagesPanel)
     staffProfilePage                         staff fill in their name (required before use)
     staffAccounts/                           Dept Head creates staff logins
     accountOfficerApplicationInputPage       AO-entered intake (placeholder)
@@ -97,7 +99,7 @@ data/policies/              real policy text, gitignored
 
 Routes: `/` → `/loginPage`; `/signUpPage`; `/homePage` (redirects by role); staff only: `/adminHomePage`, `/loanFolderPage?id=`, `/staffProfilePage`, `/staffAccountsPage` (DEPT_HEAD), `/accountOfficerApplicationInputPage` (ACCOUNT_OFFICER), `/ciRequestPage?id=` (CREDIT_INVESTIGATOR), `/financialPackagePage?id=`, `/creditScorePage?id=`, `/approvalRoutingPage?id=`, `/reviewSummaryPage?id=`; applicant only: `/applicantHomePage`, `/applicationFormPage`, `/profilePage`.
 
-Existing table names: `users`, `user_profile`, `loan_applications`, `applicants`, `documents`, `application_requirements`, `application_stages`, `stage_status_changes`, `stage_tat`, `application_assignments`, `audit_log`, `kyc_checks`, `staff_role_grants`, `ocr_runs`, `ocr_lines`, `ci_requests`, `financial_packages`, `fp_party_details`, `fp_exceptions`, `fp_deposit_checks`, `fp_loan_checks`, `fp_trade_checks`, `fp_title_verifications`, `credit_score_criteria`, `credit_score_bands`, `credit_score_entries`, `review_assignments`, `notifications`, `notification_switches`. `extraction_staging` is still planned.
+Existing table names: `users`, `user_profile`, `loan_applications`, `applicants`, `documents`, `application_requirements`, `application_stages`, `stage_status_changes`, `stage_tat`, `application_assignments`, `audit_log`, `kyc_checks`, `staff_role_grants`, `ocr_runs`, `ocr_lines`, `ci_requests`, `financial_packages`, `fp_party_details`, `fp_exceptions`, `fp_deposit_checks`, `fp_loan_checks`, `fp_trade_checks`, `fp_title_verifications`, `credit_score_criteria`, `credit_score_bands`, `credit_score_entries`, `review_assignments`, `notifications`, `notification_switches`, `messages`, `message_reads`. `extraction_staging` is still planned.
 
 ## Roles (enum `user_role`)
 
@@ -146,7 +148,7 @@ Full text in [`docs/open-questions.md`](docs/open-questions.md). Do not pick an 
 | Q-14 | Partly decided (DBR and LCR definitions). Still open: cap values |
 | Q-19, Q-20 | MRAC failure outcome; who reviews policy flags (HITL #2) |
 
-Decided by the bank (visit 2026-10-26), not built yet: **Q-42.** Applicants may be told the outcome (Approved / Rejected / Deferred); a rejection names the policy they most likely did not pass; a deferral notice gives the reason; the AO sends the final notice; SMS and email are allowed but with no links to the portal; messaging is staff only. Conflicts with the built notifications are listed in [decisions/notifications.md](docs/decisions/notifications.md).
+Decided by the bank (visit 2026-10-26), not built yet: **Q-42.** Applicants may be told the outcome (Approved / Rejected / Deferred); a rejection names the policy they most likely did not pass; a deferral notice gives the reason; the AO sends the final notice; SMS and email are allowed but with no links to the portal; messaging is staff only (built 2026-10-28). Conflicts with the built notifications are listed in [decisions/notifications.md](docs/decisions/notifications.md).
 
 ## Current sprint
 
@@ -160,6 +162,7 @@ Built on main (Sprint 0 foundation plus parts of Sprints 1, 2, 3 and 5):
 - Credit scoring: the page suggests a band per criterion, the CO picks; the result is a guide only
 - Review routing: the CO picks the approval tier, reviewers and approvers and sends the file to Review; reviewers and approvers get a read-only summary
 - Audit log of changes made after submission
+- Messages: a staff-only thread per loan file (a button beside the bell on the loan folder, CI request, Financial Package and review summary pages), live through Realtime, with the sender's role on every message and unread markers; written only by `post_message()`; append-only; no attachments; applicants never see it
 - Raw PaddleOCR for IDs, COE / ITR and payslips
 - In-app notifications: a bell on every signed-in page, updated live through Realtime, for workflow events; applicant notices limited to the four statuses (decision and deferral notices switched off until they match the bank's Q-42 answers); `send_notification()` for other modules
 

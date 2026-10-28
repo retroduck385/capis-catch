@@ -115,7 +115,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
   - The AO sends the final notice to the applicant.
   - Deferral notices: yes, with the reason.
   - SMS and email are allowed, but with no links (nothing pointing to the portal).
-  - Messaging: staff only.
+  - Messaging: staff only. Built 2026-10-28: `decisions/messages.md`.
 
 ### Sprint 3 (Automated Financial Computation)
 **Q-14. Ratio names, definitions and thresholds.**

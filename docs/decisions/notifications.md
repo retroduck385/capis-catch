@@ -18,6 +18,8 @@ Date: 2026-10-24. Status: decided by implementation. Covers F6 (Timely Workspace
 - `catch/supabase/migrations/20261024_notifications.sql`: `notifications`, `notification_switches`, `send_notification()`, `mark_notifications_read()`, seven `notify_*` triggers, `supabase_realtime` publication. Run in the shared project 2026-10-24.
 - Front end: `src/components/notificationBell.jsx` (mounted once in `privateRoute.jsx`), `src/pages/notifications/{api.js, useNotifications.js, applicantStatus.js}`. Applicant home shows the four statuses.
 - Tested: 86 PGlite checks; click test in the shared project 2026-10-24 (routing-change step covered by PGlite only).
+- 2026-10-28: `MESSAGE_POSTED` (source `messages`), sent by `post_message()` in `20261028_messages.sql` (not by a `notify_*` trigger). Goes to the assigned AO and CO, routed reviewers and approvers, and earlier posters who can still read the file; one unread per person per file; title "New message on <application no.>", no body, no names. See `messages.md`.
+- 2026-10-28: the bell panel heading is forced dark (`text-gray-900!`) because `index.css` colours `h2` with `--text-h`, which is near-white in OS dark mode.
 
 ## Why (inferred)
 Triggers on the tables keep the groupmate's RPCs untouched and catch every path that changes the data, including future ones. One function with fixed applicant rules means no module (OCR, RAG, fraud detection, summary page) can leak internal detail to an applicant by mistake.
@@ -37,10 +39,10 @@ Triggers on the tables keep the groupmate's RPCs untouched and catch every path 
 - An approver's DEFERRED is shown as "Incomplete submission". With the outcome now disclosable, Deferred may need to be shown as a decision.
 - F5 (paper) sends SMS / email links to the missing item. The bank allows SMS / email only with no links.
 - "The policy they most likely did not pass" needs policy checks (MRAC / RAG flags), which are not built (Q-19, Q-20).
-- Messaging is staff only: the Messages feature gives applicants no access.
+- Messaging is staff only: the Messages feature gives applicants no access (built 2026-10-28, `messages.md`).
 
 ## Still to come
 - Rebuild the decision and deferral notices to match Q-42 (outcome, reason, sent by the AO), then switch them on.
 - F5 email / SMS without links (depends on Q-04 for the external provider).
 - TAT near / beyond alerts (need a scheduler).
-- Module events: OCR done / failed, extraction to confirm, policy flags, fraud, summary ready, folder messages.
+- Module events: OCR done / failed, extraction to confirm, policy flags, fraud, summary ready.

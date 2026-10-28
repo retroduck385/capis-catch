@@ -31,6 +31,7 @@ Committee Members are not modeled.
 - **Staff profile gate:** staff must enter a first and last name before using staff pages, and before they can be assigned (enforced in the database too).
 - **OCR output** (`ocr_runs`, `ocr_lines`): readable by staff with access to the application. Only the OCR worker writes it.
 - **Notifications** (`notifications`, 2026-10-24): every user, applicants included, reads only their own and marks them read (`mark_notifications_read()`). No one writes them from the browser; only `send_notification()` creates them (triggers, SQL, service role). Applicants only ever receive the five `APPLICANT_*` kinds, which carry no internal detail. Staff notices carry the application number only, no borrower names or amounts. Per-kind on / off switches (`notification_switches`) are set in the SQL Editor only.
+- **Messages** (`messages`, 2026-10-28, staff only: the bank, Q-42; `decisions/messages.md`). Read: everyone who can read the file (`staff_can_access()`; a CI only once the file has a CI request). Post (`post_message()`), at every stage including Decided: the assigned AO or CO, the CI once a CI request exists, a Reviewer or Approver only while routed on the file, the Dispatch Admin and the Dept Head always. Everyone else with access reads only; applicants never see or post. Staff must have a profile name. Plain text, 2000 characters. Each message records the sender's role and the stage. Messages can't be edited or deleted by anyone and are not copied into `audit_log`. A new message sends `MESSAGE_POSTED` (application number only) to the people on the file.
 
 **Assignment (Q-12).** Only AOs and COs are assigned to files. AOs and COs claim or release files themselves. Dispatch Admin, Reviewer, Approver and Dept Head can assign, reassign or unassign any AO/CO. History is in `application_assignments`.
 
@@ -85,6 +86,8 @@ Other names in interviews: "Credit Evaluation Officer" (CEO), "Credit Underwrite
 | Endorse / not endorse / defer | | | | Y (built: Credit Result on the FP) | | | | |
 | Pick approval tier, reviewers, approvers; send to Review (built) | | | | Y (assigned) | | | | |
 | Change tier, reviewers, approvers after sending (built) | | | Y | | | | Y | |
+| Read messages on a file (built) | Y | Y (once CI requested) | Y | Y | Y | Y | Y | |
+| Post messages on a file (built) | Y (assigned) | Y (once CI requested) | Y | Y (assigned) | Y (routed) | Y (routed) | Y | |
 | Review FP, request revision | | | | | Y (view built; sign-off not built) | | | |
 | Approve / Reject / Defer | | | | | | Y (Q-23; not built) | Y (Stage 2) | |
 | Review policy flags (HITL #2) | ? (App. L) | | | ? (3.2.4.2) | | ? (1.4.2.3) | | (Q-20) |

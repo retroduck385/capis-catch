@@ -59,7 +59,7 @@ Not a Figure 2 module: the **Automated Financial Computation** module (Sprint 3)
 | F4 | Multi-Format Evidence Uploader | 1 | 1.4.2.1: IDs, payslips, land titles; file-type and legibility checks |
 | F5 | Automated Applicant Link Dispatcher | 1 | Inferred: SMS/Email secure links for targeted remediation (1.4.2.1) |
 | F6 | Timely Workspace Notification Alerts | 2 | 1.4.2.2: alert the moment a milestone shifts |
-| F7 | Streamlined Internal Messaging Panel | 2 | 1.4.2.2: per-loan-folder messaging replaces Viber/Messenger/GChat |
+| F7 | Streamlined Internal Messaging Panel | 2 | 1.4.2.2: per-loan-folder messaging replaces Viber/Messenger/GChat. **Built 2026-10-28** as staff-only messages (bank, Q-42), no attachments: `decisions/messages.md` |
 | F8 | Automated First-In, First-Out (FIFO) Queue Assigner | 2 | 1.4.2.2, 3.2.4.3.3: ordered by submission timestamp |
 | F9 | Dynamic Privacy Field Masking | 3 | 1.4.2.3: credential-based field masking |
 | F10 | Rule-Engine Policy Matcher and Scoring Component | 3, 5 | Figure 3 (matcher). "Scoring" is not described in text (Q-22) |
