@@ -90,9 +90,9 @@ const MessagesPanel = ({ applicationId }) => {
                 <aside
                     id='messages-panel'
                     aria-label='Messages for this application'
-                    className='fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-gray-300 bg-white shadow-lg'>
+                    className='fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-gray-300 bg-white text-gray-900 shadow-lg'>
                     <div className='flex items-center justify-between border-b border-gray-200 py-3 pl-4 pr-28 sm:pr-52'>
-                        <h2 className='text-lg font-semibold'>Messages</h2>
+                        <h2 className='text-lg font-semibold text-gray-900!'>Messages</h2>
                         <button ref={closeRef} type='button' onClick={() => { setOpen(false); buttonRef.current?.focus(); }}
                             className='rounded border border-gray-300 px-3 py-1 text-blue-800 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
                             Close
@@ -147,13 +147,13 @@ const MessagesPanel = ({ applicationId }) => {
                                     maxLength={MAX_LENGTH}
                                     rows={3}
                                     aria-describedby='message-hint'
-                                    className='w-full rounded border border-gray-400 p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600' />
+                                    className='w-full rounded border border-gray-400 bg-white p-2 text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600' />
                                 <div className='flex items-center justify-between gap-3 pt-1'>
                                     <span id='message-hint' className='text-sm text-gray-700'>
                                         {draft.length} / {MAX_LENGTH}. Ctrl+Enter sends. Messages can't be edited or deleted.
                                     </span>
                                     <button type='button' onClick={submit} disabled={sending || !draft.trim()}
-                                        className='shrink-0 rounded bg-blue-800 px-4 py-1.5 text-white hover:bg-blue-900 disabled:bg-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'>
+                                        className='shrink-0 rounded bg-blue-800 px-4 py-1.5 text-white hover:bg-blue-900 disabled:bg-gray-300 disabled:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'>
                                         {sending ? 'Sending...' : 'Send'}
                                     </button>
                                 </div>
