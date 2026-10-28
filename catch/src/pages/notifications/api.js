@@ -37,3 +37,8 @@ export const subscribeToNotifications = (userId, onChange) => {
         .subscribe();
     return () => { supabase.removeChannel(channel); };
 };
+
+// The applicant's own applications: status, what they may see, whether the outcome notice was sent
+// (my_application_statuses() in 20261029_applicant_notices.sql)
+export const fetchMyApplicationStatuses = async () =>
+    check(await supabase.rpc('my_application_statuses')) ?? [];

@@ -14,6 +14,7 @@ import ChangeHistory from './changeHistory';
 import KycCheckPanel, { CheckSummary } from './kycCheckPanel';
 import { RESULT_LABELS } from './options';
 import MessagesPanel from '../messages/messagesPanel';
+import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 
 const OVERVIEW = 'overview';
 const REQUEST_CI = 'request-ci';
@@ -126,6 +127,7 @@ const LoanFolderPage = () => {
             {!canEdit && (
                 <p className="italic">Read-only. Only the assigned Account Officer can edit, while the application is in Intake or Credit Investigation.{role === 'ACCOUNT_OFFICER' && ' Assign yourself in the work tray to edit.'}</p>
             )}
+            <SendNoticePanel applicationId={app.id} />
         </div>
     );
 
