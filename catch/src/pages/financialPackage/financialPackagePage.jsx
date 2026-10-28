@@ -12,6 +12,7 @@ import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
 import ChangeHistory from '../loanFolder/changeHistory';
 import { fetchReviewAssignments } from '../review/api';
 import { fetchAssignedAo, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage } from './api';
+import MessagesPanel from '../messages/messagesPanel';
 import { computeFp } from './compute';
 import { totalCreditScore } from './creditScore';
 import {
@@ -201,6 +202,7 @@ const FinancialPackagePage = () => {
 
     return (
         <form onSubmit={handleSave} className="max-w-5xl m-auto p-4 text-left">
+            <MessagesPanel applicationId={app.id} />
             <p>
                 <Link to="/adminHomePage" className="underline">Back to work tray</Link>
                 {' · '}
