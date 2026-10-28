@@ -36,6 +36,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 **Q-04. Pending data-handling constraints.**
 - Evidence: P3.2.2.1 says the Data Privacy Officer, IT Risk and Security Department sessions are still to be held, and that they govern RBAC rules and external model calls. P3.2.2.4: only synthetic documents may be sent to the external vision model.
 - Suggested: build RBAC and audit generically now; hold anything that sends data to an external model until the sessions confirm the rules. Enforce a "synthetic data only" flag in Sprint 0 configuration.
+- Note 2026-10-29: applicant SMS (Semaphore) and email (Brevo) send the phone number, email, outcome and reason to an external provider. The notice worker stays in log mode, and live mode only reaches an allowlist of the team's own numbers and addresses, until these sessions clear it.
 
 **Q-05. Where does "pre-approval" end?**
 - Evidence: P1.7.3 excludes release, servicing and collections and the BPMN ends at approval. The Home Loan Tracker has RED Endorsement, Clearance, Booking, Release and Lock tabs; App. G maps the flow to first release; the checklist has post-approval sections; App. G says its confirmed scope was "up to first release".
@@ -116,6 +117,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
   - Deferral notices: yes, with the reason.
   - SMS and email are allowed, but with no links (nothing pointing to the portal).
   - Messaging: staff only. Built 2026-10-28: `decisions/messages.md`.
+- **Built 2026-10-29** (`20261029_applicant_notices.sql`, `decisions/applicant-notices.md`): the assigned AO sends the outcome notice with a reason, in-app and queued for SMS / email (no links); applicants see the outcome only after it; the automatic decision / deferral notices are removed. Live SMS / email waits for Q-04.
 
 ### Sprint 3 (Automated Financial Computation)
 **Q-14. Ratio names, definitions and thresholds.**

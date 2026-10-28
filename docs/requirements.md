@@ -57,7 +57,7 @@ Not a Figure 2 module: the **Automated Financial Computation** module (Sprint 3)
 | F2 | Dynamic Conditional Checkbox Form | 1 | 1.4.2.1, 2.1.2.8: selecting "Self-Employed" or "Married" expands fields and upload slots |
 | F3 | Smart Input Fields | 1 | Inferred: point-of-entry validation (2.1.2.8) |
 | F4 | Multi-Format Evidence Uploader | 1 | 1.4.2.1: IDs, payslips, land titles; file-type and legibility checks |
-| F5 | Automated Applicant Link Dispatcher | 1 | Inferred: SMS/Email secure links for targeted remediation (1.4.2.1) |
+| F5 | Automated Applicant Link Dispatcher | 1 | Inferred: SMS/Email secure links for targeted remediation (1.4.2.1). **Built in part 2026-10-29:** outcome notices by SMS / email with **no links** (the bank, Q-42), sent by the AO, log mode until Q-04: `decisions/applicant-notices.md`. Item-level deficiency links are not built |
 | F6 | Timely Workspace Notification Alerts | 2 | 1.4.2.2: alert the moment a milestone shifts |
 | F7 | Streamlined Internal Messaging Panel | 2 | 1.4.2.2: per-loan-folder messaging replaces Viber/Messenger/GChat. **Built 2026-10-28** as staff-only messages (bank, Q-42), no attachments: `decisions/messages.md` |
 | F8 | Automated First-In, First-Out (FIFO) Queue Assigner | 2 | 1.4.2.2, 3.2.4.3.3: ordered by submission timestamp |
