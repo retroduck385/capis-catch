@@ -13,6 +13,7 @@ import { fetchAuditLog, fetchCanEdit, fetchKycChecks, fetchStaffNames } from './
 import ChangeHistory from './changeHistory';
 import KycCheckPanel, { CheckSummary } from './kycCheckPanel';
 import { RESULT_LABELS } from './options';
+import MessagesPanel from '../messages/messagesPanel';
 
 const OVERVIEW = 'overview';
 const REQUEST_CI = 'request-ci';
@@ -110,6 +111,7 @@ const LoanFolderPage = () => {
 
     const header = (
         <div className="pb-2">
+            <MessagesPanel applicationId={app.id} />
             <p>
                 <Link to="/adminHomePage" className="underline">Back to work tray</Link>
                 {' · '}

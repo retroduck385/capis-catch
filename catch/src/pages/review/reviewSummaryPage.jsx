@@ -17,6 +17,7 @@ import { STAGE_STATUS_LABELS, stageLabel } from '../workTray/options';
 import { fetchCurrentStage, fetchReviewAssignments } from './api';
 import { splitRouting } from './approval';
 import RoutingSummary from './routingSummary';
+import MessagesPanel from '../messages/messagesPanel';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const money = (v) => (v === null || v === undefined || v === '' ? '—' : `₱${formatMoney(v)}`);
@@ -87,6 +88,7 @@ const ReviewSummaryPage = () => {
 
     return (
         <div className="max-w-5xl m-auto p-4 text-left">
+            <MessagesPanel applicationId={app.id} />
             <p><Link to="/adminHomePage" className="underline">Back to work tray</Link></p>
             <h2>Review summary: {app.application_no}</h2>
             <p><span className="font-semibold">Name of Borrower/s:</span> {borrowers || '—'}</p>
