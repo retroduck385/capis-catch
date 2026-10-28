@@ -511,11 +511,11 @@ begin
   v_sent := exists (select 1 from applicant_notices where outcome_id = v_outcome);
   select * into v_dest from notice_destinations(p_application_id);
 
+  -- A missing outcome row (the trigger failed, warning only) doesn't stop the AO: send_applicant_notice() records it
   v_why := case
     when v_status not in ('APPROVED', 'REJECTED', 'DEFERRED')
       then 'The notice can be sent once the application is Approved, Rejected or Deferred.'
-    when not notice_is_assigned_ao(p_application_id) then 'Only the assigned Account Officer can send this notice.'
-    when v_outcome is null then 'The outcome was not recorded; ask the Dept Head to check the application.' end;
+    when not notice_is_assigned_ao(p_application_id) then 'Only the assigned Account Officer can send this notice.' end;
 
   return jsonb_build_object(
     'application_no', notification_app_no(p_application_id),
