@@ -81,9 +81,9 @@ const NotificationBell = () => {
                     id='notification-panel'
                     role='region'
                     aria-label='Notifications'
-                    className='absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-300 bg-white shadow-lg'>
+                    className='absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-300 bg-white text-gray-900 shadow-lg'>
                     <div className='flex items-center justify-between border-b border-gray-200 px-4 py-3'>
-                        <h2 className='text-lg font-semibold'>Notifications</h2>
+                        <h2 className='text-lg font-semibold text-gray-900!'>Notifications</h2>
                         {unread > 0 && (
                             <button type='button' onClick={markAllRead}
                                 className='text-blue-800 underline hover:text-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
