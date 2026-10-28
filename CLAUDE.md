@@ -182,3 +182,4 @@ Update this section when the sprint changes.
 - Keep routers thin. Put logic in `services/`.
 - If a requirement in `docs/` is unclear or conflicts with another, stop and ask instead of guessing.
 - Update `docs/` when a decision changes. Record big decisions in `docs/decisions/`.
+- Never add Co-Authored-By or Generated-with-Claude-Code lines to commits or PRs.
