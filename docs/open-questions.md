@@ -1,14 +1,15 @@
 # Open questions
 
-Items marked **DECIDED** were settled by implementation (main's code); their old Evidence and Suggested lines are kept for history. **Everything else here is NOT decided.** "Suggested" is a proposal for the team to accept or reject, not a decision.
+Items marked **DECIDED** were settled by implementation (main's code) or by the bank; their old Evidence and Suggested lines are kept for history. **Everything else here is NOT decided.** "Suggested" is a proposal for the team to accept or reject, not a decision.
 Sources: main paper (**P** + section), appendices (**App.** + letter or tab). "The bank" = the partner bank.
 Found by comparing the diagrams (BPMN, Figure 1-3, Appendix L, tracker screenshots) against the text and the interview transcripts.
 
 | Group | Items |
 |---|---|
 | 1. Blocks Sprint 0 | Q-04, Q-05 |
-| 2. Needed before a later sprint | Q-06, Q-07, Q-11 (rest), Q-13 (rest), Q-14 (caps), Q-15 (seafarer), Q-16, Q-17, Q-18 (effective date), Q-19 to Q-21, Q-25, Q-26, Q-28, Q-38, Q-39 (CI Field), Q-40, Q-42 |
+| 2. Needed before a later sprint | Q-06, Q-07, Q-11 (rest), Q-13 (rest), Q-14 (caps), Q-15 (seafarer), Q-16, Q-17, Q-18 (effective date), Q-19 to Q-21, Q-25, Q-26, Q-28, Q-38, Q-39 (CI Field), Q-40 |
 | Decided by implementation | Q-01, Q-02, Q-03, Q-08, Q-09 (structure only), Q-10, Q-12, Q-22, Q-23, Q-24, Q-27, Q-41; in part: Q-11, Q-13, Q-14, Q-15, Q-18, Q-39 |
+| Decided by the bank | Q-42 (visit 2026-10-26) |
 | 3. Paper edit only, no code impact | Q-29 to Q-37 |
 
 ---
@@ -103,11 +104,18 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Suggested: one or more reviewers configurable per application; only the first triggers the Desk / Field CI request. Confirm.
 - **Decided by implementation, 2026-10-21:** the assigned CO picks one or more reviewers, in review order (seq 1 = first reviewer), and one or more approvers, per application (`review_assignments`, `send_for_review()`). After sending, only the Dept Head or Dispatch Admin can change them (`update_review_routing()`). **Still open:** the first reviewer's Desk / Field CI request, and the review sign-off (mark reviewed / request revision) is not built.
 
-**Q-42. What applicants are told, and decision disclosure.**
+**DECIDED. Q-42. What applicants are told, and decision disclosure.**
 - Evidence: meeting 2026-10-23: applicants see four statuses (submitted, incomplete submission, under review, decision) and no internal detail unless disclosed; whether the bank allows giving denial reasons is unconfirmed (the expected default is to give none); whether the final approver or the AO triggers the applicant's notice is to be confirmed. F5 (Sec. 1.4.2.1) sends SMS / email deficiency links to the specific item. At the bank a deferral usually means missing information.
 - Built (2026-10-24, `20261024_notifications.sql`, `decisions/notifications.md`): in-app only. APPLICANT_SUBMITTED, APPLICANT_UNDER_REVIEW and APPLICANT_INCOMPLETE (on FOR_CLARIFICATION, which nothing sets yet) are on. APPLICANT_DECISION (neutral: no outcome, no reason) and APPLICANT_DEFERRED ("needs more information") are **switched off** in `notification_switches`.
 - Still open: whether the decision notice may state the outcome or a reason; automatic vs sent by a person; whether deferral notices go out; item-level deficiency notices and email / SMS (F5, depends on Q-04).
 - Suggested: ask at the bank visit (2026-10-26). Keep both switches off until then.
+- **Decided by the bank, visit 2026-10-26:**
+  - Applicants may be told the outcome: Approved, Rejected or Deferred.
+  - Rejection: tell the applicant the policy they most likely did not pass.
+  - The AO sends the final notice to the applicant.
+  - Deferral notices: yes, with the reason.
+  - SMS and email are allowed, but with no links (nothing pointing to the portal).
+  - Messaging: staff only.
 
 ### Sprint 3 (Automated Financial Computation)
 **Q-14. Ratio names, definitions and thresholds.**

@@ -145,7 +145,8 @@ Full text in [`docs/open-questions.md`](docs/open-questions.md). Do not pick an 
 | Q-11, Q-13 | Partly decided. Still open: who encodes CI results, Desk / Field CI, the threshold; the first reviewer's CI request |
 | Q-14 | Partly decided (DBR and LCR definitions). Still open: cap values |
 | Q-19, Q-20 | MRAC failure outcome; who reviews policy flags (HITL #2) |
-| Q-42 | What applicants are told about decisions and deferrals (notices built, switched off) |
+
+Decided by the bank (visit 2026-10-26), not built yet: **Q-42.** Applicants may be told the outcome (Approved / Rejected / Deferred); a rejection names the policy they most likely did not pass; a deferral notice gives the reason; the AO sends the final notice; SMS and email are allowed but with no links to the portal; messaging is staff only. Conflicts with the built notifications are listed in [decisions/notifications.md](docs/decisions/notifications.md).
 
 ## Current sprint
 
@@ -160,7 +161,7 @@ Built on main (Sprint 0 foundation plus parts of Sprints 1, 2, 3 and 5):
 - Review routing: the CO picks the approval tier, reviewers and approvers and sends the file to Review; reviewers and approvers get a read-only summary
 - Audit log of changes made after submission
 - Raw PaddleOCR for IDs, COE / ITR and payslips
-- In-app notifications: a bell on every signed-in page, updated live through Realtime, for workflow events; applicant notices limited to the four statuses (decision and deferral notices switched off); `send_notification()` for other modules
+- In-app notifications: a bell on every signed-in page, updated live through Realtime, for workflow events; applicant notices limited to the four statuses (decision and deferral notices switched off until they match the bank's Q-42 answers); `send_notification()` for other modules
 
 Not built yet:
 - FastAPI, LangGraph, Chroma
