@@ -36,7 +36,7 @@ const handleSignUp = async (e) => {
 
 return(
     <ApplicantShell bare>
-        <BrandPanel heading="Create your account to start applying." lede="Add your personal details once, and we'll fill them into every application you make." />
+        <BrandPanel heading="Lorem ipsum dolor sit amet." lede="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." />
         <section className="ct-auth-panel">
             <form onSubmit={ handleSignUp } className="ct-card">
                 <h2>Create an account</h2>

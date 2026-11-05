@@ -36,7 +36,7 @@ const LoginPage = () => {
 
     return(
     <ApplicantShell bare>
-        <BrandPanel heading="Apply for your housing loan online." lede="Fill in your application at your own pace. It saves after every step, and you can follow it through to the decision." />
+        <BrandPanel heading="Lorem ipsum dolor sit amet." lede="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." />
         <section className="ct-auth-panel">
             <form onSubmit={ handleSignIn } className="ct-card">
                 <h2>Sign in</h2>
