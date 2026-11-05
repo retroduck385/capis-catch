@@ -76,10 +76,10 @@ export const MAX_DEPENDENTS = 20;
 export const PERSON_FIELDS = {
     first_name: { label: 'First Name' },
     middle_name: { label: 'Middle Name' },
-    maiden_name: { label: 'Last Name (Maiden Name)' },
+    maiden_name: { label: 'Maiden Last Name' },
     last_name: { label: 'Last Name' },
     name_extension: { label: 'Name Extension', placeholder: 'Jr., Sr., III' },
-    relationship_to_principal: { label: 'Relationship with Principal Borrower' },
+    relationship_to_principal: { label: 'Relationship to Borrower' },
     mobile_number: { label: 'Mobile Number', placeholder: '09XXXXXXXXX' },
     email_address: { label: 'Email Address', type: 'email' },
     gender: { label: 'Gender', options: GENDERS },
@@ -135,7 +135,7 @@ export const PARTY_FIELDS = {
 export const ADDRESS_FIELDS = {
     unit_house_no: { label: 'Unit / House No.' },
     building_street: { label: 'Building / Block Name / Street Name' },
-    subdivision_barangay: { label: 'Subdivision Name / Barangay Name' },
+    subdivision_barangay: { label: 'Subdivision / Barangay Name' },
     municipality_city: { label: 'Municipality / City' },
     province: { label: 'Province' },
     zip_code: { label: 'ZIP Code' },
@@ -143,12 +143,12 @@ export const ADDRESS_FIELDS = {
 
 export const EMPLOYMENT_FIELDS = {
     employment_type: { label: 'Employment Type', options: EMPLOYMENT_TYPES },
-    employer_business_name: { label: "Employer's / Business Name" },
+    employer_business_name: { label: "Employer / Business Name" },
     occupation: { label: 'Occupation' },
     employment_date: { label: 'Employment Date', type: 'date' },
-    contact_number: { label: 'Contact Number of Employer / Business' },
-    email_address: { label: 'Email Address of Employer / Business', type: 'email' },
-    employer_tin: { label: "Employer's / Business TIN" },
+    contact_number: { label: 'Contact Number' },
+    email_address: { label: 'Email Address', type: 'email' },
+    employer_tin: { label: "Employer TIN" },
     ctc_no: { label: 'CTC No.' },
     ctc_date_issued: { label: 'CTC Date Issued', type: 'date' },
     ctc_place_issued: { label: 'CTC Place Issued' },
@@ -157,7 +157,7 @@ export const EMPLOYMENT_FIELDS = {
 
 export const COLLATERAL_FIELDS = {
     project_name: { label: 'Project Name' },
-    property_type: { label: 'Property Type', placeholder: 'House and Lot, Condominium, Townhouse, Vacant Lot' },
+    property_type: { label: 'Property Type', placeholder: 'e.g. House and Lot' },
     selling_price: { label: 'Selling Price (PHP)', type: 'money' },
     registered_owner: { label: 'Registered Owner' },
     tct_cct_no: { label: 'TCT / CCT No.' },
@@ -178,7 +178,7 @@ export const REFERENCE_FIELDS = {
     name: { label: 'Name' },
     address: { label: 'Address' },
     contact_number: { label: 'Contact Number' },
-    relationship_to_principal: { label: 'Relationship with Principal Borrower' },
+    relationship_to_principal: { label: 'Relationship to Borrower' },
 };
 
 export const BANK_ACCOUNT_FIELDS = {
@@ -189,7 +189,7 @@ export const BANK_ACCOUNT_FIELDS = {
 
 export const EXISTING_LOAN_FIELDS = {
     loan_type: { label: 'Loan Type', placeholder: 'Auto, Personal, Salary' },
-    lending_institution: { label: 'Name of Bank / Lending Institution' },
+    lending_institution: { label: 'Bank / Lender' },
     monthly_payment: { label: 'Monthly Payment (PHP)', type: 'money' },
     term_over_6_months: { label: 'Term longer than 6 months?', type: 'checkbox' },
 };

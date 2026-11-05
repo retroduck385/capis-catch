@@ -49,7 +49,7 @@ const Value = ({ children, optional }) =>
     children === null || children === undefined || children === '' ? (optional ? '—' : <Missing />) : children;
 
 const Cell = ({ children, className = '' }) => <td className={`border px-2 align-top ${className}`}>{children}</td>;
-const Head = ({ children }) => <th className="border px-2 text-left align-top">{children}</th>;
+const Head = ({ children }) => <th className="text-left align-top">{children}</th>;
 
 const NfisForm = ({ request }) => {
     const businesses = request.people.filter((p) => p.employer);
@@ -58,7 +58,7 @@ const NfisForm = ({ request }) => {
             <h3 className="font-semibold">NFIS Request Form</h3>
             <p className="italic pb-2">For individual name of inquiry. If any borrower is married, include maiden name.</p>
             <div className="overflow-x-auto">
-                <table className="border-collapse">
+                <table>
                     <thead>
                         <tr>
                             <Head>Party</Head>
@@ -89,7 +89,7 @@ const NfisForm = ({ request }) => {
             <p className="italic pt-3 pb-2">For corporate / business name of inquiry.</p>
             {businesses.length === 0 ? <p>No employer or business on file.</p> : (
                 <div className="overflow-x-auto">
-                    <table className="border-collapse">
+                    <table>
                         <thead>
                             <tr>
                                 <Head>Party</Head>
@@ -144,7 +144,7 @@ const TuForm = ({ request }) => (
             <dd><Value>{peso(request.loanAmount)}</Value></dd>
         </dl>
         <div className="overflow-x-auto">
-            <table className="border-collapse">
+            <table>
                 <thead>
                     <tr>
                         <Head>Inquiry Name</Head>

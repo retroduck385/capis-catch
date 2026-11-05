@@ -76,7 +76,7 @@ const StaffAccountsPage = () => {
                 </Section>
                 <FormError error={error} />
                 {notice && <p className="text-green-700 py-2">{notice}</p>}
-                <button type="submit" disabled={saving} className="border px-4 py-3">
+                <button type="submit" disabled={saving} className="py-3">
                     {saving ? 'Creating...' : 'Add Account'}
                 </button>
             </form>
@@ -90,7 +90,7 @@ const StaffAccountsPage = () => {
                         <tbody>
                             {accounts.map((a) => (
                                 <tr key={a.user_id} className="border-t">
-                                    <td className="py-1">{a.email}</td>
+                                    <td>{a.email}</td>
                                     <td>{a.name ?? 'Profile not completed'}</td>
                                     <td>{ROLE_LABELS[a.role] ?? a.role}{!a.is_active && ' (inactive)'}</td>
                                     <td>{new Date(a.created_at).toLocaleDateString()}</td>

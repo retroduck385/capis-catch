@@ -146,7 +146,7 @@ const CreditScorePage = () => {
 
             {canEdit && (
                 <div className="sticky bottom-0 bg-white border-t py-3 flex gap-4 items-center">
-                    <button type="submit" className="border px-4 py-2" disabled={saving || !dirty}>
+                    <button type="submit" disabled={saving || !dirty}>
                         {saving ? 'Saving...' : 'Save Credit Score'}
                     </button>
                     {dirty && <span>Unsaved changes</span>}

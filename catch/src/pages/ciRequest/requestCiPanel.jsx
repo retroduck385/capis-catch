@@ -73,7 +73,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                         rows={3} className="border block w-full px-2" />
                 </label>
                 {error && <p className="text-red-600">{error}</p>}
-                <button type="submit" disabled={saving} className="border px-4 py-2 mt-2">
+                <button type="submit" disabled={saving} className="mt-2">
                     {saving ? 'Sending...' : 'Send CI request'}
                 </button>
             </form>

@@ -1,14 +1,23 @@
 // Master profile: the applicant's own details, filled in once and used to pre-fill
 // the Principal Borrower step of every new application. Required before applying.
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
+import ApplicantShell from '../components/applicantShell';
 import { fetchProfile, saveProfile, toForm } from './applicationForm/api';
-import { FormError, PersonFields, Section, StepButtons } from './applicationForm/fields';
-import { PARTY_FIELDS } from './applicationForm/options';
+import { FieldGroup, FormError, Section, StepButtons } from './applicationForm/fields';
+import { PARTY_FIELDS, PERSON_FIELDS } from './applicationForm/options';
 import { hasErrors, validatePerson } from './applicationForm/validators';
 
 const FIELDS = PARTY_FIELDS.PROFILE.map(([f]) => f);
+const REQUIRED = PARTY_FIELDS.PROFILE.filter(([, r]) => r).map(([f]) => f);
+
+// Same fields as PARTY_FIELDS.PROFILE, grouped so related details sit together (four per row)
+const GROUPS = [
+    ['Name', ['first_name', 'middle_name', 'last_name', 'name_extension']],
+    ['Personal details', ['gender', 'civil_status', 'date_of_birth', 'birth_place']],
+    ['Contact and identification', ['mobile_number', 'citizenship', 'sss_no', 'tin']],
+];
 
 const ProfilePage = () => {
     const { session } = UserAuth();
@@ -50,27 +59,35 @@ const ProfilePage = () => {
         }
     };
 
-    if (loading) return <p>Loading profile...</p>;
+    if (loading) return <ApplicantShell><p>Loading your profile...</p></ApplicantShell>;
 
     return (
-        <div className="max-w-3xl m-auto p-4 text-left">
-            <h2>My Profile</h2>
-            <p className="py-2">
+        <ApplicantShell>
+          <div className="ct-sheet ct-sheet-profile">
+            <div className="ct-titleblock">
+                <div><small>Applicant</small><strong>My profile</strong></div>
+                <div><small>Email</small><strong style={{ fontSize: '1rem', fontStretch: '100%' }}>{session?.user?.email}</strong></div>
+            </div>
+            <div className="ct-sheet-body">
+            <p>
                 {applyNext
                     ? 'Please complete your profile before applying. We use it to fill in your loan application for you.'
                     : 'These details are used to fill in your loan applications.'}
             </p>
-            <p className="text-sm">Email: {session?.user?.email}</p>
             <form onSubmit={handleSubmit}>
-                <Section title="Personal Information">
-                    <PersonFields role="PROFILE" values={form} errors={errors}
-                        onChange={(f, v) => setForm((p) => ({ ...p, [f]: v }))} />
-                </Section>
+                {GROUPS.map(([title, fields]) => (
+                    <Section key={title} title={title}>
+                        <FieldGroup config={PERSON_FIELDS} fields={fields} required={REQUIRED}
+                            values={form} errors={errors} prefix="PROFILE-"
+                            onChange={(f, v) => setForm((p) => ({ ...p, [f]: v }))} />
+                    </Section>
+                ))}
                 <FormError error={error} />
-                <StepButtons saving={saving} nextLabel={applyNext ? 'Save & Start Application' : 'Save Profile'} />
+                <StepButtons onBack={() => navigate('/applicantHomePage')} saving={saving} nextLabel={applyNext ? 'Save and start application' : 'Save profile'} />
             </form>
-            <p><Link to="/applicantHomePage" className="underline">Back to home</Link></p>
-        </div>
+            </div>
+          </div>
+        </ApplicantShell>
     );
 };
 

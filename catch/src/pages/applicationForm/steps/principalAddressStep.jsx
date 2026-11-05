@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { getAddress, getParty, toForm, upsertAddress } from '../api';
-import { AddressFields, FormError, Section, StepButtons } from '../fields';
+import { AddressFields, Field, FormError, Section, StepButtons } from '../fields';
 import { ADDRESS_FIELDS, ADDRESS_KEYS } from '../options';
 import { hasErrors, validateAddress } from '../validators';
 
@@ -18,8 +18,26 @@ const PrincipalAddressStep = ({ app, onSaved, onBack }) => {
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
 
-    const copyPresent = () =>
-        setPermanent(Object.fromEntries(PERMANENT_KEYS.map((k) => [k, present[k] ?? ''])));
+    const copyOf = (a) => Object.fromEntries(PERMANENT_KEYS.map((k) => [k, a[k] ?? '']));
+    // "Same as present address": while ticked, the permanent address follows the present one. Editing the
+    // permanent address by hand unticks it. Starts ticked when the saved addresses are already identical.
+    const [samePresent, setSamePresent] = useState(() =>
+        PERMANENT_KEYS.some((k) => present[k]) && PERMANENT_KEYS.every((k) => (present[k] ?? '') === (permanent[k] ?? '')));
+
+    const toggleSame = (checked) => {
+        setSamePresent(checked);
+        // ticking copies the present address; unticking clears it so a different address can be typed in
+        setPermanent(checked ? copyOf(present) : Object.fromEntries(PERMANENT_KEYS.map((k) => [k, ''])));
+    };
+    const changePresent = (f, v) => {
+        const next = { ...present, [f]: v };
+        setPresent(next);
+        if (samePresent && PERMANENT_KEYS.includes(f)) setPermanent(copyOf(next));
+    };
+    const changePermanent = (f, v) => {
+        setSamePresent(false);
+        setPermanent((a) => ({ ...a, [f]: v }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -43,14 +61,15 @@ const PrincipalAddressStep = ({ app, onSaved, onBack }) => {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Section title="Principal Borrower's Present Address">
+            <Section title="Principal Borrower's Present Address" className="ct-panel ct-cols-4">
                 <AddressFields kind="PRESENT" idPrefix="present" values={present} errors={errors.present}
-                    onChange={(f, v) => setPresent((a) => ({ ...a, [f]: v }))} />
+                    onChange={changePresent} />
             </Section>
-            <Section title="Principal Borrower's Permanent Address">
-                <button type="button" className="border px-3 py-1" onClick={copyPresent}>Same as present address</button>
+            <Section title="Principal Borrower's Permanent Address" className="ct-panel ct-cols-4">
+                <Field name="same_as_present" type="checkbox" label="Same as present address"
+                    value={samePresent} onChange={(_, v) => toggleSame(v)} />
                 <AddressFields kind="PERMANENT" idPrefix="permanent" values={permanent} errors={errors.permanent}
-                    onChange={(f, v) => setPermanent((a) => ({ ...a, [f]: v }))} />
+                    onChange={changePermanent} />
             </Section>
             <FormError error={error} />
             <StepButtons onBack={onBack} saving={saving} />

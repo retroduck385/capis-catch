@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
+import ApplicantShell, { BrandPanel } from '../components/applicantShell';
 
 const SignUpPage = () => {
 const [email, setEmail] = useState ("");
@@ -34,32 +35,31 @@ const handleSignUp = async (e) => {
     }
 
 return(
-    <div> 
-        <form onSubmit={ handleSignUp } className = "max-w-md m-auto pt-24">
-            <h2> Sign Up here! </h2>
-            <p> already have an account? <Link to ="/loginPage"> Login here!</Link></p>
-
-            <div className= "flex flex-col py-4">
-                <input 
-                onChange={(e) => setEmail(e.target.value)} 
-                placeholder = "Email" 
-                className="p-3 mt-2 bg-black" 
-                type = "email"
-                />
-                <input 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder = "Password" 
-                className="p-3 mt-2 bg-black" 
-                type = "password"
-                />
-            </div>
-            <button type = "submit" disabled = {loading} className="p-3 mt-2 bg-black"> 
-                Sign up 
-            </button>
-            {error && <p className="text-red-600 text-center pt-4">{error}</p>}
-        </form>
-    </div>
-); 
+    <ApplicantShell bare>
+        <BrandPanel heading="Create your account to start applying." lede="Add your personal details once, and we'll fill them into every application you make." />
+        <section className="ct-auth-panel">
+            <form onSubmit={ handleSignUp } className="ct-card">
+                <h2>Create an account</h2>
+                <p>It takes about a minute.</p>
+                <div className="fields">
+                    <label>
+                        Email
+                        <input value={email} onChange={(e) => setEmail(e.target.value)}
+                            type="email" autoComplete="email" required />
+                    </label>
+                    <label>
+                        Password
+                        <input value={password} onChange={(e) => setPassword(e.target.value)}
+                            type="password" autoComplete="new-password" required />
+                    </label>
+                </div>
+                <button type="submit" disabled={loading}>{loading ? 'Creating account...' : 'Create account'}</button>
+                {error && <p className="ct-error" role="alert">{error}</p>}
+                <p style={{ marginTop: '1.25rem' }}>Already have an account? <Link to="/loginPage">Sign in</Link></p>
+            </form>
+        </section>
+    </ApplicantShell>
+);
 };
 
 export default SignUpPage;

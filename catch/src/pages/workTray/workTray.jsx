@@ -56,12 +56,12 @@ const AssigneeSlot = ({ row, slotRole, myId, myRole, isHead, staff, busy, onAssi
                 </select>
             )}
             {!isHead && myRole === slotRole && !assigneeId && (
-                <button disabled={busy} onClick={() => onAssign(row.application_id, slotRole)} className='border px-2'>
+                <button disabled={busy} onClick={() => onAssign(row.application_id, slotRole)}>
                     Assign me
                 </button>
             )}
             {assigneeId && (isHead || isMine) && (
-                <button disabled={busy} onClick={() => onUnassign(row.application_id, slotRole)} className='border px-2'>
+                <button disabled={busy} onClick={() => onUnassign(row.application_id, slotRole)}>
                     {isMine ? 'Release' : 'Unassign'}
                 </button>
             )}
@@ -181,43 +181,43 @@ const WorkTray = () => {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className='border px-2' />
-                <select value={tat} onChange={(e) => setTat(e.target.value)} className='border'>
+                <select value={tat} onChange={(e) => setTat(e.target.value)}>
                     <option value='ALL'>All TAT</option>
                     <option value='NEAR'>Near TAT</option>
                     <option value='BEYOND'>Beyond TAT</option>
                 </select>
-                <select value={assignment} onChange={(e) => setAssignment(e.target.value)} className='border'>
+                <select value={assignment} onChange={(e) => setAssignment(e.target.value)}>
                     <option value='ALL'>All applications</option>
                     <option value='MINE'>Assigned to me</option>
                     <option value='UNASSIGNED'>Unassigned</option>
                 </select>
-                <select value={stage} onChange={(e) => setStage(e.target.value)} className='border'>
+                <select value={stage} onChange={(e) => setStage(e.target.value)}>
                     <option value='OPEN'>All open stages</option>
                     <option value='ALL'>All stages incl. decided</option>
                     {STAGES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
-                <button onClick={load} className='border px-2'>Refresh</button>
+                <button onClick={load}>Refresh</button>
             </div>
 
             {error && <p className='text-red-600'>{error}</p>}
 
-            <table className='border-collapse'>
+            <table>
                 <thead>
                     <tr className='text-left'>
-                        <th className='border px-2'>FIFO</th>
-                        <th className='border px-2'>Reference</th>
-                        <th className='border px-2'>Applicant</th>
-                        <th className='border px-2'>Stage</th>
-                        <th className='border px-2'>Status</th>
-                        <th className='border px-2'>Amount</th>
-                        <th className='border px-2'>Time in stage</th>
-                        <th className='border px-2'>TAT position</th>
-                        <th className='border px-2'>Assigned to</th>
+                        <th>FIFO</th>
+                        <th>Reference</th>
+                        <th>Applicant</th>
+                        <th>Stage</th>
+                        <th>Status</th>
+                        <th>Amount</th>
+                        <th>Time in stage</th>
+                        <th>TAT position</th>
+                        <th>Assigned to</th>
                     </tr>
                 </thead>
                 <tbody>
                     {visible.length === 0 && (
-                        <tr><td colSpan={9} className='border px-2'>No applications match these filters.</td></tr>
+                        <tr><td colSpan={9}>No applications match these filters.</td></tr>
                     )}
                     {visible.map((r) => {
                         const routedToMe = isRoutedTo(routing, r, myId);
@@ -231,30 +231,30 @@ const WorkTray = () => {
                                 onKeyDown={r.can_open ? (e) => e.key === 'Enter' && e.target === e.currentTarget
                                     && navigate(path) : undefined}
                                 className={r.can_open ? 'cursor-pointer hover:bg-gray-100' : ''}>
-                                <td className='border px-2'>{rows.indexOf(r) + 1}</td>
-                                <td className='border px-2'>
+                                <td>{rows.indexOf(r) + 1}</td>
+                                <td>
                                     {r.application_no}
                                     {!r.can_open && <div>(locked: not assigned to you)</div>}
                                     {r.can_open && isAssignable && r[SLOT_ID[role]] !== myId && <div>(view only)</div>}
                                     {routedToMe && <div>(assigned to you: {role === 'APPROVER' ? 'approval' : 'review'})</div>}
                                 </td>
-                                <td className='border px-2'>
+                                <td>
                                     {r.applicant_name ?? '-'}
                                     <div>{[employmentLabel(r.employment_type), r.branch].filter(Boolean).join(' · ')}</div>
                                 </td>
-                                <td className='border px-2'>{stageLabel(r.stage)}</td>
-                                <td className='border px-2'>{STAGE_STATUS_LABELS[r.stage_status] ?? '-'}</td>
-                                <td className='border px-2'>
+                                <td>{stageLabel(r.stage)}</td>
+                                <td>{STAGE_STATUS_LABELS[r.stage_status] ?? '-'}</td>
+                                <td>
                                     {r.loan_amount != null
                                         ? `₱${Number(r.loan_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
                                         : '-'}
                                 </td>
-                                <td className='border px-2'>{r.days_in_stage}d</td>
-                                <td className='border px-2'>
+                                <td>{r.days_in_stage}d</td>
+                                <td>
                                     {r.tat_days != null ? `${r.days_in_stage}d of ${r.tat_days}d · ${TAT_LABELS[r.tat_state]}` : '-'}
                                 </td>
                                 {/* Assign / release controls: don't open the folder when using them */}
-                                <td className='border px-2' onClick={(e) => e.stopPropagation()}>
+                                <td onClick={(e) => e.stopPropagation()}>
                                     {ASSIGNABLE_ROLES.map((slotRole) => (
                                         <AssigneeSlot
                                             key={slotRole}

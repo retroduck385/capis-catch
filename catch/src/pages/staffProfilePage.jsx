@@ -6,6 +6,7 @@ import { UserAuth } from '../context/authContext';
 import { fetchProfile, saveProfile, toForm } from './applicationForm/api';
 import { FormError, PersonFields, Section, StepButtons } from './applicationForm/fields';
 import { PARTY_FIELDS } from './applicationForm/options';
+import { ROLE_LABELS } from '../roles';
 import { hasErrors, isProfileComplete, validatePerson } from './applicationForm/validators';
 
 const FIELDS = PARTY_FIELDS.STAFF_PROFILE.map(([f]) => f);
@@ -54,23 +55,34 @@ const StaffProfilePage = () => {
     if (loading) return <p>Loading profile...</p>;
 
     return (
-        <div className="max-w-3xl m-auto p-4 text-left">
-            <h2>My Profile</h2>
-            <p className="py-2">
-                {firstTime
-                    ? 'Please complete your profile first. Your name is shown on the applications you are assigned to.'
-                    : 'Your name is shown on the applications you are assigned to.'}
-            </p>
-            <p className="text-sm">Email: {session?.user?.email} ({role})</p>
-            <form onSubmit={handleSubmit}>
-                <Section title="Personal Information">
-                    <PersonFields role="STAFF_PROFILE" values={form} errors={errors}
-                        onChange={(f, v) => setForm((p) => ({ ...p, [f]: v }))} />
-                </Section>
-                <FormError error={error} />
-                <StepButtons saving={saving} nextLabel="Save Profile" />
-            </form>
-            {!firstTime && <p><Link to="/adminHomePage" className="underline">Back to home</Link></p>}
+        <div style={{ maxWidth: "48rem", margin: "0 auto" }}>
+            <div className="ct-pagehead">
+                <div>
+                    <h1>My profile</h1>
+                    <p>
+                        {firstTime
+                            ? "Please complete your profile first. Your name is shown on the applications you are assigned to."
+                            : "Your name is shown on the applications you are assigned to."}
+                    </p>
+                </div>
+                <span className="ct-badge plain">{ROLE_LABELS[role] ?? role}</span>
+            </div>
+            <div className="ct-card">
+                <div className="ct-titleblock">
+                    <div><small>Signed in as</small><strong style={{ fontSize: "0.85rem" }}>{session?.user?.email}</strong></div>
+                </div>
+                <div className="ct-sheet-body">
+                    <form onSubmit={handleSubmit}>
+                        <Section title="Personal Information">
+                            <PersonFields role="STAFF_PROFILE" values={form} errors={errors}
+                                onChange={(f, v) => setForm((p) => ({ ...p, [f]: v }))} />
+                        </Section>
+                        <FormError error={error} />
+                        <StepButtons saving={saving} nextLabel="Save profile" />
+                    </form>
+                </div>
+            </div>
+            {!firstTime && <p style={{ marginTop: "1rem" }}><Link to="/adminHomePage" className="ct-link">Back to work tray</Link></p>}
         </div>
     );
 };

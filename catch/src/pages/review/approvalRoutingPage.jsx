@@ -62,24 +62,24 @@ const PeoplePicker = ({ title, role, ordered, staff, value, onChange, disabled }
             {value.map((userId, i) => (
                 <div key={i} className="flex gap-2 items-center py-1">
                     {ordered && <span>{i + 1}.</span>}
-                    <select value={userId} onChange={(e) => set(i, e.target.value)} disabled={disabled} className="border">
+                    <select value={userId} onChange={(e) => set(i, e.target.value)} disabled={disabled}>
                         <option value="">Pick a {ROLE_NOUN[role]}...</option>
                         {options.filter((s) => s.user_id === userId || !value.includes(s.user_id)).map((s) => (
                             <option key={s.user_id} value={s.user_id}>{s.name}</option>
                         ))}
                     </select>
                     {!disabled && ordered && i > 0 && (
-                        <button type="button" className="border px-2" onClick={() => moveUp(i)}>Move up</button>
+                        <button type="button" onClick={() => moveUp(i)}>Move up</button>
                     )}
                     {!disabled && value.length > 1 && (
-                        <button type="button" className="border px-2" onClick={() => onChange(value.filter((_, j) => j !== i))}>
+                        <button type="button" onClick={() => onChange(value.filter((_, j) => j !== i))}>
                             Remove
                         </button>
                     )}
                 </div>
             ))}
             {!disabled && value.length < options.length && (
-                <button type="button" className="border px-2" onClick={() => onChange([...value, ''])}>
+                <button type="button" onClick={() => onChange([...value, ''])}>
                     Add {ROLE_NOUN[role]}
                 </button>
             )}
@@ -250,12 +250,12 @@ const ApprovalRoutingPage = () => {
                 ) : (
                     <p><span className="font-semibold">Approval authority:</span> {tierLabel(pkg.approval_tier) ?? '—'}</p>
                 )}
-                <table className="border-collapse text-sm mt-2">
+                <table className="mt-2">
                     <tbody>
                         {APPROVAL_TIERS.map((t) => (
                             <tr key={t.value}>
-                                <td className="border px-2 font-semibold">{t.label}</td>
-                                <td className="border px-2">{t.rule}</td>
+                                <td className="font-semibold">{t.label}</td>
+                                <td>{t.rule}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -278,7 +278,7 @@ const ApprovalRoutingPage = () => {
 
             {editable && (
                 <div className="sticky bottom-0 bg-white border-t py-3 flex gap-4 items-center">
-                    <button type="submit" className="border px-4 py-2" disabled={saving || !ready}>
+                    <button type="submit" disabled={saving || !ready}>
                         {saving ? 'Saving...' : canPick ? 'Send for review' : 'Save changes'}
                     </button>
                     {saved && <span className="text-green-700">{saved}</span>}

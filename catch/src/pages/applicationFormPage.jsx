@@ -6,6 +6,8 @@ import { UserAuth } from '../context/authContext';
 import { fetchProfile, getOrCreateDraft, refreshApplication } from './applicationForm/api';
 import ApplicationSummary from './applicationForm/applicationSummary';
 import { buildSteps } from './applicationForm/steps';
+import { Check } from 'lucide-react';
+import ApplicantShell from '../components/applicantShell';
 import { isProfileComplete } from './applicationForm/validators';
 
 // Which steps the applicant has saved at least once (so optional steps can't be skipped unseen)
@@ -77,19 +79,31 @@ const ApplicationFormPage = () => {
     }, [requestedId, userId]);
 
     if (needsProfile) return <Navigate to="/profilePage?next=apply" replace />;
-    if (loading) return <p>Loading application...</p>;
-    if (error) return <p className="text-red-600">{error}</p>;
+    if (loading) return <ApplicantShell><p>Opening your application...</p></ApplicantShell>;
+    if (error) return <ApplicantShell><p className="ct-error" role="alert">{error}</p></ApplicantShell>;
     if (!app) return null;
+
+    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || session?.user?.email;
+    const initials = (fullName ?? '?').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join('');
+    const loanAmount = app.loan_amount ? `PHP ${Number(app.loan_amount).toLocaleString()}` : 'Not set yet';
 
     if (app.status !== 'DRAFT') {
         return (
-            <div className="max-w-3xl m-auto p-4">
-                <h2>Application {app.application_no}</h2>
-                <p>Status: <strong>{app.status}</strong></p>
-                {app.submitted_at && <p>Submitted: {new Date(app.submitted_at).toLocaleString()}</p>}
-                <p className="py-2"><Link to="/applicantHomePage" className="underline">Back to home</Link></p>
-                <ApplicationSummary app={app} />
-            </div>
+            <ApplicantShell wide={false}>
+                <div className="ct-pagehead">
+                    <div>
+                        <h1>Application <span className="ct-mono">{app.application_no}</span></h1>
+                        <p>{app.submitted_at ? `Submitted ${new Date(app.submitted_at).toLocaleDateString()}` : 'Not submitted'}</p>
+                    </div>
+                    <span className="ct-badge">{app.status}</span>
+                </div>
+                <div className="ct-card">
+                    <div className="ct-sheet-body">
+                        <ApplicationSummary app={app} />
+                    </div>
+                </div>
+                <p style={{ marginTop: '1rem' }}><Link to="/applicantHomePage" className="ct-link">Back to your applications</Link></p>
+            </ApplicantShell>
         );
     }
 
@@ -97,7 +111,9 @@ const ApplicationFormPage = () => {
     const openIndex = firstOpenIndex(steps, visited);
     const requestedIndex = steps.findIndex((s) => s.key === currentKey);
     // If an earlier step became incomplete (e.g. civil status changed to Married), fall back to it
-    const currentIndex = requestedIndex === -1 ? openIndex : Math.min(requestedIndex, openIndex);
+    // Design preview: `npm run dev` only, never in a production build. Lets every step be opened without filling the ones before it.
+    const previewAll = import.meta.env.DEV;
+    const currentIndex = requestedIndex === -1 ? openIndex : (previewAll ? requestedIndex : Math.min(requestedIndex, openIndex));
     const step = steps[currentIndex];
 
     const refresh = async () => {
@@ -117,38 +133,88 @@ const ApplicationFormPage = () => {
 
     const { Component } = step;
 
-    return (
-        <div className="flex gap-6 p-4 text-left">
-            <nav className="w-56 shrink-0">
-                <p className="font-semibold pb-2">Housing Loan Application</p>
-                <ol>
-                    {steps.map((s, i) => (
-                        <li key={s.key}>
-                            <button type="button" disabled={i > openIndex}
-                                className={`py-1 text-left ${i === currentIndex ? 'font-bold underline' : ''} ${i > openIndex ? 'opacity-40' : ''}`}
-                                onClick={() => setCurrentKey(s.key)}>
-                                {i + 1}. {s.title} {s.complete && visited.includes(s.key) ? '✓' : ''}
-                            </button>
-                        </li>
-                    ))}
-                </ol>
-                <p className="pt-4"><Link to="/applicantHomePage" className="underline">Save & exit</Link></p>
-            </nav>
+    const GROUPS = [
+        ['Your loan', ['loan']],
+        ['About you', ['principalInfo', 'principalAddress', 'principalEmployment', 'spouse', 'coBorrowers', 'mortgagor']],
+        ['Your finances and references', ['obligations', 'references', 'collateral']],
+        ['Finish', ['documents', 'review']],
+    ];
+    const groupStart = Object.fromEntries(GROUPS.map(([label, keys]) => [keys[0], label]));
+    const doneCount = steps.filter((s) => s.complete && visited.includes(s.key)).length;
+    const progress = doneCount / (steps.length - 1); // the review step can't be "done" until submitted
 
-            <main className="flex-1">
-                <h2>{currentIndex + 1}. {step.title}</h2>
-                <Component
-                    key={step.key}
-                    {...step.props}
-                    app={app}
-                    session={session}
-                    profile={profile}
-                    complete={step.complete}
-                    onSaved={handleSaved}
-                    onRefresh={refresh}
-                    onBack={currentIndex > 0 ? () => setCurrentKey(steps[currentIndex - 1].key) : null}
-                />
-            </main>
+    return (
+        <div className="ct-shell">
+            <aside className="ct-aside" aria-label="Application progress">
+                <div className="ct-aside-inner">
+                    <div className="ct-prog-head">
+                        <div className="ct-profile">
+                            <span className="ct-avatar lg" aria-hidden="true">{initials}</span>
+                            <div>
+                                <h2>{fullName}</h2>
+                                <p className="id ct-mono">{app.application_no ?? 'DRAFT APPLICATION'}</p>
+                                <span className="ct-badge warm">Draft</span>
+                            </div>
+                        </div>
+
+                        <div className="ct-prog-meter">
+                            <span className="ct-label">Application progress</span>
+                            <p className="ct-meter-label"><span><strong>{doneCount}</strong> of {steps.length - 1} steps done</span><span>{Math.round(progress * 100)}%</span></p>
+                            <div className="ct-meter" role="progressbar" aria-label="Application progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+                                <span style={{ width: `${progress * 100}%` }} />
+                            </div>
+                        </div>
+
+                        <div className="ct-box">
+                            <span className="ct-label">Loan summary</span>
+                            <div className="ct-kv"><span>Type</span><span>Housing loan</span></div>
+                            <div className="ct-kv"><span>Amount</span><span className="ct-mono">{loanAmount}</span></div>
+                            <div className="ct-kv"><span>Status</span><span>Draft</span></div>
+                        </div>
+
+                    </div>
+
+                    <ol className="ct-steps">
+                        {steps.map((s, i) => (
+                            <li key={s.key} data-group={groupStart[s.key]} className={s.complete && visited.includes(s.key) ? 'is-done' : ''}>
+                                <button type="button" disabled={i > openIndex && !previewAll}
+                                    aria-current={i === currentIndex ? 'step' : undefined}
+                                    onClick={() => setCurrentKey(s.key)}>
+                                    <span className="n">{s.complete && visited.includes(s.key) ? <Check size={11} aria-label="done" /> : i + 1}</span>
+                                    <span>{s.title}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ol>
+                </div>
+            </aside>
+            <p className="ct-prog-exit"><Link to="/applicantHomePage" className="ct-link">Save and exit</Link></p>
+
+            <section className="ct-content">
+                <div className="inner">
+                    <div className="ct-pagehead">
+                        <div>
+                            <h1>{step.title}</h1>
+                            <p>Step {currentIndex + 1} of {steps.length}. Your answers save when you continue.</p>
+                        </div>
+                    </div>
+                    <div className="ct-card">
+                        <div className="ct-sheet-body">
+                            <Component
+                                key={step.key}
+                                {...step.props}
+                                app={app}
+                                session={session}
+                                profile={profile}
+                                complete={step.complete}
+                                onSaved={handleSaved}
+                                onRefresh={refresh}
+                                onBack={currentIndex > 0 ? () => setCurrentKey(steps[currentIndex - 1].key) : null}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 };

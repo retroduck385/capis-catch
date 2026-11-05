@@ -30,12 +30,12 @@ const Info = ({ rows }) => (
 );
 
 const Cell = ({ children, className = '' }) => <td className={`border px-2 align-top ${className}`}>{children}</td>;
-const Head = ({ children }) => <th className="border px-2 text-left align-top">{children}</th>;
+const Head = ({ children }) => <th className="text-left align-top">{children}</th>;
 
 const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required }) => (
     <div className="flex flex-col py-2 text-left">
         <label htmlFor={name}>{label}{required && <span className="text-red-600"> *</span>}</label>
-        <textarea id={name} className="p-2 mt-1 border" rows={rows} value={value ?? ''} disabled={disabled}
+        <textarea id={name} className="p-2 mt-1" rows={rows} value={value ?? ''} disabled={disabled}
             onChange={(e) => onChange(name, e.target.value)} />
     </div>
 );
@@ -78,7 +78,7 @@ export const HighlightsSection = ({ app, computed }) => (
     <Section title="I. Borrower/s Highlight">
         <KycNote />
         <div className="overflow-x-auto">
-            <table className="border-collapse">
+            <table>
                 <thead>
                     <tr>
                         <Head>Applicant Type</Head><Head>Name</Head><Head>Employer / Business Name</Head>
@@ -181,7 +181,7 @@ export const CollateralSection = ({ app, form, onPkg, disabled }) => {
 // ---------- IV. Credit checking (from the CI; not built yet) ----------
 export const CreditCheckingSection = ({ app }) => (
     <Section title="IV. Credit Checking">
-        <table className="border-collapse">
+        <table>
             <thead><tr><Head>Name</Head><Head>BRAS</Head><Head>NFIS</Head></tr></thead>
             <tbody>
                 {getParties(app, BORROWER_ROLES).map((p) => (
@@ -221,14 +221,14 @@ export const RowsSection = ({ title, config, rows, onChange, disabled, children 
                         ))}
                     </div>
                     {!disabled && (
-                        <button type="button" className="border px-3 py-1" onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+                        <button type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))}>
                             Remove
                         </button>
                     )}
                 </div>
             ))}
             {!disabled && (
-                <button type="button" className="border px-3 py-1"
+                <button type="button"
                     onClick={() => onChange([...rows, { _key: crypto.randomUUID() }])}>
                     + Add
                 </button>
@@ -243,7 +243,7 @@ export const TermsSection = ({ form, onPkg, onReset, disabled }) => (
         <TextArea name="terms_and_conditions" label="Terms and Conditions" rows={16} value={form.terms_and_conditions}
             onChange={onPkg} disabled={disabled} />
         {!disabled && (
-            <button type="button" className="border px-3 py-1" onClick={onReset}>
+            <button type="button" onClick={onReset}>
                 Reset to template (fills in developer, rate and fixing period)
             </button>
         )}

@@ -2,13 +2,14 @@
 // "Are you married?", which reads and writes the principal's civil status.
 import { useState } from 'react';
 import { deleteParty, getAddress, getParty, toForm, updateParty, upsertAddress, upsertParty } from '../api';
-import { AddressFields, Field, FormError, PersonFields, Section, StepButtons, YesNo } from '../fields';
+import { AddressFields, Field, FormError, PersonCards, Section, StepButtons, YesNo } from '../fields';
 import { ADDRESS_KEYS, CIVIL_STATUSES, PARTY_FIELDS, partyLabel } from '../options';
 import useEmploymentForm from '../useEmploymentForm';
 import { hasErrors, validateAddress, validatePerson } from '../validators';
 import EmploymentSection from './employmentSection';
 
 const NOT_MARRIED = CIVIL_STATUSES.filter((o) => o.value !== 'MARRIED');
+
 
 const PartyStep = ({ app, role, partyNo = 1, onSaved, onBack }) => {
     const principal = getParty(app, 'PRINCIPAL');
@@ -91,7 +92,7 @@ const PartyStep = ({ app, role, partyNo = 1, onSaved, onBack }) => {
     return (
         <form onSubmit={handleSubmit}>
             {isSpouse && (
-                <Section title="Are you married?">
+                <Section title="Are you married?" className="ct-cols-4">
                     <YesNo name="married" value={married} onChange={setMarried} />
                     {married === false && (
                         <Field name="civil_status" label="Civil Status" required options={NOT_MARRIED}
@@ -105,11 +106,9 @@ const PartyStep = ({ app, role, partyNo = 1, onSaved, onBack }) => {
 
             {married && (
                 <>
-                    <Section title={`${label}'s Information`}>
-                        <PersonFields role={role} values={person} errors={errors.person}
-                            onChange={(f, v) => setPerson((p) => ({ ...p, [f]: v }))} />
-                    </Section>
-                    <Section title={`${label}'s Address`}>
+                    <PersonCards role={role} values={person} errors={errors.person} firstTitle={`${label}'s Information`}
+                        onChange={(f, v) => setPerson((p) => ({ ...p, [f]: v }))} />
+                    <Section title={`${label}'s Address`} className="ct-cols-4">
                         <Field name={`${role}-same_as_principal`} type="checkbox"
                             label="Same as Principal Borrower's present address?"
                             value={address.same_as_principal}

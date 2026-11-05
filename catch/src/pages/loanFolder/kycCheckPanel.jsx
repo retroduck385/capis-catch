@@ -57,11 +57,11 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
                         checked={result === 'NEEDS_CLARIFICATION'} onChange={() => setResult('NEEDS_CLARIFICATION')} /> Needs clarification
                 </label>
             </div>
-            <textarea className="border w-full p-1" rows={2}
+            <textarea className="w-full p-1" rows={2}
                 placeholder={result === 'NEEDS_CLARIFICATION' ? 'What needs clarification (required)' : 'Remarks (optional)'}
                 value={remarks} onChange={(e) => setRemarks(e.target.value)} />
             <FormError error={error} />
-            <button type="submit" className="border px-4 py-2" disabled={saving}>
+            <button type="submit" disabled={saving}>
                 {saving ? 'Saving...' : 'Record check'}
             </button>
         </form>

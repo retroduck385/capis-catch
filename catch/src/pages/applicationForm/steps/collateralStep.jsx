@@ -4,6 +4,13 @@ import { FieldGroup, FormError, Section, StepButtons } from '../fields';
 import { COLLATERAL_FIELDS, REFERRAL_FIELDS } from '../options';
 import { hasErrors, validateCollateral, validateReferral } from '../validators';
 
+// Collateral fields grouped into cards of up to four per row
+const COLLATERAL_GROUPS = [
+    ['Collateral Details', ['project_name', 'property_type', 'lot_area', 'floor_area']],
+    ['Ownership and price', ['registered_owner', 'tct_cct_no', 'selling_price']],
+    ['Property contact', ['contact_person', 'contact_number']],
+];
+
 const CollateralStep = ({ app, onSaved, onBack }) => {
     const [collateral, setCollateral] = useState(() =>
         toForm(one(app.collateral_details), Object.keys(COLLATERAL_FIELDS)));
@@ -34,13 +41,15 @@ const CollateralStep = ({ app, onSaved, onBack }) => {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Section title="Collateral Details">
-                <FieldGroup config={COLLATERAL_FIELDS} fields={Object.keys(COLLATERAL_FIELDS)}
-                    required={['property_type', 'selling_price', 'registered_owner']}
-                    values={collateral} errors={errors.collateral} prefix="collateral-"
-                    onChange={(f, v) => setCollateral((c) => ({ ...c, [f]: v }))} />
-            </Section>
-            <Section title="Referral Details">
+            {COLLATERAL_GROUPS.map(([title, keys]) => (
+                <Section key={title} title={title} className="ct-cols-4">
+                    <FieldGroup config={COLLATERAL_FIELDS} fields={keys}
+                        required={['property_type', 'selling_price', 'registered_owner']}
+                        values={collateral} errors={errors.collateral} prefix="collateral-"
+                        onChange={(f, v) => setCollateral((c) => ({ ...c, [f]: v }))} />
+                </Section>
+            ))}
+            <Section title="Referral Details" className="ct-cols-4">
                 <FieldGroup config={REFERRAL_FIELDS} fields={Object.keys(REFERRAL_FIELDS)}
                     required={referral.channel === 'DEVELOPER' ? ['channel', 'developer_name'] : ['channel']}
                     values={referral} errors={errors.referral} prefix="referral-"
