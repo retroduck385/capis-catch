@@ -5,6 +5,7 @@ import { fetchApplication } from '../applicationForm/api';
 import { fetchStaffNames } from '../loanFolder/api';
 import { fetchCiRequests } from './api';
 import CiRequestForms from './ciRequestForms';
+import MessagesPanel from '../messages/messagesPanel';
 
 const Remarks = ({ title, text }) => (
     <div className="border p-3 my-3 text-left">
@@ -50,6 +51,7 @@ const CiRequestPage = () => {
 
     return (
         <div className="max-w-5xl m-auto p-4 text-left">
+            <MessagesPanel applicationId={app.id} />
             <p><Link to="/adminHomePage" className="underline">Back to work tray</Link></p>
             <h2>CI request: {app.application_no}</h2>
             {request ? (
