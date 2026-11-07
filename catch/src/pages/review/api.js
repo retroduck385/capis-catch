@@ -30,14 +30,11 @@ export const fetchCurrentStage = async (applicationId) => {
     return { stage: row.stage, status: latest?.status ?? null, enteredAt: row.entered_at };
 };
 
-const routing = (applicationId, tier, reviewers, approvers) => ({
-    p_application_id: applicationId, p_tier: tier, p_reviewers: reviewers, p_approvers: approvers,
-});
+// Assigned CO: saves the reviewers, the DB sets the authority + approvers from the matrix, moves to Review
+export const sendForReview = async (applicationId, reviewers) =>
+    check(await supabase.rpc('send_for_review', { p_application_id: applicationId, p_reviewers: reviewers }));
 
-// Assigned CO: saves the routing and moves the application to Review
-export const sendForReview = async (applicationId, tier, reviewers, approvers) =>
-    check(await supabase.rpc('send_for_review', routing(applicationId, tier, reviewers, approvers)));
-
-// Dept Head / Dispatch Admin, after sending
-export const updateReviewRouting = async (applicationId, tier, reviewers, approvers) =>
-    check(await supabase.rpc('update_review_routing', routing(applicationId, tier, reviewers, approvers)));
+// Dept Head / Dispatch Admin, after sending: reviewers + authority override; approvers follow the authority
+export const updateReviewRouting = async (applicationId, tier, reviewers) =>
+    check(await supabase.rpc('update_review_routing',
+        { p_application_id: applicationId, p_tier: tier, p_reviewers: reviewers }));

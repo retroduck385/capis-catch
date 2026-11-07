@@ -1,7 +1,9 @@
-// VII. Approval (KYC-FP "FP" tab), opened from the Financial Package. The assigned CO picks the approval
-// authority (suggested from the loan amount + V. Exception/s), the reviewer/s in review order and the
-// approver/s, then sends the application for review (send_for_review(): moves it to Review).
-// After sending, the Dept Head or the Dispatch Admin can still change it (update_review_routing()).
+// VII. Approval (KYC-FP "FP" tab), opened from the Financial Package. The approval authority comes from the
+// bank's matrix (loan amount + V. Exception/s) and the approvers from the authority (Approver accounts with
+// a matching position): both automatic. The assigned CO only picks the reviewer/s in review order, then
+// sends the application for review (send_for_review(): moves it to Review).
+// After sending, the Dept Head or the Dispatch Admin can change the reviewers or override the authority
+// (update_review_routing()); the approvers follow the authority.
 // Everyone else with access reads.
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -16,7 +18,10 @@ import { totalCreditScore } from '../financialPackage/creditScore';
 import { CREDIT_RESULTS } from '../financialPackage/options';
 import { STAGE_STATUS_LABELS, stageLabel } from '../workTray/options';
 import { fetchCurrentStage, fetchReviewAssignments, fetchReviewStaff, sendForReview, updateReviewRouting } from './api';
-import { APPROVAL_TIERS, splitRouting, suggestApprovalTier, tierLabel } from './approval';
+import {
+    AMOUNT_BANDS, APPROVAL_TIERS, amountBand, approversFor, missingApprovers, positionLabel, splitRouting,
+    suggestApprovalTier, tierFor, tierLabel,
+} from './approval';
 import RoutingSummary from './routingSummary';
 
 const SEND_STAGES = ['CREDIT_INVESTIGATION', 'CREDIT_EVALUATION'];
@@ -37,14 +42,34 @@ const loadRouting = async (record) => {
     };
 };
 
-// Current routing, or the suggested tier + one empty reviewer / approver slot
+// Current routing, or the matrix's authority + one empty reviewer slot
 const formOf = (record, { fp, rows }) => {
-    const { reviewers, approvers } = splitRouting(rows);
+    const { reviewers } = splitRouting(rows);
     return {
         tier: fp.pkg?.approval_tier ?? suggestApprovalTier(record.loan_amount, fp.exceptions.length > 0) ?? '',
         reviewers: reviewers.length ? reviewers.map((r) => r.user_id) : [''],
-        approvers: approvers.length ? approvers.map((r) => r.user_id) : [''],
     };
+};
+
+// Who the authority routes to, and what's missing (read-only; set by the DB on send / update)
+const AutoApprovers = ({ staff, tier }) => {
+    if (!tier) return <p className="italic">No approval authority yet (no loan amount).</p>;
+    const list = approversFor(staff, tier);
+    const missing = missingApprovers(staff, tier);
+    return (
+        <div className="py-2">
+            <p className="font-semibold">Approved by (automatic, from the approval authority)</p>
+            <p className="text-sm">{APPROVAL_TIERS.find((t) => t.value === tier)?.rule}</p>
+            {list.length > 0 && (
+                <ul className="list-disc pl-6">
+                    {list.map((s) => <li key={s.user_id}>{s.name} · {positionLabel(s.approval_position)}</li>)}
+                </ul>
+            )}
+            {missing.map((m) => (
+                <p key={m} className="text-red-600">No approver account for: {m}. The Department Head adds one in Staff Accounts.</p>
+            ))}
+        </div>
+    );
 };
 
 // Ordered list of people of one role; '' = slot not picked yet
@@ -63,7 +88,7 @@ const PeoplePicker = ({ title, role, ordered, staff, value, onChange, disabled }
                 <div key={i} className="flex gap-2 items-center py-1">
                     {ordered && <span>{i + 1}.</span>}
                     <select value={userId} onChange={(e) => set(i, e.target.value)} disabled={disabled} className="border">
-                        <option value="">Pick a {ROLE_NOUN[role]}...</option>
+                        <option value="">Pick {role === 'APPROVER' ? 'an' : 'a'} {ROLE_NOUN[role]}...</option>
                         {options.filter((s) => s.user_id === userId || !value.includes(s.user_id)).map((s) => (
                             <option key={s.user_id} value={s.user_id}>{s.name}</option>
                         ))}
@@ -98,7 +123,7 @@ const ApprovalRoutingPage = () => {
     const [data, setData] = useState(null); // loadRouting()
     const [staff, setStaff] = useState([]);
     const [isAssignedCo, setIsAssignedCo] = useState(false);
-    const [form, setForm] = useState(null); // { tier, reviewers: [user_id | ''], approvers: [...] }
+    const [form, setForm] = useState(null); // { tier, reviewers: [user_id | ''] }
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -145,6 +170,10 @@ const ApprovalRoutingPage = () => {
     const pkg = fp.pkg ?? {};
     const deviations = fp.exceptions.length;
     const suggestion = suggestApprovalTier(app.loan_amount, deviations > 0);
+    const band = amountBand(app.loan_amount);
+    // The CO can't change the authority; heads can override it after sending
+    const tier = canUpdate ? form.tier : canPick ? suggestion : pkg.approval_tier;
+    const missing = tier ? missingApprovers(staff, tier) : [];
     const score = totalCreditScore(rules, Object.fromEntries(fp.creditScore.map((r) => [r.criterion, r])));
     const resultOk = pkg.credit_result && pkg.credit_result !== 'DEFERRED';
     const resultLabel = CREDIT_RESULTS.find((r) => r.value === pkg.credit_result)?.label;
@@ -153,12 +182,12 @@ const ApprovalRoutingPage = () => {
     const blockers = canPick ? [
         !stageOk && `Sending works from Credit Investigation or Credit Evaluation; this application is in ${stage ? stageLabel(stage.stage) : 'no stage'}${stage?.stage === 'INTAKE' ? ' (the AO requests CI first)' : ''}.`,
         !resultOk && 'Save a Credit Result (Endorsed / Not endorsed) in the Financial Package.',
-        !form.tier && 'Pick the approval authority.',
+        !tier && 'The application needs a loan amount for the approval authority.',
+        missing.length > 0 && 'Some approver positions this authority needs have no account (see Reviewers and approvers).',
         picked(form.reviewers).length === 0 && 'Pick at least one reviewer.',
-        picked(form.approvers).length === 0 && 'Pick at least one approver.',
     ].filter(Boolean) : [];
     const ready = canPick ? blockers.length === 0
-        : form.tier && picked(form.reviewers).length > 0 && picked(form.approvers).length > 0;
+        : tier && missing.length === 0 && picked(form.reviewers).length > 0;
 
     const change = (next) => {
         setForm(next);
@@ -168,12 +197,12 @@ const ApprovalRoutingPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (canPick && !window.confirm(`Send ${app.application_no} for review? It moves to Review, and the reviewers and `
-            + 'approvers you picked will see it in their work tray. Only the Dept Head or the Dispatch Admin can change them afterwards.')) return;
+            + `approvers for ${tierLabel(tier)} will see it in their work tray. Only the Dept Head or the Dispatch Admin can change it afterwards.`)) return;
         setSaving(true);
         try {
             setError(null);
-            const args = [app.id, form.tier, picked(form.reviewers), picked(form.approvers)];
-            await (canPick ? sendForReview(...args) : updateReviewRouting(...args));
+            await (canPick ? sendForReview(app.id, picked(form.reviewers))
+                : updateReviewRouting(app.id, form.tier, picked(form.reviewers)));
             const routingData = await loadRouting(app);
             setData(routingData);
             setForm(formOf(app, routingData));
@@ -234,10 +263,10 @@ const ApprovalRoutingPage = () => {
                     Loan amount: {app.loan_amount ? `₱${formatMoney(app.loan_amount)}` : '—'} ·{' '}
                     {deviations > 0 ? `with deviation (${deviations} in V. Exception/s)` : 'no deviation (V. Exception/s is empty)'}
                 </p>
-                <p>Suggested: <span className="font-semibold">{tierLabel(suggestion) ?? 'no loan amount'}</span></p>
-                {editable ? (
+                <p>From the matrix: <span className="font-semibold">{tierLabel(suggestion) ?? 'no loan amount'}</span></p>
+                {canUpdate ? (
                     <label className="block py-1">
-                        Approval authority{' '}
+                        Approval authority (override){' '}
                         <select value={form.tier} onChange={(e) => change({ ...form, tier: e.target.value })}
                             disabled={saving} className="border">
                             <option value="">Pick...</option>
@@ -248,19 +277,35 @@ const ApprovalRoutingPage = () => {
                         )}
                     </label>
                 ) : (
-                    <p><span className="font-semibold">Approval authority:</span> {tierLabel(pkg.approval_tier) ?? '—'}</p>
+                    <p><span className="font-semibold">Approval authority:</span> {tierLabel(tier) ?? '—'}
+                        {canPick && <span className="italic"> (set automatically when you send)</span>}</p>
                 )}
                 <table className="border-collapse text-sm mt-2">
+                    <thead>
+                        <tr>
+                            <th className="border px-2 text-left">Loan amount</th>
+                            <th className="border px-2 text-left">Without deviation</th>
+                            <th className="border px-2 text-left">With deviation</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        {APPROVAL_TIERS.map((t) => (
-                            <tr key={t.value}>
-                                <td className="border px-2 font-semibold">{t.label}</td>
-                                <td className="border px-2">{t.rule}</td>
+                        {AMOUNT_BANDS.map((b, i) => (
+                            <tr key={b.label}>
+                                <td className={`border px-2 font-semibold ${i === band ? 'bg-yellow-100' : ''}`}>{b.label}</td>
+                                {[false, true].map((dev) => {
+                                    const t = APPROVAL_TIERS.find((x) => x.value === tierFor(i, dev));
+                                    const here = i === band && dev === deviations > 0;
+                                    return (
+                                        <td key={String(dev)} className={`border px-2 ${here ? 'bg-yellow-100 font-semibold' : ''}`}>
+                                            {t.rule}
+                                        </td>
+                                    );
+                                })}
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                <p className="italic text-sm pt-1">From the sheet's VII. Approval labels. The President's range isn't on the sheet (to confirm with the bank).</p>
+                <p className="italic text-sm pt-1">From the bank's authority-limit matrix. The highlighted cell applies to this application.</p>
             </Section>
 
             <Section title="Reviewers and approvers">
@@ -268,8 +313,7 @@ const ApprovalRoutingPage = () => {
                     <>
                         <PeoplePicker title="Reviewed by (in review order)" role="REVIEWER" ordered staff={staff}
                             value={form.reviewers} onChange={(v) => change({ ...form, reviewers: v })} disabled={saving} />
-                        <PeoplePicker title="Approved by" role="APPROVER" staff={staff}
-                            value={form.approvers} onChange={(v) => change({ ...form, approvers: v })} disabled={saving} />
+                        <AutoApprovers staff={staff} tier={tier} />
                     </>
                 ) : (
                     <RoutingSummary tier={pkg.approval_tier} rows={rows} names={names} myId={myId} />

@@ -60,7 +60,7 @@ export const HeaderSection = ({ app, aoName, form, onPkg, disabled, score, score
                         Open Credit Scoring
                     </Link>{' '}
                     <Link to={approvalLink} onClick={onOpenScore} className="inline-block border px-3 py-1">
-                        VII. Approval (pick reviewers / approvers)
+                        VII. Approval (pick reviewers)
                     </Link>
                 </div>
                 <Info rows={[
