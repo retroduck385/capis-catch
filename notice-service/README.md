@@ -14,6 +14,9 @@ The AO sees each channel's status in the panel.
 - `NOTICE_MODE=live`: sends for real, but only to the numbers / addresses in `NOTICE_LIVE_ALLOWLIST` (the team's own),
   until the Data Privacy sessions clear sending to applicants (Q-04). Anything else is printed and marked LOGGED.
   `NOTICE_LIVE_ALLOWLIST=yes-q04-cleared` sends to everyone: only once Q-04 is cleared.
+  Brevo (`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`) is required in live mode. SMS is optional: leave `SEMAPHORE_API_KEY`
+  empty and SMS notices are printed and marked LOGGED (the same as log mode) while email still sends for real. The worker
+  says "SMS is off" once at startup.
 
 No message ever contains a link: the database refuses a reason with one, and the worker checks again before sending.
 

@@ -8,6 +8,8 @@
 NOTICE_MODE=log (default): nothing is sent; each delivery is printed and marked LOGGED.
 NOTICE_MODE=live: sends for real, but only to destinations in NOTICE_LIVE_ALLOWLIST (the team's own numbers and
   addresses) until the Data Privacy sessions clear it (Q-04); others are printed and marked LOGGED.
+  Brevo keys are required. SMS is optional: with SEMAPHORE_API_KEY empty, SMS deliveries are printed and marked LOGGED
+  (as in log mode) while email still sends.
 Every text is checked again for links (notice_link_in() in the database) right before it is sent.
 """
 
@@ -60,11 +62,15 @@ def make_providers(config, env=os.environ, out=print):
     log = LogProvider(out=out)
     if config["mode"] == "log":
         return {"SMS": log, "EMAIL": log, "log": log}
-    return {
-        "SMS": SemaphoreSms(env.get("SEMAPHORE_API_KEY"), env.get("SEMAPHORE_SENDER_NAME") or None),
-        "EMAIL": BrevoEmail(env.get("BREVO_API_KEY"), env.get("BREVO_SENDER_EMAIL"), env.get("BREVO_SENDER_NAME") or "CATCH"),
-        "log": LogProvider(out=out, note=", not on NOTICE_LIVE_ALLOWLIST"),
-    }
+    email = BrevoEmail(env.get("BREVO_API_KEY"), env.get("BREVO_SENDER_EMAIL"), env.get("BREVO_SENDER_NAME") or "CATCH")
+    sms_key = (env.get("SEMAPHORE_API_KEY") or "").strip()
+    if sms_key:
+        sms = SemaphoreSms(sms_key, env.get("SEMAPHORE_SENDER_NAME") or None)
+    else:
+        # SMS off: printed and marked LOGGED, the same as log mode; email still sends
+        sms = LogProvider(out=out, note=", SMS off")
+        out("SMS is off (SEMAPHORE_API_KEY is empty): SMS notices are printed and marked LOGGED; email still sends through Brevo")
+    return {"SMS": sms, "EMAIL": email, "log": LogProvider(out=out, note=", not on NOTICE_LIVE_ALLOWLIST")}
 
 
 def link_in(client, text):
