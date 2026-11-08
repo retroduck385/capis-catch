@@ -111,6 +111,13 @@ def process(client, delivery, config, providers, out=print):
         return status
 
 
+def process_batch(client, jobs, config, providers, out=print):
+    # Oldest first: claim_notice_deliveries() picks the oldest ids, but UPDATE ... RETURNING doesn't keep that order,
+    # and a correction must never go out before the notice it corrects
+    for job in sorted(jobs, key=lambda j: j["id"]):
+        process(client, job, config, providers, out)
+
+
 def preview(client, out=print):
     rows = (client.table("applicant_notice_deliveries").select("id, channel, destination, subject, body, status, attempts")
             .in_("status", ["QUEUED", "RUNNING"]).order("id").execute().data)
@@ -128,8 +135,7 @@ def work(once, interval, out=print):
     out(f"Notice worker started in {config['mode']} mode" + ("" if once else f", polling every {interval}s"))
     while True:
         jobs = client.rpc("claim_notice_deliveries", {"p_limit": 5}).execute().data or []
-        for job in jobs:
-            process(client, job, config, providers, out)
+        process_batch(client, jobs, config, providers, out)
         if not jobs:
             if once:
                 return
