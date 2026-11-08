@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
+import ApplicantShell, { BrandPanel } from '../components/applicantShell';
 
 const LoginPage = () => {
     const [email, setEmail] = useState ("");
@@ -34,31 +35,30 @@ const LoginPage = () => {
     }
 
     return(
-    <div> 
-        <form onSubmit={ handleSignIn } className = "max-w-md m-auto pt-24">
-            <h2> Login here! </h2>
-            <p> Don't have an account? <Link to ="/signUpPage"> Sign up!</Link></p>
-
-            <div className= "flex flex-col py-4">
-                <input 
-                onChange={(e) => setEmail(e.target.value)} 
-                placeholder = "Email" 
-                className="p-3 mt-2 bg-black" 
-                type = "email"
-                />
-                <input 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder = "Password" 
-                className="p-3 mt-2 bg-black" 
-                type = "password"
-                />
-            </div>
-            <button type = "submit" disabled = {loading} className="p-3 mt-2 bg-black"> 
-                Login 
-            </button>
-            {error && <p className="text-red-600 text-center pt-4">{error}</p>}
-        </form>
-    </div>
+    <ApplicantShell bare>
+        <BrandPanel heading="Lorem ipsum dolor sit amet." lede="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." />
+        <section className="ct-auth-panel">
+            <form onSubmit={ handleSignIn } className="ct-card">
+                <h2>Sign in</h2>
+                <p>Use the email and password you registered with.</p>
+                <div className="fields">
+                    <label>
+                        Email
+                        <input value={email} onChange={(e) => setEmail(e.target.value)}
+                            type="email" autoComplete="email" required />
+                    </label>
+                    <label>
+                        Password
+                        <input value={password} onChange={(e) => setPassword(e.target.value)}
+                            type="password" autoComplete="current-password" required />
+                    </label>
+                </div>
+                <button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</button>
+                {error && <p className="ct-error" role="alert">{error}</p>}
+                <p style={{ marginTop: '1.25rem' }}>New here? <Link to="/signUpPage">Create an account</Link></p>
+            </form>
+        </section>
+    </ApplicantShell>
 );
 };
 

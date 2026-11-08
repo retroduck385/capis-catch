@@ -36,8 +36,8 @@ const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
 const Row = ({ label, children }) => (
     <tr>
-        <td className="border px-2 font-semibold align-top">{label}</td>
-        <td className="border px-2 align-top">{children}</td>
+        <td className="font-semibold align-top">{label}</td>
+        <td className="align-top">{children}</td>
     </tr>
 );
 
@@ -199,7 +199,7 @@ const ReviewSummaryPage = () => {
             </Section>
 
             <Section title="Key figures (from the Financial Package)">
-                <table className="border-collapse">
+                <table>
                     <tbody>
                         <Row label="Loan amount">{money(app.loan_amount)}</Row>
                         <Row label="Term / interest rate">
@@ -250,20 +250,20 @@ const ReviewSummaryPage = () => {
 
             <Section title="V. Exception/s">
                 {fp.exceptions.length === 0 ? <p className="italic">None.</p> : (
-                    <table className="border-collapse">
+                    <table>
                         <thead>
                             <tr className="text-left">
-                                <th className="border px-2">Policy</th>
-                                <th className="border px-2">Exception/s / Recommendation</th>
-                                <th className="border px-2">Risk Mitigant / Justifications</th>
+                                <th>Policy</th>
+                                <th>Exception/s / Recommendation</th>
+                                <th>Risk Mitigant / Justifications</th>
                             </tr>
                         </thead>
                         <tbody>
                             {fp.exceptions.map((x) => (
                                 <tr key={x.id}>
-                                    <td className="border px-2 align-top whitespace-pre-wrap">{x.policy ?? '—'}</td>
-                                    <td className="border px-2 align-top whitespace-pre-wrap">{x.exception_recommendation ?? '—'}</td>
-                                    <td className="border px-2 align-top whitespace-pre-wrap">{x.mitigant ?? '—'}</td>
+                                    <td className="align-top whitespace-pre-wrap">{x.policy ?? '—'}</td>
+                                    <td className="align-top whitespace-pre-wrap">{x.exception_recommendation ?? '—'}</td>
+                                    <td className="align-top whitespace-pre-wrap">{x.mitigant ?? '—'}</td>
                                 </tr>
                             ))}
                         </tbody>

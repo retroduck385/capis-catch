@@ -1,4 +1,4 @@
-// Plain inputs for the application form. Styling is placeholder until the UI pass.
+// Inputs for the application form. Look and feel come from the .ct rules in applicant.css.
 import { useState } from 'react';
 import {
     ADDRESS_FIELDS, EMPLOYMENT_FIELDS, EMPLOYMENT_KEYS, EMPLOYMENT_TYPES, formatMoney, HOME_OWNERSHIP, PARTY_FIELDS,
@@ -7,20 +7,20 @@ import {
 
 // Shows commas while typing (1,500,000.5) and always 2 decimals once you leave the box (1,500,000.50).
 // The value passed to onChange has no commas, so validators and Postgres get a plain number.
-const MoneyInput = ({ id, value, onChange, placeholder, disabled }) => {
+const MoneyInput = ({ id, value, onChange, placeholder, disabled, ...aria }) => {
     const [focused, setFocused] = useState(false);
     return (
-        <input id={id} className="p-2 mt-1 border" type="text" inputMode="decimal"
+        <input id={id} type="text" inputMode="decimal"
             value={formatMoney(value, { fixed: !focused })} placeholder={placeholder ?? '0.00'} disabled={disabled}
-            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} {...aria}
             onChange={(e) => onChange(parseMoney(e.target.value))} />
     );
 };
 
-export const Field = ({ name, label, value, onChange, error, required, type = 'text', options, placeholder, disabled }) => {
+export const Field = ({ name, label, value, onChange, error, required, type = 'text', options, placeholder, disabled, hint }) => {
     if (type === 'checkbox') {
         return (
-            <label className="flex gap-2 items-center py-2 text-left">
+            <label className="ct-check">
                 <input type="checkbox" checked={!!value} disabled={disabled}
                     onChange={(e) => onChange(name, e.target.checked)} />
                 {label}
@@ -28,26 +28,30 @@ export const Field = ({ name, label, value, onChange, error, required, type = 't
         );
     }
 
+    // Ties the error text to its input so screen readers announce it with the field
+    const describedBy = [hint && `${name}-hint`, error && `${name}-error`].filter(Boolean).join(' ');
+    const aria = { ...(error ? { 'aria-invalid': true } : {}), ...(describedBy ? { 'aria-describedby': describedBy } : {}) };
     return (
-        <div className="flex flex-col py-2 text-left">
+        <div className="ct-field">
             <label htmlFor={name}>
                 {label}{required && <span className="text-red-600"> *</span>}
             </label>
             {options ? (
-                <select id={name} className="p-2 mt-1 border" value={value ?? ''} disabled={disabled}
+                <select id={name} value={value ?? ''} disabled={disabled} {...aria}
                     onChange={(e) => onChange(name, e.target.value)}>
-                    <option value="">-- Select --</option>
+                    <option value="">Select one</option>
                     {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
             ) : type === 'money' ? (
-                <MoneyInput id={name} value={value} placeholder={placeholder} disabled={disabled}
+                <MoneyInput id={name} value={value} placeholder={placeholder} disabled={disabled} {...aria}
                     onChange={(v) => onChange(name, v)} />
             ) : (
-                <input id={name} className="p-2 mt-1 border" type={type} value={value ?? ''}
-                    placeholder={placeholder} disabled={disabled} step={type === 'number' ? 'any' : undefined}
+                <input id={name} type={type} value={value ?? ''}
+                    placeholder={placeholder} disabled={disabled} step={type === 'number' ? 'any' : undefined} {...aria}
                     onChange={(e) => onChange(name, e.target.value)} />
             )}
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            {hint && <p id={`${name}-hint`} className="ct-hint">{hint}</p>}
+            {error && <p id={`${name}-error`} className="ct-fielderr">{error}</p>}
         </div>
     );
 };
@@ -63,9 +67,9 @@ export const FieldGroup = ({ config, fields, values, errors = {}, required = [],
     </>
 );
 
-export const Section = ({ title, children }) => (
-    <fieldset className="border p-4 my-4 text-left">
-        <legend className="font-semibold px-1">{title}</legend>
+export const Section = ({ title, children, className = '', id }) => (
+    <fieldset id={id} className={`ct-section ${className}`.trim()}>
+        <legend>{title}</legend>
         {children}
     </fieldset>
 );
@@ -75,6 +79,31 @@ export const PersonFields = ({ role, values, errors, onChange }) => {
     const required = PARTY_FIELDS[role].filter(([, r]) => r).map(([f]) => f);
     return <FieldGroup config={PERSON_FIELDS} fields={fields} required={required}
         values={values} errors={errors} onChange={onChange} prefix={`${role}-`} />;
+};
+
+// A person's fields as cards of up to four per row. Each group shows only the fields that role has, so the same
+// cards serve spouse, co-borrower, mortgagor and attorney-in-fact. firstTitle renames the first card.
+const PERSON_CARDS = [
+    ['Name', ['first_name', 'middle_name', 'last_name', 'name_extension']],
+    ['Personal details', ['relationship_to_principal', 'gender', 'maiden_name', 'civil_status', 'date_of_birth', 'birth_place']],
+    ['Contact', ['mobile_number', 'email_address']],
+    ['Citizenship and government IDs', ['citizenship', 'sss_no', 'tin']],
+];
+
+export const PersonCards = ({ role, values, errors, onChange, firstTitle }) => {
+    const all = PARTY_FIELDS[role].map(([f]) => f);
+    const required = PARTY_FIELDS[role].filter(([, r]) => r).map(([f]) => f);
+    return PERSON_CARDS.map(([title, keys], i) => {
+        const shown = keys.filter((k) => all.includes(k));
+        if (shown.length === 0) return null;
+        const heading = i === 0 && firstTitle ? firstTitle : (title.startsWith('Citizenship') && !shown.includes('citizenship') ? 'Government IDs' : title);
+        return (
+            <Section key={title} title={heading} className="ct-cols-4">
+                <FieldGroup config={PERSON_FIELDS} fields={shown} required={required}
+                    values={values} errors={errors} onChange={onChange} prefix={`${role}-`} />
+            </Section>
+        );
+    });
 };
 
 // kind: PRESENT | PERMANENT | EMPLOYER | CONTACT (matches validateAddress)
@@ -108,7 +137,8 @@ export const AddressFields = ({ kind, values, errors, onChange, idPrefix }) => {
     );
 };
 
-export const EmploymentFields = ({ role, values, errors, onChange }) => {
+// only (optional): show just these keys, so a caller can split the job fields across several sections
+export const EmploymentFields = ({ role, values, errors, onChange, only }) => {
     const config = {
         ...EMPLOYMENT_FIELDS,
         employment_type: {
@@ -118,9 +148,10 @@ export const EmploymentFields = ({ role, values, errors, onChange }) => {
     };
     const unemployed = values.employment_type === 'UNEMPLOYED';
     const fields = unemployed ? ['employment_type'] : EMPLOYMENT_KEYS;
+    const shown = only ? fields.filter((f) => only.includes(f)) : fields;
     const required = ['employment_type', 'employer_business_name', 'occupation', 'employment_date',
         'contact_number', 'gross_monthly_income'];
-    return <FieldGroup config={config} fields={fields} required={required}
+    return <FieldGroup config={config} fields={shown} required={required}
         values={values} errors={errors} onChange={onChange} prefix={`${role}-job-`} />;
 };
 
@@ -129,33 +160,33 @@ export const RowList = ({ title, config, rows, errors = [], onChange, emptyRow }
     const update = (i, field, value) => onChange(rows.map((r, j) => (j === i ? { ...r, [field]: value } : r)));
     return (
         <Section title={title}>
-            {rows.length === 0 && <p className="italic">None added.</p>}
+            {rows.length === 0 && <p className="italic">Nothing added yet.</p>}
             {rows.map((row, i) => (
-                <div key={i} className="border-b pb-2 mb-2">
+                <div key={i} className="ct-row">
                     <FieldGroup config={config} fields={Object.keys(config)} required={Object.keys(config).filter((f) => config[f].type !== 'checkbox')}
                         values={row} errors={errors[i]} onChange={(f, v) => update(i, f, v)} prefix={`${title}-${i}-`} />
-                    <button type="button" className="border px-3 py-1" onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+                    <button type="button" style={{ marginTop: '0.75rem' }} onClick={() => onChange(rows.filter((_, j) => j !== i))}>
                         Remove
                     </button>
                 </div>
             ))}
-            <button type="button" className="border px-3 py-1" onClick={() => onChange([...rows, { ...emptyRow }])}>
+            <button type="button" style={{ marginTop: '0.75rem' }} onClick={() => onChange([...rows, { ...emptyRow }])}>
                 + Add
             </button>
         </Section>
     );
 };
 
-export const StepButtons = ({ onBack, saving, nextLabel = 'Save & Continue', disabled }) => (
-    <div className="flex justify-between py-4">
-        {onBack ? <button type="button" className="border px-4 py-2" onClick={onBack}>Back</button> : <span />}
-        <button type="submit" className="border px-4 py-2" disabled={saving || disabled}>
+export const StepButtons = ({ onBack, saving, nextLabel = 'Save and continue', disabled }) => (
+    <div className="ct-actions">
+        {onBack ? <button type="button" onClick={onBack}>Back</button> : <span />}
+        <button type="submit" disabled={saving || disabled}>
             {saving ? 'Saving...' : nextLabel}
         </button>
     </div>
 );
 
-export const FormError = ({ error }) => (error ? <p className="text-red-600 py-2">{error}</p> : null);
+export const FormError = ({ error }) => (error ? <p className="ct-error" role="alert">{error}</p> : null);
 
 // value: true | false | null (not answered yet)
 export const YesNo = ({ name, value, onChange }) => (

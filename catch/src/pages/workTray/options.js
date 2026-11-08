@@ -19,6 +19,10 @@ export const STAGE_STATUS_LABELS = {
 
 export const TAT_LABELS = { ON_TRACK: 'On track', NEAR: 'Near TAT', BEYOND: 'Beyond TAT' };
 
+// Colour tones for the tray (ok = green, warn = orange, bad = red, info = blue, plain = grey)
+export const TAT_TONES = { ON_TRACK: 'ok', NEAR: 'warn', BEYOND: 'bad' };
+export const STATUS_TONES = { PENDING: 'plain', IN_PROGRESS: 'info', REQUESTED: 'info', RETURNED: 'warn', DONE: 'ok' };
+
 export const SLOT_LABELS = { ACCOUNT_OFFICER: 'AO', CREDIT_OFFICER: 'CO' };
 
 export const stageLabel = (stage) => STAGES.find((s) => s.value === stage)?.label ?? stage;

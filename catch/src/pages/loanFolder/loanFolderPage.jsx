@@ -2,6 +2,7 @@
 // The assigned AO (while in Intake or Credit Investigation) edits each section with the same forms the applicant
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
 import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, Send } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getDocumentUrl, refreshApplication } from '../applicationForm/api';
@@ -11,11 +12,13 @@ import { fetchCiRequests } from '../ciRequest/api';
 import RequestCiPanel from '../ciRequest/requestCiPanel';
 import { fetchAuditLog, fetchCanEdit, fetchKycChecks, fetchStaffNames } from './api';
 import ChangeHistory from './changeHistory';
-import KycCheckPanel, { CheckSummary } from './kycCheckPanel';
-import { RESULT_LABELS } from './options';
+import KycCheckPanel, { CheckChip, CheckSummary } from './kycCheckPanel';
+import { RESULT_LABELS, whenOf } from './options';
 import MessagesPanel from '../messages/messagesPanel';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
+import './loanFolder.css';
 
+const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
 const OVERVIEW = 'overview';
 const REQUEST_CI = 'request-ci';
 
@@ -110,95 +113,140 @@ const LoanFolderPage = () => {
         }
     };
 
+    const progressPct = sections.length ? Math.round((verifiedCount / sections.length) * 100) : 0;
+
     const header = (
-        <div className="pb-2">
-            <MessagesPanel applicationId={app.id} />
-            <p>
-                <Link to="/adminHomePage" className="underline">Back to work tray</Link>
-                {' · '}
-                <Link to={`/financialPackagePage?id=${app.id}`} className="underline">Financial Package</Link>
-            </p>
-            <h2>Application {app.application_no}</h2>
-            <p>Submitted: {app.submitted_at ? new Date(app.submitted_at).toLocaleString() : '—'}</p>
-            <p>KYC: {verifiedCount} of {sections.length} sections verified</p>
-            {ciRequest && (
-                <p>CI requested {new Date(ciRequest.requested_at).toLocaleString()} by {names[ciRequest.requested_by] ?? 'Account Officer'}</p>
-            )}
+        <header className="lf-card">
+            <Link to="/adminHomePage" className="lf-back"><ArrowLeft size={16} aria-hidden="true" />Work tray</Link>
+            <div className="lf-titlerow">
+                <div>
+                    <h1>Application {app.application_no}</h1>
+                    <ul className="lf-meta">
+                        <li>Submitted {app.submitted_at ? whenOf(app.submitted_at) : '—'}</li>
+                        {ciRequest && (
+                            <li>CI requested {whenOf(ciRequest.requested_at)} by {names[ciRequest.requested_by] ?? 'Account Officer'}</li>
+                        )}
+                    </ul>
+                </div>
+                <div className="lf-actions">
+                    <MessagesPanel applicationId={app.id} inline />
+                    <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">
+                        Financial package<ArrowRight size={16} aria-hidden="true" />
+                    </Link>
+                </div>
+            </div>
+
+            <div className="lf-progress">
+                <div className="lf-progress-top">
+                    <span>KYC verification</span>
+                    <span><b>{verifiedCount}</b> of {sections.length} sections verified</span>
+                </div>
+                <div className="lf-meter" role="img" aria-label={`${progressPct}% of sections verified`}>
+                    <span style={{ width: `${progressPct}%` }} />
+                </div>
+            </div>
+
             {!canEdit && (
-                <p className="italic">Read-only. Only the assigned Account Officer can edit, while the application is in Intake or Credit Investigation.{role === 'ACCOUNT_OFFICER' && ' Assign yourself in the work tray to edit.'}</p>
+                <p className="lf-note">
+                    <Lock size={16} aria-hidden="true" />
+                    <span>
+                        Read-only. Only the assigned Account Officer can edit, while the application is in Intake or Credit Investigation.
+                        {role === 'ACCOUNT_OFFICER' && ' Assign yourself in the work tray to edit.'}
+                    </span>
+                </p>
             )}
-            <SendNoticePanel applicationId={app.id} />
-        </div>
+        </header>
     );
 
     const overview = (
-        <div>
-            <div className="border p-3 my-3 text-left">
-                <h3 className="font-semibold pb-1">KYC verification</h3>
-                <ul>
-                    {sections.map((s) => (
-                        <li key={s.key} className="py-1">
-                            <span className="font-semibold">{s.title}:</span>{' '}
-                            <CheckSummary check={latestCheck(s.key)} names={names} />
-                        </li>
-                    ))}
+        <>
+            <section className="lf-card" aria-label="KYC verification by section">
+                <div className="lf-cardhead">
+                    <h2>KYC verification</h2>
+                    <span>{verifiedCount} of {sections.length} verified</span>
+                </div>
+                <ul className="lf-kyc">
+                    {sections.map((s) => {
+                        const check = latestCheck(s.key);
+                        return (
+                            <li key={s.key} className={`lf-kyc-item ${check ? TONES[check.result] : 'none'}`}>
+                                <div className="lf-kyc-top">
+                                    <b>{s.title}</b>
+                                    <CheckChip check={check} />
+                                </div>
+                                <CheckSummary check={check} names={names} />
+                            </li>
+                        );
+                    })}
                 </ul>
-            </div>
+            </section>
             <ApplicationSummary app={app} onViewDocument={handleViewDocument} />
-            <div className="border p-3 my-3 text-left">
-                <h3 className="font-semibold pb-1">Change history</h3>
+            <section className="lf-card" aria-label="Change history">
+                <div className="lf-cardhead"><h2>Change history</h2></div>
                 <ChangeHistory app={app} entries={audit} names={names} />
-            </div>
-        </div>
+            </section>
+        </>
     );
 
     if (!canEdit) {
         return (
-            <div className="max-w-3xl m-auto p-4 text-left">
+            <div className="lf">
                 {header}
-                {error && <p className="text-red-600">{error}</p>}
-                {overview}
+                <SendNoticePanel applicationId={app.id} />
+                {error && <p className="lf-err">{error}</p>}
+                <div className="lf-body"><div className="lf-main">{overview}</div></div>
             </div>
         );
     }
 
     const Component = section?.Component;
 
+    const statusIcon = (check) => {
+        if (check?.result === 'VERIFIED') return <CheckCircle2 size={18} className="lf-ico ok" aria-hidden="true" />;
+        if (check) return <AlertTriangle size={18} className="lf-ico warn" aria-hidden="true" />;
+        return <Circle size={18} className="lf-ico none" aria-hidden="true" />;
+    };
+
     return (
-        <div className="p-4 text-left">
+        <div className="lf">
             {header}
-            <div className="flex gap-6">
-                <nav className="w-64 shrink-0">
+            <SendNoticePanel applicationId={app.id} />
+            <div className="lf-body edit">
+                <nav className="lf-card lf-nav" aria-label="Loan folder sections">
                     <ol>
                         <li>
-                            <button type="button" onClick={() => open(OVERVIEW)}
-                                className={`py-1 text-left ${!section ? 'font-bold underline' : ''}`}>
-                                Overview & history
+                            <button type="button" onClick={() => open(OVERVIEW)} aria-current={currentKey === OVERVIEW}>
+                                <LayoutList size={18} className="lf-ico none" aria-hidden="true" />
+                                <span className="label">Overview & history</span>
                             </button>
                         </li>
-                        {sections.map((s, i) => {
+                        {sections.map((s) => {
                             const check = latestCheck(s.key);
                             return (
                                 <li key={s.key}>
-                                    <button type="button" onClick={() => open(s.key)}
-                                        className={`py-1 text-left ${s.key === section?.key ? 'font-bold underline' : ''}`}>
-                                        {i + 1}. {s.title}
-                                        {' '}({check ? RESULT_LABELS[check.result] : 'not checked'}{s.complete ? '' : ', incomplete'})
+                                    <button type="button" onClick={() => open(s.key)} aria-current={s.key === section?.key}>
+                                        {statusIcon(check)}
+                                        <span className="label">
+                                            {s.title}
+                                            <span className="sr-only">: {check ? RESULT_LABELS[check.result] : 'not checked'}</span>
+                                        </span>
+                                        {!s.complete && <span className="lf-tag">Incomplete</span>}
                                     </button>
                                 </li>
                             );
                         })}
-                        <li>
-                            <button type="button" onClick={() => open(REQUEST_CI)}
-                                className={`py-1 text-left ${currentKey === REQUEST_CI ? 'font-bold underline' : ''}`}>
-                                Request CI (NFIS & TU)
+                        <li className="sep">
+                            <button type="button" onClick={() => open(REQUEST_CI)} aria-current={currentKey === REQUEST_CI}>
+                                <Send size={18} aria-hidden="true" />
+                                <span className="label">Request CI (NFIS & TU)</span>
+                                {ciRequest && <span className="lf-chip ok">Sent</span>}
                             </button>
                         </li>
                     </ol>
                 </nav>
 
-                <main className="flex-1">
-                    {error && <p className="text-red-600">{error}</p>}
+                <main className="lf-main">
+                    {error && <p className="lf-err">{error}</p>}
                     {currentKey === REQUEST_CI ? (
                         <RequestCiPanel
                             app={app}
@@ -218,7 +266,7 @@ const LoanFolderPage = () => {
                                 latest={latestCheck(section.key)}
                                 names={names}
                                 onRecorded={loadTrail} />
-                            {saved && <p className="text-green-700">Changes saved.</p>}
+                            {saved && <p className="lf-ok-note" role="status">Changes saved.</p>}
                             <Component
                                 key={section.key}
                                 {...section.props}

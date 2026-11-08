@@ -81,8 +81,8 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                                     {docs.map((doc) => (
                                         <li key={doc.id} className="flex gap-2 items-center">
                                             <span title={doc.original_file_name ?? undefined}>{doc.file_name}</span>
-                                            <button type="button" className="border px-2" onClick={() => handleView(doc)}>View</button>
-                                            <button type="button" className="border px-2" disabled={busy === doc.id}
+                                            <button type="button" onClick={() => handleView(doc)}>View</button>
+                                            <button type="button" disabled={busy === doc.id}
                                                 onClick={() => handleDelete(doc)}>Remove</button>
                                         </li>
                                     ))}

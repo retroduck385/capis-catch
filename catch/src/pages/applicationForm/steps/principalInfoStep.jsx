@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { deleteParty, getParty, replaceApplicantRows, toForm, upsertParty } from '../api';
-import { Field, FormError, PersonFields, Section, StepButtons } from '../fields';
-import { MAX_DEPENDENTS, PARTY_FIELDS } from '../options';
+import { Field, FieldGroup, FormError, Section, StepButtons } from '../fields';
+import { MAX_DEPENDENTS, PARTY_FIELDS, PERSON_FIELDS } from '../options';
 import { hasErrors, validateDependents, validatePerson } from '../validators';
 
 const FIELDS = PARTY_FIELDS.PRINCIPAL.map(([f]) => f);
+const REQUIRED = PARTY_FIELDS.PRINCIPAL.filter(([, r]) => r).map(([f]) => f);
+
+// Same fields as PARTY_FIELDS.PRINCIPAL, grouped so related details sit together (up to four per row)
+const GROUPS = [
+    ['Name', ['first_name', 'middle_name', 'last_name', 'name_extension']],
+    ['Personal details', ['gender', 'civil_status', 'date_of_birth', 'birth_place']],
+    ['Contact', ['mobile_number', 'email_address']],
+    ['Citizenship and government IDs', ['citizenship', 'sss_no', 'tin']],
+];
 
 const PrincipalInfoStep = ({ app, session, profile, onSaved, onBack }) => {
     const principal = getParty(app, 'PRINCIPAL');
@@ -63,12 +72,15 @@ const PrincipalInfoStep = ({ app, session, profile, onSaved, onBack }) => {
             {!principal && (
                 <p className="text-left text-sm py-2">Pre-filled from your profile. Please check each field before continuing.</p>
             )}
-            <Section title="Principal Borrower Information">
-                <PersonFields role="PRINCIPAL" values={form} errors={errors} onChange={set} />
-            </Section>
-            <Section title="Dependents">
+            {GROUPS.map(([title, fields]) => (
+                <Section key={title} title={title} className="ct-cols-4">
+                    <FieldGroup config={PERSON_FIELDS} fields={fields} required={REQUIRED}
+                        values={form} errors={errors} onChange={set} prefix="PRINCIPAL-" />
+                </Section>
+            ))}
+            <Section title="Dependents" className="ct-cols-4">
                 <Field name="dependent_count" label="Number of Dependents" type="number" required placeholder="0"
-                    value={dependentCount} error={errors.dependent_count}
+                    hint={`Up to ${MAX_DEPENDENTS} dependents.`} value={dependentCount} error={errors.dependent_count}
                     onChange={(_, v) => setDependentCount(v)} />
                 {Array.from({ length: shownAges }, (_, i) => (
                     <Field key={i} name={`dependent_age_${i}`} label={`Age of Dependent ${i + 1}`} type="number" required

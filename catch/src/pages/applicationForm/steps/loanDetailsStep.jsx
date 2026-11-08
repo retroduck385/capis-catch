@@ -64,9 +64,9 @@ const LoanDetailsStep = ({ app, onSaved, onBack }) => {
                     <Field name="loan_purpose_other" label="Specify purpose" required
                         value={form.loan_purpose_other} error={errors.loan_purpose_other} onChange={set} />
                 )}
-                <Field name="property_address" label="Property Address" required
+                <Field name="property_address" label="Property Address" required hint="The house or lot you want to buy or build on."
                     value={form.property_address} error={errors.property_address} onChange={set} />
-                <Field name="loan_amount" label="Loan Amount (PHP)" type="money" required
+                <Field name="loan_amount" label="Loan Amount (PHP)" type="money" required hint="How much you want to borrow, in pesos."
                     value={form.loan_amount} error={errors.loan_amount} onChange={set} />
                 <Field name="loan_term_years" label="Loan Term (years)" type="number" required
                     value={form.loan_term_years} error={errors.loan_term_years} onChange={set} />

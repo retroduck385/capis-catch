@@ -51,7 +51,7 @@ const NotificationBell = () => {
     const badge = unread > 99 ? '99+' : String(unread);
 
     return (
-        <div className='fixed top-3 right-4 z-50 text-base text-gray-900'>
+        <div className='relative z-50 text-base text-gray-900'>
             <button
                 ref={buttonRef}
                 type='button'
@@ -59,14 +59,14 @@ const NotificationBell = () => {
                 aria-expanded={open}
                 aria-controls='notification-panel'
                 aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-                className='relative rounded-full border border-gray-300 bg-white p-2 shadow-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                <svg aria-hidden='true' viewBox='0 0 24 24' className='h-6 w-6' fill='none' stroke='currentColor' strokeWidth='2'>
+                className='relative rounded-full border-0 bg-transparent p-2 text-neutral-700 hover:bg-black/5 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-black'>
+                <svg aria-hidden='true' viewBox='0 0 24 24' className='h-5 w-5' fill='none' stroke='currentColor' strokeWidth='2'>
                     <path strokeLinecap='round' strokeLinejoin='round'
                         d='M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0' />
                 </svg>
                 {unread > 0 && (
                     <span aria-hidden='true'
-                        className='absolute -top-1 -right-1 min-w-6 rounded-full bg-red-700 px-1.5 text-center text-sm font-semibold leading-6 text-white'>
+                        className='absolute -top-0.5 -right-0.5 h-3.5 min-w-3.5 rounded-full bg-orange-600 px-1 text-center text-[8px] font-bold leading-3.5 text-white'>
                         {badge}
                     </span>
                 )}

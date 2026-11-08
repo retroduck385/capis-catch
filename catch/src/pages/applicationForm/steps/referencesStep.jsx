@@ -36,7 +36,7 @@ const ReferencesStep = ({ app, onSaved, onBack }) => {
     return (
         <form onSubmit={handleSubmit}>
             {refs.map((ref, i) => (
-                <Section key={i} title={`Reference #${i + 1}`}>
+                <Section key={i} title={`Reference #${i + 1}`} className="ct-cols-4">
                     <FieldGroup config={REFERENCE_FIELDS} fields={KEYS} required={KEYS} values={ref}
                         errors={errors[i]} onChange={(f, v) => update(i, f, v)} prefix={`ref${i + 1}-`} />
                 </Section>

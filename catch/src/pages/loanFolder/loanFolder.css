@@ -1,0 +1,97 @@
+/* Loan folder: one header card (title, meta, actions, KYC progress), a section navigator, KYC status cards.
+   Scoped to .lf; unlayered so it wins over the theme's component-layer button / heading rules. */
+.lf {
+  --lf-ok: #15714a;   --lf-ok-bg: #e6f5ed;   --lf-ok-line: #b6e0c8;
+  --lf-warn: #a8480b; --lf-warn-bg: #fff1e2;  --lf-warn-line: #f7cfa4;
+  --lf-none: #475569; --lf-none-bg: #eef1f6;  --lf-none-line: #d5dbe6;
+  display: grid; gap: 1.25rem; width: 100%; max-width: 84rem; margin-inline: auto; text-align: left;
+}
+.lf .ok   { --tone: var(--lf-ok);   --tone-bg: var(--lf-ok-bg);   --tone-line: var(--lf-ok-line); }
+.lf .warn { --tone: var(--lf-warn); --tone-bg: var(--lf-warn-bg); --tone-line: var(--lf-warn-line); }
+.lf .none { --tone: var(--lf-none); --tone-bg: var(--lf-none-bg); --tone-line: var(--lf-none-line); }
+
+.lf-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 1.25rem 1.5rem; }
+.lf-card > h2, .lf-card > h3, .lf-cardhead h2, .lf-cardhead h3 { font-size: 1.05rem; margin: 0; }
+.lf-cardhead { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+.lf-cardhead span { color: var(--muted); font-size: 0.9rem; }
+
+/* ---------- header ---------- */
+.lf-back { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; font-size: 0.92rem; text-decoration: none; color: var(--blue-700); }
+.lf-back:hover { text-decoration: underline; }
+.lf-titlerow { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem 2rem; margin-top: 0.55rem; }
+.lf-titlerow h1 { font-size: 1.6rem; margin: 0; }
+.lf-meta { list-style: none; display: flex; flex-wrap: wrap; gap: 0.2rem 1.4rem; margin: 0.4rem 0 0; padding: 0; color: var(--muted); font-size: 0.92rem; }
+.lf-meta li { margin: 0; }
+.lf-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+
+.lf .lf-btn, .lf a.lf-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.45rem 1.1rem;
+  border: 1px solid var(--blue); border-radius: var(--radius); background: #fff; color: var(--blue-700);
+  font: 600 0.95rem/1.2 inherit; font-family: inherit; text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.lf .lf-btn:hover, .lf a.lf-btn:hover { background: var(--blue-50); color: var(--blue-700); }
+.lf .lf-btn .count {
+  position: absolute; top: -0.45rem; right: -0.45rem; min-width: 1.35rem; padding: 0 0.3rem; border-radius: 999px;
+  background: #b3261e; color: #fff; font-size: 0.75rem; font-weight: 700; line-height: 1.35rem; text-align: center;
+}
+
+.lf-progress { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.lf-progress-top { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: 0.92rem; }
+.lf-progress-top b { font-variant-numeric: tabular-nums; }
+.lf-meter { height: 8px; border-radius: 999px; background: #e3e8f5; overflow: hidden; margin-top: 0.5rem; }
+.lf-meter > span { display: block; height: 100%; background: var(--lf-ok); border-radius: 999px; }
+.lf-note {
+  display: flex; align-items: flex-start; gap: 0.6rem; margin-top: 1rem; padding: 0.7rem 0.95rem; border-radius: 8px;
+  background: var(--blue-50); border: 1px solid var(--blue-200); color: var(--ink); font-size: 0.93rem;
+}
+.lf-note svg { flex: none; margin-top: 0.15rem; color: var(--blue-700); }
+
+/* ---------- body: section navigator + content ---------- */
+.lf-body { display: grid; gap: 1.25rem; align-items: start; }
+.lf-body.edit { grid-template-columns: 17.5rem minmax(0, 1fr); }
+.lf-main { min-width: 0; display: grid; gap: 1rem; }
+.lf-nav { position: sticky; top: 1rem; padding: 0.6rem; }
+.lf-nav ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.lf-nav li { margin: 0; }
+.lf .lf-nav button {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 2.6rem; padding: 0.4rem 0.65rem;
+  border: 0; border-radius: 6px; background: none; text-align: left; color: var(--ink); font-size: 0.95rem; font-weight: 500;
+}
+.lf .lf-nav button:hover { background: #f1f4fa; color: var(--ink); }
+.lf .lf-nav button[aria-current='true'] { background: var(--blue-50); font-weight: 700; }
+.lf-nav .label { flex: 1; min-width: 0; line-height: 1.25; }
+.lf-ico { flex: none; color: var(--tone); }
+.lf-tag { flex: none; padding: 0 0.45rem; border-radius: 999px; background: var(--lf-warn-bg); color: var(--lf-warn); font-size: 0.72rem; font-weight: 700; }
+.lf-nav .sep { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--line); }
+.lf .lf-nav .sep button { color: var(--blue-700); font-weight: 600; }
+
+/* ---------- KYC status cards ---------- */
+.lf-kyc { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.lf-kyc-item { margin: 0; padding: 0.75rem 0.95rem 0.8rem; border: 1px solid var(--line); border-left: 4px solid var(--tone); border-radius: 8px; display: grid; gap: 0.3rem; align-content: start; }
+.lf-kyc-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.lf-kyc-top b { font-weight: 600; }
+.lf-kyc-meta { color: var(--muted); font-size: 0.85rem; line-height: 1.4; margin: 0; }
+.lf-kyc-remark { margin: 0; padding: 0.4rem 0.6rem; border-radius: 6px; background: var(--tone-bg); color: var(--ink); font-size: 0.88rem; overflow-wrap: anywhere; }
+.lf-chip { display: inline-flex; align-items: center; padding: 0.05rem 0.6rem; border-radius: 999px; background: var(--tone-bg); color: var(--tone); border: 1px solid var(--tone-line); font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+
+/* ---------- record a check ---------- */
+.lf-check .lf-cardhead { margin-bottom: 0.4rem; }
+.lf-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin: 0.85rem 0; }
+.lf .lf-choice {
+  display: flex; align-items: center; gap: 0.6rem; margin: 0; padding: 0.7rem 0.9rem; border: 1.5px solid var(--line-strong);
+  border-radius: 8px; cursor: pointer; font-weight: 600; background: #fff;
+}
+.lf .lf-choice:hover { background: #f6f8fc; }
+.lf .lf-choice:has(input:checked) { border-color: var(--blue); background: var(--blue-50); }
+.lf .lf-choice:has(input:disabled) { opacity: 0.55; cursor: not-allowed; background: #f6f8fc; }
+.lf-check textarea { width: 100%; margin-top: 0; }
+.lf-check-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 0.85rem; }
+.lf-check-foot p { margin: 0; }
+.lf-err { color: #b42318; font-weight: 600; font-size: 0.92rem; }
+.lf-ok-note { color: var(--lf-ok); font-weight: 600; margin: 0; }
+
+@media (max-width: 960px) {
+  .lf-body.edit { grid-template-columns: minmax(0, 1fr); }
+  .lf-nav { position: static; }
+  .lf-choices { grid-template-columns: minmax(0, 1fr); }
+}

@@ -27,7 +27,7 @@ const ReviewStep = ({ app, onRefresh, onBack }) => {
 
     return (
         <form onSubmit={handleSubmit}>
-            <p className="text-left py-2">Review your application. Go back to any step to make changes.</p>
+            <p>Check each sheet below. Use the list on the left to go back and change anything.</p>
             <ApplicationSummary app={app} />
 
             <label className="flex gap-2 items-center py-4 text-left">
@@ -36,15 +36,16 @@ const ReviewStep = ({ app, onRefresh, onBack }) => {
             </label>
 
             {missing.length > 0 && (
-                <div className="text-red-600 text-left">
-                    <p>Your application can't be submitted yet. Still missing:</p>
+                <div className="ct-note" role="alert">
+                    <strong>Your application can't be submitted yet. Still missing:</strong>
                     <ul className="list-disc pl-6">
                         {missing.map((m) => <li key={m}>{m}</li>)}
                     </ul>
                 </div>
             )}
             <FormError error={error} />
-            <StepButtons onBack={onBack} saving={saving} disabled={!confirmed} nextLabel="Submit Application" />
+            <p className="ct-hint">Your application is only sent for review when you press Submit application.</p>
+            <StepButtons onBack={onBack} saving={saving} disabled={!confirmed} nextLabel="Submit application" />
         </form>
     );
 };

@@ -5,7 +5,7 @@ import { Section } from '../applicationForm/fields';
 import { CATEGORIES } from './creditScore';
 
 const Cell = ({ children, className = '' }) => <td className={`border px-2 py-1 align-top ${className}`}>{children}</td>;
-const Head = ({ children }) => <th className="border px-2 text-left align-top">{children}</th>;
+const Head = ({ children }) => <th className="text-left align-top">{children}</th>;
 
 const pts = (n) => `${n} ${Math.abs(n) === 1 ? 'pt' : 'pts'}`;
 
@@ -30,13 +30,13 @@ const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks,
                     : <span className="italic text-gray-500">No suggestion</span>}
                 <p className="text-xs text-gray-600">{suggestion.source}</p>
                 {!disabled && suggested && entry?.band !== suggested && (
-                    <button type="button" className="border px-2 mt-1 text-sm" onClick={() => onScore(criterion.code, suggested)}>
+                    <button type="button" className="mt-1" onClick={() => onScore(criterion.code, suggested)}>
                         Use suggestion
                     </button>
                 )}
             </Cell>
             <Cell>
-                <select aria-label={`${criterion.label} score`} className="p-1 border w-full" value={entry?.band ?? ''}
+                <select aria-label={`${criterion.label} score`} className="p-1 w-full" value={entry?.band ?? ''}
                     disabled={disabled} onChange={(e) => onScore(criterion.code, e.target.value)}>
                     <option value="">-- Not scored --</option>
                     {bands.map((b) => <option key={b.code} value={b.code}>{b.label} ({pts(b.points)})</option>)}
@@ -44,7 +44,7 @@ const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks,
                 {!picked && suggested && <p className="text-xs text-amber-700">Suggestion not confirmed yet</p>}
                 {changedSince && <p className="text-xs text-amber-700">The record changed since this was scored</p>}
                 {differs && !changedSince && <p className="text-xs text-amber-700">Differs from the suggestion</p>}
-                <input aria-label={`${criterion.label} remarks`} className="p-1 border w-full mt-1 text-sm"
+                <input aria-label={`${criterion.label} remarks`} className="p-1 w-full mt-1"
                     placeholder="Remarks (e.g. why you changed it)" value={entry?.remarks ?? ''} disabled={disabled}
                     onChange={(e) => onRemarks(criterion.code, e.target.value)} />
             </Cell>
@@ -63,7 +63,7 @@ export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore
                 Investigator's results.
             </p>
             {!disabled && unscoredSuggestions > 0 && (
-                <button type="button" className="border px-3 py-1 my-2" onClick={onUseAll}>
+                <button type="button" className="my-2" onClick={onUseAll}>
                     Use all {unscoredSuggestions} suggestions for unscored criteria
                 </button>
             )}
@@ -74,7 +74,7 @@ export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore
                 return (
                     <div key={cat.value} className="overflow-x-auto py-2">
                         <h4 className="font-semibold">{cat.label} (Maximum Score: {sub.max})</h4>
-                        <table className="border-collapse w-full">
+                        <table className="w-full">
                             <thead>
                                 <tr>
                                     <Head>Criterion</Head><Head>From the record</Head><Head>Suggestion</Head>

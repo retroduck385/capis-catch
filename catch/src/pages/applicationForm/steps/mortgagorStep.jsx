@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { deleteParty, getAddress, getParty, toForm, upsertAddress, upsertParty } from '../api';
-import { AddressFields, FormError, PersonFields, Section, StepButtons, YesNo } from '../fields';
+import { AddressFields, FormError, PersonCards, Section, StepButtons, YesNo } from '../fields';
 import { ADDRESS_FIELDS, PARTY_FIELDS } from '../options';
 import { hasErrors, validateAddress, validatePerson } from '../validators';
 
@@ -56,28 +56,29 @@ const MortgagorStep = ({ app, onSaved, onBack }) => {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Section title="Mortgagor's Information">
+            <Section title="Mortgagor">
                 <p>Is the mortgagor (registered owner putting up the property) someone other than you?</p>
                 <YesNo name="has-mortgagor" value={hasMortgagor} onChange={setHasMortgagor} />
-                {hasMortgagor && (
-                    <PersonFields role="MORTGAGOR" values={mortgagorForm} errors={errors.mortgagor}
-                        onChange={(f, v) => setMortgagorForm((m) => ({ ...m, [f]: v }))} />
-                )}
             </Section>
+            {hasMortgagor && (
+                <PersonCards role="MORTGAGOR" values={mortgagorForm} errors={errors.mortgagor} firstTitle="Mortgagor's Information"
+                    onChange={(f, v) => setMortgagorForm((m) => ({ ...m, [f]: v }))} />
+            )}
 
             <Section title="Attorney-in-Fact">
                 <p>Will an attorney-in-fact act on your behalf (e.g. you are an OFW or seafarer)?</p>
                 <YesNo name="has-aif" value={hasAif} onChange={setHasAif} />
-                {hasAif && (
-                    <>
-                        <PersonFields role="ATTORNEY_IN_FACT" values={aifForm} errors={errors.aif}
-                            onChange={(f, v) => setAifForm((a) => ({ ...a, [f]: v }))} />
-                        <p className="font-semibold pt-2">Attorney-in-Fact's Present Address</p>
+            </Section>
+            {hasAif && (
+                <>
+                    <PersonCards role="ATTORNEY_IN_FACT" values={aifForm} errors={errors.aif} firstTitle="Attorney-in-Fact's Information"
+                        onChange={(f, v) => setAifForm((a) => ({ ...a, [f]: v }))} />
+                    <Section title="Attorney-in-Fact's Present Address" className="ct-cols-4">
                         <AddressFields kind="CONTACT" idPrefix="aif" values={aifAddress} errors={errors.aifAddress}
                             onChange={(f, v) => setAifAddress((a) => ({ ...a, [f]: v }))} />
-                    </>
-                )}
-            </Section>
+                    </Section>
+                </>
+            )}
             <FormError error={error} />
             <StepButtons onBack={onBack} saving={saving} />
         </form>

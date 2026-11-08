@@ -1,16 +1,21 @@
 // AO side of the CI request, inside the loan folder: preview of the NFIS / TU forms as the CI
 // will see them, optional remarks, and the button that sends the application to Credit Investigation.
 // Once sent, it shows the request; the forms stay live, so the AO's later KYC edits reach the CI too.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { whenOf } from '../loanFolder/options';
 import { requestCi } from './api';
+import { buildCiRequest, missingFields } from './buildRequest';
 import CiRequestForms from './ciRequestForms';
 import { CiResultsView } from './ciResults';
+import './ciRequest.css';
 
 const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionCount, onRequested }) => {
     const [nfisRemarks, setNfisRemarks] = useState('');
     const [tuRemarks, setTuRemarks] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const missing = useMemo(() => missingFields(buildCiRequest(app)), [app]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -30,56 +35,88 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
 
     if (ciRequest) {
         return (
-            <div>
-                <h2>Request CI (NFIS & TransUnion)</h2>
-                <p>
-                    Sent {new Date(ciRequest.requested_at).toLocaleString()} by {requesterName ?? 'Account Officer'}.
-                    You can still edit the KYC sections; the Credit Investigator sees the current values below.
-                </p>
+            <>
+                <section className="lf-card">
+                    <div className="lf-cardhead">
+                        <h2>Request CI (NFIS & TransUnion)</h2>
+                        <span className="lf-chip ok">Sent</span>
+                    </div>
+                    <p className="ci-note">
+                        Sent {whenOf(ciRequest.requested_at)} by {requesterName ?? 'Account Officer'}.
+                        You can still edit the KYC sections; the Credit Investigator sees the current values below.
+                    </p>
+                </section>
+                {missing.length > 0 && (
+                    <p className="ci-warn" role="note">
+                        <AlertTriangle size={16} aria-hidden="true" />
+                        <span><b>{missing.length} required {missing.length === 1 ? 'value is' : 'values are'} still missing.</b>{' '}
+                            Fix {missing.length === 1 ? 'it' : 'them'} in the KYC sections so the request can be accommodated.</span>
+                    </p>
+                )}
                 <CiRequestForms app={app} />
-                <div className="border p-3 my-3 text-left">
-                    <h3 className="font-semibold">NFIS remarks</h3>
-                    <p className="whitespace-pre-wrap">{ciRequest.nfis_remarks || '—'}</p>
-                    <h3 className="font-semibold pt-2">TU remarks</h3>
-                    <p className="whitespace-pre-wrap">{ciRequest.tu_remarks || '—'}</p>
-                </div>
+                <section className="lf-card" aria-label="Remarks">
+                    <div className="lf-cardhead"><h2>Your remarks</h2></div>
+                    <div className="ci-cols">
+                        <div>
+                            <div className="ci-remark-label">NFIS remarks</div>
+                            <p className={`ci-remark${ciRequest.nfis_remarks ? '' : ' empty'}`}>{ciRequest.nfis_remarks || 'No remarks.'}</p>
+                        </div>
+                        <div>
+                            <div className="ci-remark-label">TU remarks</div>
+                            <p className={`ci-remark${ciRequest.tu_remarks ? '' : ' empty'}`}>{ciRequest.tu_remarks || 'No remarks.'}</p>
+                        </div>
+                    </div>
+                </section>
                 <CiResultsView app={app} title="CI results (from the Credit Investigator)" />
-            </div>
+            </>
         );
     }
 
     return (
-        <div>
-            <h2>Request CI (NFIS & TransUnion)</h2>
-            <p>
-                Filled in from the application. Fix any "Missing" value in its section before sending.
-                ID type, number and expiry follow once ID reading is set up.
-            </p>
-            {verifiedCount < sectionCount && (
-                <p className="text-amber-700">
-                    Note: {verifiedCount} of {sectionCount} KYC sections are verified. You can still send the request.
+        <>
+            <section className="lf-card">
+                <div className="lf-cardhead">
+                    <h2>Request CI (NFIS & TransUnion)</h2>
+                    <span className="lf-chip warn">Not sent</span>
+                </div>
+                <p className="ci-note">
+                    Filled in from the application. Fix any "Missing" value in its section before sending.
+                    ID type, number and expiry follow once ID reading is set up.
                 </p>
+            </section>
+
+            {(missing.length > 0 || verifiedCount < sectionCount) && (
+                <p className="ci-warn" role="note">
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <span>
+                        {missing.length > 0 && <><b>{missing.length} required {missing.length === 1 ? 'value is' : 'values are'} missing.</b>{' '}</>}
+                        {verifiedCount < sectionCount && `${verifiedCount} of ${sectionCount} KYC sections are verified. `}
+                        You can still send the request.
+                    </span>
+                </p>
+            )}
+            {missing.length === 0 && verifiedCount === sectionCount && (
+                <p className="lf-note"><CheckCircle2 size={16} aria-hidden="true" /><span>Everything the forms need is filled in.</span></p>
             )}
 
             <CiRequestForms app={app} />
 
-            <form onSubmit={handleSubmit} className="text-left">
-                <label className="block py-1">
-                    <span className="font-semibold">NFIS remarks (optional)</span>
-                    <textarea value={nfisRemarks} onChange={(e) => setNfisRemarks(e.target.value)}
-                        rows={3} className="border block w-full px-2" />
+            <form onSubmit={handleSubmit} className="lf-card ci-send" aria-label="Send the CI request">
+                <div className="lf-cardhead"><h2>Send to the Credit Investigator</h2></div>
+                <label>
+                    <span>NFIS remarks <small>optional</small></span>
+                    <textarea value={nfisRemarks} onChange={(e) => setNfisRemarks(e.target.value)} rows={3} />
                 </label>
-                <label className="block py-1">
-                    <span className="font-semibold">TU remarks (optional)</span>
-                    <textarea value={tuRemarks} onChange={(e) => setTuRemarks(e.target.value)}
-                        rows={3} className="border block w-full px-2" />
+                <label>
+                    <span>TU remarks <small>optional</small></span>
+                    <textarea value={tuRemarks} onChange={(e) => setTuRemarks(e.target.value)} rows={3} />
                 </label>
-                {error && <p className="text-red-600">{error}</p>}
-                <button type="submit" disabled={saving} className="border px-4 py-2 mt-2">
-                    {saving ? 'Sending...' : 'Send CI request'}
-                </button>
+                <div className="ci-send-foot">
+                    {error ? <p className="ci-err" role="alert">{error}</p> : <span />}
+                    <button type="submit" disabled={saving}>{saving ? 'Sending...' : 'Send CI request'}</button>
+                </div>
             </form>
-        </div>
+        </>
     );
 };
 

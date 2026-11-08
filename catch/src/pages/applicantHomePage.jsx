@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchProfile, listMyApplications } from './applicationForm/api';
@@ -6,9 +7,10 @@ import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
 
 const ApplicantHomePage = () => {
-    const { session, signOut } = UserAuth();
+    const { session } = UserAuth();
     const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
+    const [profile, setProfile] = useState(null);
     const [profileComplete, setProfileComplete] = useState(null); // null = still loading
     const [error, setError] = useState(null);
 
@@ -18,86 +20,71 @@ const ApplicantHomePage = () => {
             .then(setApplications)
             .catch((err) => setError(err.message));
         fetchProfile(session.user.id)
-            .then((profile) => setProfileComplete(isProfileComplete(profile)))
+            .then((p) => { setProfile(p); setProfileComplete(isProfileComplete(p)); })
             .catch((err) => setError(err.message));
     }, [session?.user?.id]);
 
-    const hasDraft = applications.some((a) => a.status === 'DRAFT');
+    const draftCount = applications.filter((a) => a.status === 'DRAFT').length;
+    const hasDraft = draftCount > 0;
+    const firstName = profile?.first_name;
 
-    console.log(session); // Delete when deploying
-
-    const handleSignOut = async (e) => {
-        e.preventDefault()
-        try{
-            await signOut();
-            navigate('/loginPage');
-        } catch (err){
-            console.error(err);
-        }
-    };
-
-    const applyHousingLoan = async (e) => {
-        e.preventDefault()
-        console.log('clicked') // delete when deploying 
-        try{
-            navigate(profileComplete ? '/applicationFormPage' : '/profilePage?next=apply');
-        } catch (err){
-            console.error(err);
-        }
+    const applyHousingLoan = () => {
+        navigate(profileComplete ? '/applicationFormPage' : '/profilePage?next=apply');
     };
 
     return (
         <div>
-            <h1> Applicant Home Page </h1>
-            <h2> Welcome, {session?.user?.email}</h2> 
-
-            <div>
-                <p 
-                onClick={handleSignOut}
-                className='hover:cursor-pointer border inline-block px-4 py-3 mt-4'> 
-                    Signout
-                </p>
-            </div>
-
             {profileComplete === false && (
-                <div className='border border-yellow-500 bg-yellow-50 p-3 mt-4 inline-block'>
-                    Please update your user information before applying for a loan.{' '}
-                    <Link className='underline' to='/profilePage'>Update it here</Link>
+                <div className="ct-banner" role="status" style={{ marginBottom: '1.25rem' }}>
+                    <AlertTriangle size={14} aria-hidden="true" />
+                    <p>
+                        <strong>Add your personal details before you apply.</strong>{' '}
+                        We use them to fill in your application. <Link to="/profilePage?next=apply">Complete your profile</Link>
+                    </p>
                 </div>
             )}
 
-            <div className='py-3'>
-                <Link className='underline' to='/profilePage'>My Profile</Link>
+            <div className="ct-pagehead">
+                <div>
+                    <h1>{firstName ? `Welcome back, ${firstName}` : 'My applications'}</h1>
+                    <p>Start a housing loan application or pick up where you left off.</p>
+                </div>
+                <button type="button" className="ct-primary" onClick={applyHousingLoan}>
+                    {hasDraft ? 'Continue your application' : 'Start a housing loan application'}
+                </button>
             </div>
 
-            <div className='py-3'>
-                <p
-                onClick={applyHousingLoan}
-                className='hover:cursor-pointer border inline-block px-4 py-3 mt-4'> 
-                    {hasDraft ? 'Continue Housing Loan Application' : 'Apply Housing Loan'}
-                </p>
+            <div className="ct-stats">
+                <div className="ct-stat"><span>Total applications</span><strong>{applications.length}</strong></div>
+                <div className="ct-stat"><span>Drafts in progress</span><strong>{draftCount}</strong></div>
+                <div className="ct-stat"><span>Submitted</span><strong>{applications.length - draftCount}</strong></div>
             </div>
 
-            <div className='py-3'>
-                <h2> My Applications </h2>
-                {error && <p className="text-red-600">{error}</p>}
-                {applications.length === 0 && <p> No applications yet. </p>}
-                <ul>
-                    {applications.map((a) => (
-                        <li key={a.id}>
-                            {a.application_no ?? 'Draft'} | <ApplicantStatusLabel application={a} />
-                            {a.loan_amount ? ` | PHP ${Number(a.loan_amount).toLocaleString()}` : ''}
-                            {' '}
-                            <Link className='underline' to={`/applicationFormPage?id=${a.id}`}>
-                                {a.status === 'DRAFT' ? 'Continue' : 'View'}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
+            <div className="ct-card">
+                <div className="ct-card-head">
+                    <h2>Application register</h2>
+                    <span className="ct-mono ct-muted">{applications.length} {applications.length === 1 ? 'record' : 'records'}</span>
+                </div>
+                {error && <p className="ct-error" role="alert" style={{ padding: '0 1rem' }}>{error}</p>}
+                {applications.length === 0 ? (
+                    <p className="ct-empty">You haven't started an application yet. Start one above. It saves after every step, so you can leave and come back.</p>
+                ) : (
+                    <ul className="ct-register">
+                        {applications.map((a) => (
+                            <li key={a.id}>
+                                <span className="ct-mono">{a.application_no ?? 'Draft'}</span>
+                                <span><span className="ct-badge"><ApplicantStatusLabel application={a} /></span></span>
+                                <span className="amt">{a.loan_amount ? `PHP ${Number(a.loan_amount).toLocaleString()}` : ''}</span>
+                                <Link className="ct-link" to={`/applicationFormPage?id=${a.id}`}>
+                                    {a.status === 'DRAFT' ? 'Continue' : 'View'}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
-
         </div>
-    ) 
+    );
 };
 
 export default ApplicantHomePage;
