@@ -10,7 +10,9 @@ import { useMessages } from './useMessages';
 // Rendered through a portal into <body>, so it never sits inside a page's <form> (the Financial Package page).
 // Light colours on purpose (no dark mode). The button is fixed top-right, left of the bell (bell: top-3 right-4, 40px
 // wide); below the sm breakpoint it shrinks to an icon so both fit a narrow screen.
-const MessagesPanel = ({ applicationId }) => {
+// `inline` puts the button where the component is rendered (a page's action row) instead of fixed top-right; the
+// drawer is still portaled to <body>.
+const MessagesPanel = ({ applicationId, inline = false }) => {
     const { session } = UserAuth();
     const userId = session?.user?.id;
     const [open, setOpen] = useState(false);
@@ -60,28 +62,36 @@ const MessagesPanel = ({ applicationId }) => {
     const label = unread ? `Messages, ${unread} unread` : 'Messages';
     const badge = unread > 99 ? '99+' : String(unread);
 
-    return createPortal(
+    const button = (
+        <button
+            ref={buttonRef}
+            type='button'
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls='messages-panel'
+            aria-label={label}
+            className={inline
+                ? 'lf-btn'
+                : 'fixed top-3 right-16 z-50 flex items-center gap-2 rounded-full border border-gray-300 bg-white p-2 shadow-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 sm:px-4'}>
+            <svg aria-hidden='true' viewBox='0 0 24 24' className={inline ? 'h-5 w-5 shrink-0' : 'h-6 w-6 shrink-0'} fill='none' stroke='currentColor' strokeWidth='2'>
+                <path strokeLinecap='round' strokeLinejoin='round'
+                    d='M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z' />
+            </svg>
+            <span className={inline ? '' : 'hidden sm:inline'}>Messages</span>
+            {unread > 0 && (
+                <span aria-hidden='true'
+                    className={inline
+                        ? 'count'
+                        : 'absolute -top-1 -right-1 min-w-6 rounded-full bg-red-700 px-1.5 text-center text-sm font-semibold leading-6 text-white'}>
+                    {badge}
+                </span>
+            )}
+        </button>
+    );
+
+    const drawer = createPortal(
         <div className='text-base text-gray-900'>
-            <button
-                ref={buttonRef}
-                type='button'
-                onClick={() => setOpen((o) => !o)}
-                aria-expanded={open}
-                aria-controls='messages-panel'
-                aria-label={label}
-                className='fixed top-3 right-16 z-50 flex items-center gap-2 rounded-full border border-gray-300 bg-white p-2 shadow-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 sm:px-4'>
-                <svg aria-hidden='true' viewBox='0 0 24 24' className='h-6 w-6 shrink-0' fill='none' stroke='currentColor' strokeWidth='2'>
-                    <path strokeLinecap='round' strokeLinejoin='round'
-                        d='M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z' />
-                </svg>
-                <span className='hidden sm:inline'>Messages</span>
-                {unread > 0 && (
-                    <span aria-hidden='true'
-                        className='absolute -top-1 -right-1 min-w-6 rounded-full bg-red-700 px-1.5 text-center text-sm font-semibold leading-6 text-white'>
-                        {badge}
-                    </span>
-                )}
-            </button>
+            {!inline && button}
 
             {/* Announces new messages to screen readers */}
             <p className='sr-only' aria-live='polite'>{latest ? 'New message on this application' : ''}</p>
@@ -167,6 +177,8 @@ const MessagesPanel = ({ applicationId }) => {
         </div>,
         document.body,
     );
+
+    return inline ? <>{button}{drawer}</> : drawer;
 };
 
 export default MessagesPanel;

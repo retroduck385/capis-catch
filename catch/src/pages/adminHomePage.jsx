@@ -8,11 +8,11 @@ const AdminHomePage = () => {
     const { session, role } = UserAuth();
 
     return (
-        <div>
+        <div className="wt-page">
             <div className="ct-pagehead">
                 <div>
                     <h1>Work tray</h1>
-                    <p>{ROLE_LABELS[role] ?? role}, {session?.user?.email}</p>
+                    <p>{ROLE_LABELS[role] ?? role} · {session?.user?.email}</p>
                 </div>
             </div>
             <WorkTray />

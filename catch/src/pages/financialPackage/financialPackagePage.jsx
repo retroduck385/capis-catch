@@ -3,6 +3,7 @@
 // save_financial_package(). Only the assigned CO edits (any stage before Decided); everyone else with access reads.
 // Credit checking (BRAS / NFIS / TU) waits for the Credit Investigator's results, which aren't built yet.
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, ArrowRight, Lock } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one, toRow } from '../applicationForm/api';
@@ -13,7 +14,9 @@ import ChangeHistory from '../loanFolder/changeHistory';
 import { fetchReviewAssignments } from '../review/api';
 import { fetchAssignedAo, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage } from './api';
 import MessagesPanel from '../messages/messagesPanel';
-import { computeFp } from './compute';
+import { computeFp, percent } from './compute';
+import '../loanFolder/loanFolder.css';
+import './financialPackage.css';
 import { totalCreditScore } from './creditScore';
 import {
     ApprovalSection, CashFlowSection, CollateralSection, CreditCheckingSection, CreditResultSection, CustomerSection, EmploymentSection,
@@ -89,6 +92,40 @@ const buildPayload = (form) => {
     };
 };
 
+// Section navigator: [group, [[element id, label], ...]]; the ids are set in fpSections.jsx
+const TOC = [
+    {
+        group: 'Page 1: Recommendation',
+        items: [['fp-general', 'General information'], ['fp-i', 'I. Borrower/s highlight'], ['fp-ii', 'II. Facility'],
+            ['fp-iii', 'III. Collateral'], ['fp-iv', 'IV. Credit checking'], ['fp-v', 'V. Exceptions'],
+            ['fp-vi', 'VI. Terms and conditions'], ['fp-vii', 'VII. Approval']],
+    },
+    {
+        group: 'Page 2: Application information',
+        items: [['fp-viii', 'VIII. Employment'], ['fp-ix', 'IX. Cash flow'], ['fp-x', 'X. Deposit checking'],
+            ['fp-xi', 'XI. Loan verification'], ['fp-xii', 'XII. Trade checking'], ['fp-xiii', 'XIII. Title'],
+            ['fp-xiv', 'XIV. Customer information']],
+    },
+    { group: 'Result', items: [['fp-result', 'Credit result'], ['fp-history', 'Change history']] },
+];
+const TOC_IDS = TOC.flatMap((g) => g.items.map(([id]) => id));
+
+// The section nearest the top of the viewport, for the navigator's highlight
+const useActiveSection = (ready) => {
+    const [active, setActive] = useState(TOC_IDS[0]);
+    useEffect(() => {
+        if (!ready) return undefined;
+        const observer = new IntersectionObserver((entries) => {
+            const top = entries.filter((e) => e.isIntersecting)
+                .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+            if (top) setActive(top.target.id);
+        }, { rootMargin: '-10% 0px -70% 0px' });
+        TOC_IDS.forEach((id) => { const el = document.getElementById(id); if (el) observer.observe(el); });
+        return () => observer.disconnect();
+    }, [ready]);
+    return active;
+};
+
 const FinancialPackagePage = () => {
     const { role } = UserAuth();
     const [searchParams] = useSearchParams();
@@ -153,6 +190,7 @@ const FinancialPackagePage = () => {
         [app, form]);
     // Saved credit score (scored on its own page)
     const score = useMemo(() => (rules ? totalCreditScore(rules, savedScore) : null), [rules, savedScore]);
+    const activeId = useActiveSection(Boolean(app && form && rules));
 
     if (loading) return <p>Loading financial package...</p>;
     if (error && !form) return <p className="text-red-600">{error}</p>;
@@ -200,74 +238,145 @@ const FinancialPackagePage = () => {
     const kycBankAccounts = getParties(app, BORROWER_ROLES).flatMap((p) => (p.bank_accounts ?? []).map((b) => ({ party: p, ...b })));
     const kycLoans = computed.existingLoans;
 
+    const pesoOf = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
+    const metrics = [
+        {
+            key: 'risk', label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
+            sub: score.riskRating ? `${score.total} / 100` : `${score.scored} of ${score.count} scored`,
+            tone: score.riskRating ? 'info' : 'warn', link: [`/creditScorePage?id=${app.id}`, 'Open scoring'],
+        },
+        { key: 'dbr', label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: 'plain' },
+        { key: 'lcr', label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: 'plain' },
+        {
+            key: 'amort', label: 'Monthly amortization', value: pesoOf(computed.amortization),
+            sub: computed.amortization === null ? 'Needs the interest rate' : 'New loan', tone: 'plain',
+        },
+        {
+            key: 'income', label: 'Combined gross income', value: pesoOf(computed.totalGross),
+            sub: computed.totalGross === null ? 'Pick every income basis' : 'Per month', tone: 'plain',
+        },
+    ];
+
+    const goTo = (id) => (e) => {
+        e.preventDefault();
+        const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        document.getElementById(id)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    };
+
     return (
-        <form onSubmit={handleSave} className="max-w-5xl m-auto p-4 text-left">
-            <MessagesPanel applicationId={app.id} />
-            <p>
-                <Link to="/adminHomePage" className="underline">Back to work tray</Link>
-                {' · '}
-                <Link to={`/loanFolderPage?id=${app.id}`} className="underline">Open loan folder (KYC & documents)</Link>
-            </p>
-            <h2>Financial Package: {app.application_no}</h2>
-            {!canEdit && (
-                <p className="italic">
-                    Read-only. Only the assigned Credit Officer can edit the Financial Package.
-                    {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
-                </p>
-            )}
-
-            <HeaderSection app={app} aoName={aoName} form={form.pkg} onPkg={onPkg} disabled={disabled} score={score}
-                scoreLink={`/creditScorePage?id=${app.id}`} approvalLink={`/approvalRoutingPage?id=${app.id}`}
-                onOpenScore={confirmLeave} />
-            <HighlightsSection app={app} computed={computed} />
-            <FacilitySection app={app} computed={computed} form={form.pkg} pricing={form.pricing}
-                onPkg={onPkg} onPricing={onPricing} disabled={disabled} />
-            <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
-            <CreditCheckingSection app={app} />
-            <RowsSection title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
-                onChange={onList('exceptions')} disabled={disabled} />
-            <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
-            <ApprovalSection tier={routing.tier} rows={routing.rows} names={routing.names}
-                link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
-
-            <h3 className="font-semibold pt-4">Page 2: Credit Application Information</h3>
-            <EmploymentSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
-            <CashFlowSection computed={computed} details={form.parties} onParty={onParty} disabled={disabled} />
-            <RowsSection title="X. Deposit Checking" config={DEPOSIT_CHECK_FIELDS} rows={form.deposit_checks}
-                onChange={onList('deposit_checks')} disabled={disabled}>
-                <p className="text-sm">Bank accounts declared in the KYC:{' '}
-                    {kycBankAccounts.length === 0 ? 'none.' : kycBankAccounts.map((b) =>
-                        `${partyLabel(b.party)}: ${b.bank_name} ${b.account_type} ${b.account_number}`).join('; ')}
-                </p>
-            </RowsSection>
-            <RowsSection title="XI. Loan Verification (Based on Loandex and Disclosure)" config={LOAN_CHECK_FIELDS}
-                rows={form.loan_checks} onChange={onList('loan_checks')} disabled={disabled}>
-                <p className="text-sm">Existing loans declared in the KYC:{' '}
-                    {kycLoans.length === 0 ? 'none.' : kycLoans.map((l) =>
-                        `${partyLabel(l.party)}: ${l.loan_type} with ${l.lending_institution}, ₱${formatMoney(l.monthly_payment)} / month`).join('; ')}
-                </p>
-            </RowsSection>
-            <RowsSection title="XII. Trade Checking (if applicable)" config={TRADE_CHECK_FIELDS} rows={form.trade_checks}
-                onChange={onList('trade_checks')} disabled={disabled} />
-            <TitleSection titles={form.titles} onTitle={onTitle} disabled={disabled} />
-            <CustomerSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
-            <CreditResultSection form={form.pkg} onPkg={onPkg} disabled={disabled} />
-
-            {canEdit && (
-                <div className="sticky bottom-0 bg-white border-t py-3 flex gap-4 items-center">
-                    <button type="submit" disabled={saving || !dirty}>
-                        {saving ? 'Saving...' : 'Save Financial Package'}
-                    </button>
-                    {dirty && <span>Unsaved changes</span>}
-                    {saved && !dirty && <span className="text-green-700">Saved.</span>}
-                    <FormError error={error} />
+        <form onSubmit={handleSave} className="lf fp">
+            <header className="lf-card">
+                <Link to="/adminHomePage" className="lf-back"><ArrowLeft size={16} aria-hidden="true" />Work tray</Link>
+                <div className="lf-titlerow">
+                    <div>
+                        <h1>Financial Package {app.application_no}</h1>
+                        <ul className="lf-meta">
+                            <li>Financial Package and Credit Recommendation, Housing Loans</li>
+                            {aoName && <li>Handling Account Officer: {aoName}</li>}
+                        </ul>
+                    </div>
+                    <div className="lf-actions">
+                        <MessagesPanel applicationId={app.id} inline />
+                        <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
+                            Loan folder<ArrowRight size={16} aria-hidden="true" />
+                        </Link>
+                    </div>
                 </div>
-            )}
-            {!canEdit && <FormError error={error} />}
 
-            <div className="border p-3 my-3">
-                <h3 className="font-semibold pb-1">FP change history</h3>
-                {audit.length === 0 ? <p>No changes yet.</p> : <ChangeHistory app={app} entries={audit} names={names} />}
+                <div className="fp-metrics">
+                    {metrics.map((m) => (
+                        <div key={m.key} className={`fp-metric ${m.tone}`}>
+                            <span className="lbl">{m.label}</span>
+                            <span className="val">{m.value}</span>
+                            <span className="sub">{m.sub}</span>
+                            {m.link && <Link to={m.link[0]} onClick={confirmLeave} className="more">{m.link[1]}</Link>}
+                        </div>
+                    ))}
+                </div>
+
+                {!canEdit && (
+                    <p className="lf-note">
+                        <Lock size={16} aria-hidden="true" />
+                        <span>
+                            Read-only. Only the assigned Credit Officer can edit the Financial Package.
+                            {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
+                        </span>
+                    </p>
+                )}
+            </header>
+
+            <div className="lf-body edit">
+                <nav className="lf-card lf-nav fp-nav" aria-label="Financial Package sections">
+                    {TOC.map(({ group, items }) => (
+                        <div key={group}>
+                            <p className="fp-navgroup">{group}</p>
+                            <ul>
+                                {items.map(([id, label]) => (
+                                    <li key={id}>
+                                        <a href={`#${id}`} onClick={goTo(id)} aria-current={activeId === id ? 'true' : undefined}>
+                                            {label}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </nav>
+
+                <div className="lf-main fp-main">
+                    <HeaderSection app={app} aoName={aoName} form={form.pkg} onPkg={onPkg} disabled={disabled} />
+                    <HighlightsSection app={app} computed={computed} />
+                    <FacilitySection app={app} computed={computed} form={form.pkg} pricing={form.pricing}
+                        onPkg={onPkg} onPricing={onPricing} disabled={disabled} />
+                    <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
+                    <CreditCheckingSection app={app} />
+                    <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
+                        onChange={onList('exceptions')} disabled={disabled} />
+                    <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
+                    <ApprovalSection tier={routing.tier} rows={routing.rows} names={routing.names}
+                        link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
+
+                    <h2 className="fp-pagehead">Page 2: Credit Application Information</h2>
+                    <EmploymentSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
+                    <CashFlowSection computed={computed} details={form.parties} onParty={onParty} disabled={disabled} />
+                    <RowsSection id="fp-x" title="X. Deposit Checking" config={DEPOSIT_CHECK_FIELDS} rows={form.deposit_checks}
+                        onChange={onList('deposit_checks')} disabled={disabled}>
+                        <p className="fp-note">Bank accounts declared in the KYC:{' '}
+                            {kycBankAccounts.length === 0 ? 'none.' : kycBankAccounts.map((b) =>
+                                `${partyLabel(b.party)}: ${b.bank_name} ${b.account_type} ${b.account_number}`).join('; ')}
+                        </p>
+                    </RowsSection>
+                    <RowsSection id="fp-xi" title="XI. Loan Verification (Based on Loandex and Disclosure)" config={LOAN_CHECK_FIELDS}
+                        rows={form.loan_checks} onChange={onList('loan_checks')} disabled={disabled}>
+                        <p className="fp-note">Existing loans declared in the KYC:{' '}
+                            {kycLoans.length === 0 ? 'none.' : kycLoans.map((l) =>
+                                `${partyLabel(l.party)}: ${l.loan_type} with ${l.lending_institution}, ₱${formatMoney(l.monthly_payment)} / month`).join('; ')}
+                        </p>
+                    </RowsSection>
+                    <RowsSection id="fp-xii" title="XII. Trade Checking (if applicable)" config={TRADE_CHECK_FIELDS} rows={form.trade_checks}
+                        onChange={onList('trade_checks')} disabled={disabled} />
+                    <TitleSection titles={form.titles} onTitle={onTitle} disabled={disabled} />
+                    <CustomerSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
+                    <CreditResultSection form={form.pkg} onPkg={onPkg} disabled={disabled} />
+
+                    <section id="fp-history" className="lf-card">
+                        <div className="lf-cardhead"><h2>FP change history</h2></div>
+                        {audit.length === 0 ? <p className="fp-empty">No changes yet.</p> : <ChangeHistory app={app} entries={audit} names={names} />}
+                    </section>
+
+                    {canEdit ? (
+                        <div className="fp-savebar">
+                            <div className="state" role="status">
+                                {dirty && <span className="fp-chip warn">Unsaved changes</span>}
+                                {saved && !dirty && <span className="fp-chip ok">Saved</span>}
+                                <FormError error={error} />
+                            </div>
+                            <button type="submit" disabled={saving || !dirty}>
+                                {saving ? 'Saving...' : 'Save Financial Package'}
+                            </button>
+                        </div>
+                    ) : <FormError error={error} />}
+                </div>
             </div>
         </form>
     );

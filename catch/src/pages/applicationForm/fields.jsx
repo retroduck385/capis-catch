@@ -67,8 +67,8 @@ export const FieldGroup = ({ config, fields, values, errors = {}, required = [],
     </>
 );
 
-export const Section = ({ title, children, className = '' }) => (
-    <fieldset className={`ct-section ${className}`.trim()}>
+export const Section = ({ title, children, className = '', id }) => (
+    <fieldset id={id} className={`ct-section ${className}`.trim()}>
         <legend>{title}</legend>
         {children}
     </fieldset>

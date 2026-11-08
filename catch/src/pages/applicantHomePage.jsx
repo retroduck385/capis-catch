@@ -26,8 +26,6 @@ const ApplicantHomePage = () => {
 
     const draftCount = applications.filter((a) => a.status === 'DRAFT').length;
     const hasDraft = draftCount > 0;
-    const email = session?.user?.email;
-    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || email;
     const firstName = profile?.first_name;
 
     const applyHousingLoan = () => {
@@ -62,48 +60,28 @@ const ApplicantHomePage = () => {
                 <div className="ct-stat"><span>Submitted</span><strong>{applications.length - draftCount}</strong></div>
             </div>
 
-            <div className="ct-e-grid">
-                <div className="ct-card">
-                    <div className="ct-card-head">
-                        <h2>Application register</h2>
-                        <span className="ct-mono ct-muted">{applications.length} {applications.length === 1 ? 'record' : 'records'}</span>
-                    </div>
-                    {error && <p className="ct-error" role="alert" style={{ padding: '0 1rem' }}>{error}</p>}
-                    {applications.length === 0 ? (
-                        <p className="ct-empty">You haven't started an application yet. Start one above. It saves after every step, so you can leave and come back.</p>
-                    ) : (
-                        <ul className="ct-register">
-                            {applications.map((a) => (
-                                <li key={a.id}>
-                                    <span className="ct-mono">{a.application_no ?? 'Draft'}</span>
-                                    <span><span className="ct-badge"><ApplicantStatusLabel application={a} /></span></span>
-                                    <span className="amt">{a.loan_amount ? `PHP ${Number(a.loan_amount).toLocaleString()}` : ''}</span>
-                                    <Link className="ct-link" to={`/applicationFormPage?id=${a.id}`}>
-                                        {a.status === 'DRAFT' ? 'Continue' : 'View'}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
+            <div className="ct-card">
+                <div className="ct-card-head">
+                    <h2>Application register</h2>
+                    <span className="ct-mono ct-muted">{applications.length} {applications.length === 1 ? 'record' : 'records'}</span>
                 </div>
-
-                <div className="ct-card">
-                    <div className="ct-card-head"><h2>Your profile</h2></div>
-                    <div className="ct-sheet-body">
-                        <div className="ct-profile" style={{ paddingBottom: '0.9rem', marginBottom: '0.9rem' }}>
-                            <h2>{fullName}</h2>
-                            <p className="id">{email}</p>
-                            {profileComplete !== null && (
-                                <span className={`ct-badge ${profileComplete ? 'ok' : 'warm'}`}>
-                                    {profileComplete ? 'Profile complete' : 'Profile incomplete'}
-                                </span>
-                            )}
-                        </div>
-                        <div className="ct-kv"><span>Mobile number</span><span>{profile?.mobile_number || 'Not set'}</span></div>
-                        <div className="ct-kv"><span>Civil status</span><span>{profile?.civil_status ? profile.civil_status.charAt(0) + profile.civil_status.slice(1).toLowerCase() : 'Not set'}</span></div>
-                        <p style={{ marginTop: '1rem' }}><Link to="/profilePage" className="ct-link">Edit my profile</Link></p>
-                    </div>
-                </div>
+                {error && <p className="ct-error" role="alert" style={{ padding: '0 1rem' }}>{error}</p>}
+                {applications.length === 0 ? (
+                    <p className="ct-empty">You haven't started an application yet. Start one above. It saves after every step, so you can leave and come back.</p>
+                ) : (
+                    <ul className="ct-register">
+                        {applications.map((a) => (
+                            <li key={a.id}>
+                                <span className="ct-mono">{a.application_no ?? 'Draft'}</span>
+                                <span><span className="ct-badge"><ApplicantStatusLabel application={a} /></span></span>
+                                <span className="amt">{a.loan_amount ? `PHP ${Number(a.loan_amount).toLocaleString()}` : ''}</span>
+                                <Link className="ct-link" to={`/applicationFormPage?id=${a.id}`}>
+                                    {a.status === 'DRAFT' ? 'Continue' : 'View'}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
         </div>
     );
