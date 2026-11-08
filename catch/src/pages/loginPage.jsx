@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import { useState } from 'react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
 import ApplicantShell, { BrandPanel } from '../components/applicantShell';

@@ -1,6 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import PrivateRoute from "./components/privateRoute";
-import App from "./App";
 import SignUpPage from "./pages/signUpPage";
 import LoginPage from "./pages/loginPage";
 import ApplicantHomePage from "./pages/applicantHomePage";
