@@ -25,6 +25,9 @@ const TABLE_LABELS = {
     fp_title_verifications: 'FP title verification',
     credit_score_entries: 'Credit score',
     review_assignments: 'Reviewer / approver',
+    ci_requests: 'CI request',
+    ci_checks: 'CI result',
+    ci_documents: 'CI report file',
 };
 
 const ACTION_LABELS = { INSERT: 'Added', UPDATE: 'Changed', DELETE: 'Removed' };

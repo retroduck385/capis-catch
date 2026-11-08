@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { requestCi } from './api';
 import CiRequestForms from './ciRequestForms';
+import { CiResultsView } from './ciResults';
 
 const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionCount, onRequested }) => {
     const [nfisRemarks, setNfisRemarks] = useState('');
@@ -42,6 +43,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                     <h3 className="font-semibold pt-2">TU remarks</h3>
                     <p className="whitespace-pre-wrap">{ciRequest.tu_remarks || '—'}</p>
                 </div>
+                <CiResultsView app={app} title="CI results (from the Credit Investigator)" />
             </div>
         );
     }

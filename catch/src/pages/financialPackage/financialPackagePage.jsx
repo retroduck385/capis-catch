@@ -1,7 +1,7 @@
 // Financial Package & Credit Recommendation (KYC-FP "FP" tab), opened from the Credit Officer's work tray.
 // Fields copied from the KYC are read live from the AO's record; the CO's own inputs are saved with
 // save_financial_package(). Only the assigned CO edits (any stage before Decided); everyone else with access reads.
-// Credit checking (BRAS / NFIS / TU) waits for the Credit Investigator's results, which aren't built yet.
+// IV. Credit checking shows the Credit Investigator's results (BRAS / NFIS / TU), read-only.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';

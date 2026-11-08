@@ -8,6 +8,7 @@ import { Field, Section } from '../applicationForm/fields';
 import {
     BORROWER_ROLES, CIVIL_STATUSES, HOME_OWNERSHIP, REFERRAL_CHANNELS, formatMoney, labelFor, partyLabel,
 } from '../applicationForm/options';
+import { CiResultsView } from '../ciRequest/ciResults';
 import RoutingSummary from '../review/routingSummary';
 import { percent } from './compute';
 import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS } from './options';
@@ -178,22 +179,10 @@ export const CollateralSection = ({ app, form, onPkg, disabled }) => {
     );
 };
 
-// ---------- IV. Credit checking (from the CI; not built yet) ----------
+// ---------- IV. Credit checking (the Credit Investigator's results, read-only) ----------
 export const CreditCheckingSection = ({ app }) => (
     <Section title="IV. Credit Checking">
-        <table className="border-collapse">
-            <thead><tr><Head>Name</Head><Head>BRAS</Head><Head>NFIS</Head></tr></thead>
-            <tbody>
-                {getParties(app, BORROWER_ROLES).map((p) => (
-                    <tr key={p.id}>
-                        <Cell>{show(fullName(p))} ({partyLabel(p)})</Cell>
-                        <Cell className="italic text-gray-500">Awaiting CI results</Cell>
-                        <Cell className="italic text-gray-500">Awaiting CI results</Cell>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-        <p className="italic text-sm pt-1">Filled in from the Credit Investigator's results once that step exists.</p>
+        <CiResultsView app={app} title={null} />
     </Section>
 );
 

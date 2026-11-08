@@ -1,6 +1,8 @@
-// Supabase calls for CI requests (see 20261020_ci_request.sql). Functions throw on error;
-// callers handle it in try/catch/finally.
+// Supabase calls for CI requests and CI results (see 20261020_ci_request.sql, 20261108_ci_results.sql).
+// Functions throw on error; callers handle it in try/catch/finally.
 import { supabase } from '../../supabaseClient';
+
+const BUCKET = 'application-documents';
 
 const check = ({ data, error }) => {
     if (error) throw error;
@@ -17,3 +19,65 @@ export const requestCi = async (applicationId, nfisRemarks, tuRemarks) =>
 export const fetchCiRequests = async (applicationId) =>
     check(await supabase.from('ci_requests').select('*')
         .eq('application_id', applicationId).order('requested_at').order('id')) ?? [];
+
+// ---------- CI results ----------
+
+// True for any active Credit Investigator while the application is in Credit Investigation
+export const fetchCiCanEdit = async (applicationId) =>
+    check(await supabase.rpc('ci_can_edit', { p_application_id: applicationId })) ?? false;
+
+// Results and files of the given borrowers (ids from the application record)
+export const fetchCiResults = async (borrowerIds) => {
+    if (!borrowerIds.length) return { checks: [], documents: [] };
+    const [checks, documents] = await Promise.all([
+        supabase.from('ci_checks').select('*').in('applicant_id', borrowerIds),
+        supabase.from('ci_documents').select('*').in('applicant_id', borrowerIds).order('uploaded_at').order('id'),
+    ]);
+    return { checks: check(checks) ?? [], documents: check(documents) ?? [] };
+};
+
+// rows: [{ applicant_id, check_type, result, summary }]; unchanged rows aren't touched by the DB
+export const saveCiFindings = async (applicationId, rows, remarks) =>
+    check(await supabase.rpc('save_ci_findings', {
+        p_application_id: applicationId, p_checks: rows, p_remarks: remarks,
+    }));
+
+// Stored at ci/{application}/{borrower}/{check}/..., outside the applicant's folder, so the applicant can't open it
+export const uploadCiDocument = async ({ applicationId, applicantId, checkType, file }) => {
+    const ext = file.name.match(/\.([A-Za-z0-9]+)$/)?.[1]?.toLowerCase();
+    const path = `ci/${applicationId}/${applicantId}/${checkType}/${Date.now()}${ext ? `.${ext}` : ''}`;
+    check(await supabase.storage.from(BUCKET).upload(path, file));
+    try {
+        return check(await supabase.rpc('add_ci_document', {
+            p_applicant_id: applicantId, p_check_type: checkType, p_file_name: file.name, p_file_path: path,
+        }));
+    } catch (err) {
+        await supabase.storage.from(BUCKET).remove([path]); // don't leave an orphaned file
+        throw err;
+    }
+};
+
+export const removeCiDocument = async (doc) => {
+    const path = check(await supabase.rpc('remove_ci_document', { p_id: doc.id }));
+    check(await supabase.storage.from(BUCKET).remove([path]));
+};
+
+export const getCiDocumentUrl = async (doc) =>
+    check(await supabase.storage.from(BUCKET).createSignedUrl(doc.file_path, 60)).signedUrl;
+
+// What's still needed before Mark CI Done (empty list = ready)
+export const fetchCiMissing = async (applicationId) =>
+    check(await supabase.rpc('ci_missing', { p_application_id: applicationId })) ?? [];
+
+// Credit Investigation -> Done, Credit Evaluation opened, CO notified. Returns what's missing instead (nothing moved).
+export const completeCi = async (applicationId) =>
+    check(await supabase.rpc('complete_ci', { p_application_id: applicationId })) ?? [];
+
+// The Done row of the latest Credit Investigation visit ({ changed_at, changed_by }), or null while it's open
+export const fetchCiDone = async (applicationId) => {
+    const visits = check(await supabase.from('application_stages')
+        .select('id, stage_status_changes(status, changed_at, changed_by)')
+        .eq('application_id', applicationId).eq('stage', 'CREDIT_INVESTIGATION')
+        .order('entered_at', { ascending: false }).limit(1)) ?? [];
+    return visits[0]?.stage_status_changes?.find((s) => s.status === 'DONE') ?? null;
+};
