@@ -16,15 +16,18 @@ uv pip install --python .venv/bin/python -r requirements.txt
 cp .env.example .env                  # then paste the service role key
 ```
 
-Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`.
+Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`.
 
 ## Run
 
 ```bash
-.venv/bin/python worker.py                 # keep polling every 5 s
+.venv/bin/python worker.py                 # idle until an upload, then OCR it right away
+.venv/bin/python worker.py --poll          # old behaviour: check the queue every 5 s, no Realtime
 .venv/bin/python worker.py --once          # process the current queue, then exit
 .venv/bin/python worker.py --file id.jpg   # OCR a local file, print lines, save nothing
 ```
+
+By default the worker subscribes to INSERTs on `ocr_runs` via Supabase Realtime (`20261108_ocr_realtime.sql` adds the table to the publication), so it makes no queue calls while nothing is uploaded. It still checks the queue every 5 min (`--interval` to change) as a safety net for events missed while disconnected and for runs stuck in `RUNNING` (requeued after 15 min). If Realtime can't connect it says so and just runs on that slow check.
 
 The first run downloads the models (~100 MB, to `~/.paddlex/`).
 
