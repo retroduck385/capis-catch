@@ -3,7 +3,7 @@
 Sources: As-Is BPMN (App. A, A.1-A.6), Home Loan Tracker tabs (App. F), interviews (App. G-K), main paper Sec. 1.3, 1.4.2.2, 1.4.2.4.
 **The paper has no to-be BPMN yet.** Phase 3 has not started (Sec. 3.2.3.4). Stage and status names were **decided by implementation on 2026-10-13** (Q-10): see "Implemented model" below. The as-is table that follows is kept as the source the implemented stages map from.
 
-## Implemented model (`catch/supabase/migrations/20261005_work_tray.sql`, moves in `20261020_ci_request.sql` and `20261021_review_routing.sql`)
+## Implemented model (`catch/supabase/migrations/20261005_work_tray.sql`, moves in `20261020_ci_request.sql`, `20261021_review_routing.sql`, `20261108_approver_positions.sql`, `20261108_ci_results.sql` and `20261108_reviewer_signoff.sql`)
 Two layers, plus an applicant-facing status.
 
 | Layer | Enum | Values |
@@ -31,12 +31,21 @@ Two layers, plus an applicant-facing status.
 - `submit_application()`: DRAFT → SUBMITTED once nothing required is missing; a trigger opens INTAKE with status PENDING.
 - `assign_application()`: an AO claiming (or being assigned) in INTAKE, or a CO in CREDIT_EVALUATION, moves PENDING → IN_PROGRESS. `unassign_application()` moves it back.
 - `request_ci()` (`20261020_ci_request.sql`, decided by implementation 2026-10-21): the assigned AO, while the file is in INTAKE. INTAKE → DONE and closed; CREDIT_INVESTIGATION opens as REQUESTED; status SUBMITTED → UNDER_CI. KYC sections don't have to be Verified first. The AO can keep editing the record during CREDIT_INVESTIGATION.
-- `send_for_review()` (`20261021_review_routing.sql`, decided by implementation 2026-10-21): the assigned CO, while the file is in CREDIT_INVESTIGATION or CREDIT_EVALUATION, once the FP has a Credit Result of Endorsed or Not endorsed. Records the approval tier, reviewers and approvers, closes the current stage as DONE, opens REVIEW as PENDING; status → UNDER_REVIEW. A Deferred result does not go to review.
+- CI results (`20261108_ci_results.sql`, decided by implementation 2026-11-08): any active CI, while the file is in CREDIT_INVESTIGATION and has a CI request. The CI's first save or upload (`save_ci_findings()`, `add_ci_document()`) moves CREDIT_INVESTIGATION from REQUESTED to IN_PROGRESS.
+- `complete_ci()` ("Mark CI Done", 2026-11-08): needs an NFIS and a TU result and report for every borrower (principal, spouse, co-borrowers); otherwise it returns what is missing and changes nothing. CREDIT_INVESTIGATION → DONE and closed; CREDIT_EVALUATION opens as IN_PROGRESS if a CO is already assigned, else PENDING; status UNDER_CI → UNDER_CREDIT_EVALUATION.
+- `send_for_review()` (`20261021_review_routing.sql`, decided by implementation 2026-10-21; changed by `20261108_approver_positions.sql`): the assigned CO, while the file is in CREDIT_INVESTIGATION or CREDIT_EVALUATION, once the FP has a Credit Result of Endorsed or Not endorsed. Since 2026-11-08 the CO picks the reviewers only (`send_for_review(application, reviewers)`); the approval authority comes from the matrix and the approvers from their positions (`approval-rules.md`). It refuses when the approver accounts can't cover the authority. Closes the current stage as DONE, opens REVIEW as PENDING; status → UNDER_REVIEW. A Deferred result does not go to review.
+- `submit_review()` (`20261108_reviewer_signoff.sql`, 2026-11-08): only the current reviewer (lowest order without a sign-off), while in REVIEW.
+  - Endorse / Not endorse, with a justification and every checklist item marked: if another reviewer is left, REVIEW stays open (IN_PROGRESS) and that reviewer is told it's their turn. After the last reviewer, REVIEW → DONE, APPROVAL opens as PENDING, status → FOR_APPROVAL.
+  - Return to the CO (Minor / Major, at least one item marked Needs revision): REVIEW → DONE, CREDIT_EVALUATION opens again as RETURNED, status → UNDER_CREDIT_EVALUATION.
+- `resend_for_review()` (2026-11-08): the assigned CO, in CREDIT_EVALUATION with an unanswered return, says what changed. CREDIT_EVALUATION → DONE, REVIEW opens as PENDING, status → UNDER_REVIEW. Review continues from the reviewer who returned it; earlier sign-offs stand. The approval authority can only go up here.
+- Every sign-off and return is a row in `review_decisions` (checklist in `review_decision_items`), logged in `audit_log`.
 
 **Gaps (not built yet)**
-- Nothing moves a file into CREDIT_EVALUATION (the CI results step isn't built), so today a file goes from CREDIT_INVESTIGATION straight to REVIEW. Nothing moves a file out of REVIEW (no reviewer sign-off or approver decision). No RETURNED transitions.
+- ~~Nothing moves a file into CREDIT_EVALUATION; nothing moves it out of REVIEW; no RETURNED transitions.~~ **Built 2026-11-08** (above).
+- Nothing moves a file out of APPROVAL: no approver decision, no DECIDED stage, nothing sets APPROVED / REJECTED / DEFERRED / FOR_CLARIFICATION.
 - The CO's Credit Result (Endorsed / Not endorsed / Deferred) is saved on the FP only; Deferred does not return the file to an earlier stage.
-- ~~No notifications to the next role.~~ **Built 2026-10-24** (`20261024_notifications.sql`, in-app only, see `decisions/notifications.md`): new submission → every AO; AO / CO assigned or removed by a head; CI request → every CI; Credit Result saved as Deferred → assigned AO; the AO edits a deferred file → assigned CO; routed to / removed from review → that reviewer; applicant notices for the four statuses. Already wired but nothing triggers them yet: Credit Evaluation opened (assigned CO, else Dispatch Admins), Approval opened (routed approvers), Decided (AO, CO, Dispatch Admins), a stage returned (its owner), a Done status reopened (owner + Dispatch Admins).
+- Desk / Field CI and the first reviewer's CI request: out of scope for now (Q-13).
+- ~~No notifications to the next role.~~ **Built 2026-10-24** (`20261024_notifications.sql`, in-app only, see `decisions/notifications.md`): new submission → every AO; AO / CO assigned or removed by a head; CI request → every CI; Credit Result saved as Deferred → assigned AO; the AO edits a deferred file → assigned CO; routed to / removed from review → that reviewer; applicant notices for the four statuses. **Firing since 2026-11-08:** Credit Evaluation opened (assigned CO, else Dispatch Admins), Approval opened (routed approvers), a stage returned (its owner; today only a reviewer's return). Added by the 2026-11-08 functions: CI_DONE, REVIEW_YOUR_TURN, REVIEW_COMPLETE, REVIEW_RESUBMITTED. Still nothing triggers: Decided (AO, CO, Dispatch Admins), a Done status reopened (owner + Dispatch Admins).
 - No guard against a silent "Done" reversal.
 - Stage changes are logged in `stage_status_changes`, not in `audit_log`.
 
@@ -67,11 +76,11 @@ A check-and-return loop exists at three roles (AO, CO, Reviewer). One applicatio
 ## Rules the system must enforce (from the paper)
 - FIFO by submission timestamp (Sprint 2). **Built:** the work tray orders by submission time. The interviews mention a 2 PM daily cutoff for CO endorsements (not built). Assignment decided by implementation (Q-12): AO/CO self-claim, heads assign.
 - Every stage transition writes a system timestamp (1.4.2.4) and an audit entry.
-- Notify the next role the moment a milestone changes, including: CI result completed, and a deferred account updated by the AO (the CO has no trigger today, App. H). **Built** (2026-10-24): the CO gets DEFERRED_ACCOUNT_UPDATED when the assigned AO edits a file whose Credit Result is Deferred; "CI result completed" will notify through the Credit Evaluation stage-opened trigger once that move exists.
+- Notify the next role the moment a milestone changes, including: CI result completed, and a deferred account updated by the AO (the CO has no trigger today, App. H). **Built** (2026-10-24): the CO gets DEFERRED_ACCOUNT_UPDATED when the assigned AO edits a file whose Credit Result is Deferred. "CI result completed" **built 2026-11-08**: `complete_ci()` opens Credit Evaluation (STAGE_CREDIT_EVALUATION to the assigned CO, else the Dispatch Admins) and sends CI_DONE to the assigned AO, and to every CO when none is assigned.
 - A "Done" status must not silently revert. The reversal must notify (App. K). **Notifies** (DONE_REVERTED) since 2026-10-24; the revert itself is not prevented.
 - Submission is blocked while a required decision input is absent (Sprint 1).
 - Turnaround alarm: per-stage `stage_tat` with a "near" warning (built). The target values are still **unresolved** (Q-09: 7 days, 2 hours, 1 or 2 days); current numbers are placeholders.
 - Nothing an agent produces moves the file forward without a recorded human confirmation.
 
 ## Open items
-Q-05 (end state), Q-09 (TAT values only), Q-11 (CI results, Desk / Field CI; the initial request is decided), Q-13 (first reviewer's CI request; reviewer list and order are decided), Q-25 (physical vs digital sign-off).
+Q-05 (end state), Q-09 (TAT values only), Q-11 (only the "verified" threshold; who encodes CI results is decided), Q-25 (physical vs digital sign-off). Q-13's first-reviewer CI request is out of scope for now.

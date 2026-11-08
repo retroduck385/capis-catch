@@ -1,28 +1,41 @@
 # Approval rules
 
 Sources: Home Loan Tracker Approval tab (App. F.8) and RED Endorsement tab (F.9), Signatures tab (E.7), interviews (App. I, J), main paper Sec. 1.4.2.3, 1.4.2.5, 2.1.2.1.4, 2.1.2.4, 2.1.3.3, Figure 3, Sprint 4-5.
-Anything not listed is **not stated**. The sections below describe the sources. What the code does was **decided by implementation on 2026-10-21**: see "Implemented" right below.
+Anything not listed is **not stated**. The sections below describe the sources. What the code does was **decided by implementation** (2026-10-21, replaced 2026-11-08 by the bank's authority-limit matrix): see "Implemented" right below.
 
-## Implemented (decided by implementation, 2026-10-21)
-Code: `catch/supabase/migrations/20261021_review_routing.sql`, `catch/src/pages/review/approval.js`.
+## Implemented (bank's authority-limit matrix, 2026-11-08)
+Code: `catch/supabase/migrations/20261108_approval_matrix.sql`, `20261108_approver_positions.sql`, `20261108_reviewer_signoff.sql`; `catch/src/pages/review/approval.js` (keep both in step). Positions only, no names; the bank's own unit names are written as generic "Lending" titles.
 
-**Approval authority** (enum `approval_tier`, stored on `financial_packages.approval_tier`), from the FP sheet's VII. Approval block (Q-24):
-| Tier | Without deviation | With deviation |
+**Approval authority** (enum `approval_tier`, stored on `financial_packages.approval_tier`, computed by `approval_tier_for()`). Eight authorities, lowest to highest. With a deviation (at least one row in the FP's V. Exception/s) the next authority up approves:
+| Loan amount | Without deviation | With deviation |
 |---|---|---|
-| President (or alternate) | Up to P10M | |
-| Senior Credit Committee | More than P10M to P30M | Up to P10M |
-| Executive Committee | More than P30M | More than P10M to P30M |
-| Board | | More than P30M |
+| Up to P3.0M | Credit Dept. Head + Lending Dept. Head | Credit Division Head + Lending Dept. Head |
+| More than P3.0M to P5.0M | Credit Division Head + Lending Dept. Head | Credit Division Head + Lending Division Head |
+| More than P5.0M to P10.0M | Credit Division Head + Lending Division Head | President |
+| More than P10.0M to P20.0M | President | President + Senior Credit Committee member |
+| More than P20.0M to P30.0M | President + Senior Credit Committee member | Senior Credit Committee |
+| More than P30.0M to P50.0M | Senior Credit Committee | Executive Committee |
+| More than P50.0M | Executive Committee | Board |
 
-- A deviation = at least one row in the FP's V. Exceptions.
-- The page suggests the tier; the assigned CO picks it. The code notes two readings to confirm with the bank: the President's range (not printed on the sheet) and "Upto 3M to P10M" read as up to P10M.
-- These tiers differ from the tracker's Stage 1 / Stage 2 bands below (P3.0M / P5.0M); the code follows the FP sheet.
+**Who each authority needs** (`approval_requirements()`): every group must be met; a group is met by any one of its options.
+| Authority | Needs |
+|---|---|
+| Credit Dept. Head + Lending Dept. Head | 1 Credit Dept. Head AND 1 Lending Dept. Head |
+| Credit Division Head + Lending Dept. Head | (Credit Management Division Head OR 2 Credit Dept. Heads) AND 1 Lending Dept. Head |
+| Credit Division Head + Lending Division Head | (Credit Management Division Head OR 2 Credit Dept. Heads) AND (Lending Division Head OR 2 Lending Dept. Heads) |
+| President | President |
+| President + Senior Credit Committee member | President AND 1 Senior Credit Committee member |
+| Senior Credit Committee / Executive Committee / Board | that committee (one account decides as a body) |
 
-**Routing:** the CO picks one or more reviewers (in review order) and one or more approvers, all active REVIEWER / APPROVER accounts, and sends the file to Review with `send_for_review()`. This needs a Credit Result of Endorsed or Not endorsed. After that only the Dept Head or Dispatch Admin can change the tier or the people (`update_review_routing()`). Committees are named as tiers; committee members are not modeled (individual APPROVER accounts are picked).
+**Routing:** the assigned CO picks one or more reviewers (in review order) and sends the file to Review with `send_for_review(application, reviewers)`. This needs a Credit Result of Endorsed or Not endorsed. The authority is computed, and **every active Approver account whose position the authority mentions is routed automatically** (`approvers_for_tier()`); the CO no longer picks the authority or the approvers. Sending is refused when the existing approver accounts can't meet a group ("Ask the Department Head to add them"). After sending, only the Dept Head or Dispatch Admin can change the reviewers or override the authority, in Review or Approval (`update_review_routing()`); the approvers are re-matched to the authority each time. On a resend after a reviewer's return the authority can only go up (for example, an exception was added).
+
+**Reviewer sign-off** (Q-13): reviewers act in order. The current reviewer marks a nine-item checklist (`review_check_items`: documents, income, facility, collateral and LCR, CI results, exceptions, credit score, T&Cs, recommendation) and Endorses or Doesn't endorse with a justification, or returns the file to the CO (Minor / Major + what to fix). Not an approval or a rejection: that stays with the approvers. After the last reviewer the file goes to Approval. The first reviewer's Desk / Field CI request is out of scope for now.
 
 **CO recommendation:** `financial_packages.credit_result` = ENDORSED / NOT_ENDORSED / DEFERRED, with a required justification. The credit score's recommendation is a guide only.
 
-**Not built:** reviewer sign-off (mark reviewed / request revision), approver decisions (Approve / Reject / Defer), MRAC checks. Reviewers and approvers only view a summary page.
+**Not built:** approver decisions (Approve / Reject / Defer), MRAC checks. Approvers only view a summary page.
+
+**Earlier (2026-10-21, replaced):** four authorities read from the FP sheet's VII. Approval block (President up to P10M; Senior Credit Committee, Executive Committee, Board above that or with a deviation), suggested by the page and picked by the CO, who also picked the approvers. The tracker's Stage 1 / Stage 2 bands below (P3.0M / P5.0M) now match the matrix's first two bands.
 
 ## Approval tiers on the tracker (Approval tab)
 | Tier | Applies to | Approvers shown |

@@ -17,16 +17,19 @@ Sources: main paper Sec. 1.3, 1.4.1, 1.7.2, 3.2.4.3.1; As-Is BPMN (App. A); inte
 
 Committee Members are not modeled.
 
+**Approver positions (2026-11-08, `20261108_approver_positions.sql`).** No new roles. Every APPROVER account carries a position (`users.approval_position`): Credit Department Head, Credit Management Division Head, Lending Department Head, Lending Division Head, President, Senior Credit Committee, Executive Committee, Board. The bank's own unit names are written as generic titles. A committee is one account that decides as a body. Only Approver accounts can have a position. The Dept Head sets it when granting the role (`grant_staff_role(email, role, position)`) or changes it later (`set_approval_position()`); every change is logged in `staff_role_grants`.
+
 **How roles are given (Q-41, `decisions/role-storage.md`).** Self sign-up always creates an APPLICANT. The Dept Head creates staff logins on `/staffAccountsPage` and gives the role with `grant_staff_role()`. This only works for accounts that are still plain applicants with no loan application. Every grant is logged in `staff_role_grants`. The role is stored in `public.users.role`; clients can't change it.
 
 **Who sees what (RLS)**
 - **Applicant:** reads their own applications and edits them only while DRAFT. After submission, read-only.
 - **AO, CO, Dispatch Admin, Reviewer, Approver, Dept Head:** read every submitted application in full (AOs and COs since 2026-10-21; they edit only once assigned).
-- **CI:** sees and reads only applications an AO has sent a CI request for (`ci_requests`). Opens the NFIS / TU request page, view only.
+- **CI:** sees and reads only applications an AO has sent a CI request for (`ci_requests`). Opens the NFIS / TU request page. **Since 2026-11-08** (`20261108_ci_results.sql`, Q-11): any active CI, with no claiming, while the file is in CREDIT_INVESTIGATION, records CI results per borrower (principal, spouse, co-borrowers) and per check (NFIS, TU, BRAS): uploaded report files, a result (No adverse findings / With findings) and a summary, plus overall remarks (`save_ci_findings()`, `add_ci_document()`, `remove_ci_document()`). Then marks CI Done (`complete_ci()`). CI files are kept in `ci_documents` under `ci/{application id}/` in Storage, apart from the applicant's documents, so **the applicant can never read them**. Staff who can read the file read them; the AO can't delete them. Every change is in `audit_log`.
 - **Assigned AO, while the file is in INTAKE or CREDIT_INVESTIGATION:** edits the submitted record in place, uploads files into the applicant's folder, and records a KYC check per form section (Verified / Needs clarification + remarks, table `kyc_checks`). While in INTAKE, sends the CI request (`request_ci()`). Every edit after submission is logged in `audit_log`. Everyone else with access is read-only.
-- **Assigned CO, at any stage before DECIDED:** fills in the Financial Package (`save_financial_package()`), including interest rate, fixing period and Credit Result, and the credit score (`save_credit_score()`). While in CREDIT_INVESTIGATION or CREDIT_EVALUATION, picks the approval tier, reviewers and approvers and sends the file to REVIEW (`send_for_review()`).
-- **Dept Head, Dispatch Admin, while in REVIEW or APPROVAL:** change the approval tier, reviewers and approvers (`update_review_routing()`).
-- **Reviewers / approvers routed to a file:** see it under "Mine" in the work tray and open a read-only review summary. No sign-off or decision yet.
+- **Assigned CO, at any stage before DECIDED:** fills in the Financial Package (`save_financial_package()`), including interest rate, fixing period and Credit Result, and the credit score (`save_credit_score()`). While in CREDIT_INVESTIGATION or CREDIT_EVALUATION, picks the reviewers (in order) and sends the file to REVIEW (`send_for_review()`). Since 2026-11-08 the approval authority and the approvers are set automatically from the matrix (`approval-rules.md`). After a reviewer's return, answers it and resends (`resend_for_review()`).
+- **Dept Head, Dispatch Admin, while in REVIEW or APPROVAL:** change the reviewers and override the approval authority; the approvers follow the authority (`update_review_routing()`).
+- **Reviewers routed to a file (since 2026-11-08, `20261108_reviewer_signoff.sql`, Q-13):** act in order. The current reviewer (lowest order without a sign-off), while in REVIEW, marks the checklist (OK / Needs revision + remark per item) and Endorses or Doesn't endorse with a justification, or returns the file to the CO (Minor / Major + what to fix) (`submit_review()`). Not an approval or a rejection. Sign-offs and returns can't be edited or deleted (`review_decisions`).
+- **Approvers routed to a file:** see it under "Mine" in the work tray and open a read-only review summary. No decision yet.
 - The applicant does not see the Financial Package or the credit score.
 - **Staff profile gate:** staff must enter a first and last name before using staff pages, and before they can be assigned (enforced in the database too).
 - **OCR output** (`ocr_runs`, `ocr_lines`): readable by staff with access to the application. Only the OCR worker writes it.
@@ -67,7 +70,7 @@ Other names in interviews: "Credit Evaluation Officer" (CEO), "Credit Underwrite
 - Maker-checker: whoever encodes is checked by someone else (App. I).
 - Every agent output needs a human confirmation, and the confirming role is recorded (3.2.4.3, Sprint 4).
 - A role sees and does only its part. Marketing was described as having its own limited view: approve, attach documents, endorse (App. I).
-- Whether CI should encode its own results is open (App. I, Sec. L).
+- Whether CI should encode its own results was open (App. I, Sec. L). **Decided by implementation 2026-11-08 (Q-11):** the CI encodes them.
 - Access rules will be constrained by the pending Data Privacy Officer / Security sessions (Q-04).
 
 ## Capability matrix (what the documents state, plus what is built; blank = not stated)
@@ -77,20 +80,21 @@ Other names in interviews: "Credit Evaluation Officer" (CEO), "Credit Underwrite
 | Edit submitted record (built) | Y (assigned, INTAKE or CI) | | | | | | | |
 | Record KYC check per section (built) | Y (assigned, INTAKE or CI) | | | | | | | |
 | Assign AO / CO (built) | self only | | Y | self only | Y | Y | Y | |
-| Create staff accounts (built) | | | | | | | Y | |
+| Create staff accounts, set approver positions (built) | | | | | | | Y | |
 | Confirm extracted fields (HITL #1) | Y | | | | | | | ? (1.4.2.1 says "or Applicant") |
-| Request CI | Y (built: assigned, INTAKE, NFIS + TU) | | | | Y (first reviewer, Desk/Field; not built) | | | |
+| Request CI | Y (built: assigned, INTAKE, NFIS + TU) | | | | Y (first reviewer, Desk/Field; out of scope for now, Q-13) | | | |
 | View CI request (built) | | Y (requested files only) | | | | | | |
-| Enter CI results | | ? (Q-11) | | Y (as-is) | | | | |
+| Enter CI results, mark CI Done (built) | | Y (any CI, in CREDIT_INVESTIGATION; Q-11) | | | | | | |
 | Compute income / ratios | | | | Y (built: FP, assigned) | | | | |
 | Score credit (built) | | | | Y (assigned) | | | | |
 | Endorse / not endorse / defer | | | | Y (built: Credit Result on the FP) | | | | |
-| Pick approval tier, reviewers, approvers; send to Review (built) | | | | Y (assigned) | | | | |
-| Change tier, reviewers, approvers after sending (built) | | | Y | | | | Y | |
+| Pick reviewers; send to Review (built; authority and approvers from the matrix) | | | | Y (assigned) | | | | |
+| Answer a reviewer's return and resend (built) | | | | Y (assigned) | | | | |
+| Change reviewers, override the authority after sending (built) | | | Y | | | | Y | |
 | Read messages on a file (built) | Y | Y (once CI requested) | Y | Y | Y | Y | Y | |
 | Post messages on a file (built) | Y (assigned) | Y (once CI requested) | Y | Y (assigned) | Y (routed) | Y (routed) | Y | |
 | Send outcome notice to the applicant (built) | Y (assigned) | | | | | | | |
-| Review FP, request revision | | | | | Y (view built; sign-off not built) | | | |
+| Review FP, request revision | | | | | Y (built: checklist, Endorse / Not endorse, return; current reviewer only) | | | |
 | Approve / Reject / Defer | | | | | | Y (Q-23; not built) | Y (Stage 2) | |
 | Review policy flags (HITL #2) | ? (App. L) | | | ? (3.2.4.2) | | ? (1.4.2.3) | | (Q-20) |
 | Aggregate dashboard | | | | | | Y | Y | |

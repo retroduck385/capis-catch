@@ -7,8 +7,9 @@ Found by comparing the diagrams (BPMN, Figure 1-3, Appendix L, tracker screensho
 | Group | Items |
 |---|---|
 | 1. Blocks Sprint 0 | Q-04, Q-05 |
-| 2. Needed before a later sprint | Q-06, Q-07, Q-11 (rest), Q-13 (rest), Q-14 (caps), Q-15 (seafarer), Q-16, Q-17, Q-18 (effective date), Q-19 to Q-21, Q-25, Q-26, Q-28, Q-38, Q-39 (CI Field), Q-40 |
-| Decided by implementation | Q-01, Q-02, Q-03, Q-08, Q-09 (structure only), Q-10, Q-12, Q-22, Q-23, Q-24, Q-27, Q-41; in part: Q-11, Q-13, Q-14, Q-15, Q-18, Q-39 |
+| 2. Needed before a later sprint | Q-06, Q-07, Q-11 (verified threshold), Q-14 (caps), Q-15 (seafarer), Q-16, Q-17, Q-18 (effective date), Q-19 to Q-21, Q-25, Q-26, Q-28, Q-38, Q-39 (CI Field), Q-40 |
+| Decided by implementation | Q-01, Q-02, Q-03, Q-08, Q-09 (structure only), Q-10, Q-12, Q-13, Q-22, Q-23, Q-24, Q-27, Q-41; in part: Q-11, Q-14, Q-15, Q-18, Q-39 |
+| Out of scope for now | Q-13's first-reviewer Desk / Field CI request |
 | Decided by the bank | Q-42 (visit 2026-10-26) |
 | 3. Paper edit only, no code impact | Q-29 to Q-37 |
 
@@ -93,17 +94,21 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 **DECIDED IN PART. Q-11. CI: one request or two, who encodes results, and the "verified" threshold.**
 - Evidence: App. G has the AO request NFIS / TU / BRAS after collation; the BPMN has a second Desk and Field CI request at the first Reviewer. P1.3.1.4 says CI has no access to the shared sheet, yet the BPMN shows CI updating Home Loan Tracker v3.0 (they may be two different sheets). App. I asks whether CI should encode its own results. The 3-of-5 or 4-of-5 threshold is not tied to specific checks.
 - Suggested: model CI requests as separate typed requests (Initial: NFIS / TU / BRAS; Desk; Field), CI writes results itself, and store the "verified" threshold as configuration.
-- **Decided by implementation, 2026-10-21 (initial request only):** the assigned AO sends one CI request covering NFIS and TU (no BRAS) with `request_ci()`, while the file is in Intake. KYC sections don't have to be Verified first. The NFIS and TU forms are built live from the record, not stored; only the AO's remarks are kept (`ci_requests`). A file can be requested again. The CI sees only files with a request. **Still open:** who encodes the results, Desk / Field CI requests, and the "verified" threshold.
+- **Decided by implementation, 2026-10-21 (initial request only):** the assigned AO sends one CI request covering NFIS and TU (no BRAS) with `request_ci()`, while the file is in Intake. KYC sections don't have to be Verified first. The NFIS and TU forms are built live from the record, not stored; only the AO's remarks are kept (`ci_requests`). A file can be requested again. The CI sees only files with a request.
+- **Decided by implementation, 2026-11-08 (`20261108_ci_results.sql`): the CI encodes the CI results.** Any active CI, with no claiming, while the file is in Credit Investigation: per borrower (principal, spouse, co-borrowers) and per check (NFIS, TU, BRAS), uploaded report files, a result (No adverse findings / With findings) and a summary, plus overall remarks. "Mark CI Done" (`complete_ci()`) needs an NFIS and a TU result and report for every borrower, then opens Credit Evaluation. CI files are kept apart from the applicant's documents and the applicant can never read them. Desk / Field CI requests are out of scope for now (see Q-13).
+- **Still open:** the "verified" threshold (3-of-5 or 4-of-5). The bank has not given it, so it is not modeled.
 
 **DECIDED. Q-12. Assignment: automatic FIFO or Dispatch Admin?**
 - Evidence: F8 auto-assigns by FIFO; today the Dispatch Admin assigns Credit Officers and is the single gatekeeper (App. I, K).
 - Suggested: FIFO proposes, Dispatch Admin can override, and both are audited.
 - **Decided by implementation, 2026-10-13:** AOs and COs claim files themselves from a FIFO work tray; Dispatch Admin, Reviewer, Approver and Dept Head can assign, reassign or unassign any AO/CO. History is in `application_assignments`. No automatic assignment.
 
-**DECIDED IN PART. Q-13. Reviewer rules.**
+**DECIDED. Q-13. Reviewer rules.**
 - Evidence: the BPMN loops "Is there another reviewer?" and has a "first reviewer" branch that requests Desk and Field CI. The number of reviewers and the rule for who counts as first are not stated. App. I: reviewer re-checks the underwriter's computation and supporting documents.
 - Suggested: one or more reviewers configurable per application; only the first triggers the Desk / Field CI request. Confirm.
-- **Decided by implementation, 2026-10-21:** the assigned CO picks one or more reviewers, in review order (seq 1 = first reviewer), and one or more approvers, per application (`review_assignments`, `send_for_review()`). After sending, only the Dept Head or Dispatch Admin can change them (`update_review_routing()`). **Still open:** the first reviewer's Desk / Field CI request, and the review sign-off (mark reviewed / request revision) is not built.
+- **Decided by implementation, 2026-10-21:** the assigned CO picks one or more reviewers, in review order (seq 1 = first reviewer), and one or more approvers, per application (`review_assignments`, `send_for_review()`). After sending, only the Dept Head or Dispatch Admin can change them (`update_review_routing()`).
+- **Decided by implementation, 2026-11-08 (`20261108_reviewer_signoff.sql`):** reviewers act in order; only the current reviewer can act. A checklist (OK / Needs revision + remark per item), then Endorse or Not endorse with a justification, or return to the CO (Minor / Major). A return reopens Credit Evaluation; the CO answers and resends, and review continues from the reviewer who returned it. After the last reviewer the file moves to Approval. Since the same date the CO no longer picks approvers (Q-24).
+- **Out of scope for now:** the first reviewer's Desk / Field CI request (BPMN A.5), as the `20261108_reviewer_signoff.sql` header states.
 
 **DECIDED. Q-42. What applicants are told, and decision disclosure.**
 - Evidence: meeting 2026-10-23: applicants see four statuses (submitted, incomplete submission, under review, decision) and no internal detail unless disclosed; whether the bank allows giving denial reasons is unconfirmed (the expected default is to give none); whether the final approver or the AO triggers the applicant's notice is to be confirmed. F5 (Sec. 1.4.2.1) sends SMS / email deficiency links to the specific item. At the bank a deferral usually means missing information.
@@ -172,6 +177,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Evidence: only the P3.0M and P5.0M bands are printed. Nothing for above P5.0M or for deviations above P3.0M. "CRMD" and "RPS" are undefined. "Refer / Escalate" names Senior Credit Committee or Board level, which do not match the tracker tiers.
 - Suggested: encode the two printed tiers as configuration; anything else is a Refer to a named committee until the bank supplies the rest.
 - **Decided by implementation, 2026-10-21:** four approval authorities from the FP sheet's VII. Approval block (enum `approval_tier`): President (or alternate), Senior Credit Committee, Executive Committee, Board. The page suggests one from the loan amount (up to P10M / more than P10M to P30M / more than P30M) and whether there is a deviation (at least one row in the FP's V. Exceptions); the CO picks it. Rules in `approval-rules.md`. The code notes two readings to confirm with the bank: the President's range (not printed) and "Upto 3M to P10M" read as up to P10M.
+- **Replaced 2026-11-08** by the bank's authority-limit matrix (`20261108_approval_matrix.sql`, `20261108_approver_positions.sql`): eight authorities by loan amount (bands at P3M, P5M, P10M, P20M, P30M, P50M), one step up with a deviation. Approver accounts carry a position and are routed automatically; the CO no longer picks the authority or the approvers. Details in `approval-rules.md`.
 
 **Q-25. Physical vs digital sign-off.**
 - Evidence: BPMN A.6 shows physical review and signing and a secretary ticking the tracker; App. G plans checkbox-based digital approvals for LIDS; the Signatures tab is checkbox-based.

@@ -23,6 +23,7 @@ Date: 2026-10-29. Status: decided (the bank's answers to Q-42, visit 2026-10-26;
 ## Watch out
 - Re-running `20261024_notifications.sql` puts its old status buckets, applicant kinds and switch rows back: run `20261029_applicant_notices.sql` again after it.
 - Nothing sets APPROVED / REJECTED / DEFERRED yet. The click test set them by SQL on a synthetic application. When the approver decision is built, no change is needed here: the notice depends only on the status and the AO assignment.
+- Since 2026-11-08 a file can reach Approval (CI Done, reviewer sign-off), but it stops there: FOR_APPROVAL is still "Under review" for the applicant, and the AO's panel still has no outcome to send.
 
 ## Still to come
 - Live SMS / email (after Q-04), item-level deficiency notices (F5), the approver's policy-reason code as a reason source (1.4.2.5), RAG policy flags as a source (Q-19, Q-20).

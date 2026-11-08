@@ -1,6 +1,6 @@
 # Notifications
 
-Date: 2026-10-24. Status: decided by implementation. Covers F6 (Timely Workspace Notification Alerts) and the applicant status notices from the 2026-10-23 meeting. Updated 2026-10-28 with the bank's Q-42 answers (visit 2026-10-26), which are not built yet; see "Bank answers" below. Updated 2026-10-29: the outcome notices are rebuilt as AO-sent notices (`applicant-notices.md`).
+Date: 2026-10-24. Status: decided by implementation. Covers F6 (Timely Workspace Notification Alerts) and the applicant status notices from the 2026-10-23 meeting. Updated 2026-10-28 with the bank's Q-42 answers (visit 2026-10-26), which are not built yet; see "Bank answers" below. Updated 2026-10-29: the outcome notices are rebuilt as AO-sent notices (`applicant-notices.md`). Updated 2026-11-09: the CI results and reviewer sign-off migrations (2026-11-08) make three waiting alerts fire and add four kinds; see "Since 2026-11-08".
 
 ## Decided
 - **In-app only for staff.** Applicant outcome notices also go by SMS and email since 2026-10-29 (`applicant-notices.md`).
@@ -20,6 +20,25 @@ Date: 2026-10-24. Status: decided by implementation. Covers F6 (Timely Workspace
 - Tested: 86 PGlite checks; click test in the shared project 2026-10-24 (routing-change step covered by PGlite only).
 - 2026-10-28: `MESSAGE_POSTED` (source `messages`), sent by `post_message()` in `20261028_messages.sql` (not by a `notify_*` trigger). Goes to the assigned AO and CO, routed reviewers and approvers, and earlier posters who can still read the file; one unread per person per file; title "New message on <application no.>", no body, no names. See `messages.md`.
 - 2026-10-28: the bell panel heading is forced dark (`text-gray-900!`) because `index.css` colours `h2` with `--text-h`, which is near-white in OS dark mode.
+- 2026-11-08 (UI merge): the bell now sits in the top bar of `src/components/appLayout.jsx` (rendered by `privateRoute.jsx` for every signed-in page) instead of fixed top right. The messages button takes an `inline` option for page action rows (loan folder, CI request, Financial Package); the review summary page still uses the old fixed button.
+
+## Since 2026-11-08 (other modules, checked 2026-11-09)
+`20261108_ci_results.sql` and `20261108_reviewer_signoff.sql` (run after `20261029_applicant_notices.sql`) don't change any notification function or trigger. Their new moves set off the waiting stage alerts, and they call `send_notification()` for four new kinds.
+
+| Kind | When | Who |
+|---|---|---|
+| STAGE_CREDIT_EVALUATION (now fires) | `complete_ci()` opens Credit Evaluation | Assigned CO, else the Dispatch Admins |
+| STAGE_RETURNED (now fires) | A reviewer returns the file (Credit Evaluation reopens as RETURNED) | Assigned CO |
+| APPROVAL_ROUTED (now fires) | The last reviewer signs off and Approval opens | Every routed approver |
+| CI_DONE (new) | `complete_ci()` | Assigned AO always; every active CO when no CO is assigned |
+| REVIEW_YOUR_TURN (new) | A reviewer signs off and another is left | The next reviewer |
+| REVIEW_COMPLETE (new) | The last reviewer signs off | Assigned CO and AO |
+| REVIEW_RESUBMITTED (new) | The CO resends after a return | The reviewer who returned it |
+
+- Still dormant: DECIDED (no approver decision) and DONE_REVERTED (a return opens a new stage visit; nothing reopens a Done one).
+- No one gets two alerts for the same event (end-to-end PGlite run, with and without a CO assigned before CI Done). Two loose ends: when no CO is assigned, the COs who didn't claim the file keep an unread CI_DONE; REVIEW_ROUTED still tells every reviewer "sent to you for review" at send time, although reviewers now act in turn.
+- The applicant sees "Under review" through CI, Credit Evaluation, Review, a return and Approval, with one APPLICANT_UNDER_REVIEW notice.
+- Approvers are now routed automatically from the approval matrix at send time; as before, they hear nothing until Approval opens.
 
 ## Why (inferred)
 Triggers on the tables keep the groupmate's RPCs untouched and catch every path that changes the data, including future ones. One function with fixed applicant rules means no module (OCR, RAG, fraud detection, summary page) can leak internal detail to an applicant by mistake.
