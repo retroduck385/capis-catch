@@ -1,0 +1,22 @@
+{
+ "schema": 1,
+ "loan_amount": 3000000,
+ "loan_term_years": 20,
+ "interest_rate": 7,
+ "amortization": 23258,
+ "total_gross_income": 90000,
+ "dbr": 0.3,
+ "dbr_standalone": 0.3,
+ "collateral_value": 4300000,
+ "lcr": 0.7,
+ "age": 34,
+ "age_at_maturity": 54,
+ "tenure_years": 5,
+ "employment_type": "LOCALLY_EMPLOYED",
+ "borrower_count": 1,
+ "scorecard_total": 66,
+ "scorecard_complete": true,
+ "has_replevin_or_foreclosure": false,
+ "existing_exception_count": 0,
+ "property_type": "House and Lot"
+}

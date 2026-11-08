@@ -1,0 +1,56 @@
+# mrac-service
+
+Policy-RAG and MRAC checking for CATCH's Financial Package, on **Supabase only** (Postgres + pgvector + full-text).
+Built stand-alone so it can be merged later; see `INTEGRATION.md` for the exact merge steps.
+
+```
+React (FP page)  --rpc-->  request_mrac_check / ask_policy  -->  mrac_runs (PENDING)
+                                                                    |  claim_mrac_runs (service role)
+                            mrac_runs (DONE + result)  <--  worker.py  --  search_policy (vector + full-text, RRF)
+                                                                    |  mrac_criteria (rules)   policy_chunks (the manual)
+```
+
+## What it does
+- **Chunking:** the bank's policy PDFs are cut into one chunk per numbered clause (A. / 1. / a.) with heading path, manual page and
+  the page's own revision date (a chunk never mixes pages with different dates). The housing RAAC spreadsheet is one chunk per
+  criterion row. Each chunk is tagged with its product (housing / auto / consumer / business) so retrieval can stay on housing.
+- **Check:** deterministic rules in `mrac_criteria`, over the facts the FP page already computes. Rules can be conditional
+  (`applies_when`: income tiers by loan amount, tenure by income source), membership tests (`in`), or `manual` (documents the
+  underwriter verifies). A failed rule shows the policy clause it comes from and suggests matching exception clauses as a row for `V. Exception/s`.
+- **Ask:** any staff member searches the manuals in plain language and gets passages with page numbers.
+- **Not done:** it never decides, scores or writes to the Financial Package. The scorecard stays yours.
+
+## The criteria
+`rules/housing_raac_draft.json` encodes the housing RAAC as 17 criteria: 12 automatic and 5 manual (document checks).
+Marital status and residence ownership ("all accepted") are policy text only. **All are loaded disabled**: they are a
+first reading of the RAAC for credit policy to review. Rules whose facts CATCH does not collect yet report `needs_review`
+(missing data), never `pass`. See `OPEN_QUESTIONS.md` for what to confirm with the bank.
+
+## Try it with no database (1 minute)
+```bash
+python -m venv .venv && .venv\Scripts\activate            # python 3.13
+pip install python-dotenv
+python -m unittest discover -s tests -v                    # 39 tests
+python worker.py --offline --facts samples/facts_deviation.json --include-disabled
+python worker.py --offline --facts samples/facts_clean.json --include-disabled
+python worker.py --offline --ask "who must the mortgage redemption insurance cover"
+```
+The offline run uses synthetic policy text (`samples/policy_chunks_synthetic.jsonl`), not bank policy. Point it at the real chunks with
+`--chunks out/raac/draft_chunks.jsonl`.
+
+## Try it on a separate Supabase project
+1. New empty Supabase project. SQL editor: run `supabase/dev/00_dev_stubs.sql`, then `supabase/migrations/20261105_mrac_rag.sql`,
+   (nothing else to run yet: criteria are loaded in step 4).
+2. `.env` from `.env.example` (URL + service role key). `pip install -r requirements.txt`.
+3. Chunks: `python -m mrac.ingest.parse_raac Housing-Loan_RAAC.ods --effective-from YYYY-MM-DD --out out/raac`, then
+   `python -m mrac.ingest.load_chunks out/raac/draft_chunks.jsonl`. The policy PDFs the same way, one folder each:
+   `python -m mrac.ingest.parse_policy manual.pdf --code CCD --out out/ccd` (codes: CPM credit policy, CCD consumer credit, RED real estate).
+4. Criteria: `python -m mrac.ingest.load_criteria rules/housing_raac_draft.json`, then enable what you want to test:
+   `update mrac_criteria set enabled = true where code in ('RAAC-DBR', 'RAAC-AGE-MAX');`
+5. Queue a run by hand: `insert into mrac_runs (kind, application_id, facts) values ('CHECK', 1, '{"dbr":0.52,"age_at_maturity":78}');`
+6. `python worker.py --once`, then `select status, result from mrac_runs order by id desc limit 1;`
+
+## Not verified yet
+The Python and rules are unit-tested. The SQL migration, the live Supabase calls (RPC argument passing for the vector,
+RLS) and the React files have **not** been run against a real project or browser. Expect small fixes on first contact.
+Embeddings default to a non-semantic stub; for real vector search use `EMBEDDING_PROVIDER=local` and reload the chunks.

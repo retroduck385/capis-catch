@@ -1,0 +1,22 @@
+{
+ "schema": 1,
+ "loan_amount": 3400000,
+ "loan_term_years": 20,
+ "interest_rate": 7,
+ "amortization": 26361,
+ "total_gross_income": 36000,
+ "dbr": 0.52,
+ "dbr_standalone": 0.52,
+ "collateral_value": 4300000,
+ "lcr": 0.7,
+ "age": 58,
+ "age_at_maturity": 78,
+ "tenure_years": 1,
+ "employment_type": "LOCALLY_EMPLOYED",
+ "borrower_count": 1,
+ "scorecard_total": 52,
+ "scorecard_complete": true,
+ "has_replevin_or_foreclosure": false,
+ "existing_exception_count": 0,
+ "property_type": "Condominium"
+}

@@ -1,0 +1,55 @@
+[
+  {
+    "code": "EX_DBR_MAX",
+    "label": "Debt burden ratio (DBR)",
+    "section": "Capacity",
+    "field": "dbr",
+    "op": "<=",
+    "threshold": 0.4,
+    "hard_stop": false,
+    "enabled": true,
+    "is_example": true,
+    "notes": "EXAMPLE. Mirrors the ceiling of the scorecard's last DBR band in creditScore.js. Not an approved MRAC.",
+    "search_hint": "debt burden ratio"
+  },
+  {
+    "code": "EX_LCR_MAX",
+    "label": "Loan to collateral ratio (LCR)",
+    "section": "Collateral",
+    "field": "lcr",
+    "op": "<=",
+    "threshold": 0.8,
+    "hard_stop": false,
+    "enabled": true,
+    "is_example": true,
+    "notes": "EXAMPLE. Mirrors the scorecard's top LCR band (60-80%). Not an approved MRAC.",
+    "search_hint": "loan to collateral ratio"
+  },
+  {
+    "code": "EX_SCORE_MIN",
+    "label": "Credit scorecard total",
+    "section": "Character",
+    "field": "scorecard_total",
+    "op": ">=",
+    "threshold": 55,
+    "hard_stop": false,
+    "enabled": true,
+    "is_example": true,
+    "notes": "EXAMPLE. creditScore.js labels 55-59 'Acceptable per RAAC'. Confirm the cutoff with credit policy.",
+    "search_hint": "credit score"
+  },
+  {
+    "code": "EX_TENURE_MIN",
+    "label": "Employment tenure (years)",
+    "section": "Capacity",
+    "field": "tenure_years",
+    "op": ">=",
+    "threshold": 2,
+    "borderline_pct": 0,
+    "hard_stop": false,
+    "enabled": true,
+    "is_example": true,
+    "notes": "EXAMPLE. Mirrors the scorecard's 'less than 2 years' band (0 points). Not an approved MRAC.",
+    "search_hint": "employment tenure"
+  }
+]
