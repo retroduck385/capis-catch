@@ -4,7 +4,7 @@ import { UserAuth } from '../../context/authContext';
 import { ASSIGNABLE_ROLES, ASSIGNING_HEADS, REVIEW_ROLES } from '../../roles';
 import { EMPLOYMENT_TYPES } from '../applicationForm/options';
 import { fetchStaffNames } from '../loanFolder/api';
-import { fetchActiveReviewAssignments } from '../review/api';
+import { fetchActiveReviewAssignments, fetchSignoffs } from '../review/api';
 import { assignApplication, fetchAssignableStaff, fetchWorkTray, unassignApplication } from './api';
 import { SLOT_LABELS, STAGES, STAGE_STATUS_LABELS, TAT_LABELS, stageLabel } from './options';
 
@@ -14,16 +14,22 @@ const SLOT_ID = { ACCOUNT_OFFICER: 'ao_id', CREDIT_OFFICER: 'co_id' };
 const SLOT_NAME = { ACCOUNT_OFFICER: 'ao_name', CREDIT_OFFICER: 'co_name' };
 
 // Tray rows + who each application is routed to for review / approval (VII. Approval):
-// routing = { [application_id]: [{ assignee_role, user_id, seq }] }, names = { [user_id]: name }
+// routing = { [application_id]: [{ id, assignee_role, user_id, seq, signedOff }] }, names = { [user_id]: name }
 const fetchTray = async () => {
-    const [rows, review] = await Promise.all([fetchWorkTray(), fetchActiveReviewAssignments()]);
+    const [rows, review, signoffs] = await Promise.all([fetchWorkTray(), fetchActiveReviewAssignments(), fetchSignoffs()]);
     const names = await fetchStaffNames(review.map((r) => r.user_id));
+    const signed = new Set(signoffs.map((s) => s.assignment_id));
     const routing = {};
-    review.forEach((r) => { (routing[r.application_id] ??= []).push(r); });
+    review.forEach((r) => { (routing[r.application_id] ??= []).push({ ...r, signedOff: signed.has(r.id) }); });
     return { rows, routing, names };
 };
 
 const isRoutedTo = (routing, row, userId) => (routing[row.application_id] ?? []).some((x) => x.user_id === userId);
+
+// The reviewer whose turn it is (mirrors current_review_assignment()); only while the application is in Review
+const isMyReviewTurn = (routing, row, userId) => row.stage === 'REVIEW'
+    && (routing[row.application_id] ?? []).filter((x) => x.assignee_role === 'REVIEWER' && !x.signedOff)
+        .sort((a, b) => a.seq - b.seq)[0]?.user_id === userId;
 
 // The CI only gets applications an AO sent them (see get_work_tray()) and opens the NFIS / TU request;
 // the CO opens the Financial Package; a reviewer / approver opens the review summary of what's routed to them
@@ -76,7 +82,7 @@ const ReviewSlots = ({ routing, names, myId }) => {
     const approvers = routing.filter((x) => x.assignee_role === 'APPROVER');
     return (
         <>
-            {reviewers.length > 0 && <div>Reviewers: {reviewers.map((x) => `${x.seq}. ${nameOf(x)}`).join(', ')}</div>}
+            {reviewers.length > 0 && <div>Reviewers: {reviewers.map((x) => `${x.seq}. ${nameOf(x)}${x.signedOff ? ' (signed off)' : ''}`).join(', ')}</div>}
             {approvers.length > 0 && <div>Approvers: {approvers.map(nameOf).join(', ')}</div>}
         </>
     );
@@ -237,6 +243,7 @@ const WorkTray = () => {
                                     {!r.can_open && <div>(locked: not assigned to you)</div>}
                                     {r.can_open && isAssignable && r[SLOT_ID[role]] !== myId && <div>(view only)</div>}
                                     {routedToMe && <div>(assigned to you: {role === 'APPROVER' ? 'approval' : 'review'})</div>}
+                                    {isMyReviewTurn(routing, r, myId) && <div className='font-semibold'>(your turn to review)</div>}
                                 </td>
                                 <td className='border px-2'>
                                     {r.applicant_name ?? '-'}

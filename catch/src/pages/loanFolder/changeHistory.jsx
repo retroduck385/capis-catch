@@ -25,6 +25,7 @@ const TABLE_LABELS = {
     fp_title_verifications: 'FP title verification',
     credit_score_entries: 'Credit score',
     review_assignments: 'Reviewer / approver',
+    review_decisions: 'Review sign-off / return',
     ci_requests: 'CI request',
     ci_checks: 'CI result',
     ci_documents: 'CI report file',
@@ -34,7 +35,7 @@ const ACTION_LABELS = { INSERT: 'Added', UPDATE: 'Changed', DELETE: 'Removed' };
 
 // Keys and bookkeeping columns aren't useful to show
 const HIDDEN = new Set(['id', 'application_id', 'applicant_id', 'requirement_id', 'file_path', 'uploaded_by',
-    'assigned_by', 'assigned_at', 'unassigned_by']);
+    'assigned_by', 'assigned_at', 'unassigned_by', 'assignment_id', 'responded_by']);
 // Columns holding a staff user id: shown by name (`names` must include them)
 const STAFF_FIELDS = new Set(['user_id']);
 

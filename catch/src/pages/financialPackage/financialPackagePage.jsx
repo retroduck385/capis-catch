@@ -11,6 +11,7 @@ import { BORROWER_ROLES, formatMoney, partyLabel } from '../applicationForm/opti
 import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
 import ChangeHistory from '../loanFolder/changeHistory';
 import { fetchReviewAssignments } from '../review/api';
+import { ReturnNotice } from '../review/returnNotice';
 import { fetchAssignedAo, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage } from './api';
 import MessagesPanel from '../messages/messagesPanel';
 import { computeFp } from './compute';
@@ -215,6 +216,8 @@ const FinancialPackagePage = () => {
                     {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
                 </p>
             )}
+
+            <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
 
             <HeaderSection app={app} aoName={aoName} form={form.pkg} onPkg={onPkg} disabled={disabled} score={score}
                 scoreLink={`/creditScorePage?id=${app.id}`} approvalLink={`/approvalRoutingPage?id=${app.id}`}

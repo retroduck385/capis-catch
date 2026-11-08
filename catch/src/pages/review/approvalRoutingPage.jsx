@@ -22,6 +22,7 @@ import {
     AMOUNT_BANDS, APPROVAL_TIERS, amountBand, approversFor, missingApprovers, positionLabel, splitRouting,
     suggestApprovalTier, tierFor, tierLabel,
 } from './approval';
+import { ResendPanel } from './returnNotice';
 import RoutingSummary from './routingSummary';
 
 const SEND_STAGES = ['CREDIT_INVESTIGATION', 'CREDIT_EVALUATION'];
@@ -336,6 +337,11 @@ const ApprovalRoutingPage = () => {
             )}
             {!editable && saved && <p className="text-green-700">{saved}</p>}
             {!editable && <FormError error={error} />}
+
+            {sent && (
+                <ResendPanel applicationId={app.id} canResend={isAssignedCo && stage?.stage === 'CREDIT_EVALUATION'}
+                    onSent={async () => setData(await loadRouting(app))} />
+            )}
 
             <div className="border p-3 my-3">
                 <h3 className="font-semibold pb-1">Routing history</h3>

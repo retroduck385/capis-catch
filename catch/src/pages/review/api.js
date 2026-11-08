@@ -14,7 +14,7 @@ export const fetchReviewAssignments = async (applicationId) =>
 
 // Active rows of every application the caller can open (work tray)
 export const fetchActiveReviewAssignments = async () =>
-    check(await supabase.from('review_assignments').select('application_id, assignee_role, user_id, seq')
+    check(await supabase.from('review_assignments').select('id, application_id, assignee_role, user_id, seq')
         .is('unassigned_at', null).order('seq')) ?? [];
 
 // Active Reviewer / Approver accounts with a staff profile: [{ user_id, role, name }]
@@ -38,3 +38,34 @@ export const sendForReview = async (applicationId, reviewers) =>
 export const updateReviewRouting = async (applicationId, tier, reviewers) =>
     check(await supabase.rpc('update_review_routing',
         { p_application_id: applicationId, p_tier: tier, p_reviewers: reviewers }));
+
+// ---------- Reviewer sign-off (20261108_reviewer_signoff.sql)
+
+// The reviewer's checklist, in order: [{ code, label, hint, sort_order }]
+export const fetchReviewCheckItems = async () =>
+    check(await supabase.from('review_check_items').select('*').order('sort_order')) ?? [];
+
+// Every sign-off / return of one application, oldest first, with its checklist
+export const fetchReviewDecisions = async (applicationId) =>
+    check(await supabase.from('review_decisions').select('*, review_decision_items ( * )')
+        .eq('application_id', applicationId).order('decided_at').order('id')) ?? [];
+
+// Sign-offs (not returns) of every application the caller can open: [{ application_id, assignment_id }] (work tray)
+export const fetchSignoffs = async () =>
+    check(await supabase.from('review_decisions').select('application_id, assignment_id')
+        .neq('action', 'RETURNED')) ?? [];
+
+// True only for the current reviewer while the application is in Review
+export const fetchReviewerCanAct = async (applicationId) =>
+    check(await supabase.rpc('reviewer_can_act', { p_application_id: applicationId })) ?? false;
+
+// action: ENDORSED | NOT_ENDORSED | RETURNED; items: [{ code, result, remark }]; severity: MINOR | MAJOR (returns only)
+export const submitReview = async (applicationId, { action, remarks, items, severity }) =>
+    check(await supabase.rpc('submit_review', {
+        p_application_id: applicationId, p_action: action, p_remarks: remarks, p_items: items,
+        p_severity: severity ?? null,
+    }));
+
+// Assigned CO, after a return: what they changed; review continues from the reviewer who returned it
+export const resendForReview = async (applicationId, response) =>
+    check(await supabase.rpc('resend_for_review', { p_application_id: applicationId, p_response: response }));
