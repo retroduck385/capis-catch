@@ -27,7 +27,7 @@ const PrincipalEmploymentStep = ({ app, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <EmploymentSection title="Principal Borrower's Employment Information" employment={employment} />
             <FormError error={error} />
             <StepButtons onBack={onBack} saving={saving} />

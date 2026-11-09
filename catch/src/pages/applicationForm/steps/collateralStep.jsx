@@ -40,7 +40,7 @@ const CollateralStep = ({ app, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             {COLLATERAL_GROUPS.map(([title, keys]) => (
                 <Section key={title} title={title} className="ct-cols-4">
                     <FieldGroup config={COLLATERAL_FIELDS} fields={keys}

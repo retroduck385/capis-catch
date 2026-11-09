@@ -1,12 +1,14 @@
-"""CATCH OCR worker: OCRs uploaded documents (IDs, COE / ITR, payslips / remittances, bank statements)
-queued in Supabase, saves the raw lines, then has Gemini label the lines into fields (AI extraction)
-for the Account Officer to confirm. Gemini only gets the OCR text, never the file.
+"""CATCH OCR worker: OCRs uploaded documents (IDs, COE / ITR, payslips / remittances, bank statements) and
+CI reports (NFIS, TU, BRAS) queued in Supabase, saves the raw lines, then has Gemini label the lines into
+fields (AI extraction) for the Account Officer (application documents) or a Credit Investigator (NFIS / TU)
+to confirm. Gemini only gets the OCR text, never the file.
 
   python worker.py              wait for uploads (Realtime), with a fallback check every 5 min (Ctrl+C to stop)
   python worker.py --poll       old behaviour: check the queue every --interval seconds, no Realtime
   python worker.py --once       process what's queued now, then exit
   python worker.py --file x.jpg OCR a local file and print the lines (no database)
   python worker.py --file x.pdf --type COE_ITR   ...and print the fields Gemini extracts (saves nothing)
+  python worker.py --file tu.pdf --type CI_TU    same for a CI report (CI_NFIS, CI_TU), with the proposed result
 """
 
 import argparse
@@ -52,9 +54,14 @@ def listen_for_runs(url, key, wake):
     queued while disconnected are picked up. If Realtime can't connect, the fallback poll still works."""
     from realtime import AsyncRealtimeClient, RealtimeSubscribeStates
 
+    subscribed_once = False
+
     def on_status(state, err):
+        nonlocal subscribed_once
         if state == RealtimeSubscribeStates.SUBSCRIBED:
-            print("Realtime: listening for new uploads", flush=True)
+            if not subscribed_once:  # reconnects after a dropped connection are normal; don't print each one
+                print("Realtime: listening for new uploads", flush=True)
+                subscribed_once = True
             wake.set()
         elif err or state != RealtimeSubscribeStates.CLOSED:
             print(f"Realtime: {state.value}{f' ({err})' if err else ''}; falling back to the slow poll", flush=True)
@@ -197,18 +204,23 @@ def test_file(path, document_type):
         raise SystemExit("Set GEMINI_API_KEY in ocr-service/.env to test the AI extraction")
     defs = field_defs(get_client(url, key), document_type)
     if not defs:
-        raise SystemExit(f"No field definitions for {document_type}: run 20261109_ai_extraction.sql first")
+        raise SystemExit(f"No field definitions for {document_type}: run 20261109_ai_extraction.sql "
+                         "(and 20261109_ci_extraction.sql for CI_NFIS / CI_TU) first")
     for n, l in enumerate(lines, start=1):
         l["id"] = n
     result = extract(document_type, defs, lines, api_key, model)
     labels = {d["field_key"]: d["label"] for d in defs}
     print(f"\n{result['model']}: {result['output'].get('document_kind')}, "
           f"{result['input_tokens']} in / {result['output_tokens']} out tokens")
+    groups = {d["field_key"]: d.get("row_group") or "rows" for d in defs if d["scope"] == "ROW"}
     for f in result["fields"]:
-        row = f"row {f['item_no']} " if f["item_no"] else ""
+        row = f"{groups.get(f['key'], 'row')} {f['item_no']} " if f["item_no"] else ""
         print(f"  {row}{labels.get(f['key'], f['key'])}: {f['value'] or '—'}  (lines {f['line_ids']})")
     for issue in result["output"].get("issues") or []:
         print(f"  ! {issue}")
+    if "proposed_result" in result["output"]:
+        print(f"\nProposed CI result: {result['output']['proposed_result']}")
+        print(f"Summary: {result['output'].get('findings_summary') or '—'}")
 
 
 def main():
@@ -219,7 +231,7 @@ def main():
                         "with Realtime this is only the fallback for missed events and runs stuck in RUNNING")
     parser.add_argument("--file", help="OCR a local file and print the result; nothing is saved")
     parser.add_argument("--type", help="with --file: also run the AI extraction for this document type "
-                        "(VALID_ID_PASSPORT, COE_ITR, PAYSLIPS_REMITTANCES, FS_BANK_STATEMENTS)")
+                        "(VALID_ID_PASSPORT, COE_ITR, PAYSLIPS_REMITTANCES, FS_BANK_STATEMENTS, CI_NFIS, CI_TU)")
     args = parser.parse_args()
 
     if args.file:

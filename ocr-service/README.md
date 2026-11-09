@@ -32,7 +32,7 @@ Without `GEMINI_API_KEY` the worker still OCRs; extraction runs just wait in the
 
 Free tier: Google may use what is sent to improve its products, so only **synthetic test documents** go through it (CATCH rule anyway). Use a paid key before any real data.
 
-Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`, then `20261109_ai_extraction.sql`.
+Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`, then `20261109_ai_extraction.sql` and `20261109_ci_extraction.sql` (NFIS / TU extraction).
 
 ## Run
 
@@ -44,7 +44,7 @@ Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (
 .venv/bin/python worker.py --file coe.pdf --type COE_ITR   # ...and print what Gemini extracts (saves nothing)
 ```
 
-`--type` is one of `VALID_ID_PASSPORT`, `COE_ITR`, `PAYSLIPS_REMITTANCES`, `FS_BANK_STATEMENTS`. It reads the field list from Supabase, so run the migration first.
+`--type` is one of `VALID_ID_PASSPORT`, `COE_ITR`, `PAYSLIPS_REMITTANCES`, `FS_BANK_STATEMENTS`, `CI_NFIS`, `CI_TU` (CI types also print the proposed CI result and summary). It reads the field list from Supabase, so run the migration first.
 
 By default the worker subscribes to INSERTs on `ocr_runs` and `extraction_runs` via Supabase Realtime (`20261108_ocr_realtime.sql` adds the table to the publication), so it makes no queue calls while nothing is uploaded. It still checks the queue every 5 min (`--interval` to change) as a safety net for events missed while disconnected and for runs stuck in `RUNNING` (requeued after 15 min). If Realtime can't connect it says so and just runs on that slow check.
 
@@ -57,7 +57,7 @@ The first run downloads the models (~100 MB, to `~/.paddlex/`).
 - `ocr_runs`: status / error per attempt.
 
 - `extraction_runs`: one row per AI attempt (status, model, tokens, raw answer in `output`, who confirmed).
-- `extraction_fields`: the proposed value per field (`item_no` 0 = header, 1..n = pay period / month), then the AO's `final_value` and whether it was copied to the application (`apply_to_record`). `extraction_field_lines` links each value to the OCR lines it came from.
+- `extraction_fields`: the proposed value per field (`item_no` 0 = header, 1..n = row within its row list: pay period / month, or for TU the IDs, addresses, employers, accounts, inquiries — `extraction_field_defs.row_group`), then the AO's `final_value` and whether it was copied to the application (`apply_to_record`). `extraction_field_lines` links each value to the OCR lines it came from.
 
 Re-OCR a document (new run, old one kept): `select requeue_ocr(<document_id>);` in the SQL Editor. A new OCR run is extracted again automatically unless the document's extraction was already confirmed (locked).
 
@@ -66,6 +66,8 @@ Queued types: `VALID_ID_PASSPORT`, `COE_ITR`, `PAYSLIPS_REMITTANCES`, `FS_BANK_S
 If Gemini rate-limits (429) or is down, the run goes back to the queue and the AI step pauses for 60 s; OCR keeps going.
 
 **CI reports** (NFIS / TU / BRAS uploaded by the Credit Investigator, `20261108_ci_results.sql`) are queued too: every row in `ci_documents` gets a run with `ci_document_id` set instead of `document_id`. Same bucket (files at `ci/{application_id}/...`), so the worker needs no change. In `ocr_run_text` they show as `document_type` `CI_NFIS` / `CI_TU` / `CI_BRAS` with `ci_document_id` filled. Re-OCR one: `select requeue_ci_ocr(<ci_document_id>);`.
+
+**CI report extraction** (`20261109_ci_extraction.sql`): NFIS and TU reports go through the same AI queue (BRAS doesn't yet: no field list). Gemini also drafts the CI result (`output.proposed_result`: `NO_ADVERSE_FINDINGS` / `WITH_FINDINGS`) and a short `output.findings_summary`, facts only. A Credit Investigator checks it on the CI report check page (`/documentCheckPage?id=<app>&ci=1`, "AI check" next to each file on the CI request page), edits it and confirms with `confirm_ci_extraction()`, which writes `ci_checks.result` / `summary` for that borrower × check. CI extractions never write to the application record; identity, IDs and accounts are only compared with it on the page.
 
 `line_no` is PaddleOCR's reading order. On tables (payslips) a slightly tilted photo can interleave the columns, so pair labels with amounts using `bbox`, not `line_no`.
 

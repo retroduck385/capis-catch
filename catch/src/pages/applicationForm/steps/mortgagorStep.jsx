@@ -55,7 +55,7 @@ const MortgagorStep = ({ app, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <Section title="Mortgagor">
                 <p>Is the mortgagor (registered owner putting up the property) someone other than you?</p>
                 <YesNo name="has-mortgagor" value={hasMortgagor} onChange={setHasMortgagor} />

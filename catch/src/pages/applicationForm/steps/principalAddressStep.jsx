@@ -60,7 +60,7 @@ const PrincipalAddressStep = ({ app, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <Section title="Principal Borrower's Present Address" className="ct-panel ct-cols-4">
                 <AddressFields kind="PRESENT" idPrefix="present" values={present} errors={errors.present}
                     onChange={changePresent} />

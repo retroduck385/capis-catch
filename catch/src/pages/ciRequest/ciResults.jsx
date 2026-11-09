@@ -1,9 +1,11 @@
 // CI results (BPMN Credit Investigator lane: TU, NFIS, BRAS -> upload results -> Done).
 // Per borrower and per check: the report file(s), a result and the CI's summarized findings, plus overall remarks.
-// Uploaded reports are OCR'd by the PaddleOCR worker (raw text, checked in Supabase; not shown here yet).
+// Uploaded reports are OCR'd by the PaddleOCR worker; NFIS and TU reports are then read by the AI and checked
+// on the CI report check page (/documentCheckPage?ci=1, "AI check" next to each file).
 //   CiResultsEditor: the Credit Investigator, while the application is in Credit Investigation.
 //   CiResultsView:   read-only, for everyone else (CO's Financial Package, AO's loan folder) and after Done.
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getParties } from '../applicationForm/api';
 import { BORROWER_ROLES, partyLabel } from '../applicationForm/options';
 import { fetchStaffNames } from '../loanFolder/api';
@@ -70,13 +72,24 @@ const openFile = async (doc, setError) => {
     }
 };
 
-const FileList = ({ docs, onView, onRemove, busy }) => (
+// NFIS and TU reports have an AI extraction (20261109_ci_extraction.sql); BRAS doesn't yet
+const AI_CHECKED = new Set(['NFIS', 'TU']);
+const aiCheckUrl = (applicationId, doc) => (AI_CHECKED.has(doc.check_type)
+    ? `/documentCheckPage?id=${applicationId}&ci=1&doc=${doc.id}` : null);
+
+const FileList = ({ docs, onView, onRemove, busy, applicationId, onLeave }) => (
     docs.length ? (
         <ul>
             {docs.map((doc) => (
                 <li key={doc.id} className="flex gap-2 items-center flex-wrap">
                     <span title={doc.original_file_name}>{doc.file_name}</span>
                     <button type="button" className="border px-2" onClick={() => onView(doc)}>View</button>
+                    {aiCheckUrl(applicationId, doc) && (
+                        <Link to={aiCheckUrl(applicationId, doc)} className="border px-2"
+                            onClick={(e) => { if (onLeave && !onLeave()) e.preventDefault(); }}>
+                            AI check
+                        </Link>
+                    )}
                     {onRemove && (
                         <button type="button" className="border px-2" disabled={busy === doc.id}
                             onClick={() => onRemove(doc)}>Remove</button>
@@ -211,6 +224,10 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
                 Upload each report (JPG, PNG or PDF, up to 10 MB) and record the result and your summary of the findings.
                 Files are saved right away; results and summaries are saved with "Save findings". The applicant can't see any of this.
             </p>
+            <p className="text-sm">
+                NFIS and TU reports are read by the AI after upload. Use "AI check" to compare the report with the application
+                and confirm the AI's draft result and summary; confirming saves them here.
+            </p>
             {loadError && <p className="text-red-600">{loadError}</p>}
 
             {borrowers.map((p) => (
@@ -225,7 +242,9 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
                                 <p className="font-semibold">
                                     {c.label}{c.required ? <span className="text-red-600"> *</span> : ' (optional)'}
                                 </p>
-                                <FileList docs={docs} busy={busy} onView={(doc) => openFile(doc, setError)} onRemove={handleRemove} />
+                                <FileList docs={docs} busy={busy} onView={(doc) => openFile(doc, setError)} onRemove={handleRemove}
+                                    applicationId={app.id}
+                                    onLeave={() => !dirty || window.confirm('You have unsaved findings on this page. Leave without saving?')} />
                                 <input type="file" multiple accept="image/jpeg,image/png,application/pdf"
                                     disabled={busy === k} aria-label={`Upload ${c.label} report for ${fullName(p)}`}
                                     onChange={(e) => {
@@ -349,10 +368,15 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
                                             <ResultText value={saved?.result} />
                                             {saved?.summary && <p className="whitespace-pre-wrap">{saved.summary}</p>}
                                             {(saved?.documents ?? []).map((doc) => (
-                                                <button key={doc.id} type="button" className="underline block text-left"
-                                                    title={doc.original_file_name} onClick={() => openFile(doc, setError)}>
-                                                    {doc.file_name}
-                                                </button>
+                                                <span key={doc.id} className="block">
+                                                    <button type="button" className="underline text-left"
+                                                        title={doc.original_file_name} onClick={() => openFile(doc, setError)}>
+                                                        {doc.file_name}
+                                                    </button>
+                                                    {aiCheckUrl(app.id, doc) && (
+                                                        <Link to={aiCheckUrl(app.id, doc)} className="underline text-sm ml-2">AI check</Link>
+                                                    )}
+                                                </span>
                                             ))}
                                         </td>
                                     );

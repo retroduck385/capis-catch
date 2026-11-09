@@ -53,17 +53,17 @@
 .lf-nav { position: sticky; top: 1rem; padding: 0.6rem; }
 .lf-nav ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .lf-nav li { margin: 0; }
-.lf .lf-nav button {
+.lf .lf-nav button, .lf .lf-nav a {
   display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 2.6rem; padding: 0.4rem 0.65rem;
   border: 0; border-radius: 6px; background: none; text-align: left; color: var(--ink); font-size: 0.95rem; font-weight: 500;
 }
-.lf .lf-nav button:hover { background: #f1f4fa; color: var(--ink); }
+.lf .lf-nav button:hover, .lf .lf-nav a:hover { background: #f1f4fa; color: var(--ink); }
 .lf .lf-nav button[aria-current='true'] { background: var(--blue-50); font-weight: 700; }
 .lf-nav .label { flex: 1; min-width: 0; line-height: 1.25; }
 .lf-ico { flex: none; color: var(--tone); }
 .lf-tag { flex: none; padding: 0 0.45rem; border-radius: 999px; background: var(--lf-warn-bg); color: var(--lf-warn); font-size: 0.72rem; font-weight: 700; }
 .lf-nav .sep { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--line); }
-.lf .lf-nav .sep button { color: var(--blue-700); font-weight: 600; }
+.lf .lf-nav .sep button, .lf .lf-nav a { color: var(--blue-700); font-weight: 600; text-decoration: none; }
 
 /* ---------- KYC status cards ---------- */
 .lf-kyc { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
