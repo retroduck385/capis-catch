@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Eye, EyeOff, Lock, Mail, Save } from 'lucide-react';
+import { BadgeCheck, Building2, ClipboardList, Eye, EyeOff, FileUp, Lock, Mail, Save, UserPlus } from 'lucide-react';
 import '../auth.css';
 
 const STEPS = [
-    ['Create an account', 'Sign up with your email.'],
-    ['Fill in your application', 'Loan details, personal information, address and employment.'],
-    ['Upload your documents', 'Add the requirements for each borrower.'],
-    ['Review and submit', 'Check everything, then send it in.'],
+    [UserPlus, 'Create an account', 'Sign up with your email.'],
+    [ClipboardList, 'Fill in your application', 'Loan details, personal information, address and employment.'],
+    [FileUp, 'Upload your documents', 'Add the requirements for each borrower.'],
+    [BadgeCheck, 'Review and submit', 'Check everything, then send it in.'],
 ];
+
+// Stagger index for the entrance animation (consumed by CSS as --e).
+const e = (n) => ({ '--e': n });
 
 
 // Architectural line drawing, anchored to the bottom of the brand panel. Decorative only.
@@ -48,6 +51,14 @@ const HouseLines = () => {
                 <rect style={d(10)} pathLength="1" x="704" y="382" width="108" height="98" rx="2" />
                 <path className="fine" style={d(10)} pathLength="1" d="M704 414H812M704 446H812" />
             </g>
+            {/* life: lit windows and chimney smoke (kept out of the draw-in group) */}
+            <g className="fx">
+                <rect className="glow" x="367" y="329" width="66" height="78" rx="2" />
+                <rect className="glow g2" x="567" y="329" width="66" height="78" rx="2" />
+                <circle className="smoke" cx="592" cy="96" r="6" />
+                <circle className="smoke s2" cx="592" cy="96" r="6" />
+                <circle className="smoke s3" cx="592" cy="96" r="6" />
+            </g>
         </svg>
     );
 };
@@ -57,27 +68,34 @@ export const AuthLayout = ({ children }) => (
     <div className="auth">
         <aside className="auth-aside">
             <HouseLines />
-            <Link to="/loginPage" className="auth-logo">
+            <Link to="/loginPage" className="auth-logo" style={e(0)}>
                 <span className="auth-logo-mark"><Building2 size={16} aria-hidden="true" /></span>
                 CATCH
             </Link>
 
             <div className="auth-pitch">
-                <span className="auth-eyebrow">Housing loan applications</span>
-                <h1>Home financing,<br /><em>made simple.</em></h1>
-                <p>Apply online, upload your documents once, and follow your application from submission to decision.</p>
+                <span className="auth-eyebrow" style={e(1)}>Housing loan applications</span>
+                <h1>
+                    <span className="line"><span style={e(2)}>Home financing,</span></span>
+                    <span className="line"><em><span style={e(3)}>made simple.</span></em></span>
+                </h1>
+                <p style={e(4)}>Apply online, upload your documents once, and follow your application from submission to decision.</p>
 
                 <ol className="auth-steps">
-                    {STEPS.map(([title, text], i) => (
-                        <li key={title}>
-                            <span className="num" aria-hidden="true">{i + 1}</span>
-                            <div><strong>{title}</strong><span>{text}</span></div>
+                    {STEPS.map(([Icon, title, text], i) => (
+                        <li key={title} style={{ ...e(5 + i), '--i': i }}>
+                            <div className="top">
+                                <span className="tile"><Icon size={18} aria-hidden="true" /></span>
+                                <span className="num" aria-hidden="true">0{i + 1}</span>
+                            </div>
+                            <strong>{title}</strong>
+                            <span>{text}</span>
                         </li>
                     ))}
                 </ol>
             </div>
 
-            <div className="auth-foot">
+            <div className="auth-foot" style={e(9)}>
                 <Save size={16} aria-hidden="true" />
                 <span>Your progress is saved as you go, so you can finish later.</span>
             </div>

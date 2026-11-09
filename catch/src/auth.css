@@ -37,7 +37,7 @@
 }
 /* soft light + fine dot grid, both decorative */
 .auth-aside::before {
-  content: ''; position: absolute; inset: 0; z-index: -1;
+  content: ''; position: absolute; inset: -12%; z-index: -1; animation: auth-drift 24s ease-in-out infinite alternate;
   background:
     radial-gradient(60rem 36rem at 105% -10%, rgba(54, 98, 214, 0.55), transparent 60%),
     radial-gradient(40rem 28rem at -10% 110%, rgba(255, 138, 76, 0.16), transparent 60%);
@@ -74,20 +74,47 @@
 .auth-pitch h1 em { font-style: normal; color: var(--a-accent); }
 .auth-pitch > p { margin: 0; color: rgba(255, 255, 255, 0.76); font-size: 1.05rem; max-width: 27rem; }
 
-/* how it works */
-.auth-steps { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0; max-width: 27rem; counter-reset: s; }
-.auth-steps li { position: relative; display: flex; gap: 1rem; padding-bottom: 1.4rem; }
-.auth-steps li:last-child { padding-bottom: 0; }
-/* connecting line between numbers */
-.auth-steps li:not(:last-child)::before {
-  content: ''; position: absolute; left: 0.95rem; top: 2.1rem; bottom: 0.2rem; width: 1px; background: rgba(255, 255, 255, 0.2);
+/* how it works: four cards */
+.auth-steps {
+  list-style: none; margin: 1.25rem 0 0; padding: 0; max-width: 36rem;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.9rem;
 }
-.auth-steps .num {
-  flex: none; display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 50%;
-  font-size: 0.85rem; font-weight: 600; color: var(--a-accent); border: 1px solid rgba(255, 138, 76, 0.6); background: rgba(10, 21, 48, 0.8);
+.auth-steps li {
+  position: relative; display: flex; flex-direction: column; gap: 0.2rem; padding: 1.1rem 1.15rem 1.2rem;
+  border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.045);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: transform 0.35s var(--a-ease), border-color 0.3s, background-color 0.3s, box-shadow 0.35s;
+  animation: auth-rise 0.8s var(--a-ease) calc(var(--e) * 0.09s + 0.1s) backwards,
+             auth-pulse 10s ease-in-out calc(var(--i) * 2.5s + 2.5s) infinite;
 }
-.auth-steps strong { display: block; font-size: 0.98rem; font-weight: 600; color: #fff; padding-top: 0.2rem; }
-.auth-steps div span { display: block; margin-top: 0.15rem; font-size: 0.88rem; color: rgba(255, 255, 255, 0.72); }
+.auth-steps li:hover {
+  transform: translateY(-4px); background: rgba(255, 255, 255, 0.085); border-color: rgba(255, 138, 76, 0.65);
+  box-shadow: 0 18px 32px -18px rgba(0, 0, 0, 0.6);
+}
+.auth-steps .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; }
+.auth-steps .tile {
+  display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 11px;
+  color: var(--a-accent); background: rgba(255, 138, 76, 0.12); border: 1px solid rgba(255, 138, 76, 0.3);
+  transition: background-color 0.3s, color 0.3s, transform 0.35s var(--a-ease);
+}
+.auth-steps li:hover .tile { background: var(--a-accent); color: var(--a-navy); transform: rotate(-6deg) scale(1.06); }
+.auth-steps .num { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.38); font-variant-numeric: tabular-nums; }
+.auth-steps strong { font-size: 1rem; font-weight: 600; color: #fff; }
+.auth-steps li > span:last-child { font-size: 0.88rem; line-height: 1.45; color: rgba(255, 255, 255, 0.72); }
+
+/* headline: lines slide up out of a mask; accent line gets a slow shimmer */
+.auth-pitch h1 .line { display: block; overflow: hidden; padding-bottom: 0.1em; margin-bottom: -0.1em; }
+.auth-pitch h1 .line > span, .auth-pitch h1 em > span {
+  display: inline-block; animation: auth-line 0.95s var(--a-ease) calc(var(--e) * 0.09s + 0.1s) backwards;
+}
+.auth-pitch h1 em > span {
+  background: linear-gradient(100deg, #ff8a4c 25%, #ffd2b4 48%, #ff8a4c 70%); background-size: 260% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: auth-line 0.95s var(--a-ease) calc(var(--e) * 0.09s + 0.1s) backwards, auth-shimmer 7s ease-in-out 2.2s infinite;
+}
+
+/* entrance for the remaining brand elements */
+.auth-logo, .auth-eyebrow, .auth-pitch > p, .auth-foot { animation: auth-rise 0.8s var(--a-ease) calc(var(--e) * 0.09s + 0.1s) backwards; }
 
 .auth-foot { display: flex; align-items: center; gap: 0.6rem; color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; }
 .auth-foot svg { color: var(--a-accent); flex: none; }
@@ -198,9 +225,35 @@
   animation: auth-draw 1.4s var(--a-ease) calc(var(--i) * 0.14s + 0.2s) forwards;
 }
 .auth-house .door { stroke: var(--a-accent); }
+.auth-house .fx .glow { fill: #ff8a4c; opacity: 0; animation: auth-win 4.5s ease-in-out 3.4s infinite alternate backwards; }
+.auth-house .fx .g2 { animation-delay: 4.6s; }
+.auth-house .fx .smoke {
+  fill: #a9bdf2; opacity: 0; transform-box: fill-box; transform-origin: center;
+  animation: auth-smoke 6s ease-out 3.2s infinite backwards;
+}
+.auth-house .fx .s2 { animation-delay: 5.2s; }
+.auth-house .fx .s3 { animation-delay: 7.2s; }
+@keyframes auth-rise { from { opacity: 0; transform: translateY(18px); } }
+@keyframes auth-line { from { transform: translateY(105%); } }
+@keyframes auth-shimmer { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0% 0; } }
+@keyframes auth-drift { to { transform: translate3d(3%, 2%, 0) scale(1.06); } }
+@keyframes auth-pulse {
+  0%, 22%, 100% { border-color: rgba(255, 255, 255, 0.14); box-shadow: none; }
+  8% { border-color: rgba(255, 138, 76, 0.6); box-shadow: 0 0 0 4px rgba(255, 138, 76, 0.08); }
+}
+@keyframes auth-win { from { opacity: 0.05; } to { opacity: 0.26; } }
+@keyframes auth-smoke {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  15% { opacity: 0.35; }
+  100% { opacity: 0; transform: translate(26px, -70px) scale(2.2); }
+}
 @keyframes auth-draw { to { stroke-dashoffset: 0; } }
 
 @media (max-width: 900px) { .auth-house { display: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .auth-house g > * { animation: none; stroke-dashoffset: 0; }
+  .auth-aside *, .auth-aside::before, .auth-logo, .auth-eyebrow, .auth-foot { animation: none !important; }
+  .auth-house g > * { stroke-dashoffset: 0; }
+  .auth-house .fx { display: none; }
+  .auth-pitch h1 em > span { background: none; color: var(--a-accent); }
+  .auth-steps li:hover { transform: none; }
 }
