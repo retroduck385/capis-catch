@@ -8,7 +8,8 @@
 // Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, UserCheck } from 'lucide-react';
+import { ArrowRight, UserCheck } from 'lucide-react';
+import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
 import { Section } from '../applicationForm/fields';
@@ -196,8 +197,8 @@ const ReviewSummaryPage = () => {
 
     return (
         <div className="lf fp rv">
+            <Breadcrumbs current="review" appId={app.id} appNo={app.application_no} />
             <header className="lf-card">
-                <Link to="/adminHomePage" className="lf-back"><ArrowLeft size={16} aria-hidden="true" />Work tray</Link>
                 <div className="lf-titlerow">
                     <div>
                         <h1>Review summary {app.application_no}</h1>

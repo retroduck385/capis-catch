@@ -18,6 +18,18 @@
 /* ---------- header ---------- */
 .lf-back { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; font-size: 0.92rem; text-decoration: none; color: var(--blue-700); }
 .lf-back:hover { text-decoration: underline; }
+/* breadcrumb above the header card: links, with the current page highlighted */
+.lf-crumbs ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.1rem; margin: 0; padding: 0 0.15rem; font-size: 0.92rem; }
+.lf-crumbs li { display: inline-flex; align-items: center; margin: 0; min-width: 0; }
+.lf-crumbs a, .lf-crumbs [aria-current] { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 0.7rem; border-radius: 999px; text-decoration: none; }
+.lf-crumbs a { color: var(--blue-700); font-weight: 600; transition: background-color 0.2s; }
+.lf-crumbs .ahead a { color: #5d6778; font-weight: 500; }
+.lf-crumbs .ahead .crumb-sep { opacity: 0.6; }
+.lf-crumbs a:hover { background: var(--lf-none-bg); text-decoration: underline; }
+.lf-crumbs a:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.lf-crumbs [aria-current] { background: var(--blue-700); color: #fff; font-weight: 700; overflow-wrap: anywhere; }
+.lf-crumbs .crumb-sep { flex: none; color: #9aa4b5; }
+@media (prefers-reduced-motion: reduce) { .lf-crumbs a { transition: none; } }
 .lf-titlerow { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem 2rem; margin-top: 0.55rem; }
 .lf-titlerow h1 { font-size: 1.6rem; margin: 0; }
 .lf-meta { list-style: none; display: flex; flex-wrap: wrap; gap: 0.2rem 1.4rem; margin: 0.4rem 0 0; padding: 0; color: var(--muted); font-size: 0.92rem; }

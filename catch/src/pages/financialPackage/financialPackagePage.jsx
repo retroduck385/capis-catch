@@ -3,7 +3,8 @@
 // save_financial_package(). Only the assigned CO edits (any stage before Decided); everyone else with access reads.
 // IV. Credit checking shows the Credit Investigator's results (BRAS / NFIS / TU), read-only.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
+import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one, toRow } from '../applicationForm/api';
@@ -266,8 +267,8 @@ const FinancialPackagePage = () => {
 
     return (
         <form onSubmit={handleSave} className="lf fp">
+            <Breadcrumbs current="package" appId={app.id} appNo={app.application_no} />
             <header className="lf-card">
-                <Link to="/adminHomePage" className="lf-back"><ArrowLeft size={16} aria-hidden="true" />Work tray</Link>
                 <div className="lf-titlerow">
                     <div>
                         <h1>Financial Package {app.application_no}</h1>

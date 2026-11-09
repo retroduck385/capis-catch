@@ -4,7 +4,8 @@
 // Same edit rule as the FP: only the assigned CO, any stage before Decided; everyone else with access reads.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
+import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, toRow } from '../applicationForm/api';
 import { FormError, Section } from '../applicationForm/fields';
@@ -160,10 +161,8 @@ const CreditScorePage = () => {
 
     return (
         <form onSubmit={handleSave} className="lf fp rv">
+            <Breadcrumbs current="score" appId={app.id} appNo={app.application_no} onNavigate={leave} />
             <header className="lf-card">
-                <Link to={`/financialPackagePage?id=${app.id}`} onClick={leave} className="lf-back">
-                    <ArrowLeft size={16} aria-hidden="true" />Financial Package
-                </Link>
                 <div className="lf-titlerow">
                     <div>
                         <h1>Credit Scoring {app.application_no}</h1>

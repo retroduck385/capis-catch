@@ -8,7 +8,8 @@
 // Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
+import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { ROUTING_HEADS } from '../../roles';
 import { fetchApplication, getParties } from '../applicationForm/api';
@@ -272,10 +273,8 @@ const ApprovalRoutingPage = () => {
 
     return (
         <form onSubmit={handleSubmit} className="lf fp rv">
+            <Breadcrumbs current="routing" appId={app.id} appNo={app.application_no} />
             <header className="lf-card">
-                <Link to={`/financialPackagePage?id=${app.id}`} className="lf-back">
-                    <ArrowLeft size={16} aria-hidden="true" />Financial Package
-                </Link>
                 <div className="lf-titlerow">
                     <div>
                         <h1>VII. Approval {app.application_no}</h1>
