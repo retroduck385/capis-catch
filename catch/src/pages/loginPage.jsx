@@ -35,7 +35,7 @@ const LoginPage = () => {
     return (
         <AuthLayout>
             <div className="auth-card">
-                <h2>Welcome back</h2>
+                <h2>Welcome</h2>
                 <p className="auth-sub">Sign in to continue your application.</p>
                 <form onSubmit={handleSignIn} className="auth-form">
                     <AuthField label="Email" id="email" type="email" autoComplete="email" required

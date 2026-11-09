@@ -5,8 +5,10 @@
 // checklist and a decision: Endorse / Not endorse (a recommendation, not an approval) or Return to the CO
 // for revision. Reviewers act in order; after the last one it moves to Approval (submit_review()).
 // Approvers and everyone else with access read the same page, including every reviewer's sign-off.
+// Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, UserCheck } from 'lucide-react';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
 import { Section } from '../applicationForm/fields';
@@ -29,24 +31,34 @@ import { isReviewedChange, reviewFlags, reviewState } from './reviewChecks';
 import { FlagList, IncomeEvidence, ReviewForm, ReviewProgress } from './reviewParts';
 import RoutingSummary from './routingSummary';
 import MessagesPanel from '../messages/messagesPanel';
+import '../loanFolder/loanFolder.css';
+import '../financialPackage/financialPackage.css';
+import './review.css';
+import { scrollToSection, useActiveSection } from './useActiveSection';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const money = (v) => (v === null || v === undefined || v === '' ? '—' : `₱${formatMoney(v)}`);
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
-const Row = ({ label, children }) => (
-    <tr>
-        <td className="font-semibold align-top">{label}</td>
-        <td className="align-top">{children}</td>
-    </tr>
+// One label / value line in a card (same look as the Financial Package's read-only rows)
+const Info = ({ label, children, wrap = false }) => (
+    <div className="fp-info-row">
+        <dt>{label}</dt>
+        <dd className={wrap ? 'wrap' : undefined}>{children}</dd>
+    </div>
 );
 
-const Text = ({ label, value }) => (blank(value) ? null : (
-    <div className="py-1">
-        <p className="font-semibold">{label}</p>
-        <p className="whitespace-pre-wrap">{value}</p>
-    </div>
-));
+const Text = ({ label, value }) => (blank(value) ? null : <Info label={label} wrap>{value}</Info>);
+
+// Section navigator: [element id, label]; the ids are set on the <Section>s below
+const TOC = [
+    ['rv-progress', 'Review progress'], ['rv-flags', 'Flags to check'], ['rv-recommendation', "Credit Officer's recommendation"],
+    ['rv-income', 'Income evidence'], ['rv-figures', 'Key figures'], ['rv-ci', 'IV. Credit checking'],
+    ['rv-score', 'Credit score'], ['rv-exceptions', 'V. Exceptions'], ['rv-changes', 'Changes since'],
+    ['rv-approval', 'VII. Approval'], ['rv-review', 'Your review'],
+];
+
+const TOC_IDS = TOC.map(([id]) => id);
 
 const days = (from) => {
     const d = (Date.now() - new Date(from).getTime()) / 86400000;
@@ -79,6 +91,7 @@ const ReviewSummaryPage = () => {
     const [done, setDone] = useState(null);
 
     const reload = useCallback(async () => setData(await load(applicationId)), [applicationId]);
+    const [activeId, pickSection] = useActiveSection(TOC_IDS, Boolean(data));
 
     useEffect(() => {
         let cancelled = false;
@@ -95,8 +108,8 @@ const ReviewSummaryPage = () => {
         return () => { cancelled = true; };
     }, [applicationId]);
 
-    if (loading) return <p>Loading review summary...</p>;
-    if (error) return <p className="text-red-600">{error}</p>;
+    if (loading) return <p className="fp-empty">Loading review summary...</p>;
+    if (error) return <p className="ct-error">{error}</p>;
     if (!data) return null;
 
     const { app, fp, rules, rows, stage, coId, checkItems, decisions, canAct, ciDone, log, names } = data;
@@ -151,144 +164,209 @@ const ReviewSummaryPage = () => {
         : isApprover ? 'You are an approver on this application.'
             : 'This application isn\'t assigned to you (view only).';
 
+    const stageText = stage ? `${stageLabel(stage.stage)} · ${STAGE_STATUS_LABELS[stage.status] ?? '—'}` : '—';
+    const stageFor = stage?.enteredAt && ['REVIEW', 'APPROVAL'].includes(stage.stage) ? ` (for ${days(stage.enteredAt)})` : '';
+    const returned = state.returns.length > 0
+        ? ` · returned ${state.returns.length} time${state.returns.length === 1 ? '' : 's'}` : '';
+
+    const metrics = [
+        { key: 'result', label: 'Credit result', value: resultLabel ?? 'Not set', sub: 'CO recommendation', tone: resultLabel ? 'info' : 'warn' },
+        {
+            key: 'risk', label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
+            sub: score.riskRating ? `${score.total} / 100` : `${score.scored} of ${score.count} scored`,
+            tone: score.riskRating ? 'info' : 'warn',
+        },
+        {
+            key: 'loan', label: 'Loan amount', value: money(app.loan_amount),
+            sub: app.loan_term_years ? `${app.loan_term_years} years` : 'Term not set', tone: 'plain',
+        },
+        { key: 'dbr', label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: 'plain' },
+        { key: 'lcr', label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: 'plain' },
+        { key: 'amort', label: 'Monthly amortization', value: money(computed.amortization), sub: 'New loan', tone: 'plain' },
+    ];
+
+    const nav = TOC.filter(([id]) => (id === 'rv-changes' ? Boolean(changesSince) : id === 'rv-review' ? canAct : true))
+        .map(([id, label]) => [id, id === 'rv-flags' ? `${label} (${flags.length})` : label]);
+
+    const goTo = (id) => (e) => {
+        e.preventDefault();
+        pickSection(id);
+        scrollToSection(id);
+    };
+
     return (
-        <div className="max-w-5xl m-auto p-4 text-left">
-            <MessagesPanel applicationId={app.id} />
-            <p><Link to="/adminHomePage" className="underline">Back to work tray</Link></p>
-            <h2>Review summary: {app.application_no}</h2>
-            <p><span className="font-semibold">Name of Borrower/s:</span> {borrowers || '—'}</p>
-            <p><span className="font-semibold">Stage:</span>{' '}
-                {stage ? `${stageLabel(stage.stage)} · ${STAGE_STATUS_LABELS[stage.status] ?? '—'}` : '—'}
-                {stage?.enteredAt && ['REVIEW', 'APPROVAL'].includes(stage.stage) && ` (for ${days(stage.enteredAt)})`}
-                {state.returns.length > 0 && ` · returned ${state.returns.length} time${state.returns.length === 1 ? '' : 's'}`}</p>
-            {sentRow && (
-                <p><span className="font-semibold">Sent for review by</span> {names[sentRow.assigned_by] ?? 'unknown'} on{' '}
-                    {new Date(sentRow.assigned_at).toLocaleString()}</p>
-            )}
-            <p className="font-semibold py-1">{yourPart}</p>
-            {done && <p className="text-green-700">{done}</p>}
+        <div className="lf fp rv">
+            <header className="lf-card">
+                <Link to="/adminHomePage" className="lf-back"><ArrowLeft size={16} aria-hidden="true" />Work tray</Link>
+                <div className="lf-titlerow">
+                    <div>
+                        <h1>Review summary {app.application_no}</h1>
+                        <ul className="lf-meta">
+                            <li>Borrower/s: {borrowers || '—'}</li>
+                            <li>Stage: {stageText}{stageFor}{returned}</li>
+                            {sentRow && (
+                                <li>Sent for review by {names[sentRow.assigned_by] ?? 'unknown'} on {new Date(sentRow.assigned_at).toLocaleString()}</li>
+                            )}
+                        </ul>
+                    </div>
+                    <div className="lf-actions">
+                        <MessagesPanel applicationId={app.id} inline />
+                        <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">Financial Package</Link>
+                        <Link to={`/creditScorePage?id=${app.id}`} className="lf-btn">Credit scoring</Link>
+                        <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
+                            Loan folder<ArrowRight size={16} aria-hidden="true" />
+                        </Link>
+                    </div>
+                </div>
 
-            <div className="flex gap-2 py-2 flex-wrap">
-                <Link to={`/financialPackagePage?id=${app.id}`} className="border px-4 py-2">Open Financial Package</Link>
-                <Link to={`/loanFolderPage?id=${app.id}`} className="border px-4 py-2">Open loan application (KYC & documents)</Link>
-                <Link to={`/creditScorePage?id=${app.id}`} className="border px-4 py-2">Open Credit Scoring</Link>
-            </div>
+                <div className="fp-metrics">
+                    {metrics.map((m) => (
+                        <div key={m.key} className={`fp-metric ${m.tone}`}>
+                            <span className="lbl">{m.label}</span>
+                            <span className="val">{m.value}</span>
+                            <span className="sub">{m.sub}</span>
+                        </div>
+                    ))}
+                </div>
 
-            <Section title="Review progress">
-                <ReviewProgress rows={rows} state={state} names={names} myId={myId} checkItems={checkItems} stage={stage?.stage} />
-            </Section>
-
-            <Section title={`Flags to check (${flags.length})`}>
-                {flags.length === 0 ? <p className="italic">Nothing flagged.</p> : <FlagList flags={flags} />}
-                <p className="text-xs text-gray-600 pt-1">
-                    Computed from the record. Flags point at something to check; you decide. DBR / LCR limits are the
-                    credit score's worst bands, not the bank's MRAC (policy checks come later).
+                <p className="lf-note">
+                    <UserCheck size={16} aria-hidden="true" />
+                    <span>{yourPart}</span>
                 </p>
-            </Section>
+                {done && <p className="lf-ok-note rv-done" role="status">{done}</p>}
+            </header>
 
-            <Section title={`Credit Officer's recommendation${coId ? ` (${names[coId] ?? 'Credit Officer'})` : ''}`}>
-                <p><span className="font-semibold">Credit Result:</span> {resultLabel ?? <span className="italic">Not set</span>}</p>
-                <Text label="Justification and Remarks" value={pkg.justification} />
-                <Text label="Amendment" value={pkg.amendment} />
-                <Text label="Waiver and Acceptance" value={pkg.waiver_and_acceptance} />
-                <Text label="Deferral(s)" value={pkg.deferrals} />
-            </Section>
+            <div className="lf-body edit">
+                <nav className="lf-card lf-nav fp-nav" aria-label="Review summary sections">
+                    <ul>
+                        {nav.map(([id, label]) => (
+                            <li key={id}>
+                                <a href={`#${id}`} onClick={goTo(id)} aria-current={activeId === id ? 'true' : undefined}>{label}</a>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
 
-            <Section title="Income: declared vs. what the CO used, with the documents">
-                <IncomeEvidence app={app} computed={computed} fp={fp} onError={setSubmitError} />
-            </Section>
+                <div className="lf-main fp-main">
+                    <Section id="rv-progress" title="Review progress">
+                        <ReviewProgress rows={rows} state={state} names={names} myId={myId} checkItems={checkItems} stage={stage?.stage} />
+                    </Section>
 
-            <Section title="Key figures (from the Financial Package)">
-                <table>
-                    <tbody>
-                        <Row label="Loan amount">{money(app.loan_amount)}</Row>
-                        <Row label="Term / interest rate">
-                            {app.loan_term_years ? `${app.loan_term_years} years` : '—'} ·{' '}
-                            {app.interest_rate != null ? `${app.interest_rate}% p.a.` : 'rate not set'}
-                            {app.fixing_period ? `, fixed ${app.fixing_period}` : ''}
-                        </Row>
-                        <Row label="Monthly amortization">{money(computed.amortization)}</Row>
-                        <Row label="Total gross monthly income (D)">{money(computed.totalGross)}</Row>
-                        <Row label="Existing monthly amortizations (C)">{money(computed.existing)}</Row>
-                        <Row label="DBR">{percent(computed.dbr) ?? '—'}</Row>
-                        <Row label="Collateral">
-                            {[collateral?.property_type, collateral?.project_name].filter(Boolean).join(' · ') || '—'}
-                        </Row>
-                        <Row label={computed.appraised !== null ? 'Appraised value' : 'TCP (no appraised value yet)'}>
-                            {money(computed.collateralValue)}
-                        </Row>
-                        <Row label="LCR">{percent(computed.lcr) ?? '—'}</Row>
-                    </tbody>
-                </table>
-            </Section>
+                    <Section id="rv-flags" title={`Flags to check (${flags.length})`}>
+                        {flags.length === 0 ? <p className="fp-empty">Nothing flagged.</p> : <FlagList flags={flags} />}
+                        <p className="fp-note">
+                            Computed from the record. Flags point at something to check; you decide. DBR / LCR limits are the
+                            credit score's worst bands, not the bank's MRAC (policy checks come later).
+                        </p>
+                    </Section>
 
-            <Section title="IV. Credit Checking (CI results)">
-                <CiResultsView app={app} title={null} />
-            </Section>
+                    <Section id="rv-recommendation" title={`Credit Officer's recommendation${coId ? ` (${names[coId] ?? 'Credit Officer'})` : ''}`}>
+                        <dl className="fp-info">
+                            <Info label="Credit result">
+                                {resultLabel ?? <span className="fp-pending">Not set</span>}
+                            </Info>
+                            <Text label="Justification and remarks" value={pkg.justification} />
+                            <Text label="Amendment" value={pkg.amendment} />
+                            <Text label="Waiver and Acceptance" value={pkg.waiver_and_acceptance} />
+                            <Text label="Deferral(s)" value={pkg.deferrals} />
+                        </dl>
+                    </Section>
 
-            <Section title="Credit score">
-                {score.scored === 0 ? <p className="italic">Not scored yet.</p> : (
-                    <>
-                        <table className="border-collapse">
-                            <tbody>
-                                {CATEGORIES.map((c) => (
-                                    <Row key={c.value} label={c.label}>
-                                        {score.byCategory[c.value].score} / {score.byCategory[c.value].max}
-                                    </Row>
-                                ))}
-                                <Row label="Total">{score.total} / 100</Row>
-                                <Row label="Risk rating">{score.riskRating ?? '—'}</Row>
-                                <Row label="Recommendation">{score.recommendation ?? '—'}</Row>
-                            </tbody>
-                        </table>
-                        {!score.complete && (
-                            <p className="text-amber-700">Not finished: {score.scored} of {score.count} criteria scored.</p>
+                    <Section id="rv-income" title="Income: declared vs. what the CO used, with the documents">
+                        <IncomeEvidence app={app} computed={computed} fp={fp} onError={setSubmitError} />
+                    </Section>
+
+                    <Section id="rv-figures" title="Key figures (from the Financial Package)">
+                        <dl className="fp-info">
+                            <Info label="Loan amount">{money(app.loan_amount)}</Info>
+                            <Info label="Term / interest rate">
+                                {app.loan_term_years ? `${app.loan_term_years} years` : '—'} ·{' '}
+                                {app.interest_rate != null ? `${app.interest_rate}% p.a.` : 'rate not set'}
+                                {app.fixing_period ? `, fixed ${app.fixing_period}` : ''}
+                            </Info>
+                            <Info label="Monthly amortization">{money(computed.amortization)}</Info>
+                            <Info label="Total gross monthly income (D)">{money(computed.totalGross)}</Info>
+                            <Info label="Existing monthly amortizations (C)">{money(computed.existing)}</Info>
+                            <Info label="DBR">{percent(computed.dbr) ?? '—'}</Info>
+                            <Info label="Collateral">
+                                {[collateral?.property_type, collateral?.project_name].filter(Boolean).join(' · ') || '—'}
+                            </Info>
+                            <Info label={computed.appraised !== null ? 'Appraised value' : 'TCP (no appraised value yet)'}>
+                                {money(computed.collateralValue)}
+                            </Info>
+                            <Info label="LCR">{percent(computed.lcr) ?? '—'}</Info>
+                        </dl>
+                    </Section>
+
+                    <Section id="rv-ci" title="IV. Credit Checking (CI results)">
+                        <CiResultsView app={app} title={null} />
+                    </Section>
+
+                    <Section id="rv-score" title="Credit score">
+                        {score.scored === 0 ? <p className="fp-empty">Not scored yet.</p> : (
+                            <>
+                                <dl className="fp-info">
+                                    {CATEGORIES.map((c) => (
+                                        <Info key={c.value} label={c.label}>
+                                            {score.byCategory[c.value].score} / {score.byCategory[c.value].max}
+                                        </Info>
+                                    ))}
+                                    <Info label="Total">{score.total} / 100</Info>
+                                    <Info label="Risk rating">{score.riskRating ?? '—'}</Info>
+                                    <Info label="Recommendation">{score.recommendation ?? '—'}</Info>
+                                </dl>
+                                {!score.complete && (
+                                    <p className="lf-note warn">Not finished: {score.scored} of {score.count} criteria scored.</p>
+                                )}
+                            </>
                         )}
-                    </>
-                )}
-            </Section>
+                    </Section>
 
-            <Section title="V. Exception/s">
-                {fp.exceptions.length === 0 ? <p className="italic">None.</p> : (
-                    <table>
-                        <thead>
-                            <tr className="text-left">
-                                <th>Policy</th>
-                                <th>Exception/s / Recommendation</th>
-                                <th>Risk Mitigant / Justifications</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {fp.exceptions.map((x) => (
-                                <tr key={x.id}>
-                                    <td className="align-top whitespace-pre-wrap">{x.policy ?? '—'}</td>
-                                    <td className="align-top whitespace-pre-wrap">{x.exception_recommendation ?? '—'}</td>
-                                    <td className="align-top whitespace-pre-wrap">{x.mitigant ?? '—'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </Section>
+                    <Section id="rv-exceptions" title="V. Exception/s">
+                        {fp.exceptions.length === 0 ? <p className="fp-empty">None.</p> : (
+                            <div className="fp-tablewrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Policy</th>
+                                            <th>Exception/s / Recommendation</th>
+                                            <th>Risk Mitigant / Justifications</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {fp.exceptions.map((x) => (
+                                            <tr key={x.id}>
+                                                <td className="whitespace-pre-wrap">{x.policy ?? '—'}</td>
+                                                <td className="whitespace-pre-wrap">{x.exception_recommendation ?? '—'}</td>
+                                                <td className="whitespace-pre-wrap">{x.mitigant ?? '—'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </Section>
 
-            {changesSince && (
-                <Section title={`Changes since ${changesSince.label} (${changes.length})`}>
-                    {changes.length === 0 ? <p className="italic">No changes to the FP, credit score or loan details.</p>
-                        : <ChangeHistory app={app} entries={changes} names={names} />}
-                </Section>
-            )}
+                    {changesSince && (
+                        <Section id="rv-changes" title={`Changes since ${changesSince.label} (${changes.length})`}>
+                            {changes.length === 0 ? <p className="fp-empty">No changes to the FP, credit score or loan details.</p>
+                                : <ChangeHistory app={app} entries={changes} names={names} />}
+                        </Section>
+                    )}
 
-            <Section title="VII. Approval">
-                <RoutingSummary tier={pkg.approval_tier} rows={rows} names={names} myId={myId} />
-            </Section>
+                    <Section id="rv-approval" title="VII. Approval">
+                        <RoutingSummary tier={pkg.approval_tier} rows={rows} names={names} myId={myId} />
+                    </Section>
 
-            {canAct && (
-                <Section title={`Your review (reviewer ${current.seq} of ${reviewers.length})`}>
-                    <ReviewForm checkItems={checkItems} flags={flags} nextLabel={nextLabel}
-                        onSubmit={handleSubmit} busy={busy} error={submitError} />
-                </Section>
-            )}
-            {!canAct && submitError && <p className="text-red-600">{submitError}</p>}
+                    {canAct && (
+                        <Section id="rv-review" title={`Your review (reviewer ${current.seq} of ${reviewers.length})`}>
+                            <ReviewForm checkItems={checkItems} flags={flags} nextLabel={nextLabel}
+                                onSubmit={handleSubmit} busy={busy} error={submitError} />
+                        </Section>
+                    )}
+                    {!canAct && submitError && <p className="ct-error">{submitError}</p>}
+                </div>
+            </div>
         </div>
     );
 };

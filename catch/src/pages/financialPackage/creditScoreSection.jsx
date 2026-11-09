@@ -1,11 +1,9 @@
-// Housing Loan Credit Scoring Sheet (KYC-FP "Credit_Score" tab) inside the Financial Package.
+// Housing Loan Credit Scoring Sheet (KYC-FP "Credit_Score" tab). One card per category (id `cs-<CATEGORY>`), then the
+// total (`cs-total`). Laid out like the Financial Package page (.lf / .fp / .rv, see credit score page).
 // The page suggests a band where the record allows it (see creditScore.js); the CO accepts, changes or
 // leaves each one. Only the CO's picks count toward the total.
 import { Section } from '../applicationForm/fields';
 import { CATEGORIES } from './creditScore';
-
-const Cell = ({ children, className = '' }) => <td className={`border px-2 py-1 align-top ${className}`}>{children}</td>;
-const Head = ({ children }) => <th className="text-left align-top">{children}</th>;
 
 const pts = (n) => `${n} ${Math.abs(n) === 1 ? 'pt' : 'pts'}`;
 
@@ -22,33 +20,32 @@ const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks,
 
     return (
         <tr>
-            <Cell className="font-semibold">{criterion.label}</Cell>
-            <Cell>{suggestion.input ?? '—'}</Cell>
-            <Cell>
+            <td><b>{criterion.label}</b></td>
+            <td>{suggestion.input ?? '—'}</td>
+            <td>
                 {suggested
-                    ? <span className="font-semibold">{bandLabel(suggested)}</span>
-                    : <span className="italic text-gray-500">No suggestion</span>}
-                <p className="text-xs text-gray-600">{suggestion.source}</p>
+                    ? <b>{bandLabel(suggested)}</b>
+                    : <span className="fp-pending">No suggestion</span>}
+                <p className="fp-note cs-source">{suggestion.source}</p>
                 {!disabled && suggested && entry?.band !== suggested && (
-                    <button type="button" className="mt-1" onClick={() => onScore(criterion.code, suggested)}>
+                    <button type="button" className="rv-link" onClick={() => onScore(criterion.code, suggested)}>
                         Use suggestion
                     </button>
                 )}
-            </Cell>
-            <Cell>
-                <select aria-label={`${criterion.label} score`} className="p-1 w-full" value={entry?.band ?? ''}
+            </td>
+            <td className="cs-score">
+                <select aria-label={`${criterion.label} score`} value={entry?.band ?? ''}
                     disabled={disabled} onChange={(e) => onScore(criterion.code, e.target.value)}>
                     <option value="">-- Not scored --</option>
                     {bands.map((b) => <option key={b.code} value={b.code}>{b.label} ({pts(b.points)})</option>)}
                 </select>
-                {!picked && suggested && <p className="text-xs text-amber-700">Suggestion not confirmed yet</p>}
-                {changedSince && <p className="text-xs text-amber-700">The record changed since this was scored</p>}
-                {differs && !changedSince && <p className="text-xs text-amber-700">Differs from the suggestion</p>}
-                <input aria-label={`${criterion.label} remarks`} className="p-1 w-full mt-1"
-                    placeholder="Remarks (e.g. why you changed it)" value={entry?.remarks ?? ''} disabled={disabled}
-                    onChange={(e) => onRemarks(criterion.code, e.target.value)} />
-            </Cell>
-            <Cell className="text-right">{picked ? picked.points : '—'}</Cell>
+                {!picked && suggested && <p className="cs-flag">Suggestion not confirmed yet</p>}
+                {changedSince && <p className="cs-flag">The record changed since this was scored</p>}
+                {differs && !changedSince && <p className="cs-flag">Differs from the suggestion</p>}
+                <input aria-label={`${criterion.label} remarks`} placeholder="Remarks (e.g. why you changed it)"
+                    value={entry?.remarks ?? ''} disabled={disabled} onChange={(e) => onRemarks(criterion.code, e.target.value)} />
+            </td>
+            <td className="cs-num">{picked ? <b>{picked.points}</b> : '—'}</td>
         </tr>
     );
 };
@@ -56,59 +53,77 @@ const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks,
 export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore, onRemarks, onUseAll, disabled }) => {
     const unscoredSuggestions = rules.criteria.filter((c) => !scores[c.code]?.band && suggestions[c.code].band).length;
     return (
-        <Section title="Credit Scoring (Housing Loan Credit Scoring Sheet)">
-            <p className="text-sm">
-                CATCH suggests a band wherever the record has the data. Suggestions don't count until you pick or
-                accept them, and you can change any score. Character items mostly wait for the Credit
-                Investigator's results.
-            </p>
-            {!disabled && unscoredSuggestions > 0 && (
-                <button type="button" className="my-2" onClick={onUseAll}>
-                    Use all {unscoredSuggestions} suggestions for unscored criteria
-                </button>
-            )}
+        <>
+            <div className="lf-card cs-intro">
+                <p>
+                    CATCH suggests a band wherever the record has the data. Suggestions don't count until you pick or
+                    accept them, and you can change any score. Character items mostly wait for the Credit
+                    Investigator's results.
+                </p>
+                {!disabled && unscoredSuggestions > 0 && (
+                    <button type="button" className="lf-btn" onClick={onUseAll}>
+                        Use all {unscoredSuggestions} suggestions for unscored criteria
+                    </button>
+                )}
+            </div>
 
             {CATEGORIES.map((cat) => {
                 const criteria = rules.criteria.filter((c) => c.category === cat.value);
                 const sub = totals.byCategory[cat.value];
+                const pct = sub.max > 0 ? Math.max(0, Math.min(100, (sub.score / sub.max) * 100)) : 0;
                 return (
-                    <div key={cat.value} className="overflow-x-auto py-2">
-                        <h4 className="font-semibold">{cat.label} (Maximum Score: {sub.max})</h4>
-                        <table className="w-full">
-                            <thead>
-                                <tr>
-                                    <Head>Criterion</Head><Head>From the record</Head><Head>Suggestion</Head>
-                                    <Head>Score</Head><Head>Points</Head>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {criteria.map((c) => (
-                                    <CriterionRow key={c.code} criterion={c} suggestion={suggestions[c.code]}
-                                        bands={rules.bands.filter((b) => b.criterion === c.code)} entry={scores[c.code]}
-                                        onScore={onScore} onRemarks={onRemarks} disabled={disabled} />
-                                ))}
-                                <tr>
-                                    <Cell className="font-semibold">Sub-total</Cell>
-                                    <Cell /><Cell /><Cell />
-                                    <Cell className="text-right font-semibold">{sub.score}</Cell>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <Section key={cat.value} id={`cs-${cat.value}`} title={`${cat.label} (Maximum Score: ${sub.max})`}>
+                        <div className="cs-sub">
+                            <div className="cs-sub-top">
+                                <span>Sub-total</span>
+                                <b>{sub.score} / {sub.max}</b>
+                            </div>
+                            <div className="lf-meter" role="img" aria-label={`${sub.score} of ${sub.max} points`}>
+                                <span style={{ width: `${pct}%` }} />
+                            </div>
+                        </div>
+                        <div className="fp-tablewrap">
+                            <table className="cs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Criterion</th><th>From the record</th><th>Suggestion</th>
+                                        <th>Score</th><th className="cs-num">Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {criteria.map((c) => (
+                                        <CriterionRow key={c.code} criterion={c} suggestion={suggestions[c.code]}
+                                            bands={rules.bands.filter((b) => b.criterion === c.code)} entry={scores[c.code]}
+                                            onScore={onScore} onRemarks={onRemarks} disabled={disabled} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Section>
                 );
             })}
 
-            <dl className="grid grid-cols-[14rem_1fr] gap-x-4 gap-y-1 py-2">
-                <dt className="font-semibold">Total Score</dt>
-                <dd>{totals.total} / 100{!totals.complete && ` (${totals.scored} of ${totals.count} criteria scored)`}</dd>
-                <dt className="font-semibold">Description</dt>
-                <dd>{totals.description ?? <span className="italic">When every criterion is scored</span>}</dd>
-                <dt className="font-semibold">Risk Rating</dt>
-                <dd>{totals.riskRating ?? <span className="italic">When every criterion is scored</span>}</dd>
-                <dt className="font-semibold">Recommendation</dt>
-                <dd>{totals.recommendation ?? <span className="italic">When every criterion is scored</span>}</dd>
-            </dl>
-            <p className="italic text-sm">The recommendation is a guide from the score; the Credit Result below is your decision.</p>
-        </Section>
+            <Section id="cs-total" title="Total score">
+                <dl className="fp-info">
+                    {CATEGORIES.map((cat) => (
+                        <div key={cat.value} className="fp-info-row">
+                            <dt>{cat.label}</dt>
+                            <dd>{totals.byCategory[cat.value].score} / {totals.byCategory[cat.value].max}</dd>
+                        </div>
+                    ))}
+                    <div className="fp-info-row">
+                        <dt>Total Score</dt>
+                        <dd>{totals.total} / 100{!totals.complete && ` (${totals.scored} of ${totals.count} criteria scored)`}</dd>
+                    </div>
+                    {[['Description', totals.description], ['Risk Rating', totals.riskRating], ['Recommendation', totals.recommendation]].map(([label, value]) => (
+                        <div key={label} className="fp-info-row">
+                            <dt>{label}</dt>
+                            <dd>{value ?? <span className="fp-pending">When every criterion is scored</span>}</dd>
+                        </div>
+                    ))}
+                </dl>
+                <p className="fp-note">The recommendation is a guide from the score; the Credit Result in the Financial Package is your decision.</p>
+            </Section>
+        </>
     );
 };

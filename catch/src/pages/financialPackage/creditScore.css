@@ -1,0 +1,28 @@
+/* Credit score page: the category cards, criterion table and intro. Everything else comes from the loan folder /
+   Financial Package / review styles (.lf-*, .fp-*, .rv-*). */
+
+.cs-hint { margin: 0.9rem 0 0; }
+
+.cs-intro { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; }
+.cs-intro p { margin: 0; max-width: 44rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+
+/* category sub-total with a meter */
+.cs-sub { margin-bottom: 1rem; }
+.cs-sub-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; font-size: 0.95rem; }
+.cs-sub-top b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.cs-sub .lf-meter { margin-top: 0.4rem; }
+.cs-sub .lf-meter > span { background: var(--blue); transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* criterion table */
+.cs-table { min-width: 46rem; }
+.cs-table th.cs-num, .cs-table td.cs-num { text-align: right; width: 5.5rem; font-variant-numeric: tabular-nums; }
+.cs-table td { vertical-align: top; }
+.cs-table .cs-source { margin: 0.25rem 0 0.15rem; font-size: 0.82rem; }
+.cs-score { min-width: 15rem; }
+.cs-score select, .cs-score input { width: 100%; }
+.cs-score input { margin-top: 0.4rem; }
+.cs-flag { margin: 0.3rem 0 0; color: var(--lf-warn); font-size: 0.84rem; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-sub .lf-meter > span { transition: none; }
+}
