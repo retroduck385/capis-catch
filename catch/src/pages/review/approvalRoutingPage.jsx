@@ -6,6 +6,7 @@
 // (update_review_routing()); the approvers follow the authority.
 // Everyone else with access reads.
 // Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
+import { ApprovalRoutingSkeleton } from '../../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
@@ -183,7 +184,7 @@ const ApprovalRoutingPage = () => {
         return () => { cancelled = true; };
     }, [applicationId]);
 
-    if (loading) return <p className="fp-empty">Loading VII. Approval...</p>;
+    if (loading) return <ApprovalRoutingSkeleton />;
     if (error && !form) return <p className="ct-error">{error}</p>;
     if (!app || !data || !form || !rules) return null;
 

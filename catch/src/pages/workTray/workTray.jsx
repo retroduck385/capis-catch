@@ -1,3 +1,4 @@
+import { WorkTraySkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
@@ -291,7 +292,7 @@ const WorkTray = () => {
 
     const managingRow = managingId == null ? null : rows.find((r) => r.application_id === managingId) ?? null;
 
-    if (loading) return <p>Loading work tray...</p>;
+    if (loading) return <WorkTraySkeleton />;
 
     const { byTat } = stats;
     const maxStage = Math.max(1, ...STAGES.map((s) => stats.byStage[s.value]));

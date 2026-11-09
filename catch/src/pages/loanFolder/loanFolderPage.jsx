@@ -1,6 +1,7 @@
 // Loan folder: staff view of one submitted application, opened from the work tray.
 // The assigned AO (while in Intake or Credit Investigation) edits each section with the same forms the applicant
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
+import { LoanFolderSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, Send } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
@@ -76,7 +77,7 @@ const LoanFolderPage = () => {
         return () => { cancelled = true; };
     }, [applicationId, loadTrail]);
 
-    if (loading) return <p>Loading loan folder...</p>;
+    if (loading) return <LoanFolderSkeleton />;
     if (error && !app) return <p className="text-red-600">{error}</p>;
     if (!app) return null;
 

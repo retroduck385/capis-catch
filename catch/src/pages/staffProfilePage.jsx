@@ -1,6 +1,7 @@
 // Staff profile: name + mobile number, shown wherever a staff member is assigned or acts
 // (work tray, status notes). Required before a staff account can use the app.
 // The same page serves every staff role; the Department Head also gets a shortcut to Staff accounts.
+import { ProfileSkeleton } from '../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Info, Layers, Plus, Users } from 'lucide-react';
@@ -70,7 +71,7 @@ const StaffProfilePage = () => {
         }
     };
 
-    if (loading) return <p>Loading profile...</p>;
+    if (loading) return <ProfileSkeleton label="Loading profile" back="Work tray" />;
 
     const onChange = (f, v) => setForm((p) => ({ ...p, [f]: v }));
     const fullName = [form.first_name, form.last_name].filter(Boolean).join(' ').trim();

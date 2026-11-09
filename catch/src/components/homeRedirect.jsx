@@ -1,3 +1,4 @@
+import { RouteSkeleton } from './skeleton';
 import { Navigate } from "react-router-dom";
 import { UserAuth } from "../context/authContext";
 import { homePathFor } from "../roles";
@@ -6,7 +7,7 @@ import { homePathFor } from "../roles";
 const HomeRedirect = () => {
     const { role } = UserAuth();
 
-    if (role === undefined) return <p> Loading... </p>;
+    if (role === undefined) return <RouteSkeleton label="Loading" />;
     if (!role) return <p> Your account has no role yet. Please contact an administrator. </p>;
     return <Navigate to={homePathFor(role)} replace />;
 };

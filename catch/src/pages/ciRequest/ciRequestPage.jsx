@@ -1,6 +1,7 @@
 // One CI request, opened from the Credit Investigator's work tray: the NFIS and TU request forms and the AO's
 // remarks (view only), then the CI results: upload the reports, record results + summaries, Mark CI Done.
 // Any active CI can work it while the application is in Credit Investigation; afterwards it's read-only.
+import { CiRequestSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Info } from 'lucide-react';
@@ -76,7 +77,7 @@ const CiRequestPage = () => {
     const built = useMemo(() => (app ? buildCiRequest(app) : null), [app]);
     const missing = useMemo(() => (built ? missingFields(built) : []), [built]);
 
-    if (loading) return <p>Loading CI request...</p>;
+    if (loading) return <CiRequestSkeleton />;
     if (error) return <p className="ci-err">{error}</p>;
     if (!app) return null;
 

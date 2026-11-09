@@ -1,6 +1,7 @@
 // Master profile: the applicant's own details, filled in once and used to pre-fill
 // the Principal Borrower step of every new application. Required before applying.
 // Same layout as the staff profile page (identity card + account details beside the form); styles in staffProfile.css.
+import { ProfileSkeleton } from '../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, FileText, Info } from 'lucide-react';
@@ -69,7 +70,7 @@ const ProfilePage = () => {
         }
     };
 
-    if (loading) return <ApplicantShell><p>Loading your profile...</p></ApplicantShell>;
+    if (loading) return <ApplicantShell><ProfileSkeleton label="Loading your profile" /></ApplicantShell>;
 
     const onChange = (f, v) => setForm((p) => ({ ...p, [f]: v }));
     const fullName = [form.first_name, form.last_name].filter(Boolean).join(' ').trim();

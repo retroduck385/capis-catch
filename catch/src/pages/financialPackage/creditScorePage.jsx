@@ -2,6 +2,7 @@
 // Suggestions are worked out from the record and the SAVED Financial Package (income basis, rate, appraised
 // value, loan / deposit checks); the CO accepts, changes or leaves each one and saves with save_credit_score().
 // Same edit rule as the FP: only the assigned CO, any stage before Decided; everyone else with access reads.
+import { CreditScoreSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
@@ -95,7 +96,7 @@ const CreditScorePage = () => {
     }, [app, fp, rules]);
     const totals = useMemo(() => (rules && scores ? totalCreditScore(rules, scores) : null), [rules, scores]);
 
-    if (loading) return <p className="fp-empty">Loading credit scoring...</p>;
+    if (loading) return <CreditScoreSkeleton />;
     if (error && !scores) return <p className="ct-error">{error}</p>;
     if (!app || !scores || !suggestions) return null;
 

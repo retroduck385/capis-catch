@@ -2,6 +2,7 @@
 // Fields copied from the KYC are read live from the AO's record; the CO's own inputs are saved with
 // save_financial_package(). Only the assigned CO edits (any stage before Decided); everyone else with access reads.
 // IV. Credit checking shows the Credit Investigator's results (BRAS / NFIS / TU), read-only.
+import { FinancialPackageSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Lock } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
@@ -194,7 +195,7 @@ const FinancialPackagePage = () => {
     const score = useMemo(() => (rules ? totalCreditScore(rules, savedScore) : null), [rules, savedScore]);
     const activeId = useActiveSection(Boolean(app && form && rules));
 
-    if (loading) return <p>Loading financial package...</p>;
+    if (loading) return <FinancialPackageSkeleton />;
     if (error && !form) return <p className="text-red-600">{error}</p>;
     if (!app || !form || !rules) return null;
 

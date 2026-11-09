@@ -1,6 +1,7 @@
 // Department Head: staff accounts (list, add) and a design placeholder for in-depth role editing.
 // Approvers also get a position, which decides which approval authorities they're routed to
 // (see src/pages/review/approval.js).
+import { ListSkeleton } from '../../components/skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Plus, Search, X } from 'lucide-react';
@@ -133,7 +134,7 @@ const StaffAccountsPage = () => {
 
                         {error && <p className="sa-error" role="alert">{error}</p>}
 
-                        {loading ? <p className="sa-empty">Loading accounts...</p> : accounts.length === 0 ? (
+                        {loading ? <ListSkeleton label="Loading accounts" rows={5} /> : accounts.length === 0 ? (
                             <div className="sa-empty">
                                 <p>No staff accounts yet.</p>
                                 <button type="button" className="sa-primary" onClick={() => setAdding(true)}>

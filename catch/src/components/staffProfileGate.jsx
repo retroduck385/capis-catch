@@ -1,3 +1,4 @@
+import { RouteSkeleton } from './skeleton';
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { UserAuth } from "../context/authContext";
@@ -19,7 +20,7 @@ const StaffProfileGate = ({ children }) => {
     }, [userId]);
 
     if (error) return <p className="text-red-600"> {error} </p>;
-    if (complete === undefined) return <p> Loading... </p>;
+    if (complete === undefined) return <RouteSkeleton label="Loading" />;
     if (!complete) return <Navigate to="/staffProfilePage" replace />;
     return <> {children} </>;
 };

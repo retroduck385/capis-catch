@@ -2,6 +2,7 @@
 // the AI read from it (ocr-service: PaddleOCR text -> Gemini -> extraction_fields). The AI only proposes; the
 // assigned AO checks every value against the document, picks what goes into the application, and confirms.
 // Opened from the loan folder: /documentCheckPage?id=<application id>[&doc=<document id>]
+import { DocumentCheckSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
@@ -120,7 +121,7 @@ const DocumentCheckPage = () => {
         return () => window.removeEventListener('beforeunload', warn);
     }, []);
 
-    if (loading) return <p className="p-4">Loading documents...</p>;
+    if (loading) return <DocumentCheckSkeleton />;
     if (!app) return <p className="p-4 text-red-600">{error ?? 'Application not found.'}</p>;
 
     const selectedParty = parties.find((p) => p.docs.some((d) => d.id === docId))

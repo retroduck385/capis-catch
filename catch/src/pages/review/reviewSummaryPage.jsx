@@ -6,6 +6,7 @@
 // for revision. Reviewers act in order; after the last one it moves to Approval (submit_review()).
 // Approvers and everyone else with access read the same page, including every reviewer's sign-off.
 // Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
+import { ReviewSummarySkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, UserCheck } from 'lucide-react';
@@ -109,7 +110,7 @@ const ReviewSummaryPage = () => {
         return () => { cancelled = true; };
     }, [applicationId]);
 
-    if (loading) return <p className="fp-empty">Loading review summary...</p>;
+    if (loading) return <ReviewSummarySkeleton />;
     if (error) return <p className="ct-error">{error}</p>;
     if (!data) return null;
 

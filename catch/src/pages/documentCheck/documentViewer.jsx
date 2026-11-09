@@ -1,6 +1,7 @@
 // Shows one uploaded document (image or PDF) with zoom, page buttons and highlight boxes over the OCR lines
 // the selected field was read from. Boxes come from ocr_lines.bbox, in pixels of the page image PaddleOCR
 // read (pageSizes), so they are drawn as percentages and line up at any zoom.
+import { ViewerSkeleton } from '../../components/skeleton';
 import { useEffect, useRef, useState } from 'react';
 import { getDocumentUrl } from '../applicationForm/api';
 
@@ -130,7 +131,7 @@ const DocumentViewer = ({ doc, pageSizes, highlights, page, onPageChange }) => {
 
             <div className="flex-1 min-h-0 overflow-auto border rounded bg-gray-100 p-2">
                 <div className="relative mx-auto" style={{ width: `${zoom * 100}%` }}>
-                    {!url && !error && <p className="p-4 text-gray-600">Loading document...</p>}
+                    {!url && !error && <ViewerSkeleton />}
                     {url && !pdfFile && <img src={url} alt={doc.file_name} className="block w-full h-auto bg-white shadow" />}
                     {pdfFile && <canvas ref={canvasRef} className="block w-full h-auto bg-white shadow" />}
                     {canDrawBoxes && boxes.map((h, i) => (

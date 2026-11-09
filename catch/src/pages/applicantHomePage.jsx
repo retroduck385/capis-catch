@@ -5,11 +5,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { fetchProfile, listMyApplications } from './applicationForm/api';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
+import { Ghost, RegisterSkeleton } from '../components/skeleton';
 
 const ApplicantHomePage = () => {
     const { session } = UserAuth();
     const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
+    const [loaded, setLoaded] = useState(false); // false until the application list has come back
     const [profile, setProfile] = useState(null);
     const [profileComplete, setProfileComplete] = useState(null); // null = still loading
     const [error, setError] = useState(null);
@@ -18,7 +20,8 @@ const ApplicantHomePage = () => {
         if (!session?.user?.id) return;
         listMyApplications(session.user.id)
             .then(setApplications)
-            .catch((err) => setError(err.message));
+            .catch((err) => setError(err.message))
+            .finally(() => setLoaded(true));
         fetchProfile(session.user.id)
             .then((p) => { setProfile(p); setProfileComplete(isProfileComplete(p)); })
             .catch((err) => setError(err.message));
@@ -55,18 +58,22 @@ const ApplicantHomePage = () => {
             </div>
 
             <div className="ct-stats">
-                <div className="ct-stat"><span>Total applications</span><strong>{applications.length}</strong></div>
-                <div className="ct-stat"><span>Drafts in progress</span><strong>{draftCount}</strong></div>
-                <div className="ct-stat"><span>Submitted</span><strong>{applications.length - draftCount}</strong></div>
+                <div className="ct-stat"><span>Total applications</span><strong>{loaded ? applications.length : <Ghost>00</Ghost>}</strong></div>
+                <div className="ct-stat"><span>Drafts in progress</span><strong>{loaded ? draftCount : <Ghost>00</Ghost>}</strong></div>
+                <div className="ct-stat"><span>Submitted</span><strong>{loaded ? applications.length - draftCount : <Ghost>00</Ghost>}</strong></div>
             </div>
 
             <div className="ct-card">
                 <div className="ct-card-head">
                     <h2>Application register</h2>
-                    <span className="ct-mono ct-muted">{applications.length} {applications.length === 1 ? 'record' : 'records'}</span>
+                    {loaded
+                        ? <span className="ct-mono ct-muted">{applications.length} {applications.length === 1 ? 'record' : 'records'}</span>
+                        : <Ghost>0 records</Ghost>}
                 </div>
                 {error && <p className="ct-error" role="alert" style={{ padding: '0 1rem' }}>{error}</p>}
-                {applications.length === 0 ? (
+                {!loaded ? (
+                    <RegisterSkeleton />
+                ) : applications.length === 0 ? (
                     <p className="ct-empty">You haven't started an application yet. Start one above. It saves after every step, so you can leave and come back.</p>
                 ) : (
                     <ul className="ct-register">

@@ -1,0 +1,31 @@
+/* Skeleton loading screens (see skeleton.jsx). Each one is built from the real page's own markup and classes, with the
+   text swapped for placeholder words that are painted as soft grey blocks: .sk-t (text), .sk-btn (buttons and chips),
+   .sk-box (inputs and bars). So sizes and shapes come from the real stylesheets, not from numbers copied here.
+   A light band sweeps across the blocks; they stay still when the user prefers reduced motion. */
+
+:root { --sk-base: #e6eaf2; --sk-shine: rgba(255, 255, 255, 0.75); }
+.sk-root { pointer-events: none; user-select: none; }
+
+.sk-t, .sk-btn, .sk-box {
+  background-color: var(--sk-base) !important;
+  background-image: linear-gradient(90deg, transparent 0, var(--sk-shine) 50%, transparent 100%) !important;
+  background-size: 200% 100%; background-repeat: no-repeat;
+  animation: sk-slide 1.5s ease-in-out infinite;
+}
+@keyframes sk-slide { from { background-position: 200% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk-t, .sk-btn, .sk-box { animation: none; background-image: none !important; } }
+
+/* placeholder text: same box as the real text, painted over */
+.sk-t { color: transparent !important; border-radius: 4px; text-shadow: none !important; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+
+/* buttons, chips, avatars: the real element (so its size and shape stay), with the colours taken out */
+.sk-btn { color: transparent !important; border-color: transparent !important; box-shadow: none !important; text-shadow: none !important; }
+.sk-btn::before, .sk-btn::after { visibility: hidden; }
+
+/* inputs, selects and bars: an empty block */
+.sk-box { display: block; width: 100%; height: 2.6rem; border-radius: 6px; }
+.sk-box.circle { border-radius: 50%; }
+.sk-line { height: 0.9rem; }
+
+/* the real stylesheets paint bars and inputs with their own fill and border */
+.sk-root :is(.lf-meter, .sp-meter, .ct-meter) > span { background: transparent; }

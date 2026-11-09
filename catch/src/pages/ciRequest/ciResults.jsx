@@ -3,6 +3,7 @@
 // Uploaded reports are OCR'd by the PaddleOCR worker (raw text, checked in Supabase; not shown here yet).
 //   CiResultsEditor: the Credit Investigator, while the application is in Credit Investigation.
 //   CiResultsView:   read-only, for everyone else (CO's Financial Package, AO's loan folder) and after Done.
+import { PanelSkeleton } from '../../components/skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { getParties } from '../applicationForm/api';
 import { BORROWER_ROLES, partyLabel } from '../applicationForm/options';
@@ -200,7 +201,7 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
         }
     };
 
-    if (loading) return <p>Loading CI results...</p>;
+    if (loading) return <PanelSkeleton label="Loading CI results" lines={5} />;
 
     const missing = serverMissing ?? missingItems(borrowers, byKey);
 
@@ -318,7 +319,7 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
         return () => { cancelled = true; };
     }, [app.id]);
 
-    if (loading) return <p>Loading CI results...</p>;
+    if (loading) return <PanelSkeleton label="Loading CI results" lines={5} />;
     if (!meta.request) return <p className="italic text-gray-500">No CI request has been sent yet.</p>;
 
     return (

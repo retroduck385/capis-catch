@@ -1,5 +1,6 @@
 // Step-by-step housing loan application. Each step saves to Supabase as a DRAFT;
 // the next step only unlocks once the current one is complete.
+import { ApplicationFormSkeleton } from '../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
@@ -79,7 +80,7 @@ const ApplicationFormPage = () => {
     }, [requestedId, userId]);
 
     if (needsProfile) return <Navigate to="/profilePage?next=apply" replace />;
-    if (loading) return <ApplicantShell><p>Opening your application...</p></ApplicantShell>;
+    if (loading) return <ApplicationFormSkeleton />;
     if (error) return <ApplicantShell><p className="ct-error" role="alert">{error}</p></ApplicantShell>;
     if (!app) return null;
 
