@@ -26,7 +26,7 @@ const ReviewStep = ({ app, onRefresh, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <p>Check each sheet below. Use the list on the left to go back and change anything.</p>
             <ApplicationSummary app={app} />
 

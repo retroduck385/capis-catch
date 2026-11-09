@@ -90,7 +90,7 @@ const PartyStep = ({ app, role, partyNo = 1, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             {isSpouse && (
                 <Section title="Are you married?" className="ct-cols-4">
                     <YesNo name="married" value={married} onChange={setMarried} />

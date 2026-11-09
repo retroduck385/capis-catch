@@ -1,6 +1,6 @@
 // What the AI read from a document vs what the applicant typed in, plus the checks shown next to each
 // field (low OCR confidence, expired ID) and the per-document summaries (payslip average vs declared
-// income, average monthly deposits). No Supabase calls here.
+// income, average monthly deposits, TU credit report vs the declared loans / cards). No Supabase calls here.
 
 // Below this, PaddleOCR wasn't sure of a line: the AO should look at the document closely (P2)
 export const LOW_CONFIDENCE = 0.85;
@@ -26,13 +26,14 @@ export const isValid = (value, dataType) => {
             return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
         }
         case 'MONTH': return /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
-        case 'AMOUNT': return toNumber(v) !== null;
+        case 'AMOUNT':
+        case 'NUMBER': return toNumber(v) !== null;
         case 'SEX': return ['MALE', 'FEMALE'].includes(v.toUpperCase());
         default: return true;
     }
 };
 
-export const FORMAT_HINTS = { DATE: 'YYYY-MM-DD', MONTH: 'YYYY-MM', AMOUNT: 'e.g. 45000.00' };
+export const FORMAT_HINTS = { DATE: 'YYYY-MM-DD', MONTH: 'YYYY-MM', AMOUNT: 'e.g. 45000.00', NUMBER: 'a number' };
 
 export const displayValue = (value, dataType) => {
     if (blank(value)) return '—';
@@ -47,7 +48,7 @@ export const displayValue = (value, dataType) => {
 
 export const sameValue = (a, b, dataType) => {
     if (blank(a) || blank(b)) return false;
-    if (dataType === 'AMOUNT') {
+    if (dataType === 'AMOUNT' || dataType === 'NUMBER') {
         const x = toNumber(a);
         const y = toNumber(b);
         return x !== null && y !== null && Math.abs(x - y) < 0.005;
@@ -88,13 +89,23 @@ export const addressSimilar = (a, b) => {
     return shared / Math.min(x.size, y.size) >= 0.7;
 };
 
-// ctx = { party, employment, presentAddress } of the borrower the document belongs to.
+// Values derived from the record for extraction_field_defs.compare_with (compared only, never written)
+const COMPARE_VALUES = {
+    FULL_NAME: (ctx) => fullName(ctx.party),
+    PRESENT_ADDRESS: (ctx) => ctx.presentAddress ?? null,
+    DATE_OF_BIRTH: (ctx) => ctx.party?.date_of_birth ?? null,
+    SEX: (ctx) => ctx.party?.gender ?? null,
+    CIVIL_STATUS: (ctx) => ctx.party?.civil_status ?? null,
+    DEPENDENTS: (ctx) => (ctx.party ? String(ctx.party.dependents?.length ?? 0) : null),
+    LOAN_AMOUNT: (ctx) => ctx.loanAmount ?? null,
+};
+
+// ctx = { party, employment, presentAddress, loanAmount } of the borrower the document belongs to.
 // undefined = this field has nothing in the application to compare with.
 export const applicationValue = (def, ctx) => {
     if (def.target_table === 'applicants') return ctx.party?.[def.target_column] ?? null;
     if (def.target_table === 'employment_info') return ctx.employment?.[def.target_column] ?? null;
-    if (def.compare_with === 'FULL_NAME') return fullName(ctx.party);
-    if (def.compare_with === 'PRESENT_ADDRESS') return ctx.presentAddress ?? null;
+    if (COMPARE_VALUES[def.compare_with]) return COMPARE_VALUES[def.compare_with](ctx);
     return undefined;
 };
 
@@ -167,4 +178,75 @@ export const bankSummary = (rows) => {
 export const percentOff = (documented, declared) => {
     const d = toNumber(declared);
     return documented === null || d === null || d === 0 ? null : ((documented - d) / d) * 100;
+};
+
+// ---------- TU credit report vs the application (P2 / P3: declared obligations, IDs) ----------
+
+const digits = (v) => String(v ?? '').replace(/\D/g, '');
+const isYes = (v) => /^Y(ES)?$/i.test(String(v ?? '').trim());
+const isCard = (row) => /CARD/i.test(row.acct_type ?? '');
+export const isOpenAccount = (row) => !/CLOSED/i.test(`${row.acct_section ?? ''} ${row.acct_status ?? ''}`) && blank(row.acct_closed);
+
+// A TU ID number vs the record's (TIN may carry a 3-digit branch code on one side)
+const sameId = (a, b) => {
+    const x = digits(a);
+    const y = digits(b);
+    if (x.length < 6 || y.length < 6) return false;
+    return x === y || (Math.min(x.length, y.length) >= 9 && (x.startsWith(y) || y.startsWith(x)));
+};
+
+// What the report says the account owes / did wrong, in short phrases (empty = nothing adverse)
+export const accountFlags = (row) => [
+    toNumber(row.acct_past_due) > 0 && `past due ${displayValue(row.acct_past_due, 'AMOUNT')}`,
+    toNumber(row.acct_max_dpd) > 0 && `up to ${toNumber(row.acct_max_dpd)} days past due${blank(row.acct_max_dpd_date) ? '' : ` (${row.acct_max_dpd_date})`}`,
+    !blank(row.acct_late_months) && `late: ${row.acct_late_months}`,
+    isYes(row.acct_legal_action) && 'legal action',
+].filter(Boolean);
+
+// header = { field_key: value }; groups = { accounts: [rows], ids: [rows], inquiries: [rows] };
+// party = the borrower with existing_loans / credit_cards / tin / sss_no from the application.
+export const tuSummary = (header, groups, party) => {
+    const accounts = groups.accounts ?? [];
+    const open = accounts.filter(isOpenAccount);
+    const openCards = open.filter(isCard);
+    const openLoans = open.filter((r) => !isCard(r));
+    const declaredLoans = party?.existing_loans ?? [];
+    const declaredCards = party?.credit_cards ?? [];
+
+    // Each open TU loan is paired with a declared loan of about the same monthly payment (within 2% / ₱1)
+    const unpaired = [...declaredLoans];
+    const undeclaredLoans = openLoans.filter((row) => {
+        const amount = toNumber(row.acct_installment);
+        const i = amount === null ? -1 : unpaired.findIndex((l) =>
+            Math.abs(Number(l.monthly_payment) - amount) <= Math.max(1, amount * 0.02));
+        if (i === -1) return true;
+        unpaired.splice(i, 1);
+        return false;
+    });
+    const sum = (rows, get) => rows.reduce((total, r) => total + (toNumber(get(r)) ?? 0), 0);
+
+    const idChecks = (groups.ids ?? []).flatMap((row) => {
+        const type = String(row.id_type ?? '').toUpperCase();
+        const column = /TIN/.test(type) ? 'tin' : /SSS/.test(type) ? 'sss_no' : null;
+        if (!column || blank(row.id_number)) return [];
+        const appValue = party?.[column] ?? null;
+        const status = blank(appValue) ? 'NOT_IN_APPLICATION' : sameId(row.id_number, appValue) ? 'MATCH' : 'DIFFERS';
+        return [{ type: column === 'tin' ? 'TIN' : 'SSS', number: row.id_number, appValue, status }];
+    });
+
+    const flags = [
+        isYes(header.bcc_never_paid) && 'Never-paid flag: linked to a delinquent account with no payments',
+        (isYes(header.bcc_fraud_address) || toNumber(header.bcc_fraud_address) > 0) && 'Inquiry address linked to an account blocked for fraud',
+        (isYes(header.bcc_fraud_phone) || toNumber(header.bcc_fraud_phone) > 0) && 'Inquiry phone number linked to an account blocked for fraud',
+        toNumber(header.revolving_past_due) > 0 && `Past due on revolving accounts: ${displayValue(header.revolving_past_due, 'AMOUNT')}`,
+        toNumber(header.terms_past_due) > 0 && `Past due on loans: ${displayValue(header.terms_past_due, 'AMOUNT')}`,
+    ].filter(Boolean);
+
+    return {
+        open, openCards, openLoans, declaredLoans, declaredCards, undeclaredLoans, idChecks, flags,
+        adverse: accounts.map((row) => ({ row, flags: accountFlags(row) })).filter((a) => a.flags.length > 0),
+        reportInstallments: sum(openLoans, (r) => r.acct_installment),
+        declaredInstallments: sum(declaredLoans, (l) => l.monthly_payment),
+        recentInquiries: toNumber(header.bcc_applications_6m),
+    };
 };

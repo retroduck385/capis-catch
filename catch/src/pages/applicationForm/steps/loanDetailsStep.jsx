@@ -54,7 +54,7 @@ const LoanDetailsStep = ({ app, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <Section title="Loan Details">
                 <Field name="loan_purpose_id" label="Purpose" required value={form.loan_purpose_id}
                     error={form.loan_purpose_id === OTHER ? null : errors.loan_purpose_id} onChange={set}

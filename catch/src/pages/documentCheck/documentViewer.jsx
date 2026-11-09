@@ -12,12 +12,13 @@ const PDF_RENDER_SCALE = 2; // same as PaddleOCR's PDF rendering; CSS does the z
 
 const isPdf = (doc) => /\.pdf$/i.test(doc.file_path) || /\.pdf$/i.test(doc.file_name);
 
-// pdf.js is large: only load it when a PDF is opened
-const loadPdf = async (url) => {
+// pdf.js is large: only load it when a PDF is opened. Returns the loading task: in pdf.js 6 the task
+// (not the document) is what gets destroyed to free the worker.
+const startPdfLoad = async (url) => {
     const pdfjs = await import('pdfjs-dist');
     const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
     pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-    return pdfjs.getDocument(url).promise;
+    return pdfjs.getDocument({ url }); // pdf.js 6 takes an options object, not a bare URL
 };
 
 const box = (bbox, size) => {
@@ -46,16 +47,20 @@ const DocumentViewer = ({ doc, pageSizes, highlights, page, onPageChange }) => {
     // The parent keys this component by document, so state starts fresh for each file.
     useEffect(() => {
         let cancelled = false;
-        let loaded = null;
+        let loadingTask = null;
         (async () => {
             try {
                 const signed = await getDocumentUrl({ file_path: filePath });
                 if (cancelled) return;
                 setUrl(signed);
                 if (pdfFile) {
-                    loaded = await loadPdf(signed);
-                    if (cancelled) loaded.destroy();
-                    else setPdf(loaded);
+                    loadingTask = await startPdfLoad(signed);
+                    if (cancelled) {
+                        loadingTask.destroy();
+                        return;
+                    }
+                    const loaded = await loadingTask.promise;
+                    if (!cancelled) setPdf(loaded);
                 }
             } catch (err) {
                 if (!cancelled) setError(err.message);
@@ -63,7 +68,7 @@ const DocumentViewer = ({ doc, pageSizes, highlights, page, onPageChange }) => {
         })();
         return () => {
             cancelled = true;
-            loaded?.destroy();
+            loadingTask?.destroy();
         };
     }, [filePath, pdfFile]);
 

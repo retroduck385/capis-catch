@@ -68,7 +68,7 @@ const PrincipalInfoStep = ({ app, session, profile, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             {!principal && (
                 <p className="text-left text-sm py-2">Pre-filled from your profile. Please check each field before continuing.</p>
             )}

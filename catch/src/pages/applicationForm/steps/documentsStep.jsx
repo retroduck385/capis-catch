@@ -60,7 +60,7 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <p className="text-left py-2">Accepted: JPG, PNG or PDF, up to 10 MB each. Use clear, readable scans.
                 Files are renamed automatically when uploaded.</p>
             {borrowers.map((party) => (

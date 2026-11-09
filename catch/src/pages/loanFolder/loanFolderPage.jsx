@@ -3,7 +3,7 @@
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
 import { LoanFolderSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, ScanText, Send } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
@@ -134,6 +134,9 @@ const LoanFolderPage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
+                    <Link to={`/documentCheckPage?id=${app.id}`} className="lf-btn">
+                        <ScanText size={16} aria-hidden="true" />Document check (AI)
+                    </Link>
                     <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">
                         Financial package<ArrowRight size={16} aria-hidden="true" />
                     </Link>
@@ -246,6 +249,12 @@ const LoanFolderPage = () => {
                                 <span className="label">Request CI (NFIS & TU)</span>
                                 {ciRequest && <span className="lf-chip ok">Sent</span>}
                             </button>
+                        </li>
+                        <li>
+                            <Link to={`/documentCheckPage?id=${app.id}`}>
+                                <ScanText size={18} aria-hidden="true" />
+                                <span className="label">Document check (AI)</span>
+                            </Link>
                         </li>
                     </ol>
                 </nav>

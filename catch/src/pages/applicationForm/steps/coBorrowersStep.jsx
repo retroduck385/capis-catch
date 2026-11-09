@@ -39,7 +39,7 @@ const CoBorrowersStep = ({ app, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <Section title="Co-borrowers">
                 <p>A co-borrower shares responsibility for the loan and adds their income to the application.
                     Enter 0 if you have none.</p>

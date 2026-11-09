@@ -45,7 +45,7 @@ const ObligationsStep = ({ app, onSaved, onBack }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
             <p className="text-left py-2">List any existing accounts, loans and credit cards. Leave a section empty if you have none.</p>
             {LISTS.map(({ key, title, config }) => (
                 <RowList key={key} title={title} config={config} rows={rows[key]} errors={errors[key]}
