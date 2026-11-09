@@ -1,65 +1,57 @@
 import { useState } from 'react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
-import ApplicantShell, { BrandPanel } from '../components/applicantShell';
+import { AuthLayout, AuthField, PasswordField, AuthError } from '../components/authLayout';
 
 const LoginPage = () => {
-    const [email, setEmail] = useState ("");
-    const [password, setPassword] = useState ("");
-    const [error, setError] = useState (null);
-    const [loading, setLoading] = useState (false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-    const { session, signInUser } = UserAuth();
+    const { signInUser } = UserAuth();
     const navigate = useNavigate();
 
-    console.log(session); // delete when deploying
-    console.log(email, password); // delete when deploying
-    
     const handleSignIn = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    try{
-        const result = await signInUser(email, password)
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            const result = await signInUser(email, password);
 
-        if(result.success){
-            navigate('/homePage') // HomeRedirect picks applicant or admin home by role
-        } else {
-            setError(result.error)
+            if (result.success) {
+                navigate('/homePage'); // HomeRedirect picks applicant or admin home by role
+            } else {
+                setError(result.error?.message ?? result.error);
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Something went wrong. Please try again.");
+        } finally {
+            setLoading(false);
         }
-    } catch (err){
-        console.error(err) // delete this after 
-        setError ("an error occured");
-    } finally {
-        setLoading(false);
-    }
-    }
+    };
 
-    return(
-    <ApplicantShell bare>
-        <BrandPanel heading="Lorem ipsum dolor sit amet." lede="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." />
-        <section className="ct-auth-panel">
-            <form onSubmit={ handleSignIn } className="ct-card">
-                <h2>Sign in</h2>
-                <p>Use the email and password you registered with.</p>
-                <div className="fields">
-                    <label>
-                        Email
-                        <input value={email} onChange={(e) => setEmail(e.target.value)}
-                            type="email" autoComplete="email" required />
-                    </label>
-                    <label>
-                        Password
-                        <input value={password} onChange={(e) => setPassword(e.target.value)}
-                            type="password" autoComplete="current-password" required />
-                    </label>
-                </div>
-                <button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</button>
-                {error && <p className="ct-error" role="alert">{error}</p>}
-                <p style={{ marginTop: '1.25rem' }}>New here? <Link to="/signUpPage">Create an account</Link></p>
-            </form>
-        </section>
-    </ApplicantShell>
-);
+    return (
+        <AuthLayout>
+            <div className="auth-card">
+                <h2>Welcome back</h2>
+                <p className="auth-sub">Sign in to continue your application.</p>
+                <form onSubmit={handleSignIn} className="auth-form">
+                    <AuthField label="Email" id="email" type="email" autoComplete="email" required
+                        value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <PasswordField id="password" autoComplete="current-password" required
+                        value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <AuthError message={error} />
+                    <button type="submit" className="auth-submit" disabled={loading}>
+                        {loading && <span className="auth-spin" aria-hidden="true" />}
+                        {loading ? 'Signing in…' : 'Sign in'}
+                    </button>
+                </form>
+                <p className="auth-switch">New here? <Link to="/signUpPage">Create an account</Link></p>
+            </div>
+        </AuthLayout>
+    );
 };
 
 export default LoginPage;
