@@ -10,6 +10,7 @@ import {
     SLOT_LABELS, STAGES, STAGE_STATUS_LABELS, STATUS_TONES, TAT_LABELS, TAT_TONES, stageLabel,
 } from './options';
 import { folderPath } from './paths';
+import { clearTrails } from '../../components/trailStore';
 import './workTray.css';
 
 const employmentLabel = (type) => EMPLOYMENT_TYPES.find((t) => t.value === type)?.label ?? '';
@@ -178,6 +179,7 @@ const DONUT_C = 2 * Math.PI * DONUT_R;
 // Every submitted application, FIFO by submission. AOs and COs can open all of them (view only until
 // they're assigned).
 const WorkTray = () => {
+    useEffect(() => { clearTrails(); }, []); // a row opened from here starts a fresh breadcrumb trail
     const { session, role } = UserAuth();
     const myId = session?.user?.id;
     const isHead = ASSIGNING_HEADS.includes(role);

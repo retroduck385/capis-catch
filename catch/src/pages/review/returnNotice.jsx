@@ -3,6 +3,7 @@
 //   ResendPanel  — on VII. Approval: the return(s), and for the assigned CO "what you changed" + send it back
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Section } from '../applicationForm/fields';
 import { fetchStaffNames } from '../loanFolder/api';
 import { fetchReviewAssignments, fetchReviewCheckItems, fetchReviewDecisions, resendForReview } from './api';
 import { reviewState } from './reviewChecks';
@@ -31,7 +32,7 @@ const useReturns = (applicationId, version = 0) => {
 
 export const ReturnNotice = ({ applicationId, link, onOpen }) => {
     const { data, error } = useReturns(applicationId);
-    if (error) return <p className="text-red-600">{error}</p>;
+    if (error) return <p className="ct-error">{error}</p>;
     const open = data?.state.openReturn;
     if (!open) return null;
     return (
@@ -73,38 +74,38 @@ export const ResendPanel = ({ applicationId, canResend, onSent }) => {
         }
     };
 
-    if (loadError) return <p className="text-red-600">{loadError}</p>;
+    if (loadError) return <p className="ct-error">{loadError}</p>;
     if (!data || data.state.returns.length === 0) return null;
     const { state, rows, names, checkItems } = data;
     const open = state.openReturn;
 
     return (
-        <div className="border p-3 my-3">
-            <h3 className="font-semibold">Returns from the reviewers</h3>
-            {sent && <p className="text-green-700">Sent back to the reviewer.</p>}
+        <Section id="ar-returns" title="Returns from the reviewers">
+            {sent && <p className="lf-ok-note" role="status">Sent back to the reviewer.</p>}
             {[...state.returns].reverse().map((d) => (
                 <ReturnCard key={d.id} decision={d} rows={rows} names={names} checkItems={checkItems} round={state.roundOf(d)} />
             ))}
             {open && canResend && (
-                <div className="py-2">
-                    <label className="block">
-                        <span className="font-semibold">What you changed (the reviewer sees this)</span>
-                        <textarea className="border w-full p-1 mt-1" rows={3} value={response} disabled={busy}
-                            onChange={(e) => setResponse(e.target.value)} />
+                <div className="rv-block">
+                    <label className="ct-field rv-remarks">
+                        What you changed (the reviewer sees this)
+                        <textarea rows={3} value={response} disabled={busy} onChange={(e) => setResponse(e.target.value)} />
                     </label>
-                    <p className="text-sm text-gray-600">
+                    <p className="fp-note">
                         Review continues from reviewer {state.current?.seq ?? '?'} ({names[state.current?.user_id] ?? 'Reviewer'}).
                         Earlier reviewers' sign-offs stand. If you added an exception, the approval authority may go up.
                     </p>
-                    <button type="button" className="border px-4 py-2 mt-1" disabled={busy || !response.trim()} onClick={handleSend}>
-                        {busy ? 'Sending...' : 'Send back to the reviewer'}
-                    </button>
-                    {error && <p className="text-red-600">{error}</p>}
+                    <div>
+                        <button type="button" disabled={busy || !response.trim()} onClick={handleSend}>
+                            {busy ? 'Sending...' : 'Send back to the reviewer'}
+                        </button>
+                    </div>
+                    {error && <p className="ct-error">{error}</p>}
                 </div>
             )}
             {open && !canResend && (
-                <p className="italic text-sm">Only the assigned Credit Officer sends it back, from Credit Evaluation.</p>
+                <p className="lf-note">Only the assigned Credit Officer sends it back, from Credit Evaluation.</p>
             )}
-        </div>
+        </Section>
     );
 };

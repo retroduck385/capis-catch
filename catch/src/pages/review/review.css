@@ -1,0 +1,107 @@
+/* Review summary page. Reuses the loan folder / Financial Package look (.lf-*, .fp-*) and adds the reviewer pieces:
+   flag cards, reviewer timeline, return cards, checklist and decision form. Class names are .rv-*; the return card and
+   checklist items are also shown on the Financial Package banner, so those rules don't need a .rv ancestor. */
+
+/* read-only values with long text (justification, remarks) */
+.fp-info dd.wrap { font-weight: 400; white-space: pre-wrap; }
+
+.lf-note.warn { background: var(--lf-warn-bg); border-color: var(--lf-warn-line); }
+.lf-note.warn svg { color: var(--lf-warn); }
+.rv-done { margin: 0.75rem 0 0; }
+
+/* ---------- flags ---------- */
+.rv-flags { list-style: none; margin: 0 0 0.6rem; padding: 0; display: grid; gap: 0.5rem; }
+.rv-flag {
+  --tone: var(--lf-none); --tone-bg: var(--lf-none-bg); --tone-line: var(--lf-none-line);
+  margin: 0; padding: 0.65rem 0.9rem; font-size: 0.93rem; line-height: 1.45; color: var(--ink);
+  background: var(--tone-bg); border: 1px solid var(--tone-line); border-left: 4px solid var(--tone); border-radius: 8px;
+}
+.rv-checklist .rv-flags { margin: 0.5rem 0 0; }
+.rv-checklist .rv-flag { padding: 0.45rem 0.7rem; font-size: 0.85rem; }
+
+/* ---------- reviewer timeline ---------- */
+.rv-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.rv-step {
+  margin: 0; padding: 0.85rem 1rem; display: grid; gap: 0.4rem; background: #fff;
+  border: 1px solid var(--line); border-left: 4px solid var(--tone); border-radius: 8px;
+}
+.rv-step-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.rv-who { display: inline-flex; align-items: center; gap: 0.65rem; }
+.rv-seq {
+  display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 50%; flex: none;
+  background: var(--tone-bg); color: var(--tone); border: 1px solid var(--tone-line); font-size: 0.82rem; font-weight: 700;
+}
+.rv-returns-head { margin-top: 1.1rem; }
+
+/* a sign-off's checklist (also inside the return card) */
+.rv-items { list-style: none; margin: 0.35rem 0 0; padding: 0; display: grid; gap: 0.4rem; font-size: 0.9rem; }
+.rv-items li { margin: 0; display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+
+/* text-looking buttons ("Show checklist", document names) */
+.rv-link, .ct .rv-link {
+  width: auto; min-height: 0; padding: 0.15rem 0; margin: 0; justify-self: start; background: none; border: 0; box-shadow: none;
+  color: var(--blue-700); font-size: 0.9rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.rv-link:hover, .ct .rv-link:hover:not(:disabled) { background: none; color: var(--navy); }
+
+/* a return to the CO and the CO's answer */
+.rv-return {
+  margin: 0.75rem 0; padding: 0.9rem 1.1rem; background: #fffafa; border: 1px solid #f0c5c1; border-left: 4px solid #b3261e;
+  border-radius: 8px; display: grid; gap: 0.35rem;
+}
+.rv-return p { margin: 0; }
+
+/* ---------- income evidence ---------- */
+.rv-doc { display: grid; gap: 0.1rem; padding: 0.2rem 0 0.4rem; }
+.rv-doc-type { font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+
+/* ---------- checklist + decision ---------- */
+.rv-form { display: grid; gap: 1.25rem; }
+.rv-checklist th:nth-child(2) { width: 12.5rem; }
+.rv-checklist td { vertical-align: top; }
+.rv-checklist textarea { width: 100%; min-width: 12rem; }
+.rv-radios { display: grid; gap: 0.4rem; }
+.rv-radio {
+  display: flex; align-items: center; gap: 0.55rem; margin: 0; padding: 0.45rem 0.7rem; border: 1.5px solid var(--line-strong);
+  border-radius: 8px; background: #fff; font-weight: 600; font-size: 0.92rem; cursor: pointer; white-space: nowrap;
+}
+.rv-radio:hover { background: #f6f8fc; }
+.rv-radio:has(input:checked) { border-color: var(--blue); background: var(--blue-50); }
+.rv-radio.warn:has(input:checked) { border-color: var(--lf-warn); background: var(--lf-warn-bg); }
+.rv-radio:has(input:disabled) { opacity: 0.55; cursor: not-allowed; }
+.rv-decision { display: grid; gap: 0.5rem; }
+.rv-decision .lf-choices { margin: 0.25rem 0; }
+.rv-remarks { display: grid; gap: 0.35rem; font-weight: 600; margin-top: 0.5rem; }
+.rv-remarks textarea { width: 100%; font-weight: 400; }
+.rv-blockers { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; color: var(--lf-warn); display: grid; gap: 0.1rem; }
+
+@media (max-width: 960px) {
+  .rv-checklist th:nth-child(2) { width: auto; }
+}
+
+/* ---------- VII. Approval page ---------- */
+.rv-block { display: grid; gap: 0.5rem; margin-bottom: 1.1rem; }
+.rv-block:last-child { margin-bottom: 0; }
+.rv-block .fp-subhead { margin: 0; }
+.rv-block .fp-note, .rv-block .ct-error { margin: 0; }
+
+/* reviewer slots: number, picker, move / remove */
+.rv-slot { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.rv-slot .rv-seq { background: var(--blue-50); color: var(--blue-700); border: 1px solid var(--blue-200); }
+.rv-slot select { flex: 1 1 14rem; max-width: 24rem; }
+.rv-link.danger, .ct .rv-link.danger { color: #b3261e; }
+.rv-link.danger:hover, .ct .rv-link.danger:hover:not(:disabled) { color: #8a1c15; }
+
+/* approvers chosen by the authority */
+.rv-people { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.rv-people li {
+  margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.6rem 0.9rem; background: #fafbfd; border: 1px solid var(--line); border-radius: 8px;
+}
+
+/* authority override + matrix */
+.rv-override { max-width: 26rem; margin-top: 0.85rem; }
+.rv-differs { color: var(--lf-warn); font-size: 0.88rem; font-weight: 600; }
+.rv-matrix { margin-top: 1rem; }
+.rv-matrix td.rv-here { background: #fff6dc; }
+.rv-matrix td.rv-here.strong { font-weight: 700; box-shadow: inset 0 0 0 2px #f0c24b; }

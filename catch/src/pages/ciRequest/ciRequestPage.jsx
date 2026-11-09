@@ -2,8 +2,9 @@
 // remarks (view only), then the CI results: upload the reports, record results + summaries, Mark CI Done.
 // Any active CI can work it while the application is in Credit Investigation; afterwards it's read-only.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Info } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Info } from 'lucide-react';
+import Breadcrumbs from '../../components/breadcrumbs';
 import { fetchApplication } from '../applicationForm/api';
 import { fetchStaffNames } from '../loanFolder/api';
 import { whenOf } from '../loanFolder/options';
@@ -94,8 +95,8 @@ const CiRequestPage = () => {
 
     return (
         <div className="lf fp">
+            <Breadcrumbs current="request" appId={app.id} appNo={app.application_no} />
             <header className="lf-card">
-                <Link to="/adminHomePage" className="lf-back"><ArrowLeft size={16} aria-hidden="true" />Work tray</Link>
                 <div className="lf-titlerow">
                     <div>
                         <h1>CI request {app.application_no}</h1>

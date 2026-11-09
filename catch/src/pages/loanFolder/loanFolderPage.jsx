@@ -2,7 +2,8 @@
 // The assigned AO (while in Intake or Credit Investigation) edits each section with the same forms the applicant
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, ScanText, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, ScanText, Send } from 'lucide-react';
+import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getDocumentUrl, refreshApplication } from '../applicationForm/api';
@@ -117,8 +118,9 @@ const LoanFolderPage = () => {
     const progressPct = sections.length ? Math.round((verifiedCount / sections.length) * 100) : 0;
 
     const header = (
+        <>
+        <Breadcrumbs current="folder" appId={app.id} appNo={app.application_no} />
         <header className="lf-card">
-            <Link to="/adminHomePage" className="lf-back"><ArrowLeft size={16} aria-hidden="true" />Work tray</Link>
             <div className="lf-titlerow">
                 <div>
                     <h1>Application {app.application_no}</h1>
@@ -160,6 +162,7 @@ const LoanFolderPage = () => {
                 </p>
             )}
         </header>
+        </>
     );
 
     const overview = (
