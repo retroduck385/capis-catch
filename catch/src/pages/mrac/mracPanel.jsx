@@ -80,6 +80,58 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
                         <span className="text-xs font-normal text-gray-600"> · {new Date(run.finished_at).toLocaleString()}</span>
                     </p>
                     {result.notes.map((n) => <p key={n} className="text-xs text-amber-700">{n}</p>)}
+                    {run.facts && (
+                        <details className="text-xs text-gray-600 my-1">
+                            <summary className="cursor-pointer">Figures used for this check</summary>
+                            <ul className="grid grid-cols-2 gap-x-4">
+                                {Object.entries(run.facts).filter(([key]) => key !== 'schema').map(([key, value]) => (
+                                    <li key={key}>{key}: {value === null || value === undefined ? '—' : String(value)}</li>
+                                ))}
+                            </ul>
+                        </details>
+                    )}
+
+                    {result.reasoning && (
+                        <div className="border p-2 my-2">
+                            <p className="font-semibold">Reasoning</p>
+                            <p className="text-sm">{result.reasoning.headline}</p>
+                            <ul className="list-disc pl-5 text-sm my-1">
+                                {result.reasoning.points.map((pt) => (
+                                    <li key={pt.code} className={pt.status === 'pass' ? '' : 'font-semibold'}>
+                                        {pt.text}
+                                        {pt.citation && <span className="text-xs font-normal text-gray-600"> [{pt.citation}]</span>}
+                                    </li>
+                                ))}
+                            </ul>
+                            {result.reasoning.next_steps.length > 0 && (
+                                <div className="text-sm">
+                                    <p className="font-semibold">What to do next</p>
+                                    <ul className="list-disc pl-5">
+                                        {result.reasoning.next_steps.map((step) => <li key={step}>{step}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            {result.reasoning.approval_path.passages.length > 0 && (
+                                <div className="text-sm mt-1">
+                                    <p className="font-semibold">Approval authority in the policy (newest first)</p>
+                                    <ul className="list-disc pl-5">
+                                        {result.reasoning.approval_path.passages.map((a) => (
+                                            <li key={`${a.document}-${a.chunk_key}`} className="mb-1">
+                                                <span className="text-xs text-gray-600">
+                                                    {a.revision_date ?? 'no date'} · {a.document} · p. {(a.manual_pages ?? []).join(', ') || '?'}
+                                                </span>
+                                                <Excerpt text={a.excerpt} />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {result.reasoning.approval_path.note && (
+                                        <p className="text-xs text-amber-700">{result.reasoning.approval_path.note}</p>
+                                    )}
+                                </div>
+                            )}
+                            <p className="text-xs italic text-gray-600 mt-2">{result.reasoning.disclaimer}</p>
+                        </div>
+                    )}
 
                     {result.criteria.length > 0 && (
                         <table className="border-collapse my-2 w-full text-sm">
@@ -125,6 +177,7 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
                     {result.suggested_exceptions.length > 0 && (
                         <div className="my-2">
                             <p className="font-semibold">Possible exceptions to record in V. Exception/s</p>
+                            <p className="text-xs text-gray-600">Clauses found by keyword: check that each one really applies.</p>
                             {result.suggested_exceptions.map((s) => (
                                 <div key={s.criterion} className="border p-2 my-1">
                                     <p>{s.policy}</p>

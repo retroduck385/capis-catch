@@ -30,7 +30,7 @@ TAGS = {                                                    # cheap keyword tags
     "consumer_loan": r"\bconsumer\b|personal loan|auto loan|motorcycle",
     "business_loan": r"\bbusiness loan|\benterprise\b|working capital",
     "exception": r"\bexception|\bwaive|\bdeviation|\bnot meet",
-    "approval_authority": r"approving authority|approval limits?|delegated limits",
+    "approval_authority": r"approving authority|approval limits?|delegated limits|without exception\s+with exception",
     "insurance": r"\binsurance\b|\bMRI\b",
     "collateral": r"\bcollateral\b|appraised value|\bREM\b",
     "risk_criteria": r"risk asset|acceptance criteria|\bRAAC\b|eligibility criteria",

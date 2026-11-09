@@ -26,8 +26,8 @@ def _in_force(chunk: dict, on: str | None) -> bool:
 class LocalRetriever:
     def __init__(self, chunks: list[dict], k1: float = 1.5, b: float = 0.75):
         # parse_policy / parse_raac write `id` + `source_doc`; the DB calls them chunk_key + document
-        chunks = [{**c, "chunk_key": c.get("chunk_key") or c.get("id"), "document": c.get("document") or c.get("source_doc")}
-                  for c in chunks]
+        chunks = [{**c, "chunk_key": c.get("chunk_key") or c.get("id"), "document": c.get("document") or c.get("source_doc"),
+                   "revision_date": c.get("revision_date") or c.get("version")} for c in chunks]
         self.chunks, self.k1, self.b = chunks, k1, b
         docs = [_tok(f"{c.get('heading_path', '')} {c.get('text') or c.get('body', '')}") for c in chunks]
         self.tf = [Counter(d) for d in docs]
@@ -47,11 +47,16 @@ class LocalRetriever:
         return [{**{k: c.get(k) for k in ("chunk_key", "heading_path", "manual_pages", "revision_date", "status", "document")},
                  "text": c.get("text") or c.get("body", ""), "score": None} for c in self.chunks if c["chunk_key"] in set(keys)]
 
-    def search(self, query: str, top_k: int = 5, tags: list[str] | None = None, on: str | None = None) -> list[dict]:
+    def search(self, query: str, top_k: int = 5, tags: list[str] | None = None, on: str | None = None,
+               products: list[str] | None = None) -> list[dict]:
+        """products: keep clauses written for these products AND general clauses (no product named); drop clauses that
+        name only other products (auto, consumer, business ...)."""
         q = _tok(query)
         scored = []
         for i, c in enumerate(self.chunks):
             if (tags and not set(tags) & set(c.get("tags", []))) or not _in_force(c, on):
+                continue
+            if products and c.get("products") and not set(products) & set(c["products"]):
                 continue
             s = sum(self.idf.get(t, 0) * self.tf[i][t] * (self.k1 + 1)
                     / (self.tf[i][t] + self.k1 * (1 - self.b + self.b * self.len[i] / (self.avg or 1)))
@@ -76,11 +81,14 @@ class SupabaseRetriever:
         return [{**{k: r.get(k) for k in ("chunk_key", "heading_path", "manual_pages", "revision_date", "status", "document")},
                  "text": r.get("body", ""), "score": None} for r in rows]
 
-    def search(self, query: str, top_k: int = 5, tags: list[str] | None = None, on: str | None = None) -> list[dict]:
+    def search(self, query: str, top_k: int = 5, tags: list[str] | None = None, on: str | None = None,
+               products: list[str] | None = None) -> list[dict]:
         args = {"p_query": query, "p_embedding": self.embedder.embed([query])[0], "p_limit": top_k,
                 "p_tags": tags, "p_include_draft": self.include_draft}
         if on:
             args["p_on"] = on
+        if products:
+            args["p_products"] = products
         rows = self.client.rpc("search_policy", args).execute().data or []
         return [{**{k: r.get(k) for k in ("chunk_key", "heading_path", "manual_pages", "revision_date", "status", "document")},
                  "text": r.get("body", ""), "score": r.get("score")} for r in rows]

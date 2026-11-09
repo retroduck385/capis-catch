@@ -8,6 +8,7 @@ This folder is built to drop into the `capis-catch` repo **without changing any 
 | This folder | CATCH repo | Notes |
 |---|---|---|
 | `supabase/migrations/20261105_mrac_rag.sql` | `catch/supabase/migrations/` | Run after `20261029_applicant_notices.sql`. Stops early if an earlier migration is missing. |
+| `supabase/migrations/20261109_mrac_search_products.sql` | `catch/supabase/migrations/` | Run after the one above. Adds the product filter to `search_policy`. |
 | `catch/src/pages/mrac/*` (4 files) | `catch/src/pages/mrac/` | New folder, nothing overwritten. |
 | everything else (`worker.py`, `mrac/`, `rules/`, `samples/`, `tests/`, `requirements.txt`, `.env.example`) | `mrac-service/` at the repo root | Sibling of `ocr-service/` and `notice-service/`. |
 | `supabase/dev/*` | **do not copy** | Dev stubs for a separate test project, and the rollback script. |
@@ -58,14 +59,50 @@ derived in `facts.js` from `computeFp().incomes`.
 1. Run the migration (SQL editor or `supabase db push`). Optionally run the seed.
 2. `cd mrac-service`, copy `.env.example` to `.env`, fill in `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 3. Use a Python 3.13 venv (same as `ocr-service`): `pip install -r requirements.txt`.
-4. Load the RAAC and the policy documents (one `--out` folder each):
+4. Load the RAAC and the three policy PDFs (details in section 4b below). One `--out` folder each:
    `python -m mrac.ingest.parse_raac Housing-Loan_RAAC.ods --effective-from YYYY-MM-DD --out out/raac`,
-   `python -m mrac.ingest.parse_policy <manual>.pdf --code CCD --out out/ccd` (also CPM and RED), then
+   `python -m mrac.ingest.parse_policy <file>.pdf --code CPM|CCD|RED --out out/<code>`, then
    `python -m mrac.ingest.load_chunks out/<folder>/draft_chunks.jsonl` for each.
 5. Load the draft criteria: `python -m mrac.ingest.load_criteria rules/housing_raac_draft.json` (all disabled). Credit policy enables
    them one by one: `update mrac_criteria set enabled = true where code = 'RAAC-DBR';`
 6. Start the worker: `python worker.py`.
 7. Open an application's Financial Package as its assigned CO and press **Check against policy**.
+
+## 4b. Loading the three policy PDFs
+
+| File | `--code` | Expected chunks | What it adds |
+|---|---|---|---|
+| Credit Policy Manual | `CPM` | about 757 | general rules, exceptions, approval limits (mostly business loans; housing appears in places) |
+| Consumer Credit Operations Manual | `CCD` | about 93 | housing process, DBR by product, credit risk rating, housing approving authority |
+| RED Operations Manual | `RED` | about 102 | newest housing approval table (p. 23), exception approvals; mostly business / developer |
+
+```
+python -m mrac.ingest.parse_policy "Credit Policy Manual.pdf" --code CPM --out out/cpm
+python -m mrac.ingest.parse_policy "Consumer-Credit-Operations-Manual....pdf" --code CCD --out out/ccd
+python -m mrac.ingest.parse_policy "red_operations_manual....pdf" --code RED --out out/red
+```
+Read each `out/<code>/report.txt`: only cover and contents pages should be listed as having no section header.
+Then load them (the first time takes minutes, because every chunk is embedded):
+```
+python -m mrac.ingest.load_chunks out/cpm/draft_chunks.jsonl
+python -m mrac.ingest.load_chunks out/ccd/draft_chunks.jsonl
+python -m mrac.ingest.load_chunks out/red/draft_chunks.jsonl
+```
+Check: `select document, count(*) from policy_chunks group by 1;`
+
+**Switch to real embeddings first** (`pip install sentence-transformers`, `EMBEDDING_PROVIDER=local` in `.env`). The hash stub is not
+semantic and a database must not mix providers: re-load the RAAC chunks with the same provider (re-running `load_chunks`
+refreshes draft rows). Load everything (about 970 chunks): it is small, and the product filter keeps auto, consumer and
+business-only clauses out of housing results. Do not commit `out/`: it holds the bank's policy text.
+
+After credit policy reviews a document: `update policy_chunks set status = 'approved' where document = '<file name>';`
+
+## 4c. The reasoning
+Each check returns a `reasoning` block (shown in the panel): a headline, one sentence per criterion with the numbers and the
+policy clause, what to do next, and the housing approval-limit clauses of every loaded document, newest first, with a note when
+documents differ. It is built from templates, with no LLM, so nothing leaves your environment. It says what the policy requires
+and whether the application meets it (`MEETS_AUTOMATED_CRITERIA`, `EXCEPTION_REQUIRED`, `MANDATORY_CRITERION_NOT_MET`,
+`CANNOT_CONCLUDE`). It never says approve or decline: exceptions and below-score cases belong to the delegated approving body.
 
 ## 5. Decisions to make while merging
 
