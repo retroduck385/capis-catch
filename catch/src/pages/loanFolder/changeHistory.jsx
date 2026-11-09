@@ -29,6 +29,7 @@ const TABLE_LABELS = {
     ci_requests: 'CI request',
     ci_checks: 'CI result',
     ci_documents: 'CI report file',
+    extraction_runs: 'AI document extraction',
 };
 
 const ACTION_LABELS = { INSERT: 'Added', UPDATE: 'Changed', DELETE: 'Removed' };
@@ -37,9 +38,9 @@ const ACTION_LABELS = { INSERT: 'Added', UPDATE: 'Changed', DELETE: 'Removed' };
 const HIDDEN = new Set(['id', 'application_id', 'applicant_id', 'requirement_id', 'file_path', 'uploaded_by',
     'assigned_by', 'assigned_at', 'unassigned_by', 'assignment_id', 'responded_by']);
 // Columns holding a staff user id: shown by name (`names` must include them)
-const STAFF_FIELDS = new Set(['user_id']);
+const STAFF_FIELDS = new Set(['user_id', 'confirmed_by']);
 
-const fieldLabel = (key) => (STAFF_FIELDS.has(key) ? 'Staff'
+const fieldLabel = (key) => (key === 'confirmed_by' ? 'Confirmed by' : STAFF_FIELDS.has(key) ? 'Staff'
     : key.replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase()));
 const show = (value) => (value === null || value === undefined || value === '' ? '—' : String(value));
 
@@ -58,8 +59,10 @@ const ChangeHistory = ({ app, entries, names }) => {
         <ul>
             {entries.map((e) => {
                 const data = e.action === 'DELETE' ? e.old_data : e.new_data;
+                // Rows written by functions (e.g. AI extraction runs) carry only new values
+                const diff = e.action === 'UPDATE' && e.old_data;
                 const fields = Object.keys(data ?? {}).filter((k) => !HIDDEN.has(k)
-                    && (e.action === 'UPDATE' || (data[k] !== null && data[k] !== '')));
+                    && (diff || (data[k] !== null && data[k] !== '')));
                 return (
                     <li key={e.id} className="border-b py-2">
                         <p>
@@ -73,7 +76,7 @@ const ChangeHistory = ({ app, entries, names }) => {
                                 return (
                                     <li key={k}>
                                         {fieldLabel(k)}:{' '}
-                                        {e.action === 'UPDATE' ? `${value(e.old_data[k])} → ${value(e.new_data[k])}` : value(data[k])}
+                                        {diff ? `${value(e.old_data[k])} → ${value(e.new_data[k])}` : value(data[k])}
                                     </li>
                                 );
                             })}

@@ -50,7 +50,8 @@ const LoanFolderPage = () => {
         setAudit(nextAudit);
         setCiRequest(latestCi);
         setNames(await fetchStaffNames([...nextChecks.map((c) => c.checked_by), ...nextAudit.map((a) => a.changed_by),
-            ...nextAudit.map((a) => (a.new_data ?? a.old_data)?.user_id), latestCi?.requested_by]));
+            ...nextAudit.map((a) => (a.new_data ?? a.old_data)?.user_id),
+            ...nextAudit.map((a) => a.new_data?.confirmed_by), latestCi?.requested_by]));
     }, [applicationId]);
 
     useEffect(() => {

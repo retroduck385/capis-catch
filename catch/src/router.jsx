@@ -17,6 +17,7 @@ import FinancialPackagePage from "./pages/financialPackage/financialPackagePage"
 import CreditScorePage from "./pages/financialPackage/creditScorePage";
 import ApprovalRoutingPage from "./pages/review/approvalRoutingPage";
 import ReviewSummaryPage from "./pages/review/reviewSummaryPage";
+import DocumentCheckPage from "./pages/documentCheck/documentCheckPage";
 import { STAFF_ROLES } from "./roles";
 
 
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
     { path: "/homePage", element: <PrivateRoute><HomeRedirect /></PrivateRoute>},
     { path: "/adminHomePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><AdminHomePage /></StaffProfileGate> </PrivateRoute>},
     { path: "/loanFolderPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><LoanFolderPage /></StaffProfileGate> </PrivateRoute>},
+    { path: "/documentCheckPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><DocumentCheckPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/ciRequestPage", element: <PrivateRoute roles={["CREDIT_INVESTIGATOR"]}><StaffProfileGate><CiRequestPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/financialPackagePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><FinancialPackagePage /></StaffProfileGate> </PrivateRoute>},
     { path: "/creditScorePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><CreditScorePage /></StaffProfileGate> </PrivateRoute>},
