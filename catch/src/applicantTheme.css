@@ -62,7 +62,14 @@
   .ct.ct-e .ct-side button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); color: #fff; }
 
   .ct.ct-e .ct-e-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .ct.ct-e .ct-topbar { display: flex; justify-content: flex-end; padding: 0.9rem 3rem 0; min-height: 3.25rem; }
+  /* Top bar (notification bell) stays at the top while the page scrolls. Page background so content scrolls under
+     it cleanly; above page content and sticky table headers / save bars, below the messages drawer (z 40). */
+  .ct.ct-e .ct-topbar {
+    display: flex; justify-content: flex-end; align-items: center; padding: 0.45rem 3rem; min-height: 3.25rem;
+    position: sticky; top: 0; z-index: 30; background: var(--bg);
+  }
+  /* Sticky side navs clear the top bar (.lf-nav: unlayered rule at the end of this file) */
+  .ct.ct-e .ct-aside-inner { top: calc(3.25rem + 1.25rem); }
   .ct.ct-e .ct-main > :not(.ct-shell) { padding: 0.5rem 2.5rem 1.5rem; max-width: 96rem; }
   .ct.ct-e .ct-main > .ct-shell { width: 100%; max-width: 100rem; margin-inline: auto; padding: 0.5rem 1.75rem 1.5rem; }
 
@@ -270,7 +277,7 @@
   .ct.ct-e .ct-e-body { min-width: 0; }
   .ct.ct-e .ct-side-user .who > div { display: none; }
   .ct.ct-e .ct-side button { width: auto; }
-  .ct.ct-e .ct-topbar { padding: 0.5rem 1rem 0; }
+  .ct.ct-e .ct-topbar { padding: 0.35rem 1rem; }
   .ct.ct-e .ct-main > :not(.ct-shell), .ct.ct-e .ct-main > .ct-shell { padding: 0.5rem 1rem 2rem; }
   .ct.ct-e .ct-e-grid, .ct.ct-e .ct-shell { grid-template-columns: minmax(0, 1fr); }
   .ct.ct-e .ct-split { grid-template-columns: minmax(0, 1fr); }
@@ -289,3 +296,8 @@
 }
 
 @media (max-width: 640px) { .ct.ct-e .ct-stats { grid-template-columns: minmax(0, 1fr); } }
+
+/* Unlayered on purpose: page stylesheets (loanFolder.css) are unlayered too. Sticky section navs and in-page jumps
+   (scrollIntoView, #anchors) stop below the sticky top bar instead of under it. */
+.ct.ct-e .lf-nav { top: calc(3.25rem + 1rem); }
+html:has(.ct.ct-e .ct-topbar) { scroll-padding-top: 3.25rem; }
