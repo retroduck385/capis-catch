@@ -14,6 +14,7 @@ to confirm. Gemini only gets the OCR text, never the file.
 import argparse
 import asyncio
 import os
+import sys
 import tempfile
 import threading
 import time
@@ -241,7 +242,9 @@ def main():
         interval = args.interval if args.interval is not None else (5 if args.poll else 300)
         work(args.once, interval, realtime=not args.poll)
     except KeyboardInterrupt:
-        print("stopped")
+        import traceback  # show where it was waiting, to diagnose a stuck run
+        frames = traceback.extract_tb(sys.exc_info()[2])[-4:]
+        print("stopped while in: " + " <- ".join(f"{Path(f.filename).name}:{f.lineno} {f.name}" for f in reversed(frames)))
 
 
 if __name__ == "__main__":
