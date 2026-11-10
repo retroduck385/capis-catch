@@ -1,5 +1,5 @@
 // Document check (Module 1, HITL): each uploaded ID / COE / ITR / payslip / bank statement shown next to what
-// the AI read from it (ocr-service: PaddleOCR text -> Gemini -> extraction_fields). The AI only proposes; the
+// the AI read from it (ocr-service: PaddleOCR text -> Claude -> extraction_fields). The AI only proposes; the
 // assigned AO checks every value against the document, picks what goes into the application, and confirms.
 // Opened from the loan folder: /documentCheckPage?id=<application id>[&doc=<document id>]
 // CI mode (&ci=1, opened from the CI page): the NFIS / TU reports of each borrower instead. A Credit Investigator
@@ -205,7 +205,7 @@ const DocumentCheckPage = () => {
 
     const docDefs = doc ? defs.filter((d) => d.document_type === doc.document_type) : [];
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
-    const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no GEMINI_API_KEY.';
+    const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
         ? { to: `/ciRequestPage?id=${app.id}`, label: '← Back to CI request' }
         : { to: `/loanFolderPage?id=${app.id}`, label: '← Back to loan folder' };

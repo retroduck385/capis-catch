@@ -1,11 +1,11 @@
-# CATCH OCR worker (PaddleOCR + Gemini field extraction)
+# CATCH OCR worker (PaddleOCR + Claude field extraction)
 
 Two steps per uploaded ID, COE / ITR, payslips / remittances and bank statement:
 
 1. **OCR** (PaddleOCR, local): every text line + its box + confidence goes to `ocr_lines`, the page sizes to `ocr_pages`.
-2. **AI extraction** (Gemini API): the OCR **text** already in the database is sent to Gemini (never the file), which labels it into the fields in `extraction_field_defs` (name, DOB, employer, gross pay per period, deposits per month, ...). The answer is a **proposal** in `extraction_fields`; nothing touches the application until the assigned AO checks it on **Document check** (`/documentCheckPage?id=<app>`, linked from the loan folder) and clicks *Confirm & lock*.
+2. **AI extraction** (Claude API, Anthropic): the OCR **text** already in the database is sent to Claude (never the file), which labels it into the fields in `extraction_field_defs` (name, DOB, employer, gross pay per period, deposits per month, ...). The answer is a **proposal** in `extraction_fields`; nothing touches the application until the assigned AO checks it on **Document check** (`/documentCheckPage?id=<app>`, linked from the loan folder) and clicks *Confirm & lock*.
 
-Flow: upload → trigger queues a `PENDING` row in `ocr_runs` → worker OCRs it and marks it `DONE` → trigger queues a `PENDING` row in `extraction_runs` → worker sends the lines to Gemini and saves the fields with `save_extraction()` (or marks the run `FAILED` with the error; the AO can press *Run AI again*).
+Flow: upload → trigger queues a `PENDING` row in `ocr_runs` → worker OCRs it and marks it `DONE` → trigger queues a `PENDING` row in `extraction_runs` → worker sends the lines to Claude and saves the fields with `save_extraction()` (or marks the run `FAILED` with the error; the AO can press *Run AI again*).
 
 ## Setup (once)
 
@@ -16,7 +16,7 @@ cd ocr-service
 pip3 install uv                       # or: curl -LsSf https://astral.sh/uv/install.sh | sh
 uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
-cp .env.example .env                  # then paste the service role key and the Gemini API key
+cp .env.example .env                  # then paste the service role key and the Anthropic API key
 ```
 
 ### Where the API key goes
@@ -24,13 +24,13 @@ cp .env.example .env                  # then paste the service role key and the 
 `ocr-service/.env` (gitignored), **never** `catch/.env`: anything `VITE_*` there is bundled into the browser.
 
 ```
-GEMINI_API_KEY=...        # from https://aistudio.google.com/apikey
-GEMINI_MODEL=             # optional, default gemini-3.8-flash
+ANTHROPIC_API_KEY=...     # from https://platform.claude.com/settings/keys
+ANTHROPIC_MODEL=          # optional, default claude-opus-5-5 (claude-sonnet-5-5 / claude-haiku-5-5 are cheaper)
 ```
 
-Without `GEMINI_API_KEY` the worker still OCRs; extraction runs just wait in the queue until you add the key and restart.
+Without `ANTHROPIC_API_KEY` the worker still OCRs; extraction runs just wait in the queue until you add the key and restart.
 
-Free tier: Google may use what is sent to improve its products, so only **synthetic test documents** go through it (CATCH rule anyway). Use a paid key before any real data.
+The request uses structured outputs (the answer must match the field schema built from `extraction_field_defs`), effort `low`, and, on the models that support it, server-side refusal fallbacks (`fallbacks: "default"`); `extraction_runs.model` records the model that actually answered. Only **synthetic test documents** go through it (CATCH rule).
 
 Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`, then `20261109_ai_extraction.sql` and `20261109_ci_extraction.sql` (NFIS / TU extraction).
 
@@ -41,7 +41,7 @@ Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (
 .venv/bin/python worker.py --poll          # old behaviour: check the queue every 5 s, no Realtime
 .venv/bin/python worker.py --once          # process the current queue, then exit
 .venv/bin/python worker.py --file id.jpg   # OCR a local file, print lines, save nothing
-.venv/bin/python worker.py --file coe.pdf --type COE_ITR   # ...and print what Gemini extracts (saves nothing)
+.venv/bin/python worker.py --file coe.pdf --type COE_ITR   # ...and print what Claude extracts (saves nothing)
 ```
 
 `--type` is one of `VALID_ID_PASSPORT`, `COE_ITR`, `PAYSLIPS_REMITTANCES`, `FS_BANK_STATEMENTS`, `CI_NFIS`, `CI_TU` (CI types also print the proposed CI result and summary). It reads the field list from Supabase, so run the migration first.
@@ -63,11 +63,11 @@ Re-OCR a document (new run, old one kept): `select requeue_ocr(<document_id>);` 
 
 Queued types: `VALID_ID_PASSPORT`, `COE_ITR`, `PAYSLIPS_REMITTANCES`, `FS_BANK_STATEMENTS`; add more in `ocr_document_types()` (latest definition is in `20261109_ai_extraction.sql`). Fields per type: rows in `extraction_field_defs` (same migration) — add a row and the worker, prompt and page pick it up. `target_table` / `target_column` (whitelisted in the table's check constraint) is the application column the AO may update from it.
 
-If Gemini rate-limits (429) or is down, the run goes back to the queue and the AI step pauses for 60 s; OCR keeps going.
+If the Claude API rate-limits (429), is overloaded (529) or is down, the run goes back to the queue and the AI step pauses for 60 s; OCR keeps going.
 
 **CI reports** (NFIS / TU / BRAS uploaded by the Credit Investigator, `20261108_ci_results.sql`) are queued too: every row in `ci_documents` gets a run with `ci_document_id` set instead of `document_id`. Same bucket (files at `ci/{application_id}/...`), so the worker needs no change. In `ocr_run_text` they show as `document_type` `CI_NFIS` / `CI_TU` / `CI_BRAS` with `ci_document_id` filled. Re-OCR one: `select requeue_ci_ocr(<ci_document_id>);`.
 
-**CI report extraction** (`20261109_ci_extraction.sql`): NFIS and TU reports go through the same AI queue (BRAS doesn't yet: no field list). Gemini also drafts the CI result (`output.proposed_result`: `NO_ADVERSE_FINDINGS` / `WITH_FINDINGS`) and a short `output.findings_summary`, facts only. A Credit Investigator checks it on the CI report check page (`/documentCheckPage?id=<app>&ci=1`, "AI check" next to each file on the CI request page), edits it and confirms with `confirm_ci_extraction()`, which writes `ci_checks.result` / `summary` for that borrower × check. CI extractions never write to the application record; identity, IDs and accounts are only compared with it on the page.
+**CI report extraction** (`20261109_ci_extraction.sql`): NFIS and TU reports go through the same AI queue (BRAS doesn't yet: no field list). Claude also drafts the CI result (`output.proposed_result`: `NO_ADVERSE_FINDINGS` / `WITH_FINDINGS`) and a short `output.findings_summary`, facts only. A Credit Investigator checks it on the CI report check page (`/documentCheckPage?id=<app>&ci=1`, "AI check" next to each file on the CI request page), edits it and confirms with `confirm_ci_extraction()`, which writes `ci_checks.result` / `summary` for that borrower × check. CI extractions never write to the application record; identity, IDs and accounts are only compared with it on the page.
 
 `line_no` is PaddleOCR's reading order. On tables (payslips) a slightly tilted photo can interleave the columns, so pair labels with amounts using `bbox`, not `line_no`.
 

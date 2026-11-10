@@ -93,6 +93,30 @@ export const suggestApprovalTier = (loanAmount, hasDeviation) => {
     return band === null ? null : tierFor(band, hasDeviation);
 };
 
+// Approvers' decisions against the authority (same rule as approval_requirements_met() in SQL).
+// approvers = active APPROVER rows, decisions = approval_decisions rows, positions = { [user_id]: position }
+// (for approvers who haven't decided). Only decisions on active rows count; "with conditions" is an approval.
+// -> { decisionOf(row), groups: [{ label, met, possible }], met, possible }
+//    possible = the approvals plus the approvers who haven't decided can still meet it
+export const approvalProgress = (tier, approvers, decisions, positions = {}) => {
+    const byAssignment = Object.fromEntries(decisions.map((d) => [d.assignment_id, d]));
+    const approved = approvers.map((r) => byAssignment[r.id]).filter((d) => d?.action === 'APPROVED')
+        .map((d) => d.approval_position);
+    const open = approvers.filter((r) => !byAssignment[r.id]).map((r) => positions[r.user_id]);
+    const count = (list, p) => list.filter((x) => x === p).length;
+    const groups = (REQUIREMENTS[tier] ?? []).map((group) => ({
+        label: group.map(([p, n]) => `${positionLabel(p)}${n > 1 ? ` ×${n}` : ''}`).join(' or '),
+        met: group.some(([p, n]) => count(approved, p) >= n),
+        possible: group.some(([p, n]) => count(approved, p) + count(open, p) >= n),
+    }));
+    return {
+        decisionOf: (row) => byAssignment[row.id] ?? null,
+        groups,
+        met: groups.length > 0 && groups.every((g) => g.met),
+        possible: groups.length > 0 && groups.every((g) => g.possible),
+    };
+};
+
 // Active rows -> { reviewers: [...], approvers: [...] }, each in seq order
 export const splitRouting = (rows) => {
     const active = rows.filter((r) => !r.unassigned_at).sort((a, b) => a.seq - b.seq);

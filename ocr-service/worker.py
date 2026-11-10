@@ -1,13 +1,13 @@
 """CATCH OCR worker: OCRs uploaded documents (IDs, COE / ITR, payslips / remittances, bank statements) and
-CI reports (NFIS, TU, BRAS) queued in Supabase, saves the raw lines, then has Gemini label the lines into
+CI reports (NFIS, TU, BRAS) queued in Supabase, saves the raw lines, then has Claude label the lines into
 fields (AI extraction) for the Account Officer (application documents) or a Credit Investigator (NFIS / TU)
-to confirm. Gemini only gets the OCR text, never the file.
+to confirm. Claude only gets the OCR text, never the file.
 
   python worker.py              wait for uploads (Realtime), with a fallback check every 5 min (Ctrl+C to stop)
   python worker.py --poll       old behaviour: check the queue every --interval seconds, no Realtime
   python worker.py --once       process what's queued now, then exit
   python worker.py --file x.jpg OCR a local file and print the lines (no database)
-  python worker.py --file x.pdf --type COE_ITR   ...and print the fields Gemini extracts (saves nothing)
+  python worker.py --file x.pdf --type COE_ITR   ...and print the fields Claude extracts (saves nothing)
   python worker.py --file tu.pdf --type CI_TU    same for a CI report (CI_NFIS, CI_TU), with the proposed result
 """
 
@@ -23,12 +23,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from extract import RetryLater, extract, gemini_config
+from extract import RetryLater, ai_config, extract
 from ocr import engine_name, run_ocr
 
 BUCKET = "application-documents"
 PAGE_SIZE = 1000          # PostgREST returns at most this many rows per request
-RATE_LIMIT_PAUSE = 60     # seconds to leave the AI queue alone after a Gemini rate limit
+RATE_LIMIT_PAUSE = 60     # seconds to leave the AI queue alone after a Claude API rate limit
 
 
 def now():
@@ -128,7 +128,7 @@ def field_defs(client, document_type):
 
 
 def process_extraction(client, job, api_key, model):
-    """Returns False when Gemini asked us to slow down (the run goes back to PENDING)."""
+    """Returns False when the Claude API asked us to slow down (the run goes back to PENDING)."""
     run_id = job["run_id"]
     print(f"extraction {run_id}: {job['file_name']} ({job['document_type']}) ...", flush=True)
     try:
@@ -158,13 +158,13 @@ def process_extraction(client, job, api_key, model):
 def work(once, interval, realtime):
     url, key = get_config()
     client = get_client(url, key)
-    api_key, model = gemini_config()
+    api_key, model = ai_config()
     paused_until = 0.0  # AI queue paused after a rate limit
     wake = threading.Event()
     if api_key:
         print(f"AI extraction on ({model})", flush=True)
     else:
-        print("AI extraction off: set GEMINI_API_KEY in ocr-service/.env (extraction runs stay queued)", flush=True)
+        print("AI extraction off: set ANTHROPIC_API_KEY in ocr-service/.env (extraction runs stay queued)", flush=True)
     if once:
         print("OCR worker: processing the current queue", flush=True)
     elif realtime:
@@ -200,9 +200,9 @@ def test_file(path, document_type):
     if not document_type:
         return
     url, key = get_config()  # loads .env; field definitions live in Supabase (read only)
-    api_key, model = gemini_config()
+    api_key, model = ai_config()
     if not api_key:
-        raise SystemExit("Set GEMINI_API_KEY in ocr-service/.env to test the AI extraction")
+        raise SystemExit("Set ANTHROPIC_API_KEY in ocr-service/.env to test the AI extraction")
     defs = field_defs(get_client(url, key), document_type)
     if not defs:
         raise SystemExit(f"No field definitions for {document_type}: run 20261109_ai_extraction.sql "

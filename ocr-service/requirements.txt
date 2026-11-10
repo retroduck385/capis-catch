@@ -2,4 +2,4 @@ paddlepaddle==3.3.1
 paddleocr==3.7.0
 supabase>=2.10
 python-dotenv>=1.0
-google-genai>=3.0,<4
+anthropic>=2.7,<3

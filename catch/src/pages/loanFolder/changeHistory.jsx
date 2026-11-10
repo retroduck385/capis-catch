@@ -26,6 +26,7 @@ const TABLE_LABELS = {
     credit_score_entries: 'Credit score',
     review_assignments: 'Reviewer / approver',
     review_decisions: 'Review sign-off / return',
+    approval_decisions: 'Approver decision',
     ci_requests: 'CI request',
     ci_checks: 'CI result',
     ci_documents: 'CI report file',

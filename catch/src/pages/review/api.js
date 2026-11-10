@@ -69,3 +69,21 @@ export const submitReview = async (applicationId, { action, remarks, items, seve
 // Assigned CO, after a return: what they changed; review continues from the reviewer who returned it
 export const resendForReview = async (applicationId, response) =>
     check(await supabase.rpc('resend_for_review', { p_application_id: applicationId, p_response: response }));
+
+// ---------- Approver decision (20261110_approver_decision.sql)
+
+// Every approve / disapprove of one application, oldest first
+export const fetchApprovalDecisions = async (applicationId) =>
+    check(await supabase.from('approval_decisions').select('*')
+        .eq('application_id', applicationId).order('decided_at').order('id')) ?? [];
+
+// True only for a routed approver who hasn't decided yet, while the application is in Approval
+export const fetchApproverCanAct = async (applicationId) =>
+    check(await supabase.rpc('approver_can_act', { p_application_id: applicationId })) ?? false;
+
+// action: APPROVED | DISAPPROVED; conditions only with APPROVED ("Approve with conditions").
+// Returns 'APPROVED' | 'DISAPPROVED' (decided) or 'WAITING' (other approvers still needed / can still approve)
+export const submitApproval = async (applicationId, { action, remarks, conditions }) =>
+    check(await supabase.rpc('submit_approval', {
+        p_application_id: applicationId, p_action: action, p_remarks: remarks || null, p_conditions: conditions || null,
+    }));

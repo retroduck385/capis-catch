@@ -1,10 +1,10 @@
 """AI field extraction: labels one document's OCR lines into the fields listed in extraction_field_defs,
-using the Gemini API. The model never sees the file, only the PaddleOCR text already saved in ocr_lines.
+using the Claude API (Anthropic). The model never sees the file, only the PaddleOCR text already saved in ocr_lines.
 The result is a proposal: the worker stores it in extraction_fields and a person confirms it (the Account
 Officer for application documents, a Credit Investigator for NFIS / TU reports; for those the model also
 proposes the CI result and a summary of the findings). No database code here.
 
-Synthetic test documents only. On Gemini's free tier, Google may use what is sent to improve its products.
+Synthetic test documents only (CATCH rule), whatever the provider's data terms say.
 """
 
 import json
@@ -13,8 +13,13 @@ import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-DEFAULT_MODEL = "gemini-3.8-flash"
-REQUEST_TIMEOUT = 180  # seconds; a slower answer is treated like "busy" and retried later
+DEFAULT_MODEL = "claude-opus-5-5"
+EFFORT = "low"          # extraction is reading, not reasoning; raise to "medium" if long TU reports come back wrong
+MAX_TOKENS = 32768
+REQUEST_TIMEOUT = 180   # seconds without data from the stream; treated like "busy" and retried later
+# Models that accept server-side refusal fallbacks (fallbacks="default"); others get the plain request
+FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 DOCUMENT_TITLES = {
     "VALID_ID_PASSPORT": "a government-issued ID or passport",
@@ -85,7 +90,7 @@ Rules:
 
 
 class RetryLater(Exception):
-    """Rate limit or a temporary Gemini error: put the run back in the queue."""
+    """Rate limit or a temporary Claude API error: put the run back in the queue."""
 
 
 def _field_schema():
@@ -96,6 +101,7 @@ def _field_schema():
             "lines": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["value", "lines"],
+        "additionalProperties": False,
     }
 
 
@@ -122,10 +128,12 @@ def build_schema(document_type, defs):
                 "type": "object",
                 "properties": {d["field_key"]: _field_schema() for d in header},
                 "required": [d["field_key"] for d in header],
+                "additionalProperties": False,
             },
             "issues": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["document_kind", "fields", "issues"],
+        "additionalProperties": False,
     }
     for group, group_defs in row_groups(defs).items():
         schema["properties"][group] = {
@@ -134,6 +142,7 @@ def build_schema(document_type, defs):
                 "type": "object",
                 "properties": {d["field_key"]: _field_schema() for d in group_defs},
                 "required": [d["field_key"] for d in group_defs],
+                "additionalProperties": False,
             },
         }
         schema["required"].append(group)
@@ -225,76 +234,80 @@ def parse_output(output, defs, refs):
     return [f for f in fields if f]
 
 
-def _status(e):
-    # interactions errors carry status_code; the older google.genai.errors carry code
-    return getattr(e, "status_code", None) or getattr(e, "code", None)
-
-
-def _retryable(e, errors):
-    """Rate limit (429), Gemini server errors (5xx) and lost connections / timeouts are worth retrying.
-    The interactions API's error classes aren't exported publicly, so this goes by status and name."""
-    status = _status(e)
-    if isinstance(status, int):
-        return status == 429 or status >= 500
-    if isinstance(e, errors.ServerError):
-        return True
-    return type(e).__name__ in ("APIConnectionError", "APITimeoutError")
-
-
 _client = None
 
 
 def _get_client(api_key):
     global _client
     if _client is None:
-        from google import genai
+        import anthropic
 
-        _client = genai.Client(api_key=api_key)
+        # The SDK already retries 429 / 5xx / dropped connections twice before raising
+        _client = anthropic.Anthropic(api_key=api_key, timeout=REQUEST_TIMEOUT)
     return _client
 
 
-def gemini_config():
+def ai_config():
     """(api_key, model) from the environment; api_key is None when AI extraction is off."""
-    return os.getenv("GEMINI_API_KEY") or None, os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
+    return os.getenv("ANTHROPIC_API_KEY") or None, os.getenv("ANTHROPIC_MODEL") or DEFAULT_MODEL
+
+
+def _answer_text(message):
+    """The JSON answer. With a server-side fallback, text before the last fallback block is the declined
+    model's partial answer, so only what comes after it counts."""
+    blocks = list(message.content)
+    last_fallback = max((i for i, b in enumerate(blocks) if b.type == "fallback"), default=-1)
+    return "".join(b.text for b in blocks[last_fallback + 1:] if b.type == "text")
 
 
 def extract(document_type, defs, lines, api_key, model=DEFAULT_MODEL):
     """Returns {model, output, fields, input_tokens, output_tokens}. Raises RetryLater on rate limits /
     temporary errors, anything else on a failure that retrying won't fix."""
-    from google.genai import errors
+    import anthropic
 
     if document_type not in DOCUMENT_KINDS:
         raise ValueError(f"No extraction for document type {document_type}")
     prompt, refs = build_input(document_type, defs, lines)
+    request = {
+        "model": model,
+        "max_tokens": MAX_TOKENS,
+        "system": SYSTEM,
+        "messages": [{"role": "user", "content": prompt}],
+        "output_config": {
+            "effort": EFFORT,
+            "format": {"type": "json_schema", "schema": build_schema(document_type, defs)},
+        },
+    }
+    if model in FALLBACK_MODELS:  # a safety-classifier decline is re-run on Anthropic's recommended model
+        request.update(betas=[FALLBACK_BETA], fallbacks="default")
     try:
-        interaction = _get_client(api_key).interactions.create(
-            model=model,
-            system_instruction=SYSTEM,
-            input=prompt,
-            response_format={"type": "text", "mime_type": "application/json",
-                             "schema": build_schema(document_type, defs)},
-            generation_config={"thinking_level": "low", "max_output_tokens": 32768},
-            store=False,  # nothing kept on Google's side for later turns
-            timeout=REQUEST_TIMEOUT,  # the SDK's default never times out, so a stalled call froze the worker
-        )
-    except Exception as e:
-        if _retryable(e, errors):
-            raise RetryLater(f"Gemini busy or unreachable ({_status(e) or type(e).__name__}): {str(e)[:300]}") from e
+        # Streamed so a long answer (TU reports) never hits the SDK's non-streaming time limit
+        with _get_client(api_key).beta.messages.stream(**request) as stream:
+            message = stream.get_final_message()
+    except (anthropic.RateLimitError, anthropic.APIConnectionError) as e:  # APIConnectionError includes timeouts
+        raise RetryLater(f"Claude API busy or unreachable ({type(e).__name__}): {str(e)[:300]}") from e
+    except anthropic.APIStatusError as e:
+        if e.status_code >= 500:  # 500 / 529 overloaded
+            raise RetryLater(f"Claude API busy ({e.status_code}): {str(e)[:300]}") from e
         raise
 
-    if interaction.status != "completed" or not interaction.output_text:
-        detail = "; ".join(str(err) for err in interaction.errors or []) or "no output"
-        raise RuntimeError(f"Gemini returned status {interaction.status}: {detail}")
+    if message.stop_reason == "refusal":
+        category = getattr(message.stop_details, "category", None)
+        raise RuntimeError(f"Claude declined to process this document (refusal{f': {category}' if category else ''})")
+    if message.stop_reason == "max_tokens":
+        raise RuntimeError(f"Claude's answer was cut off at {MAX_TOKENS} tokens (document too long?)")
+    text = _answer_text(message)
     try:
-        output = json.loads(interaction.output_text)
+        output = json.loads(text)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Gemini answer is not valid JSON: {e}") from e
+        raise RuntimeError(f"Claude's answer is not valid JSON: {e}") from e
 
-    usage = interaction.usage
+    usage = message.usage
     return {
-        "model": model,
+        "model": message.model,  # the model that actually answered (differs from `model` after a fallback)
         "output": output,
         "fields": parse_output(output, defs, refs),
-        "input_tokens": usage.total_input_tokens if usage else None,
-        "output_tokens": ((usage.total_output_tokens or 0) + (usage.total_thought_tokens or 0)) if usage else None,
+        "input_tokens": (usage.input_tokens + (usage.cache_creation_input_tokens or 0)
+                         + (usage.cache_read_input_tokens or 0)) if usage else None,
+        "output_tokens": usage.output_tokens if usage else None,  # includes thinking
     }

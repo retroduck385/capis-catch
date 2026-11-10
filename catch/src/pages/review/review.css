@@ -105,3 +105,9 @@
 .rv-matrix { margin-top: 1rem; }
 .rv-matrix td.rv-here { background: #fff6dc; }
 .rv-matrix td.rv-here.strong { font-weight: 700; box-shadow: inset 0 0 0 2px #f0c24b; }
+
+/* ---------- approver decision ---------- */
+.rv-approve-choices { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.rv-approve-choices .rv-radio { padding: 0.7rem 1.4rem; font-size: 1rem; }
+.rv-radio.ok:has(input:checked) { border-color: var(--lf-ok); background: var(--lf-ok-bg); }
+.rv-who .fp-note { margin: 0; }
