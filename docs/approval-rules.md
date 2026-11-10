@@ -33,7 +33,11 @@ Code: `catch/supabase/migrations/20261108_approval_matrix.sql`, `20261108_approv
 
 **CO recommendation:** `financial_packages.credit_result` = ENDORSED / NOT_ENDORSED / DEFERRED, with a required justification. The credit score's recommendation is a guide only.
 
-**Not built:** approver decisions (Approve / Reject / Defer), MRAC checks. Approvers only view a summary page.
+**Approver decision** (`20261110_approver_decision.sql`, built by a teammate 2026-11-10): on the review summary page each routed approver records **Approve**, **Approve with conditions** (conditions required) or **Disapprove** (reason required), once. No checklist and no return to the CO (that is the reviewer's job). Approved once the approvals meet every group of the authority; Disapproved (status REJECTED) only once the approvals plus the approvers still to decide can no longer meet it. No Defer: deferral happens at the AO, CO and reviewer steps (`decisions/document-requests.md`). The decision, the position signed as, the remarks and the conditions are kept in `approval_decisions` (logged in `audit_log`). The AO then sends the applicant the outcome (`decisions/applicant-notices.md`).
+
+**MRAC check** (built 2026-11-08 to 2026-11-10, partly): the CO runs it from the Financial Package; results are cited suggestions only, criteria are loaded disabled until credit policy enables them. See `decisions/mrac-rag.md`. Q-19 / Q-20 stay open.
+
+**Not built:** Refer / Escalate, a policy-reason code on rejections (the disapproval reason is free text).
 
 **Earlier (2026-10-21, replaced):** four authorities read from the FP sheet's VII. Approval block (President up to P10M; Senior Credit Committee, Executive Committee, Board above that or with a deviation), suggested by the page and picked by the CO, who also picked the approvers. The tracker's Stage 1 / Stage 2 bands below (P3.0M / P5.0M) now match the matrix's first two bands.
 

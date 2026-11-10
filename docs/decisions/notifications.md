@@ -1,6 +1,6 @@
 # Notifications
 
-Date: 2026-10-24. Status: decided by implementation. Covers F6 (Timely Workspace Notification Alerts) and the applicant status notices from the 2026-10-23 meeting. Updated 2026-10-28 with the bank's Q-42 answers (visit 2026-10-26), which are not built yet; see "Bank answers" below. Updated 2026-10-29: the outcome notices are rebuilt as AO-sent notices (`applicant-notices.md`). Updated 2026-11-09: the CI results and reviewer sign-off migrations (2026-11-08) make three waiting alerts fire and add four kinds; see "Since 2026-11-08".
+Date: 2026-10-24. Status: decided by implementation. Covers F6 (Timely Workspace Notification Alerts) and the applicant status notices from the 2026-10-23 meeting. Updated 2026-10-28 with the bank's Q-42 answers (visit 2026-10-26), which are not built yet; see "Bank answers" below. Updated 2026-10-29: the outcome notices are rebuilt as AO-sent notices (`applicant-notices.md`). Updated 2026-11-09: the CI results and reviewer sign-off migrations (2026-11-08) make three waiting alerts fire and add four kinds; see "Since 2026-11-08". Updated 2026-11-11: the approver decision, the fixes and the document requests; see "Since 2026-11-10".
 
 ## Decided
 - **In-app only for staff.** Applicant outcome notices also go by SMS and email since 2026-10-29 (`applicant-notices.md`).
@@ -40,6 +40,15 @@ Date: 2026-10-24. Status: decided by implementation. Covers F6 (Timely Workspace
 - The applicant sees "Under review" through CI, Credit Evaluation, Review, a return and Approval, with one APPLICANT_UNDER_REVIEW notice.
 - Approvers are now routed automatically from the approval matrix at send time; as before, they hear nothing until Approval opens.
 
+## Since 2026-11-10 (checked 2026-11-11)
+- **Main, 2026-11-10** (`20261110_approver_decision.sql`): DECIDED now fires when the last needed approver decides (AO, CO, Dispatch Admins, once each). The AI extraction, CI extraction and MRAC migrations add no notification kind and change none of this module's tables, functions or triggers. Nothing alerts the AO when an extraction is ready to check or failed (see `ai-extraction.md`).
+- **Branch `fix/notification-fixes`** (`20261111_notification_fixes.sql`, not merged yet):
+  - DECIDED also goes to the routed approvers (the approver whose decision closed it is the actor and is skipped).
+  - REVIEW_ROUTED says the reviewer's place in the turn order: "HL-... is ready for your review (reviewer 1 of 3)" for whoever's turn it is, "You were added as reviewer 2 of 3 on HL-..." with "You'll be notified when it's your turn." for the others. The trigger is now a deferred constraint trigger, so the total is known when it fires; a failed send sends nothing.
+  - The top bar with the bell stays at the top while the page scrolls; the unread count is 11px.
+- **Branch `feature/deferral-loop`** (`20261112_document_requests.sql`, `document-requests.md`): REVIEW_RETURNED (assigned AO, when a reviewer returns a file; the CO's STAGE_RETURNED is unchanged), DOCUMENTS_SENT (assigned AO), and two applicant kinds, APPLICANT_DOCUMENTS_NEEDED and APPLICANT_REQUEST_CLOSED. No automatic APPLICANT_UNDER_REVIEW while a document request is open.
+- No one gets two alerts for one event (PGlite, all three branches together).
+
 ## Why (inferred)
 Triggers on the tables keep the groupmate's RPCs untouched and catch every path that changes the data, including future ones. One function with fixed applicant rules means no module (OCR, RAG, fraud detection, summary page) can leak internal detail to an applicant by mistake.
 
@@ -64,4 +73,4 @@ Triggers on the tables keep the groupmate's RPCs untouched and catch every path 
 - ~~Rebuild the decision and deferral notices to match Q-42.~~ Done 2026-10-29 (`applicant-notices.md`).
 - Live SMS / email (built, log mode until Q-04). Item-level deficiency notices (F5) are not built.
 - TAT near / beyond alerts (need a scheduler).
-- Module events: OCR done / failed, extraction to confirm, policy flags, fraud, summary ready.
+- Module events: OCR done / failed, extraction to confirm or failed (AI extraction is built, with no alert), policy flags, fraud, summary ready.

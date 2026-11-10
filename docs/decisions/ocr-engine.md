@@ -14,7 +14,10 @@ OCR runs locally with PaddleOCR (3.7.0), not the Claude Vision API. Output is ra
 ## Why (inferred)
 Running locally means no document leaves the machine. That avoids the external-model restrictions still pending in Q-04, and it costs nothing per call.
 
+## Since 2026-11-09
+Field mapping is built: the worker sends the OCR text lines (never the file) to the Claude API, the values go to a staging table, and the AO (or the CI for NFIS / TU) confirms them. See `ai-extraction.md`.
+
 ## Still to come
-- Mapping OCR lines to form fields.
-- The staging table and human confirmation step (hard rule 4, F15, Q-06).
-- Whether a vision LLM is still used for mapping is not decided.
+- ~~Mapping OCR lines to form fields.~~ Built 2026-11-09 (`ai-extraction.md`).
+- ~~The staging table and human confirmation step.~~ Built 2026-11-09 (`extraction_runs` / `extraction_fields`, `ai-extraction.md`).
+- ~~Whether a vision LLM is still used for mapping is not decided.~~ A text model labels the OCR lines; no vision model sees the file.

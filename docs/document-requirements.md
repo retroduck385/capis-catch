@@ -78,3 +78,5 @@ Source: `required_documents()` and `required_document_min()` in `catch/supabase/
 **"Always" items not enforced in code:** proof of marital status, Letter of Authorization for CI, Miscellaneous items (PSA birth certificate, CENOMAR, PSA marriage certificate), developer requirements. Mortgagor and attorney-in-fact have no document requirements.
 
 **What matches:** two valid IDs; SPA for OFW and seafarer; ITR above P3M for self-employed; upload limit 10 MB (JPEG, PNG, PDF only).
+
+**After submission** (branch `feature/deferral-loop`): the applicant uploads only the documents the assigned AO names in a document request, with the same file rules. A requested checklist document needs the files still missing (at least one); an "Other" document needs one. See `decisions/document-requests.md`.

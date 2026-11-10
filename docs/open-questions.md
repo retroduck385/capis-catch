@@ -7,8 +7,8 @@ Found by comparing the diagrams (BPMN, Figure 1-3, Appendix L, tracker screensho
 | Group | Items |
 |---|---|
 | 1. Blocks Sprint 0 | Q-04, Q-05 |
-| 2. Needed before a later sprint | Q-06, Q-07, Q-11 (verified threshold), Q-14 (caps), Q-15 (seafarer), Q-16, Q-17, Q-18 (effective date), Q-19 to Q-21, Q-25, Q-26, Q-28, Q-38, Q-39 (CI Field), Q-40 |
-| Decided by implementation | Q-01, Q-02, Q-03, Q-08, Q-09 (structure only), Q-10, Q-12, Q-13, Q-22, Q-23, Q-24, Q-27, Q-41; in part: Q-11, Q-14, Q-15, Q-18, Q-39 |
+| 2. Needed before a later sprint | Q-07, Q-11 (verified threshold), Q-14 (caps), Q-15 (seafarer), Q-16, Q-17, Q-18 (effective date), Q-19 to Q-21, Q-25, Q-26, Q-28, Q-38, Q-39 (CI Field), Q-40 |
+| Decided by implementation | Q-01, Q-02, Q-03, Q-06, Q-08, Q-09 (structure only), Q-10, Q-12, Q-13, Q-22, Q-23, Q-24, Q-27, Q-41; in part: Q-11, Q-14, Q-15, Q-18, Q-39 |
 | Out of scope for now | Q-13's first-reviewer Desk / Field CI request |
 | Decided by the bank | Q-42 (visit 2026-10-26) |
 | 3. Paper edit only, no code impact | Q-29 to Q-37 |
@@ -38,6 +38,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Evidence: P3.2.2.1 says the Data Privacy Officer, IT Risk and Security Department sessions are still to be held, and that they govern RBAC rules and external model calls. P3.2.2.4: only synthetic documents may be sent to the external vision model.
 - Suggested: build RBAC and audit generically now; hold anything that sends data to an external model until the sessions confirm the rules. Enforce a "synthetic data only" flag in Sprint 0 configuration.
 - Note 2026-10-29: applicant SMS (Semaphore) and email (Brevo) send the phone number, email, outcome and reason to an external provider. The notice worker stays in log mode, and live mode only reaches an allowlist of the team's own numbers and addresses, until these sessions clear it.
+- Note 2026-11-11: a live email test (2026-11-09) sent one email through Brevo to a team address. AI extraction (2026-11-09) sends the OCR text of uploaded documents to the Claude API (Anthropic); only synthetic documents may be used until these sessions clear it (`decisions/ai-extraction.md`). Document requests send the requested document names by SMS / email. Public repo NDA review pending.
 
 **Q-05. Where does "pre-approval" end?**
 - Evidence: P1.7.3 excludes release, servicing and collections and the BPMN ends at approval. The Home Loan Tracker has RED Endorsement, Clearance, Booking, Release and Lock tabs; App. G maps the flow to first release; the checklist has post-approval sections; App. G says its confirmed scope was "up to first release".
@@ -54,9 +55,10 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 ## 2. Needed before a later sprint
 
 ### Sprint 1 (Digital Intake and Agentic Document Processing)
-**Q-06. Intake channel and who confirms extracted values.**
+**DECIDED. Q-06. Intake channel and who confirms extracted values.**
 - Evidence: P1.4.2.1 says the "Account Officer or Applicant" verifies OCR output; Sprint 1, P3.2.4.2 and App. L say the Account Officer. The current CAF form is AO-only, with 2 x 10 file slots and a 10 MB limit (App. C/D).
 - Suggested: AO confirms every extracted field (HITL #1). Reuse the form's limits as validation rules.
+- **Decided by implementation, 2026-11-09 (recorded 2026-11-11):** the assigned AO confirms the AI values of applicant documents (`confirm_extraction()`); any active CI confirms those of CI reports (NFIS, TU) while the file is in Credit Investigation (`confirm_ci_extraction()`). The applicant never confirms. See `decisions/ai-extraction.md`.
 
 **Q-07. Extraction target schema.**
 - Evidence: the KYC tab already has Extracted / Corrected / Remarks / Finalized columns and a documented manual LLM extraction routine with a fixed prompt (data-fields.md). App. J says an LLM was tried by one team member and not adopted (see Q-35).
@@ -128,6 +130,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 **Q-14. Ratio names, definitions and thresholds.**
 - Evidence: P1.4.1 / 1.4.2.5 use DTI and DBR; P1.4.3 lists LTV, AMD, DBR; Sprint 3 lists LTV, DBR and Amortization-to-Net-Income as three ratios; P2.1.2.6 says DBR = Amortization-to-Net-Income Ratio; the Cashflow tab shows LCR, AV, DBR; interviews say DPR and "loan-to-collateral ratio". No cap or maximum values appear anywhere. Sprint 3 makes computation a Credit Officer tool; P1.4.3 calls it a silent background overlay.
 - Suggested: implement DBR (= amortization / net income) and LTV (loan / appraised value), label LCR as the same as LTV only after the bank confirms, and drop DTI from the UI. Make thresholds configuration.
+- Note 2026-11-11: `mrac-service/OPEN_QUESTIONS.md` lists questions for the bank found while loading the policy documents, including the DBR basis (gross vs net income).
 - **Decided by implementation, 2026-10-21 (names and definitions):** the FP computes **DBR** = (new monthly amortization + existing monthly amortizations with more than 6 months left) / Total Gross Income (D) of all borrowers, and **LCR** = loan amount / appraised value (or the selling price / TCP when no appraisal is entered). DTI and LTV are not used. See `computations.md`. **Still open:** cap values. Thresholds appear only as credit-score bands (Q-22).
 
 **DECIDED IN PART. Q-15. Meaning of 80 % / 90 %, and the seafarer factor.**
@@ -152,14 +155,17 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 **Q-19. What happens when an application fails MRAC?**
 - Evidence: P2.1.2.4 says automatic decline. P1.4.2.3, Figure 3 and Sprint 4 say flag only. App. J: an approver may recommend adjusted terms instead.
 - Suggested: flag only, never auto-decline, matching Sprint 4. Record the outcome as a human decision.
+- Note 2026-11-11 (not a decision): the MRAC check built on main (`decisions/mrac-rag.md`) only suggests, with citations; it never writes exceptions or decisions.
 
 **Q-20. Who reviews policy flags (HITL #2)?**
 - Evidence: Appendix L: Account Officer. P3.2.4.2: Credit Officer. P1.4.2.3: senior approvers or committees. P1.4.1: Credit Evaluators.
 - Suggested: the Credit Officer reviews flags at evaluation, and unresolved exceptions escalate to the approval tier. Correct Appendix L. Requires Q-01.
+- Note 2026-11-11 (not a decision): as built, the assigned CO runs the check and adopts suggested exceptions into FP V. Exception/s; adopted exceptions raise the approval authority one step.
 
 **Q-21. MRAC and policy content.**
 - Evidence: not yet handed over; P1.7.3 and P3.2.4.3.5 give a fallback (rules-based checker on criteria in interviews). Examples given without values: minimum age, income thresholds, tenure, debt caps. Interviews add: 70 % house completion, alternative proof for residence verification.
 - Suggested: hold Sprint 4 retrieval until turnover; the rules checker needs a written rule list from the bank. Track turnover as a dependency.
+- Note 2026-11-11: policy documents were received and loaded into the vector store as draft passages; the MRAC criteria are loaded disabled until credit policy enables them (`decisions/mrac-rag.md`). Public repo NDA review pending.
 
 **DECIDED. Q-22. Credit scoring scope and criteria.**
 - Evidence: F10 includes a "Scoring Component"; interviews describe a manual score mapped to a risk classification and recommended loan amount; the older automated tool was abandoned; the Credit_Score tab shows only its header.
@@ -172,6 +178,7 @@ Sprint 0 delivers the schema, role-based access, audit trail, agent runtime and 
 - Suggested: Approve, Reject (with reason code), Defer, Refer, matching Sprint 5, and keep "endorse / not endorse" as the evaluator's recommendation.
 - **Decided by implementation, 2026-10-13:** `application_status` has APPROVED, REJECTED, DEFERRED. Refer is not modeled. No approver action or screen is built yet.
 - **Decided by implementation, 2026-10-21:** the CO's recommendation is built as `financial_packages.credit_result`: ENDORSED, NOT_ENDORSED, DEFERRED, with a required justification. Approvers have a read-only summary page; their decision is still not built.
+- **Built 2026-11-10** (`20261110_approver_decision.sql`): approvers Approve, Approve with conditions or Disapprove (status APPROVED / REJECTED). No Defer (user, 2026-11-11: deferral happens at the AO, CO and reviewer steps), no Refer. See `approval-rules.md`.
 
 **DECIDED. Q-24. Approval tiers beyond Stage 1 and Stage 2.**
 - Evidence: only the P3.0M and P5.0M bands are printed. Nothing for above P5.0M or for deviations above P3.0M. "CRMD" and "RPS" are undefined. "Refer / Escalate" names Senior Credit Committee or Board level, which do not match the tracker tiers.

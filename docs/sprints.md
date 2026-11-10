@@ -39,6 +39,14 @@ Why this order: intake is first because every module consumes its data; the dash
 ## Timeline
 Capstone 1 requirements due Week 12, final requirements Week 14. Capstone 2 January sprints, then evaluation through February, final documents Week 14.
 
+## As built (2026-11-11, compared with the plan above)
+- Sprint 1: applicant portal, checklist and submission gate; PaddleOCR plus Claude text extraction into staging with AO / CI confirmation (`decisions/ai-extraction.md`). Deficiency notice: built as the AO's document request (branch `feature/deferral-loop`, `decisions/document-requests.md`), without links.
+- Sprint 2: FIFO work tray, stage moves to Decided, notifications, staff messages. No LangGraph routing.
+- Sprint 3: DBR, LCR, amortization and income per borrower; AMD and seafarer rules not built.
+- Policy turnover: policy documents received and loaded into Supabase pgvector (not Chroma).
+- Sprint 4: MRAC check and policy questions, cited, suggestion only; criteria disabled until credit policy enables them (`decisions/mrac-rag.md`).
+- Sprint 5: approver decision built; turnaround dashboard partly (work tray counts on track / near / beyond; TAT values are placeholders, Q-09; no alerts).
+
 ## Not yet started (per the paper)
 Phase 3 system analysis: RTM, to-be BPMN, agent specifications, ERD, wireframes. Sec. 3.2.3.4 says "Phase/Activities not yet started." Sprint 0 depends on the ERD.
 

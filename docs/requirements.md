@@ -113,6 +113,8 @@ Gap: Module 5's transcript, routing links and decision controls (1.4.2.5) have n
 - RAG on LangChain with a local Chroma store; only policy text is embedded, never applicant data.
 - Standalone prototype: no live connection to the bank's production systems. Rules are architected around the bank's legacy credit scoring parameters.
 
+**As built (2026-11-11):** no LangGraph or FastAPI yet. Extraction: local PaddleOCR plus the Claude API on the OCR text only (`decisions/ocr-engine.md`, `decisions/ai-extraction.md`), not Claude Vision. RAG: Supabase pgvector (`policy_chunks`) with full-text search, worked by `mrac-service/`, not Chroma; still policy text only (`decisions/mrac-rag.md`). Applicant SMS / email: Semaphore / Brevo through `notice-service/` (`decisions/applicant-notices.md`).
+
 ## Constraints
 - Synthetic documents only. No real borrower data is used in development or evaluation (3.2.2.4).
 - The policy manuals and MRAC are confidential and due during development. If they are not machine-readable by Sprint 4, ship the rules-based checker and defer retrieval (1.7.3; Q-21).

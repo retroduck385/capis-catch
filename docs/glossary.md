@@ -76,7 +76,9 @@ Only terms that appear in the documents. "(not defined)" = used but never expand
 ## Technology and method
 | Term | Meaning |
 |---|---|
-| Agentic OCR | Vision-model extraction (Claude Vision API) with layout parsing, orientation correction and field extraction |
+| Agentic OCR | Vision-model extraction (Claude Vision API) with layout parsing, orientation correction and field extraction. As built: local PaddleOCR, then the Claude API labels the text lines (`decisions/ai-extraction.md`) |
+| Document request | The AO's "What we need" message to the applicant after submission, with the documents to upload (`decisions/document-requests.md`) |
+| pgvector | The Postgres vector extension that holds the policy passages for RAG (replaces the paper's Chroma) |
 | DSR / DSRM | Design Science Research / Design Science Research Methodology |
 | DTS | Document Tracking System |
 | FIFO | First-In, First-Out |

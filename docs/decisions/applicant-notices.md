@@ -1,6 +1,6 @@
 # Applicant outcome notices
 
-Date: 2026-10-29. Status: decided (the bank's answers to Q-42, visit 2026-10-26; user answers 2026-10-29) and built. Covers the decision and deferral notices, and F5 in part (SMS / email without links).
+Date: 2026-10-29. Status: decided (the bank's answers to Q-42, visit 2026-10-26; user answers 2026-10-29) and built. Covers the decision and deferral notices, and F5 in part (SMS / email without links). Updated 2026-11-11: live email test (2026-11-09), the approver decision (2026-11-10) and the fixes on `fix/notification-fixes`; deferral is now told with a document request (`document-requests.md`).
 
 ## Decided
 - **The assigned AO sends the outcome notice**, never the system. Only once the status is APPROVED, REJECTED or DEFERRED. No head override.
@@ -9,9 +9,10 @@ Date: 2026-10-29. Status: decided (the bank's answers to Q-42, visit 2026-10-26;
 - **What the applicant sees:** the outcome only after its notice; until then "Under review". FOR_CLARIFICATION stays "Incomplete submission". Submitted / Under review / Incomplete notices stay automatic; the automatic decision / deferral notices are removed.
 - **Channels:** in-app at once (`APPLICANT_OUTCOME`), SMS and email queued. Principal borrower only: their mobile; their email, else the login email. Staff notifications stay in-app.
 - **No links of any kind** in any channel. `send_applicant_notice()` refuses a reason with http(s)://, www., an email address or a name ending in a common top-level domain, and names the part; "St.Francis" / "Brgy.Malate" pass. The worker checks again before sending. Email is plain text. Sender name "CATCH", never the bank's name; no names or amounts in the text.
-- **Reason suggestions** (shown to the AO only, never pre-filled): FP V. Exceptions policy, the CO's justification and deferrals, KYC checks marked Needs clarification, required documents not uploaded. Nothing records an approver's reason or a policy flag yet (no approver step, no RAG / MRAC).
+- **Reason suggestions** (shown to the AO only, never pre-filled; "Use this" puts one in the editable box): FP V. Exceptions policy, the CO's justification and deferrals, KYC checks marked Needs clarification, required documents not uploaded. Since 2026-11-11 (`20261111_notification_fixes.sql`): for Rejected, the approver's reason for disapproving comes first and the CO's justification is no longer offered (it argued for the CO's own result, e.g. "Endorsed"); for Approved, the conditions of an "Approve with conditions" are offered as an optional suggestion, never added by themselves. A CO-adopted MRAC suggestion reaches the Rejected suggestions through FP V. Exceptions.
 - **Providers:** Semaphore for SMS, Brevo for email (free plan, single verified sender, because the group has no domain). Keys only in `notice-service/.env`.
 - **Live sending waits for Q-04** (the Data Privacy sessions): the worker runs in log mode (prints, sends nothing). Live mode only reaches `NOTICE_LIVE_ALLOWLIST` (the team's own numbers and addresses) until Q-04 clears.
+- **SMS is optional in live mode** (PR #5, 2026-11-09): with `SEMAPHORE_API_KEY` empty, live mode sends email only and SMS rows are LOGGED. Each claimed batch is sent oldest first.
 - **No new staff notification** when the AO sends; the notice and its delivery status show in the loan folder.
 
 ## Built
@@ -19,11 +20,14 @@ Date: 2026-10-29. Status: decided (the bank's answers to Q-42, visit 2026-10-26;
 - Front end: `src/pages/applicantNotices/` (the AO's panel), `src/pages/notifications/applicantStatusLabel.jsx`; one import and one line in `loanFolderPage.jsx`; the label lines in `applicantHomePage.jsx`.
 - `notice-service/`: Python worker (`worker.py`, `providers.py`), `--preview`, `--once`, log / live modes.
 - Tested: 159 PGlite checks, 15 offline worker tests; click test 2026-10-29 in the shared project (worker step skipped: needs the service role key).
+- **Live email test, 2026-11-09:** live mode with an allowlist; the email was SENT through Brevo to a team address, the SMS was LOGGED (no Semaphore key). Emails land in spam until a team-owned domain is authenticated in Brevo (the free plan's single verified sender has no domain authentication).
+- 2026-11-10 (main, `20261110_approver_decision.sql`): the approver decision sets APPROVED / REJECTED, so `applicant_outcomes` gets real rows and the AO's panel appears. Nothing sets DEFERRED (approvers only approve or disapprove), so the Deferred notice path is dormant; deferral is told with a document request (`document-requests.md`).
 
 ## Watch out
 - Re-running `20261024_notifications.sql` puts its old status buckets, applicant kinds and switch rows back: run `20261029_applicant_notices.sql` again after it.
-- Nothing sets APPROVED / REJECTED / DEFERRED yet. The click test set them by SQL on a synthetic application. When the approver decision is built, no change is needed here: the notice depends only on the status and the AO assignment.
-- Since 2026-11-08 a file can reach Approval (CI Done, reviewer sign-off), but it stops there: FOR_APPROVAL is still "Under review" for the applicant, and the AO's panel still has no outcome to send.
+- ~~Nothing sets APPROVED / REJECTED / DEFERRED yet.~~ Since 2026-11-10 the approver decision sets APPROVED / REJECTED; DEFERRED stays unset by design.
+- Re-running `20261029_applicant_notices.sql` puts back its own `notice_reason_suggestions()` and `applicant_visible_status()`: run `20261111_notification_fixes.sql` and `20261112_document_requests.sql` again afterwards.
+- Request messages (`document-requests.md`) are `applicant_notices` rows too (outcome `DOCUMENTS_NEEDED`); the outcome panel hides them.
 
 ## Still to come
-- Live SMS / email (after Q-04), item-level deficiency notices (F5), the approver's policy-reason code as a reason source (1.4.2.5), RAG policy flags as a source (Q-19, Q-20).
+- Live SMS / email (after Q-04; a team-owned domain authenticated in Brevo so email stops landing in spam), item-level deficiency notices (F5), the approver's policy-reason code as a reason source (1.4.2.5; today the free-text disapproval reason is offered), raw RAG policy flags as a source (Q-19, Q-20; today only flags the CO adopted).
