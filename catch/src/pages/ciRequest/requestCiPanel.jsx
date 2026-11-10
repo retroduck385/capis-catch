@@ -7,6 +7,7 @@ import { whenOf } from '../loanFolder/options';
 import { requestCi } from './api';
 import { buildCiRequest, missingFields } from './buildRequest';
 import CiRequestForms from './ciRequestForms';
+import useIdDetails from './useIdDetails';
 import { CiResultsView } from './ciResults';
 import './ciRequest.css';
 
@@ -15,7 +16,8 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
     const [tuRemarks, setTuRemarks] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const missing = useMemo(() => missingFields(buildCiRequest(app)), [app]);
+    const idDetails = useIdDetails(app);
+    const missing = useMemo(() => missingFields(buildCiRequest(app, idDetails)), [app, idDetails]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -53,7 +55,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                             Fix {missing.length === 1 ? 'it' : 'them'} in the KYC sections so the request can be accommodated.</span>
                     </p>
                 )}
-                <CiRequestForms app={app} />
+                <CiRequestForms app={app} idDetails={idDetails} />
                 <section className="lf-card" aria-label="Remarks">
                     <div className="lf-cardhead"><h2>Your remarks</h2></div>
                     <div className="ci-cols">
@@ -81,7 +83,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                 </div>
                 <p className="ci-note">
                     Filled in from the application. Fix any "Missing" value in its section before sending.
-                    ID type, number and expiry follow once ID reading is set up.
+                    ID type, number and expiry come from the Valid IDs you confirm on the document check page.
                 </p>
             </section>
 
@@ -99,7 +101,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                 <p className="lf-note"><CheckCircle2 size={16} aria-hidden="true" /><span>Everything the forms need is filled in.</span></p>
             )}
 
-            <CiRequestForms app={app} />
+            <CiRequestForms app={app} idDetails={idDetails} />
 
             <form onSubmit={handleSubmit} className="lf-card ci-send" aria-label="Send the CI request">
                 <div className="lf-cardhead"><h2>Send to the Credit Investigator</h2></div>

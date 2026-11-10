@@ -20,6 +20,24 @@ export const fetchCiRequests = async (applicationId) =>
     check(await supabase.from('ci_requests').select('*')
         .eq('application_id', applicationId).order('requested_at').order('id')) ?? [];
 
+// ID type / number / expiry of each Valid ID document, from its AO-confirmed (locked) AI extraction only
+// (20261109_ai_extraction.sql). Returns { [documentId]: { id_type, id_number, expiry_date } }; documents
+// without a confirmed extraction are left out.
+export const fetchConfirmedIdDetails = async (documentIds) => {
+    if (documentIds.length === 0) return {};
+    const ocrRuns = check(await supabase.from('ocr_runs').select('id, document_id').in('document_id', documentIds)) ?? [];
+    if (ocrRuns.length === 0) return {};
+    const runs = check(await supabase.from('extraction_runs')
+        .select('ocr_run_id, extraction_fields ( field_key, final_value )')
+        .in('ocr_run_id', ocrRuns.map((r) => r.id))
+        .not('confirmed_at', 'is', null)) ?? [];
+    const docOfOcr = Object.fromEntries(ocrRuns.map((r) => [r.id, r.document_id]));
+    return Object.fromEntries(runs.map((run) => [
+        docOfOcr[run.ocr_run_id],
+        Object.fromEntries((run.extraction_fields ?? []).map((f) => [f.field_key, f.final_value])),
+    ]));
+};
+
 // ---------- CI results ----------
 
 // True for any active Credit Investigator while the application is in Credit Investigation

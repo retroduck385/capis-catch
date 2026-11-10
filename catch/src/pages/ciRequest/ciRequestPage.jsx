@@ -12,6 +12,7 @@ import { whenOf } from '../loanFolder/options';
 import { fetchCiCanEdit, fetchCiRequests } from './api';
 import { buildCiRequest, missingFields, peso } from './buildRequest';
 import CiRequestForms from './ciRequestForms';
+import useIdDetails from './useIdDetails';
 import { CiResultsEditor, CiResultsView } from './ciResults';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
@@ -74,7 +75,8 @@ const CiRequestPage = () => {
         }
     };
 
-    const built = useMemo(() => (app ? buildCiRequest(app) : null), [app]);
+    const idDetails = useIdDetails(app);
+    const built = useMemo(() => (app ? buildCiRequest(app, idDetails) : null), [app, idDetails]);
     const missing = useMemo(() => (built ? missingFields(built) : []), [built]);
 
     if (loading) return <CiRequestSkeleton />;
@@ -139,7 +141,7 @@ const CiRequestPage = () => {
                 </p>
             )}
 
-            <CiRequestForms app={app} />
+            <CiRequestForms app={app} idDetails={idDetails} />
 
             {request && (
                 <section className="lf-card" aria-label="Remarks">

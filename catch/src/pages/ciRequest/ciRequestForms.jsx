@@ -102,11 +102,17 @@ const TuForm = ({ request }) => (
                     {TU_ROWS.slice(0, 6).map(([label, get, optional]) => (
                         <TuRow key={label} label={label} get={get} optional={optional} people={request.people} />
                     ))}
-                    {ID_ROWS.map((label) => (
+                    {ID_ROWS.map(([label, get, optional]) => (
                         <tr key={label}>
                             <Cell className="ci-party">{label}</Cell>
                             {request.people.map((p) => (
-                                <Cell key={p.key} className="ci-pending">To follow (from uploaded ID)</Cell>
+                                p.idStatus === 'LOADING' || p.idStatus === 'UNCONFIRMED' ? (
+                                    <Cell key={p.key} className="ci-pending">
+                                        {p.idStatus === 'LOADING' ? 'Loading…' : 'Awaiting AO confirmation of the uploaded ID'}
+                                    </Cell>
+                                ) : (
+                                    <Cell key={p.key}><Value optional={optional}>{get(p)}</Value></Cell>
+                                )
                             ))}
                         </tr>
                     ))}
@@ -119,8 +125,9 @@ const TuForm = ({ request }) => (
     </section>
 );
 
-const CiRequestForms = ({ app }) => {
-    const request = buildCiRequest(app);
+// idDetails = useIdDetails(app), shared with the parent's missing-values count
+const CiRequestForms = ({ app, idDetails }) => {
+    const request = buildCiRequest(app, idDetails);
     return (
         <>
             <NfisForm request={request} />
