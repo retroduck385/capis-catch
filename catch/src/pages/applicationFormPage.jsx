@@ -11,6 +11,8 @@ import { buildSteps } from './applicationForm/steps';
 import { Check } from 'lucide-react';
 import ApplicantShell from '../components/applicantShell';
 import { isProfileComplete } from './applicationForm/validators';
+import ApplicantStatusLabel from './notifications/applicantStatusLabel';
+import ApplicantRequestCard from './documentRequests/applicantRequestCard';
 
 // Which steps the applicant has saved at least once (so optional steps can't be skipped unseen)
 const visitedKey = (applicationId) => `catch:visitedSteps:${applicationId}`;
@@ -97,8 +99,9 @@ const ApplicationFormPage = () => {
                         <h1>Application <span className="ct-mono">{app.application_no}</span></h1>
                         <p>{app.submitted_at ? `Submitted ${new Date(app.submitted_at).toLocaleDateString()}` : 'Not submitted'}</p>
                     </div>
-                    <span className="ct-badge">{app.status}</span>
+                    <span className="ct-badge"><ApplicantStatusLabel application={app} /></span>
                 </div>
+                <ApplicantRequestCard applicationId={app.id} />
                 <div className="ct-card">
                     <div className="ct-sheet-body">
                         <ApplicationSummary app={app} />

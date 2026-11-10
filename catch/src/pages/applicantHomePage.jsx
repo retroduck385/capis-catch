@@ -6,6 +6,7 @@ import { fetchProfile, listMyApplications } from './applicationForm/api';
 import { formatPeso } from './applicationForm/options';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
+import ApplicantRequestCard from './documentRequests/applicantRequestCard';
 import { Ghost, RegisterSkeleton } from '../components/skeleton';
 
 const ApplicantHomePage = () => {
@@ -57,6 +58,8 @@ const ApplicantHomePage = () => {
                     {hasDraft ? 'Continue your application' : 'Start a housing loan application'}
                 </button>
             </div>
+
+            <ApplicantRequestCard />
 
             <div className="ct-stats">
                 <div className="ct-stat"><span>Total applications</span><strong>{loaded ? applications.length : <Ghost>00</Ghost>}</strong></div>
