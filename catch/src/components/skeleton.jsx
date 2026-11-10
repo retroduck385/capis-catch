@@ -457,7 +457,7 @@ export const ApplicationFormSkeleton = () => (
                     </div>
                     <div className="ct-box">
                         <span className="ct-label"><T>Loan summary</T></span>
-                        {[['Type', 'Housing loan'], ['Amount', 'PHP 1,000,000'], ['Status', 'Draft']].map(([k, v]) => (
+                        {[['Type', 'Housing loan'], ['Amount', '₱1,000,000.00'], ['Status', 'Draft']].map(([k, v]) => (
                             <div key={k} className="ct-kv"><span><T>{k}</T></span><span><T>{v}</T></span></div>
                         ))}
                     </div>
@@ -497,7 +497,7 @@ export const RegisterSkeleton = () => (
                 <li key={i}>
                     <span className="ct-mono"><T>{APP_NO}</T></span>
                     <span><span className="ct-badge sk-btn">Submitted</span></span>
-                    <span className="amt"><T>PHP 1,000,000</T></span>
+                    <span className="amt"><T>₱1,000,000.00</T></span>
                     <span className="ct-link"><T>View</T></span>
                 </li>
             ))}

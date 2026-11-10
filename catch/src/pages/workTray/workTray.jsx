@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { ASSIGNABLE_ROLES, ASSIGNING_HEADS, REVIEW_ROLES } from '../../roles';
-import { EMPLOYMENT_TYPES } from '../applicationForm/options';
+import { EMPLOYMENT_TYPES, formatPeso } from '../applicationForm/options';
 import { fetchStaffNames } from '../loanFolder/api';
 import { fetchActiveReviewAssignments, fetchSignoffs } from '../review/api';
 import { assignApplication, fetchAssignableStaff, fetchWorkTray, unassignApplication } from './api';
@@ -18,8 +18,6 @@ const employmentLabel = (type) => EMPLOYMENT_TYPES.find((t) => t.value === type)
 
 const SLOT_ID = { ACCOUNT_OFFICER: 'ao_id', CREDIT_OFFICER: 'co_id' };
 const SLOT_NAME = { ACCOUNT_OFFICER: 'ao_name', CREDIT_OFFICER: 'co_name' };
-
-const peso = (n) => `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
 // Tray rows + who each application is routed to for review / approval (VII. Approval):
 // routing = { [application_id]: [{ id, assignee_role, user_id, seq, signedOff }] }, names = { [user_id]: name }
@@ -499,7 +497,7 @@ const WorkTray = () => {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className='wt-amt'>{r.loan_amount != null ? peso(r.loan_amount) : '-'}</td>
+                                        <td className='wt-amt'>{r.loan_amount != null ? formatPeso(r.loan_amount) : '-'}</td>
                                         <td><TatCell row={r} /></td>
                                         {/* Assign / release controls: don't open the folder when using them */}
                                         <td onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
