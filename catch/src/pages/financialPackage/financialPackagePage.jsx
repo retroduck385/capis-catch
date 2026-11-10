@@ -17,6 +17,7 @@ import { fetchReviewAssignments } from '../review/api';
 import { ReturnNotice } from '../review/returnNotice';
 import { fetchAssignedAo, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage } from './api';
 import MessagesPanel from '../messages/messagesPanel';
+import MracPanel from '../mrac/mracPanel';
 import { computeFp, percent } from './compute';
 import '../loanFolder/loanFolder.css';
 import './financialPackage.css';
@@ -100,7 +101,7 @@ const TOC = [
     {
         group: 'Page 1: Recommendation',
         items: [['fp-general', 'General information'], ['fp-i', 'I. Borrower/s highlight'], ['fp-ii', 'II. Facility'],
-            ['fp-iii', 'III. Collateral'], ['fp-iv', 'IV. Credit checking'], ['fp-v', 'V. Exceptions'],
+            ['fp-iii', 'III. Collateral'], ['fp-iv', 'IV. Credit checking'], ['fp-v', 'V. Exceptions'], ['fp-mrac', 'Policy check (MRAC)'],
             ['fp-vi', 'VI. Terms and conditions'], ['fp-vii', 'VII. Approval']],
     },
     {
@@ -337,6 +338,9 @@ const FinancialPackagePage = () => {
                     <CreditCheckingSection app={app} />
                     <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
                         onChange={onList('exceptions')} disabled={disabled} />
+                    <MracPanel app={app} computed={computed} score={score} pricing={form.pricing}
+                        exceptions={form.exceptions} canEdit={canEdit}
+                        onAddException={(row) => onList('exceptions')([...form.exceptions, { _key: crypto.randomUUID(), ...row }])} />
                     <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
                     <ApprovalSection tier={routing.tier} rows={routing.rows} names={routing.names}
                         link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />

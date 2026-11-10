@@ -1,0 +1,11 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+.env
+.venv/
+__pycache__/
+*.pyc
+out/
+Housing-Loan_RAAC.ods
+consumer-credit.pdf
+policy.pdf
+red-operations-manual.pdf
+SAMPLE_DATA.md

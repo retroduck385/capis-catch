@@ -1,0 +1,102 @@
+/* MRAC policy check (Financial Package) and policy search (work tray). Matches the FP section cards (financialPackage.css)
+   and the work tray cards (workTray.css). Scoped to .mrac; unlayered so it wins over the theme's component-layer rules. */
+.mrac {
+  --mrac-ok: #15714a;   --mrac-ok-bg: #e6f5ed;   --mrac-ok-line: #b6e0c8;
+  --mrac-warn: #a8480b; --mrac-warn-bg: #fff1e2; --mrac-warn-line: #f7cfa4;
+  --mrac-bad: #b3261e;  --mrac-bad-bg: #fdeceb;  --mrac-bad-line: #f5bcb8;
+  --mrac-plain: #475569; --mrac-plain-bg: #eef1f6; --mrac-plain-line: #d5dbe6;
+}
+.mrac .ok    { --tone: var(--mrac-ok);    --tone-bg: var(--mrac-ok-bg);    --tone-line: var(--mrac-ok-line); }
+.mrac .warn  { --tone: var(--mrac-warn);  --tone-bg: var(--mrac-warn-bg);  --tone-line: var(--mrac-warn-line); }
+.mrac .bad   { --tone: var(--mrac-bad);   --tone-bg: var(--mrac-bad-bg);   --tone-line: var(--mrac-bad-line); }
+.mrac .plain { --tone: var(--mrac-plain); --tone-bg: var(--mrac-plain-bg); --tone-line: var(--mrac-plain-line); }
+
+/* the FP caps section children at the theme's reading width; this section holds tables and full-width cards */
+.fp .mrac > :not(legend) { max-width: none; }
+
+.mrac-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.mrac-actions .fp-btn, .mrac-actions .mrac-btn { margin-top: 0; }
+.mrac-actions small { color: var(--muted); font-size: 0.85rem; }
+.mrac .mrac-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.5rem; padding: 0.4rem 1.1rem;
+  border: 1px solid var(--blue); border-radius: var(--radius); background: var(--blue); color: #fff;
+  font-weight: 600; font-size: 0.95rem;
+}
+.mrac .mrac-btn:hover:not(:disabled) { background: var(--blue-700); border-color: var(--blue-700); }
+.mrac .mrac-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.mrac .mrac-btn svg { flex: none; }
+.mrac-err { margin: 0.6rem 0 0; color: var(--mrac-bad); font-weight: 600; font-size: 0.92rem; }
+
+/* result banner: overall outcome + reasoning headline */
+.mrac-banner {
+  margin-top: 1rem; padding: 0.85rem 1rem; border: 1px solid var(--tone-line); border-left: 4px solid var(--tone);
+  border-radius: 8px; background: var(--tone-bg);
+}
+.mrac-banner .top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.3rem 1rem; }
+.mrac-banner b { color: var(--tone); font-size: 1.02rem; }
+.mrac-banner time { color: var(--muted); font-size: 0.82rem; }
+.mrac-banner p { margin: 0.35rem 0 0; color: var(--ink); line-height: 1.45; }
+.mrac-notes { margin: 0.6rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.25rem; }
+.mrac-notes li { margin: 0; color: var(--mrac-warn); font-size: 0.85rem; }
+
+.mrac-chip {
+  display: inline-flex; align-items: center; padding: 0.05rem 0.6rem; border-radius: 999px; white-space: nowrap;
+  background: var(--tone-bg); color: var(--tone); border: 1px solid var(--tone-line); font-size: 0.78rem; font-weight: 700;
+}
+
+.mrac-block { margin-top: 1.25rem; }
+.mrac-block > h3 { margin: 0 0 0.5rem; font-size: 0.98rem; }
+.mrac-block > .fp-note { margin-top: -0.25rem; }
+.mrac-list { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; line-height: 1.45; }
+.mrac-list li { margin: 0; }
+.mrac-list .ref { color: var(--muted); font-size: 0.82rem; }
+
+/* criteria table */
+.mrac-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.mrac-table th, .mrac-table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.mrac-table th { background: #fafbfd; color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+.mrac-table td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mrac-table .why { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.82rem; }
+.mrac-table .ref { margin-top: 0.2rem; color: var(--muted); font-size: 0.82rem; }
+
+/* policy passages (citations, approval clauses, search results) */
+.mrac-cite { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; border-left: 3px solid var(--line-strong); background: #fafbfd; border-radius: 0 6px 6px 0; font-size: 0.88rem; }
+.mrac-cite .head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem; font-weight: 600; color: var(--ink); }
+.mrac-cite .meta { color: var(--muted); font-size: 0.8rem; font-weight: 500; }
+.mrac-cite .body { margin-top: 0.3rem; color: #334155; line-height: 1.5; }
+.mrac-cites { margin: 0; padding: 0; list-style: none; }
+.mrac-cites > li { margin: 0; }
+.mrac .mrac-more { margin: 0 0 0 0.35rem; padding: 0; min-height: 0; border: 0; background: none; color: var(--blue-700); font-size: 0.82rem; font-weight: 600; text-decoration: underline; }
+
+/* suggested exceptions */
+.mrac-suggest .fp-sub > p:first-child { margin: 0; font-weight: 600; }
+.mrac-suggest .fp-add { margin-top: 0.7rem; }
+
+/* figures used */
+.mrac-facts { margin-top: 1.25rem; font-size: 0.88rem; }
+.mrac-facts summary { cursor: pointer; color: var(--blue-700); font-weight: 600; }
+.mrac-facts dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.2rem 1.5rem; margin: 0.6rem 0 0; }
+.mrac-facts dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid var(--line); }
+.mrac-facts dt { margin: 0; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+.mrac-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: right; }
+.mrac-disclaimer { margin: 1.1rem 0 0; color: var(--muted); font-size: 0.82rem; font-style: italic; }
+
+/* ---------- policy search card (work tray) ---------- */
+.mrac-ask { padding: 1.15rem 1.35rem 1.3rem; }
+.mrac-ask h2 { margin: 0; font-size: 1.05rem; }
+.mrac-ask > p { margin: 0.25rem 0 0.85rem; color: var(--muted); font-size: 0.9rem; }
+.mrac-ask form { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.mrac.mrac-ask input { flex: 1 1 20rem; min-width: 0; margin-top: 0; min-height: 2.5rem; padding: 0.35rem 0.8rem; font-size: 0.95rem; }
+.mrac-empty { margin: 0.8rem 0 0; color: var(--muted); }
+.mrac-ask .mrac-cites { margin-top: 0.4rem; }
+
+@media (max-width: 640px) {
+  .mrac-table thead { display: none; }
+  .mrac-table, .mrac-table tbody, .mrac-table tr, .mrac-table td { display: block; width: 100%; }
+  .mrac-table tr { padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+  .mrac-table td { border: 0; padding: 0.15rem 0; }
+  .mrac-table td[data-label]::before { content: attr(data-label) ': '; color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+}
+
+/* spacing below the work tray */
+.wt-page > .mrac-ask { margin-top: 1.25rem; }

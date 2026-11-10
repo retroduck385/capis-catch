@@ -1,0 +1,352 @@
+[
+  {
+    "code": "RAAC-AGE-MIN",
+    "label": "Age at application",
+    "section": "Eligibility",
+    "check_type": "auto",
+    "field": "age",
+    "op": ">=",
+    "threshold": 18,
+    "applies_when": [],
+    "options": {
+      "borderline_pct": 0
+    },
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "age",
+    "source_chunk_key": "RAAC-HL-01-AGE",
+    "notes": null
+  },
+  {
+    "code": "RAAC-AGE-MAX",
+    "label": "Age at loan maturity",
+    "section": "Eligibility",
+    "check_type": "auto",
+    "field": "age_at_maturity",
+    "op": "<=",
+    "threshold": 65,
+    "applies_when": [],
+    "options": {
+      "borderline_pct": 0
+    },
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "age at maturity",
+    "source_chunk_key": "RAAC-HL-01-AGE",
+    "notes": "A co-borrower is required if the age requirement is not met (see RAAC-CO-BORROWER)."
+  },
+  {
+    "code": "RAAC-INCOME-SOURCE",
+    "label": "Source of income",
+    "section": "Eligibility",
+    "check_type": "auto",
+    "field": "employment_type",
+    "op": "in",
+    "threshold": [
+      "LOCALLY_EMPLOYED",
+      "LICENSED_PROFESSIONAL",
+      "OFW",
+      "SEAFARER",
+      "PENSIONER",
+      "SELF_EMPLOYED"
+    ],
+    "applies_when": [],
+    "options": {
+      "fail_values": [
+        "UNEMPLOYED"
+      ]
+    },
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "source of income",
+    "source_chunk_key": "RAAC-HL-06-SOURCE-OF-INCOME",
+    "notes": "CATCH also has VIRTUAL_ASSISTANT, COMMISSION_BASED, RENTAL_BUSINESS, PUV_OPERATOR: the RAAC does not name them, so they come out as needs_review until credit policy says how they map. RAAC 'OFW Land-based' = CATCH 'OFW'."
+  },
+  {
+    "code": "RAAC-INCOME-HIGH",
+    "label": "Minimum gross monthly income (loan 1M and above)",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "total_gross_income",
+    "op": ">=",
+    "threshold": 40000,
+    "applies_when": [
+      {
+        "field": "loan_amount",
+        "op": ">=",
+        "value": 1000000
+      }
+    ],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "minimum gross monthly income",
+    "source_chunk_key": "RAAC-HL-10-INCOME",
+    "notes": "Open question: whose income (the principal's or all borrowers combined)? CATCH sends the combined figure."
+  },
+  {
+    "code": "RAAC-INCOME-LOW",
+    "label": "Minimum gross monthly income (loan under 1M)",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "total_gross_income",
+    "op": ">=",
+    "threshold": 30000,
+    "applies_when": [
+      {
+        "field": "loan_amount",
+        "op": "<",
+        "value": 1000000
+      }
+    ],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "minimum gross monthly income",
+    "source_chunk_key": "RAAC-HL-10-INCOME",
+    "notes": null
+  },
+  {
+    "code": "RAAC-DBR",
+    "label": "Debt burden ratio",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "dbr",
+    "op": "<=",
+    "threshold": 0.4,
+    "applies_when": [],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "debt burden ratio",
+    "source_chunk_key": "RAAC-HL-11-DEBT-BURDEN-RATIO",
+    "notes": "RAAC: 40% of GROSS income, housing and auto loans only. Operations Manual s.IV (2020) says NET income. CATCH counts every KYC loan over 6 months. See OPEN_QUESTIONS.md."
+  },
+  {
+    "code": "RAAC-OFW-TENURE",
+    "label": "OFW: at least 1 year as an OFW",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "tenure_years",
+    "op": ">=",
+    "threshold": 1,
+    "applies_when": [
+      {
+        "field": "employment_type",
+        "op": "==",
+        "value": "OFW"
+      }
+    ],
+    "options": {
+      "borderline_pct": 0
+    },
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "OFW employment",
+    "source_chunk_key": "RAAC-HL-07-EMPLOYMENT-STATUS-TENURE",
+    "notes": "The RAAC also asks for 2 years of continuous work experience, local or abroad: not captured by CATCH (see manual check)."
+  },
+  {
+    "code": "RAAC-SELFEMP-YEARS",
+    "label": "Self-employed: business operating at least 3 years",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "business_years",
+    "op": ">=",
+    "threshold": 3,
+    "applies_when": [
+      {
+        "field": "employment_type",
+        "op": "==",
+        "value": "SELF_EMPLOYED"
+      }
+    ],
+    "options": {
+      "borderline_pct": 0
+    },
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "length of business operation",
+    "source_chunk_key": "RAAC-HL-08-LENGTH-OF-BUSINESS-OPERATION",
+    "notes": "Fact not collected by CATCH yet (business verification report)."
+  },
+  {
+    "code": "RAAC-SELFEMP-NIAT",
+    "label": "Self-employed: positive net income after tax",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "net_income_after_tax",
+    "op": ">",
+    "threshold": 0,
+    "applies_when": [
+      {
+        "field": "employment_type",
+        "op": "==",
+        "value": "SELF_EMPLOYED"
+      }
+    ],
+    "options": {
+      "borderline_pct": 0
+    },
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "net income after tax",
+    "source_chunk_key": "RAAC-HL-08-LENGTH-OF-BUSINESS-OPERATION",
+    "notes": "Fact not collected by CATCH yet."
+  },
+  {
+    "code": "RAAC-CO-BORROWER",
+    "label": "Co-borrower required when the principal alone exceeds the DBR",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "borrower_count",
+    "op": ">=",
+    "threshold": 2,
+    "applies_when": [
+      {
+        "field": "dbr_standalone",
+        "op": ">",
+        "value": 0.4
+      },
+      {
+        "field": "employment_type",
+        "op": "!=",
+        "value": "OFW"
+      }
+    ],
+    "options": {
+      "borderline_pct": 0
+    },
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "co-borrower",
+    "source_chunk_key": "RAAC-HL-12-CO-BORROWER-REQUIREMENT",
+    "notes": "OFW land-based borrowers are excluded when there is proof of visits to the Philippines (verify manually). Also required when the age requirement is not met."
+  },
+  {
+    "code": "RAAC-NO-REPLEVIN",
+    "label": "No history of replevin or foreclosure",
+    "section": "Character",
+    "check_type": "auto",
+    "field": "has_replevin_or_foreclosure",
+    "op": "==",
+    "threshold": false,
+    "applies_when": [],
+    "options": {},
+    "hard_stop": true,
+    "enabled": false,
+    "search_hint": "replevin foreclosure",
+    "source_chunk_key": "RAAC-HL-03-NFIS-BMI-DATABASE",
+    "notes": "The RAAC: not allowed regardless of date of report. Fact comes from the CI / NFIS result, not collected by CATCH yet."
+  },
+  {
+    "code": "POLICY-SCORE-ACCEPTABLE",
+    "label": "Credit scorecard at or above the acceptable score",
+    "section": "Credit risk rating",
+    "check_type": "auto",
+    "field": "scorecard_total",
+    "op": ">=",
+    "threshold": 55,
+    "applies_when": [],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "credit score",
+    "source_chunk_key": null,
+    "notes": "The 55 cutoff is taken from creditScore.js ('55-59 Acceptable per RAAC'); no document gives it. Operations Manual s.VII.D: a score below the acceptable score is an exception."
+  },
+  {
+    "code": "RAAC-CITIZENSHIP",
+    "label": "Citizenship",
+    "section": "Eligibility",
+    "check_type": "manual",
+    "prompt": "Filipino resident or non-resident; or a non-Filipino resident (condominium units only) with a permanent / immigrant status shown by the alien certificate of registration.",
+    "applies_when": [],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "citizenship",
+    "source_chunk_key": "RAAC-HL-02-CITIZENSHIP",
+    "notes": null
+  },
+  {
+    "code": "RAAC-NFIS",
+    "label": "NFIS and BMI / bank records",
+    "section": "Character",
+    "check_type": "manual",
+    "prompt": "No derogatory NFIS record and no adverse internal or external finding, unless each record is one of the acceptable cases (see the acceptable-records table).",
+    "applies_when": [],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "nfis and bmi / bank records",
+    "source_chunk_key": "RAAC-HL-03-NFIS-BMI-DATABASE",
+    "notes": null
+  },
+  {
+    "code": "RAAC-EMP-STATUS",
+    "label": "Employment status and tenure",
+    "section": "Capacity",
+    "check_type": "manual",
+    "prompt": "Locally employed: regular and permanent (probationary needs 2 years of continuous work experience, or a supervisory / managerial / skilled technical position with regular status). Seafarers: at least 1 year (officer) or 2 years (non-officer).",
+    "applies_when": [
+      {
+        "field": "employment_type",
+        "op": "in",
+        "value": [
+          "LOCALLY_EMPLOYED",
+          "SEAFARER"
+        ]
+      }
+    ],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "employment status and tenure",
+    "source_chunk_key": "RAAC-HL-07-EMPLOYMENT-STATUS-TENURE",
+    "notes": null
+  },
+  {
+    "code": "RAAC-BUSINESS-REG",
+    "label": "Business registration",
+    "section": "Capacity",
+    "check_type": "manual",
+    "prompt": "The business is DTI or SEC registered.",
+    "applies_when": [
+      {
+        "field": "employment_type",
+        "op": "==",
+        "value": "SELF_EMPLOYED"
+      }
+    ],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "business registration",
+    "source_chunk_key": "RAAC-HL-09-BUSINESS-REGISTRATION",
+    "notes": null
+  },
+  {
+    "code": "RAAC-AIF",
+    "label": "Attorney-in-fact",
+    "section": "Eligibility",
+    "check_type": "manual",
+    "prompt": "If an attorney-in-fact is used: a relative of the principal (or spouse) up to the 2nd degree of consanguinity or affinity, acting only as representative or loan administrator.",
+    "applies_when": [
+      {
+        "field": "employment_type",
+        "op": "in",
+        "value": [
+          "OFW",
+          "SEAFARER"
+        ]
+      }
+    ],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "attorney-in-fact",
+    "source_chunk_key": "RAAC-HL-13-ACCEPTABLE-ATTY-IN-FACT",
+    "notes": null
+  }
+]
