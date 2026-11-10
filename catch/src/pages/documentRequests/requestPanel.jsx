@@ -64,7 +64,8 @@ const RequestView = ({ req, onView }) => (
     </>
 );
 
-const RequestPanel = ({ applicationId }) => {
+// reloadKey: the loan folder passes its KYC checks, so a new check reloads the suggestions
+const RequestPanel = ({ applicationId, reloadKey }) => {
     const [ctx, setCtx] = useState(null);
     const [message, setMessage] = useState('');
     const [picked, setPicked] = useState(null);        // Set of "applicant_id:requirement_type"; null = not initialised
@@ -84,7 +85,7 @@ const RequestPanel = ({ applicationId }) => {
             .then((c) => { if (!cancelled) setCtx(c); })
             .catch(() => { if (!cancelled) setCtx(null); });
         return () => { cancelled = true; };
-    }, [applicationId]);
+    }, [applicationId, reloadKey]);
 
     const checklist = useMemo(() => ctx?.suggestions?.checklist ?? [], [ctx]);
     // Missing documents start ticked

@@ -221,7 +221,8 @@ const LoanFolderPage = () => {
         <div className="lf">
             {header}
             <SendNoticePanel applicationId={app.id} />
-            <RequestPanel applicationId={app.id} />
+            {/* New KYC checks change the suggestions */}
+            <RequestPanel applicationId={app.id} reloadKey={checks} />
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav" aria-label="Loan folder sections">
                     <ol>
