@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchProfile, listMyApplications } from './applicationForm/api';
+import { formatPeso } from './applicationForm/options';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
 import { Ghost, RegisterSkeleton } from '../components/skeleton';
@@ -81,7 +82,7 @@ const ApplicantHomePage = () => {
                             <li key={a.id}>
                                 <span className="ct-mono">{a.application_no ?? 'Draft'}</span>
                                 <span><span className="ct-badge"><ApplicantStatusLabel application={a} /></span></span>
-                                <span className="amt">{a.loan_amount ? `PHP ${Number(a.loan_amount).toLocaleString()}` : ''}</span>
+                                <span className="amt">{a.loan_amount ? formatPeso(a.loan_amount) : ''}</span>
                                 <Link className="ct-link" to={`/applicationFormPage?id=${a.id}`}>
                                     {a.status === 'DRAFT' ? 'Continue' : 'View'}
                                 </Link>

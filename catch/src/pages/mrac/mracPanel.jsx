@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Section } from '../applicationForm/fields';
+import { formatPeso } from '../applicationForm/options';
 import Excerpt from './excerpt';
 import { fetchLatestMracCheck, requestMracCheck, waitForMracRun } from './api';
 import { buildMracFacts } from './facts';
@@ -38,6 +39,16 @@ export const Citations = ({ items, preview }) => (
 );
 
 const show = (v) => (v === null || v === undefined || v === '' ? '—' : String(v));
+// Money facts (same list as mrac-service reasoning.MONEY_FIELDS): ₱ and cents. A requirement like ">= 40000" from an
+// earlier run becomes ">= ₱40,000.00"; anything else is shown as stored.
+const MONEY_FIELDS = new Set(['loan_amount', 'total_gross_income', 'amortization', 'collateral_value', 'net_income_after_tax',
+    'existing_monthly_debt']);
+const isNum = (v) => v !== null && v !== '' && typeof v !== 'boolean' && !Number.isNaN(Number(v));
+const showFact = (field, v) => (MONEY_FIELDS.has(field) && isNum(v) ? formatPeso(v) : show(v));
+const showRequirement = (field, t) => {
+    const m = MONEY_FIELDS.has(field) && typeof t === 'string' ? t.match(/^(<=|>=|<|>|==|!=) (-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)$/) : null;
+    return m ? `${m[1]} ${formatPeso(m[2])}` : show(t);
+};
 
 const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddException }) => {
     const [run, setRun] = useState(null);
@@ -119,8 +130,8 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
                                                         {c.is_example && <> <span className="mrac-chip warn">Example</span></>}
                                                         {c.source_ref && <div className="ref">{c.source_ref}</div>}
                                                     </td>
-                                                    <td className="num" data-label="Value">{show(c.value)}</td>
-                                                    <td className="num" data-label="Required">{show(c.threshold)}</td>
+                                                    <td className="num" data-label="Value">{showFact(c.field, c.value)}</td>
+                                                    <td className="num" data-label="Required">{showRequirement(c.field, c.threshold)}</td>
                                                     <td data-label="Result">
                                                         <span className={`mrac-chip ${tone}`}>{label}</span>
                                                         {c.reason && <p className="why">{c.reason}</p>}
@@ -224,7 +235,7 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
                             <summary>Figures used for this check</summary>
                             <dl>
                                 {Object.entries(run.facts).filter(([key]) => key !== 'schema').map(([key, value]) => (
-                                    <div key={key}><dt>{key}</dt><dd>{show(value)}</dd></div>
+                                    <div key={key}><dt>{key}</dt><dd>{showFact(key, value)}</dd></div>
                                 ))}
                             </dl>
                         </details>

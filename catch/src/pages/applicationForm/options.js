@@ -214,6 +214,9 @@ export const formatMoney = (value, { fixed = true } = {}) => {
     return Number(whole || 0).toLocaleString('en-US') + (cents !== undefined ? `.${cents}` : '');
 };
 
+// A money amount for display: ₱ and 2 decimals (₱1,500,000.00). Display only: the value itself is never changed.
+export const formatPeso = (value) => `₱${formatMoney(value)}`;
+
 // What the user typed ("1,500,000.505") -> plain numeric string with at most 2 decimals ("1500000.50")
 export const parseMoney = (text) => {
     const [whole, ...rest] = String(text).replace(/[^\d.]/g, '').split('.');

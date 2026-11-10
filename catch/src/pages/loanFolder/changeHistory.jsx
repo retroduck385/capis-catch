@@ -1,6 +1,6 @@
 // Changes made to the application after submission (audit_log), newest first.
 // The first "from" value of a field is what the applicant originally submitted.
-import { partyLabel } from '../applicationForm/options';
+import { formatPeso, partyLabel } from '../applicationForm/options';
 
 const TABLE_LABELS = {
     loan_applications: 'Loan details',
@@ -40,10 +40,15 @@ const HIDDEN = new Set(['id', 'application_id', 'applicant_id', 'requirement_id'
     'assigned_by', 'assigned_at', 'unassigned_by', 'assignment_id', 'responded_by']);
 // Columns holding a staff user id: shown by name (`names` must include them)
 const STAFF_FIELDS = new Set(['user_id', 'confirmed_by']);
+// Money columns (numeric(12/14,2)): shown with ₱ and cents
+const MONEY_FIELDS = new Set(['loan_amount', 'gross_monthly_income', 'monthly_rent', 'selling_price', 'monthly_payment',
+    'credit_limit', 'appraised_value', 'other_income', 'amd', 'adb', 'original_loan', 'outstanding_balance', 'amortization']);
 
 const fieldLabel = (key) => (key === 'confirmed_by' ? 'Confirmed by' : STAFF_FIELDS.has(key) ? 'Staff'
     : key.replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase()));
 const show = (value) => (value === null || value === undefined || value === '' ? '—' : String(value));
+const showMoney = (value) => (value === null || value === undefined || value === '' || Number.isNaN(Number(value))
+    ? show(value) : formatPeso(value));
 
 // Whose record a row belongs to (principal, spouse, co-borrower n, ...), when it still exists
 const ownerLabel = (entry, app) => {
@@ -73,7 +78,7 @@ const ChangeHistory = ({ app, entries, names }) => {
                         </p>
                         <ul className="pl-4 text-sm">
                             {fields.map((k) => {
-                                const value = (v) => show(STAFF_FIELDS.has(k) ? names[v] ?? v : v);
+                                const value = (v) => (MONEY_FIELDS.has(k) ? showMoney(v) : show(STAFF_FIELDS.has(k) ? names[v] ?? v : v));
                                 return (
                                     <li key={k}>
                                         {fieldLabel(k)}:{' '}

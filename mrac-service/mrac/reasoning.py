@@ -15,6 +15,11 @@ DISCLAIMER = ("This is a rules-based reading of the bank's written policy to hel
               "decision: only the delegated approving body approves or declines, and exceptions need its approval.")
 
 
+def peso(v: float) -> str:
+    """A money amount as the app shows it: peso sign and cents (₱1,500,000.00)."""
+    return f"₱{v:,.2f}"
+
+
 def fmt_value(field: str, v) -> str:
     if v is None:
         return "not available"
@@ -24,7 +29,7 @@ def fmt_value(field: str, v) -> str:
         if field in RATIO_FIELDS:
             return f"{v * 100:.1f}%".replace(".0%", "%")
         if field in MONEY_FIELDS:
-            return f"PHP {v:,.0f}"
+            return peso(v)
         return (f"{v:,.0f}" if abs(v) >= 1000 else f"{v:g}") + UNITS.get(field, "")
     return str(v)
 

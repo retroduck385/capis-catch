@@ -8,8 +8,9 @@ import { CI_RESULTS } from '../ciRequest/options';
 import { confirmCiExtraction, confirmExtraction } from './api';
 import {
     FORMAT_HINTS, LOW_CONFIDENCE, applicationValue, bankSummary, compareStatus, displayValue, isExpired, isValid,
-    lowestConfidence, needsChoice, payslipSummary, percentOff, tuSummary,
+    lowestConfidence, needsChoice, payslipSummary, percentOff, toNumber, tuSummary,
 } from './compare';
+import { formatMoney } from '../applicationForm/options';
 
 const KIND_LABELS = {
     PASSPORT: 'Passport', DRIVERS_LICENSE: "Driver's License", UMID: 'UMID', PHILSYS_ID: 'PhilSys ID',
@@ -44,6 +45,7 @@ const peso = (n) => displayValue(n, 'AMOUNT');
 const monthLabel = (m) => new Date(`${m}-01T00:00:00`).toLocaleString('en-PH', { month: 'short', year: 'numeric' });
 
 const ValueInput = ({ def, value, onChange, onFocus, readOnly, compact }) => {
+    const [focused, setFocused] = useState(false);
     const cls = `border rounded w-full ${compact ? 'px-1 py-0.5 text-sm' : 'px-2 py-1'} ${readOnly ? 'bg-gray-50' : 'bg-white'}`;
     if (def.data_type === 'SEX') {
         return (
@@ -55,10 +57,15 @@ const ValueInput = ({ def, value, onChange, onFocus, readOnly, compact }) => {
             </select>
         );
     }
+    // Amounts, like the form's money boxes: typed as they are, shown with commas and cents once you leave the box.
+    // Display only: the value kept and confirmed is exactly what was read or typed.
+    const amount = def.data_type === 'AMOUNT' && !focused ? toNumber(value) : null;
     return (
-        <input className={cls} value={value ?? ''} readOnly={readOnly} placeholder={FORMAT_HINTS[def.data_type] ?? ''}
+        <input className={cls} value={amount !== null ? formatMoney(amount) : value ?? ''} readOnly={readOnly}
+            placeholder={FORMAT_HINTS[def.data_type] ?? ''}
             inputMode={['AMOUNT', 'NUMBER'].includes(def.data_type) ? 'decimal' : undefined}
-            onChange={(e) => onChange(e.target.value)} onFocus={onFocus} aria-label={def.label} />
+            onChange={(e) => onChange(e.target.value)} onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+            onBlur={() => setFocused(false)} aria-label={def.label} />
     );
 };
 

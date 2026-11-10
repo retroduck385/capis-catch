@@ -9,6 +9,7 @@ options: borderline_pct (numeric ops, default 5%), fail_values (op 'in': values 
          are 'needs_review' because the policy list does not name them).
 """
 from __future__ import annotations
+from .reasoning import MONEY_FIELDS, peso
 
 OPS = {
     "<=": lambda a, b: a <= b, ">=": lambda a, b: a >= b, "<": lambda a, b: a < b, ">": lambda a, b: a > b,
@@ -76,15 +77,17 @@ def _applies(crit: dict, facts: dict):
     return True, ""
 
 
-def _show(op, th) -> str:
+def _show(op, th, field=None) -> str:
     if isinstance(th, list):
         return f"{op} [{', '.join(str(x) for x in th)}]"
+    if field in MONEY_FIELDS and isinstance(th, (int, float)) and not isinstance(th, bool):
+        return f"{op} {peso(th)}"
     return f"{op} {th:g}" if isinstance(th, float) else f"{op} {th}"
 
 
 def evaluate(crit: dict, facts: dict) -> dict:
     base = {"code": crit["code"], "label": crit["label"], "check_type": crit["check_type"], "field": crit["field"],
-            "threshold": None if crit["check_type"] == "manual" else _show(crit["op"], crit["threshold"]),
+            "threshold": None if crit["check_type"] == "manual" else _show(crit["op"], crit["threshold"], crit.get("field")),
             "hard_stop": crit["hard_stop"], "is_example": crit.get("is_example", False),
             "source_chunk_key": crit.get("source_chunk_key"), "source_chunk_id": crit.get("source_chunk_id")}
     applies, why = _applies(crit, facts)

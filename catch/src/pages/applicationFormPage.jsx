@@ -6,6 +6,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
 import { fetchProfile, getOrCreateDraft, refreshApplication } from './applicationForm/api';
 import ApplicationSummary from './applicationForm/applicationSummary';
+import { formatPeso } from './applicationForm/options';
 import { buildSteps } from './applicationForm/steps';
 import { Check } from 'lucide-react';
 import ApplicantShell from '../components/applicantShell';
@@ -86,7 +87,7 @@ const ApplicationFormPage = () => {
 
     const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || session?.user?.email;
     const initials = (fullName ?? '?').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join('');
-    const loanAmount = app.loan_amount ? `PHP ${Number(app.loan_amount).toLocaleString()}` : 'Not set yet';
+    const loanAmount = app.loan_amount ? formatPeso(app.loan_amount) : 'Not set yet';
 
     if (app.status !== 'DRAFT') {
         return (
