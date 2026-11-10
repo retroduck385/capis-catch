@@ -18,6 +18,7 @@ import KycCheckPanel, { CheckChip, CheckSummary } from './kycCheckPanel';
 import { RESULT_LABELS, whenOf } from './options';
 import MessagesPanel from '../messages/messagesPanel';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
+import RequestPanel from '../documentRequests/requestPanel';
 import './loanFolder.css';
 
 const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
@@ -201,6 +202,7 @@ const LoanFolderPage = () => {
             <div className="lf">
                 {header}
                 <SendNoticePanel applicationId={app.id} />
+                <RequestPanel applicationId={app.id} />
                 {error && <p className="lf-err">{error}</p>}
                 <div className="lf-body"><div className="lf-main">{overview}</div></div>
             </div>
@@ -219,6 +221,7 @@ const LoanFolderPage = () => {
         <div className="lf">
             {header}
             <SendNoticePanel applicationId={app.id} />
+            <RequestPanel applicationId={app.id} />
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav" aria-label="Loan folder sections">
                     <ol>
