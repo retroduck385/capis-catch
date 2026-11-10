@@ -3,7 +3,8 @@
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
 import { LoanFolderSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, ScanText, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, Scale, ScanText, Send } from 'lucide-react';
+import { DSS_ROLES } from '../../roles';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
@@ -137,6 +138,11 @@ const LoanFolderPage = () => {
                     <Link to={`/documentCheckPage?id=${app.id}`} className="lf-btn">
                         <ScanText size={16} aria-hidden="true" />Document check (AI)
                     </Link>
+                    {DSS_ROLES.includes(role) && (
+                        <Link to={`/decisionSupportPage?id=${app.id}`} className="lf-btn">
+                            <Scale size={16} aria-hidden="true" />Decision support
+                        </Link>
+                    )}
                     <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">
                         Financial package<ArrowRight size={16} aria-hidden="true" />
                     </Link>

@@ -4,6 +4,10 @@ export const homePathFor = (role) => (role === 'APPLICANT' ? '/applicantHomePage
 export const STAFF_ROLES = ['ACCOUNT_OFFICER', 'CREDIT_INVESTIGATOR', 'DISPATCH_ADMIN',
     'CREDIT_OFFICER', 'REVIEWER', 'APPROVER', 'DEPT_HEAD'];
 
+// Can open the Decision Support page: every staff role except the Credit Investigator
+// (mirrors the "read mrac runs" policy in 20261111_decision_support.sql)
+export const DSS_ROLES = STAFF_ROLES.filter((r) => r !== 'CREDIT_INVESTIGATOR');
+
 // Can assign / reassign / unassign any AO or CO (mirrors is_assigning_head() in the DB)
 export const ASSIGNING_HEADS = ['DISPATCH_ADMIN', 'REVIEWER', 'APPROVER', 'DEPT_HEAD'];
 
