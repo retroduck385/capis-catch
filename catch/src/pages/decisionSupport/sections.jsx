@@ -10,10 +10,14 @@ import { one } from '../applicationForm/api';
 import { CiResultsView } from '../ciRequest/ciResults';
 import { percent } from '../financialPackage/compute';
 import { CATEGORIES } from '../financialPackage/creditScore';
-import MracResult from '../mrac/mracResult';
+import { ROLE_LABELS } from '../../roles';
+import { showFact, showRequirement, STATUS } from '../mrac/labels';
+import MracResult, { Citation } from '../mrac/mracResult';
 import { ApprovalProgress } from '../review/approvalParts';
 import { ReviewProgress } from '../review/reviewParts';
 import RoutingSummary from '../review/routingSummary';
+import { READY } from './readiness';
+import './decisionSupport.css';
 
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
@@ -24,6 +28,152 @@ const Info = ({ label, children, wrap = false }) => (
     </div>
 );
 const Text = ({ label, value }) => (blank(value) ? null : <Info label={label} wrap>{value}</Info>);
+
+// ---- DSS-10: readiness for decision ----
+const READY_CHIP = {
+    [READY.DONE]: ['Done', 'ok'],
+    [READY.MISSING]: ['Missing', 'warn'],
+    [READY.CHECK]: ['Check', 'warn'],
+};
+
+export const Readiness = ({ ctx }) => {
+    const { readiness, names, aoId, coId } = ctx;
+    const ownerOf = (role) => {
+        const person = role === 'ACCOUNT_OFFICER' ? names[aoId] : role === 'CREDIT_OFFICER' ? names[coId] : null;
+        return `${ROLE_LABELS[role] ?? role}${person ? ` (${person})` : ''}`;
+    };
+    return (
+        <Section id="ds-readiness" title={`Readiness for decision (${readiness.readyCount} of ${readiness.total})`} className="mrac ds">
+            <div className={`mrac-banner ${readiness.ready ? 'ok' : 'warn'}`}>
+                <div className="top">
+                    <b>{readiness.ready ? 'Everything a decision needs is in place' : 'Not everything a decision needs is in place yet'}</b>
+                </div>
+                <p>
+                    {readiness.ready
+                        ? 'Each input below is present. The evaluator will not find a missing piece.'
+                        : `${readiness.total - readiness.readyCount} of ${readiness.total} items still need attention; each shows what is missing and who owns it.`}
+                </p>
+            </div>
+            <ul className="ds-ready">
+                {readiness.items.map((item) => {
+                    const [chip, tone] = READY_CHIP[item.state];
+                    return (
+                        <li key={item.key} className={tone}>
+                            <span className={`mrac-chip ${tone}`}>{chip}</span>
+                            <div className="body">
+                                <b>{item.label}</b>
+                                <p>{item.detail}</p>
+                                <small>
+                                    {item.state === READY.DONE ? 'Owner' : 'Waiting on'}: {ownerOf(item.owner)}
+                                    {item.to && item.state !== READY.DONE && (
+                                        <> · <Link to={item.to}>{item.action}<ArrowRight size={12} aria-hidden="true" /></Link></>
+                                    )}
+                                </small>
+                            </div>
+                        </li>
+                    );
+                })}
+            </ul>
+            <p className="fp-note">
+                This is a checklist of what is present, not a block: the stage rules still decide what can move forward.
+            </p>
+        </Section>
+    );
+};
+
+// ---- DSS-11: exception highlights ----
+const TONE_OF = { fail: 'bad', needs_review: 'warn' };
+
+export const ExceptionHighlights = ({ ctx }) => {
+    const { mrac, mracChanges, exceptions } = ctx;
+    const done = mrac?.status === 'DONE';
+    const criteria = done ? mrac.result?.criteria ?? [] : [];
+    const flagged = [...criteria.filter((c) => c.status === 'fail'), ...criteria.filter((c) => c.status === 'needs_review')];
+    const failCount = criteria.filter((c) => c.status === 'fail').length;
+    const reviewCount = criteria.length - failCount - criteria.filter((c) => c.status === 'pass').length;
+    const manual = done ? mrac.result?.manual_checks ?? [] : [];
+
+    let tone = 'ok';
+    let headline = 'No criteria fail or need review';
+    if (!done) {
+        tone = 'warn';
+        headline = 'No policy check to draw highlights from yet';
+    } else if (failCount > 0) {
+        tone = 'bad';
+        headline = `${failCount} ${failCount === 1 ? 'criterion fails' : 'criteria fail'}${reviewCount ? ` and ${reviewCount} need${reviewCount === 1 ? 's' : ''} review` : ''}`;
+    } else if (reviewCount > 0) {
+        tone = 'warn';
+        headline = `${reviewCount} ${reviewCount === 1 ? 'criterion needs' : 'criteria need'} review`;
+    }
+
+    return (
+        <Section id="ds-highlights" title={`Exception highlights (${flagged.length + exceptions.length})`} className="mrac ds">
+            <div className={`mrac-banner ${tone}`}>
+                <div className="top"><b>{headline}</b></div>
+                <p>
+                    {exceptions.length} {exceptions.length === 1 ? 'exception is' : 'exceptions are'} recorded in the Financial Package
+                    {manual.length > 0 ? `; ${manual.length} ${manual.length === 1 ? 'item is' : 'items are'} for the underwriter to verify from the documents` : ''}.
+                </p>
+            </div>
+
+            {!done && (
+                <p className="fp-empty">
+                    The highlights come from the policy check. Until the Credit Officer runs one, only the recorded
+                    exceptions below are known.
+                </p>
+            )}
+            {done && mracChanges.length > 0 && (
+                <p className="lf-note warn">
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <span>The figures changed after the check ({mracChanges.join(', ')}); these highlights may be out of date.</span>
+                </p>
+            )}
+
+            {flagged.length > 0 && (
+                <ul className="ds-flags">
+                    {flagged.map((c) => {
+                        const [label] = STATUS[c.status] ?? [c.status];
+                        const flagTone = TONE_OF[c.status] ?? 'plain';
+                        return (
+                            <li key={c.code} className={flagTone}>
+                                <div className="head">
+                                    <span className={`mrac-chip ${flagTone}`}>{label}</span>
+                                    <b>{c.label}</b>
+                                </div>
+                                <p className="figs">
+                                    Value: <b>{showFact(c.field, c.value)}</b> · Required: <b>{showRequirement(c.field, c.threshold)}</b>
+                                </p>
+                                {c.reason && <p className="why">{c.reason}</p>}
+                                {c.source && (
+                                    <details className="mrac-facts">
+                                        <summary>Policy clause</summary>
+                                        <Citation c={c.source} />
+                                    </details>
+                                )}
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+
+            {exceptions.length > 0 && (
+                <div className="mrac-block">
+                    <h3>Recorded exceptions</h3>
+                    <ul className="mrac-list">
+                        {exceptions.map((x) => (
+                            <li key={x.id}>
+                                <strong>{x.policy ?? 'Policy not stated'}</strong>
+                                {x.exception_recommendation && <> — {x.exception_recommendation}</>}
+                                {x.mitigant && <div className="ref">Mitigant: {x.mitigant}</div>}
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="fp-note"><a href="#ds-exceptions">Full table below (V. Exception/s)</a></p>
+                </div>
+            )}
+        </Section>
+    );
+};
 
 // ---- Policy check (RAG) ----
 export const PolicyCheck = ({ ctx }) => {

@@ -25,6 +25,7 @@ import { STAGE_STATUS_LABELS, stageLabel } from '../workTray/options';
 import MessagesPanel from '../messages/messagesPanel';
 import { fetchDecisionSupport } from './api';
 import { money } from './format';
+import { buildReadiness } from './readiness';
 import { SECTIONS } from './registry';
 import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
@@ -87,10 +88,11 @@ const DecisionSupportPage = () => {
     const nowFacts = buildMracFacts({ app, computed, score, pricing: { interest_rate: app.interest_rate }, exceptions: fp.exceptions });
     const mracChanges = mrac?.status === 'DONE' ? changedFacts(mrac.facts, nowFacts) : [];
 
-    const ctx = {
+    const base = {
         ...data, pkg, computed, score, exceptions, reviewers, approvers, resultLabel, mracChanges,
         reviewState: reviewState(rows, reviews), myId: session?.user?.id,
     };
+    const ctx = { ...base, readiness: buildReadiness(base) };
 
     const visible = SECTIONS.filter((s) => !s.show || s.show(ctx));
     const borrowers = getParties(app, BORROWER_ROLES).map((p) => `${fullName(p)} (${partyLabel(p)})`).join(', ');
@@ -102,6 +104,10 @@ const DecisionSupportPage = () => {
         : [mrac ? (mrac.status === 'FAILED' ? 'Check failed' : 'In progress') : 'Not run', 'warn'];
 
     const metrics = [
+        {
+            key: 'ready', label: 'Readiness', value: `${ctx.readiness.readyCount} of ${ctx.readiness.total}`,
+            sub: ctx.readiness.ready ? 'Ready for decision' : 'Items missing', tone: ctx.readiness.ready ? 'info' : 'warn',
+        },
         {
             key: 'policy', label: 'Policy check', value: policyLabel,
             sub: mracDone ? (mracChanges.length ? 'Figures changed since' : new Date(mrac.finished_at).toLocaleDateString()) : 'MRAC / RAG',
