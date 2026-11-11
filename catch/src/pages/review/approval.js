@@ -5,6 +5,8 @@
 // From the bank's authority-limit matrix (Josh, 2026-11-08). Positions only, no names; the bank's own
 // unit acronyms are written as generic titles ("Lending Division / Department Head").
 // The matrix is a ladder: with a deviation, the next authority up approves.
+import { formatPeso } from '../applicationForm/options';
+
 const M = 1_000_000;
 
 // Lowest to highest
@@ -67,13 +69,13 @@ export const missingApprovers = (staff, tier) => {
 
 // Loan amount bands (upper bound inclusive); index i = APPROVAL_TIERS[i] without deviation, [i + 1] with
 export const AMOUNT_BANDS = [
-    { max: 3 * M, label: 'Up to ₱3.0M' },
-    { max: 5 * M, label: 'More than ₱3.0M to ₱5.0M' },
-    { max: 10 * M, label: 'More than ₱5.0M to ₱10.0M' },
-    { max: 20 * M, label: 'More than ₱10.0M to ₱20.0M' },
-    { max: 30 * M, label: 'More than ₱20.0M to ₱30.0M' },
-    { max: 50 * M, label: 'More than ₱30.0M to ₱50.0M' },
-    { max: Infinity, label: 'More than ₱50.0M' },
+    { max: 3 * M, label: `Up to ${formatPeso(3 * M)}` },
+    { max: 5 * M, label: `More than ${formatPeso(3 * M)} to ${formatPeso(5 * M)}` },
+    { max: 10 * M, label: `More than ${formatPeso(5 * M)} to ${formatPeso(10 * M)}` },
+    { max: 20 * M, label: `More than ${formatPeso(10 * M)} to ${formatPeso(20 * M)}` },
+    { max: 30 * M, label: `More than ${formatPeso(20 * M)} to ${formatPeso(30 * M)}` },
+    { max: 50 * M, label: `More than ${formatPeso(30 * M)} to ${formatPeso(50 * M)}` },
+    { max: Infinity, label: `More than ${formatPeso(50 * M)}` },
 ];
 
 export const tierLabel = (tier) => APPROVAL_TIERS.find((t) => t.value === tier)?.label ?? null;

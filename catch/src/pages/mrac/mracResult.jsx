@@ -5,7 +5,7 @@
 // Give it key={run.id} so the "added" marks reset when a new check comes in.
 import { useState } from 'react';
 import Excerpt from './excerpt';
-import { OVERALL, show, STATUS } from './labels';
+import { OVERALL, showFact, showRequirement, STATUS } from './labels';
 import './mrac.css';
 
 const pages = (c) => (c.manual_pages?.length ? `p. ${c.manual_pages.join(', ')}` : null);
@@ -68,8 +68,8 @@ const MracResult = ({ run, onAddException }) => {
                                                 {c.is_example && <> <span className="mrac-chip warn">Example</span></>}
                                                 {c.source_ref && <div className="ref">{c.source_ref}</div>}
                                             </td>
-                                            <td className="num" data-label="Value">{show(c.value)}</td>
-                                            <td className="num" data-label="Required">{show(c.threshold)}</td>
+                                            <td className="num" data-label="Value">{showFact(c.field, c.value)}</td>
+                                            <td className="num" data-label="Required">{showRequirement(c.field, c.threshold)}</td>
                                             <td data-label="Result">
                                                 <span className={`mrac-chip ${tone}`}>{label}</span>
                                                 {c.reason && <p className="why">{c.reason}</p>}
@@ -173,7 +173,7 @@ const MracResult = ({ run, onAddException }) => {
                     <summary>Figures used for this check</summary>
                     <dl>
                         {Object.entries(run.facts).filter(([key]) => key !== 'schema').map(([key, value]) => (
-                            <div key={key}><dt>{key}</dt><dd>{show(value)}</dd></div>
+                            <div key={key}><dt>{key}</dt><dd>{showFact(key, value)}</dd></div>
                         ))}
                     </dl>
                 </details>

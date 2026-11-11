@@ -1,6 +1,7 @@
 // What the AI read from a document vs what the applicant typed in, plus the checks shown next to each
 // field (low OCR confidence, expired ID) and the per-document summaries (payslip average vs declared
 // income, average monthly deposits, TU credit report vs the declared loans / cards). No Supabase calls here.
+import { formatPeso } from '../applicationForm/options';
 
 // Below this, PaddleOCR wasn't sure of a line: the AO should look at the document closely (P2)
 export const LOW_CONFIDENCE = 0.85;
@@ -39,8 +40,7 @@ export const displayValue = (value, dataType) => {
     if (blank(value)) return '—';
     if (dataType === 'AMOUNT') {
         const n = toNumber(value);
-        return n === null ? String(value)
-            : `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return n === null ? String(value) : formatPeso(n);
     }
     if (dataType === 'SEX') return { MALE: 'Male', FEMALE: 'Female', OTHER: 'Other' }[String(value).toUpperCase()] ?? String(value);
     return String(value);

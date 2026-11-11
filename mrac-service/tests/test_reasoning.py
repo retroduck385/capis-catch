@@ -5,7 +5,7 @@ from pathlib import Path
 from mrac.embeddings import HashEmbedder
 from mrac.reasoning import build, fmt_requirement, fmt_value
 from mrac.retrieval import LocalRetriever, SupabaseRetriever
-from mrac.rules_engine import normalize
+from mrac.rules_engine import evaluate, normalize
 from mrac.service import _approval_path, check
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -20,10 +20,18 @@ def chunk(key, doc, date, text, products=None, tags=None, heading="H"):
 
 
 class FormattingTests(unittest.TestCase):
+    def test_money_requirements_have_peso_and_cents(self):
+        crit = normalize({"code": "INC", "label": "Gross monthly income", "field": "total_gross_income", "op": ">=",
+                          "threshold": 40000, "enabled": True})
+        r = evaluate(crit, {"total_gross_income": 36000})
+        self.assertEqual(r["threshold"], ">= ₱40,000.00")
+        self.assertEqual(evaluate({**crit, "field": "dbr", "op": "<=", "threshold": 0.4}, {"dbr": 0.3})["threshold"], "<= 0.4")
+
     def test_values_and_requirements_read_naturally(self):
         self.assertEqual(fmt_value("dbr", 0.581), "58.1%")
         self.assertEqual(fmt_value("dbr", 0.4), "40%")
-        self.assertEqual(fmt_value("total_gross_income", 36000), "PHP 36,000")
+        self.assertEqual(fmt_value("total_gross_income", 36000), "₱36,000.00")
+        self.assertEqual(fmt_requirement("total_gross_income", ">= ₱40,000.00"), "at least ₱40,000.00")
         self.assertEqual(fmt_value("age_at_maturity", 78), "78 years old")
         self.assertEqual(fmt_value("has_replevin_or_foreclosure", False), "no")
         self.assertEqual(fmt_value("dbr", None), "not available")

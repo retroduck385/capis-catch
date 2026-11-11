@@ -19,6 +19,22 @@ const APPLICANT_STATUS = {
 
 export const OUTCOME_STATUSES = ['APPROVED', 'REJECTED', 'DEFERRED'];
 
+// What my_application_statuses() returns as visible_status (applicant_visible_status(), 20261112_document_requests.sql):
+// the buckets above, plus an open document request ("Documents needed" / "Documents sent"). null = not mapped here.
+const VISIBLE_STATUS = {
+    DRAFT: 'Draft',
+    SUBMITTED: 'Submitted',
+    INCOMPLETE: 'Incomplete submission',
+    UNDER_REVIEW: 'Under review',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected',
+    DEFERRED: 'Deferred',
+    DOCUMENTS_NEEDED: 'Documents needed',
+    DOCUMENTS_SENT: 'Documents sent',
+};
+
+export const visibleStatusLabel = (visible) => (Object.hasOwn(VISIBLE_STATUS, visible ?? '') ? VISIBLE_STATUS[visible] : null);
+
 export const applicantStatusLabel = (status, noticeSent = false) => {
     if (OUTCOME_STATUSES.includes(status) && !noticeSent) return 'Under review';
     return Object.hasOwn(APPLICANT_STATUS, status ?? '') ? APPLICANT_STATUS[status] : 'In progress';

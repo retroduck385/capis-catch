@@ -6,10 +6,13 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
 import { fetchProfile, getOrCreateDraft, refreshApplication } from './applicationForm/api';
 import ApplicationSummary from './applicationForm/applicationSummary';
+import { formatPeso } from './applicationForm/options';
 import { buildSteps } from './applicationForm/steps';
 import { Check } from 'lucide-react';
 import ApplicantShell from '../components/applicantShell';
 import { isProfileComplete } from './applicationForm/validators';
+import ApplicantStatusLabel from './notifications/applicantStatusLabel';
+import ApplicantRequestCard from './documentRequests/applicantRequestCard';
 
 // Which steps the applicant has saved at least once (so optional steps can't be skipped unseen)
 const visitedKey = (applicationId) => `catch:visitedSteps:${applicationId}`;
@@ -86,7 +89,7 @@ const ApplicationFormPage = () => {
 
     const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || session?.user?.email;
     const initials = (fullName ?? '?').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join('');
-    const loanAmount = app.loan_amount ? `PHP ${Number(app.loan_amount).toLocaleString()}` : 'Not set yet';
+    const loanAmount = app.loan_amount ? formatPeso(app.loan_amount) : 'Not set yet';
 
     if (app.status !== 'DRAFT') {
         return (
@@ -96,8 +99,9 @@ const ApplicationFormPage = () => {
                         <h1>Application <span className="ct-mono">{app.application_no}</span></h1>
                         <p>{app.submitted_at ? `Submitted ${new Date(app.submitted_at).toLocaleDateString()}` : 'Not submitted'}</p>
                     </div>
-                    <span className="ct-badge">{app.status}</span>
+                    <span className="ct-badge"><ApplicantStatusLabel application={app} /></span>
                 </div>
+                <ApplicantRequestCard applicationId={app.id} />
                 <div className="ct-card">
                     <div className="ct-sheet-body">
                         <ApplicationSummary app={app} />

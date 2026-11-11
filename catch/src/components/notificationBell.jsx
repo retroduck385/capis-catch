@@ -66,7 +66,7 @@ const NotificationBell = () => {
                 </svg>
                 {unread > 0 && (
                     <span aria-hidden='true'
-                        className='absolute -top-0.5 -right-0.5 h-3.5 min-w-3.5 rounded-full bg-orange-600 px-1 text-center text-[8px] font-bold leading-3.5 text-white'>
+                        className='absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full bg-orange-700 px-1 text-center text-[11px] font-bold leading-[18px] text-white ring-2 ring-white'>
                         {badge}
                     </span>
                 )}

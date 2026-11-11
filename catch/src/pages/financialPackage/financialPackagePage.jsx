@@ -230,7 +230,10 @@ const FinancialPackagePage = () => {
         try {
             setError(null);
             await saveFinancialPackage(app.id, buildPayload(form));
-            await loadFp(app);
+            // Interest rate / fixing period live on loan_applications, so refetch it or the form reverts to the old values
+            const record = await fetchApplication(app.id);
+            setApp(record);
+            await loadFp(record);
             setSaved(true);
         } catch (err) {
             setError(err.message);

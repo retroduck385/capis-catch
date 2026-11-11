@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchNoticeContext, previewNotice, sendNotice } from './api';
+import { smsSegments } from './sms';
 
 // "Send notice to applicant" (the bank's answer to Q-42): the assigned Account Officer tells the applicant the outcome
 // and a reason, in-app, by SMS and by email. Shown only to the assigned AO, once the status is Approved / Rejected /
@@ -15,17 +16,6 @@ const REASON_HINTS = {
 const DELIVERY_LABELS = {
     QUEUED: 'Queued', RUNNING: 'Sending', LOGGED: 'Logged (test mode, not sent)', SENT: 'Sent',
     FAILED: 'Failed', SKIPPED: 'Skipped',
-};
-
-// SMS segments: GSM-7 (160 per SMS, 153 per part; ^{}[]~\|€ count twice), anything else UCS-2 (70 / 67)
-const GSM = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&'()*+,\-./0-9:;<=>?¡A-ZÄÖÑÜ§¿a-zäöñüà^{}\\[~\]|€]*$/;
-const smsSegments = (text) => {
-    if (GSM.test(text)) {
-        const units = [...text].reduce((n, ch) => n + ('^{}\\[~]|€'.includes(ch) ? 2 : 1), 0);
-        return units <= 160 ? 1 : Math.ceil(units / 153);
-    }
-    const units = [...text].length;
-    return units <= 70 ? 1 : Math.ceil(units / 67);
 };
 
 const SendNoticePanel = ({ applicationId }) => {
@@ -65,6 +55,8 @@ const SendNoticePanel = ({ applicationId }) => {
     if (!visible) return null;
 
     const isCorrection = ctx.already_sent;
+    // Document requests are notices too (20261112); they're shown in their own panel
+    const notices = ctx.notices.filter((n) => n.outcome !== 'DOCUMENTS_NEEDED');
     const outcome = OUTCOME_LABELS[ctx.outcome];
     const problem = preview?.problem;
     const canSubmit = !sending && preview && !problem && (isCorrection ? correction : true);
@@ -189,7 +181,7 @@ const SendNoticePanel = ({ applicationId }) => {
                 </>
             )}
 
-            {ctx.notices.length > 0 && (
+            {notices.length > 0 && (
                 <div className='mt-4'>
                     <div className='flex items-center justify-between'>
                         <h4 className='font-semibold text-gray-900'>Notices sent</h4>
@@ -199,7 +191,7 @@ const SendNoticePanel = ({ applicationId }) => {
                         </button>
                     </div>
                     <ul>
-                        {ctx.notices.map((n) => (
+                        {notices.map((n) => (
                             <li key={n.id} className='border-b border-gray-200 py-2 text-gray-900'>
                                 <p className='text-gray-900'>
                                     <span className='font-semibold text-gray-900'>{OUTCOME_LABELS[n.outcome]}</span>
