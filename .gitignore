@@ -2,6 +2,9 @@
 supplementary_files/*
 !supplementary_files/Test Datas # 1/
 !supplementary_files/Test Datas # 2/
+!supplementary_files/Test Datas # 3/
+!supplementary_files/Test Datas # 4/
+!supplementary_files/Test Datas # 5/
 .DS_Store
 
 CLAUDE.md
