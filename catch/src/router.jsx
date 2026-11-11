@@ -19,6 +19,7 @@ import ApprovalRoutingPage from "./pages/review/approvalRoutingPage";
 import ReviewSummaryPage from "./pages/review/reviewSummaryPage";
 import DocumentCheckPage from "./pages/documentCheck/documentCheckPage";
 import DecisionSupportPage from "./pages/decisionSupport/decisionSupportPage";
+import PolicySearchPage from "./pages/mrac/policySearchPage";
 import { DSS_ROLES, STAFF_ROLES } from "./roles";
 
 
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
     { path: "/creditScorePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><CreditScorePage /></StaffProfileGate> </PrivateRoute>},
     { path: "/approvalRoutingPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><ApprovalRoutingPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/reviewSummaryPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><ReviewSummaryPage /></StaffProfileGate> </PrivateRoute>},
+    { path: "/policySearchPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><PolicySearchPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/decisionSupportPage", element: <PrivateRoute roles={DSS_ROLES}><StaffProfileGate><DecisionSupportPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/staffAccountsPage", element: <PrivateRoute roles={["DEPT_HEAD"]}><StaffProfileGate><StaffAccountsPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/staffProfilePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfilePage /> </PrivateRoute>},

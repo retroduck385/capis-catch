@@ -3,7 +3,7 @@
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
 import { LoanFolderSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, Scale, ScanText, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Circle, LayoutList, Lock, Scale, ScanText, Send } from 'lucide-react';
 import { DSS_ROLES } from '../../roles';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -105,6 +105,13 @@ const LoanFolderPage = () => {
         setSaved(false);
     };
 
+    // After a KYC check is recorded: reload the trail, then go to the next section (after the last one, Request CI)
+    const handleRecorded = async () => {
+        await loadTrail();
+        const at = sections.findIndex((s) => s.key === currentKey);
+        open(sections[at + 1]?.key ?? REQUEST_CI);
+    };
+
     // The AO keeps editing after the request (Intake -> Credit Investigation); just reload
     const handleCiRequested = async () => {
         await refresh();
@@ -196,10 +203,15 @@ const LoanFolderPage = () => {
                 </ul>
             </section>
             <ApplicationSummary app={app} onViewDocument={handleViewDocument} />
-            <section className="lf-card" aria-label="Change history">
-                <div className="lf-cardhead"><h2>Change history</h2></div>
+            {/* Collapsed until opened: the history gets long and pushes everything else down */}
+            <details className="lf-card lf-history">
+                <summary>
+                    <h2>Change history</h2>
+                    <span className="lf-history-count">{audit.length} {audit.length === 1 ? 'entry' : 'entries'}</span>
+                    <ChevronDown size={18} className="lf-history-chevron" aria-hidden="true" />
+                </summary>
                 <ChangeHistory app={app} entries={audit} names={names} />
-            </section>
+            </details>
         </>
     );
 
@@ -289,7 +301,7 @@ const LoanFolderPage = () => {
                                 complete={section.complete}
                                 latest={latestCheck(section.key)}
                                 names={names}
-                                onRecorded={loadTrail} />
+                                onRecorded={handleRecorded} />
                             {saved && <p className="lf-ok-note" role="status">Changes saved.</p>}
                             <Component
                                 key={section.key}

@@ -1,6 +1,6 @@
 // Frame for every signed-in page (applicant and staff): navy sidebar (brand, role-specific nav, user, sign out) plus
 // the page content, with the notification bell top right. Styled by applicantTheme.css (.ct-e).
-import { FileText, Layers, LogOut, Plus, User, Users } from 'lucide-react';
+import { BookOpen, FileText, Layers, LogOut, Plus, User, Users } from 'lucide-react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
 import { homePathFor, ROLE_LABELS } from '../roles';
@@ -12,6 +12,7 @@ const linksFor = (role) => {
     }
     return [
         ['/adminHomePage', 'Work tray', Layers],
+        ['/policySearchPage', 'Policy search', BookOpen],
         ...(role === 'ACCOUNT_OFFICER' ? [['/accountOfficerApplicationInputPage', 'New application', Plus]] : []),
         ...(role === 'DEPT_HEAD' ? [['/staffAccountsPage', 'Staff accounts', Users]] : []),
         ['/staffProfilePage', 'My profile', User],

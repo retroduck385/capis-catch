@@ -2,9 +2,12 @@
 // Fields copied from the KYC are read live from the AO's record; the CO's own inputs are saved with
 // save_financial_package(). Only the assigned CO edits (any stage before Decided); everyone else with access reads.
 // IV. Credit checking shows the Credit Investigator's results (BRAS / NFIS / TU), read-only.
+// Two pages, like the paper FP: 1 = the recommendation (I to VII), 2 = the application information (VIII onwards, the
+// credit result and the change history). Both stay mounted inside ONE form (the inactive one is hidden), so switching
+// keeps every edit, the policy check result and the single Save button; the page is kept in ?page=2.
 import { FinancialPackageSkeleton } from '../../components/skeleton';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Lock } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScrollText, ShieldCheck } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
@@ -96,27 +99,44 @@ const buildPayload = (form) => {
     };
 };
 
-// Section navigator: [group, [[element id, label], ...]]; the ids are set in fpSections.jsx
+// The two pages (tabs above the form)
+const PAGES = [
+    { n: 1, title: 'Recommendation', sub: 'Sections I to VII' },
+    { n: 2, title: 'Application information', sub: 'Section VIII onwards, credit result' },
+];
+
+// Section navigator for the page being shown: [group, page, [[element id, label], ...]]; the ids are set in fpSections.jsx
 const TOC = [
     {
-        group: 'Page 1: Recommendation',
+        page: 1, group: 'Page 1: Recommendation',
         items: [['fp-general', 'General information'], ['fp-i', 'I. Borrower/s highlight'], ['fp-ii', 'II. Facility'],
             ['fp-iii', 'III. Collateral'], ['fp-iv', 'IV. Credit checking'], ['fp-v', 'V. Exceptions'], ['fp-mrac', 'Policy check (MRAC)'],
             ['fp-vi', 'VI. Terms and conditions'], ['fp-vii', 'VII. Approval']],
     },
     {
-        group: 'Page 2: Application information',
+        page: 2, group: 'Page 2: Application information',
         items: [['fp-viii', 'VIII. Employment'], ['fp-ix', 'IX. Cash flow'], ['fp-x', 'X. Deposit checking'],
             ['fp-xi', 'XI. Loan verification'], ['fp-xii', 'XII. Trade checking'], ['fp-xiii', 'XIII. Title'],
             ['fp-xiv', 'XIV. Customer information']],
     },
-    { group: 'Result', items: [['fp-result', 'Credit result'], ['fp-history', 'Change history']] },
+    { page: 2, group: 'Result', items: [['fp-result', 'Credit result'], ['fp-history', 'Change history']] },
 ];
-const TOC_IDS = TOC.flatMap((g) => g.items.map(([id]) => id));
+// The sections the credit decision rests on: set apart in the navigator and marked on the page (.fp-key in fpSections.jsx
+// and mracPanel.jsx). The icon doubles as the marker, so the emphasis doesn't rest on colour alone.
+const KEY_ICONS = { 'fp-mrac': ShieldCheck, 'fp-vi': ScrollText, 'fp-vii': BadgeCheck };
+const NavIcon = ({ id }) => {
+    const Icon = KEY_ICONS[id];
+    return Icon ? <Icon size={16} aria-hidden="true" /> : null;
+};
 
-// The section nearest the top of the viewport, for the navigator's highlight
-const useActiveSection = (ready) => {
-    const [active, setActive] = useState(TOC_IDS[0]);
+const idsOfPage = (page) => TOC.filter((g) => g.page === page).flatMap((g) => g.items.map(([id]) => id));
+
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// The section nearest the top of the viewport (of the page being shown), for the navigator's highlight
+const useActiveSection = (ids, ready) => {
+    const [active, setActive] = useState(ids[0]);
+    const key = ids.join(',');
     useEffect(() => {
         if (!ready) return undefined;
         const observer = new IntersectionObserver((entries) => {
@@ -124,16 +144,22 @@ const useActiveSection = (ready) => {
                 .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
             if (top) setActive(top.target.id);
         }, { rootMargin: '-10% 0px -70% 0px' });
-        TOC_IDS.forEach((id) => { const el = document.getElementById(id); if (el) observer.observe(el); });
+        key.split(',').forEach((id) => { const el = document.getElementById(id); if (el) observer.observe(el); });
         return () => observer.disconnect();
-    }, [ready]);
-    return active;
+    }, [ready, key]);
+    // Right after a page switch the highlight still points at the other page: use the first section until a scroll
+    return ids.includes(active) ? active : ids[0];
 };
 
 const FinancialPackagePage = () => {
     const { role } = UserAuth();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
+    const page = searchParams.get('page') === '2' ? 2 : 1;
+    const formRef = useRef(null);
+    const tabsRef = useRef(null);
+    const scrollToTabs = useRef(false); // set by a page switch: bring the tabs into view once the new page is showing
+    const revalidate = useRef(false);   // set when Save found a missing field on the other page
 
     const [app, setApp] = useState(null);
     const [rules, setRules] = useState(null);
@@ -194,7 +220,19 @@ const FinancialPackagePage = () => {
         [app, form]);
     // Saved credit score (scored on its own page)
     const score = useMemo(() => (rules ? totalCreditScore(rules, savedScore) : null), [rules, savedScore]);
-    const activeId = useActiveSection(Boolean(app && form && rules));
+    const activeId = useActiveSection(idsOfPage(page), Boolean(app && form && rules));
+
+    // After a switch: show the new page from its tabs (not jumped to the very top), or, when Save sent us here because a
+    // required field on this page is empty, let the browser point at that field now that it is visible
+    useEffect(() => {
+        if (revalidate.current) {
+            revalidate.current = false;
+            formRef.current?.reportValidity();
+        } else if (scrollToTabs.current) {
+            tabsRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+        }
+        scrollToTabs.current = false;
+    }, [page]);
 
     if (loading) return <FinancialPackageSkeleton />;
     if (error && !form) return <p className="text-red-600">{error}</p>;
@@ -266,12 +304,42 @@ const FinancialPackagePage = () => {
 
     const goTo = (id) => (e) => {
         e.preventDefault();
-        const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        document.getElementById(id)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        const target = document.getElementById(id);
+        if (target instanceof HTMLDetailsElement) target.open = true; // the change history is a dropdown
+        target?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    };
+
+    // Switch page without leaving the form (the page is only a view of the same state). replace: no history entry per tab.
+    const showPage = (n, { scroll = true } = {}) => {
+        if (n === page) return;
+        scrollToTabs.current = scroll;
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            if (n === 1) next.delete('page'); else next.set('page', String(n));
+            return next;
+        }, { replace: true });
+    };
+
+    // Arrow keys move between the tabs (the tab pattern)
+    const onTabKey = (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault();
+        const n = e.key === 'ArrowRight' ? 2 : 1;
+        showPage(n, { scroll: false });
+        document.getElementById(`fp-tab-${n}`)?.focus();
+    };
+
+    // The browser can't point at an empty required field on the hidden page: switch to it, then ask again (effect above)
+    const onInvalid = (e) => {
+        const target = Number(e.target.closest?.('[data-fp-page]')?.dataset.fpPage ?? page);
+        if (target === page) return;
+        e.preventDefault();
+        revalidate.current = true;
+        showPage(target, { scroll: false });
     };
 
     return (
-        <form onSubmit={handleSave} className="lf fp">
+        <form ref={formRef} onSubmit={handleSave} onInvalidCapture={onInvalid} className="lf fp">
             <Breadcrumbs current="package" appId={app.id} appNo={app.application_no} />
             <header className="lf-card">
                 <div className="lf-titlerow">
@@ -284,6 +352,10 @@ const FinancialPackagePage = () => {
                     </div>
                     <div className="lf-actions">
                         <MessagesPanel applicationId={app.id} inline />
+                        {/* The same page as VII. Approval's button: it reads the saved FP, so warn about unsaved edits */}
+                        <Link to={`/approvalRoutingPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
+                            <BadgeCheck size={16} aria-hidden="true" />Approval routing
+                        </Link>
                         <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
                             Loan folder<ArrowRight size={16} aria-hidden="true" />
                         </Link>
@@ -314,67 +386,108 @@ const FinancialPackagePage = () => {
 
             <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
 
+            <div ref={tabsRef} className="fp-pagetabs" role="tablist" aria-label="Financial Package pages" onKeyDown={onTabKey}>
+                {PAGES.map((p) => (
+                    <button key={p.n} type="button" role="tab" id={`fp-tab-${p.n}`} aria-controls={`fp-page-${p.n}`}
+                        aria-selected={page === p.n} tabIndex={page === p.n ? 0 : -1} onClick={() => showPage(p.n)}>
+                        <b>Page {p.n}: {p.title}</b>
+                        <span>{p.sub}</span>
+                    </button>
+                ))}
+            </div>
+
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav fp-nav" aria-label="Financial Package sections">
-                    {TOC.map(({ group, items }) => (
-                        <div key={group}>
-                            <p className="fp-navgroup">{group}</p>
-                            <ul>
-                                {items.map(([id, label]) => (
-                                    <li key={id}>
-                                        <a href={`#${id}`} onClick={goTo(id)} aria-current={activeId === id ? 'true' : undefined}>
-                                            {label}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
+                    {TOC.filter((g) => g.page === page).map(({ group, items }) => {
+                        const link = ([id, label]) => (
+                            <li key={id}>
+                                <a href={`#${id}`} onClick={goTo(id)} aria-current={activeId === id ? 'true' : undefined}>
+                                    <NavIcon id={id} />
+                                    <span>{label}</span>
+                                </a>
+                            </li>
+                        );
+                        const regular = items.filter(([id]) => !KEY_ICONS[id]);
+                        const key = items.filter(([id]) => KEY_ICONS[id]);
+                        return (
+                            <div key={group}>
+                                <p className="fp-navgroup">{group}</p>
+                                <ul>{regular.map(link)}</ul>
+                                {key.length > 0 && (
+                                    <div className="fp-navkey" role="group" aria-labelledby="fp-navkey-title">
+                                        <p id="fp-navkey-title" className="fp-navkey-title">Key to the decision</p>
+                                        <ul>{key.map(link)}</ul>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </nav>
 
                 <div className="lf-main fp-main">
-                    <HeaderSection app={app} aoName={aoName} form={form.pkg} onPkg={onPkg} disabled={disabled} />
-                    <HighlightsSection app={app} computed={computed} />
-                    <FacilitySection app={app} computed={computed} form={form.pkg} pricing={form.pricing}
-                        onPkg={onPkg} onPricing={onPricing} disabled={disabled} />
-                    <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
-                    <CreditCheckingSection app={app} />
-                    <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
-                        onChange={onList('exceptions')} disabled={disabled} />
-                    <MracPanel app={app} computed={computed} score={score} pricing={form.pricing}
-                        exceptions={form.exceptions} canEdit={canEdit}
-                        onAddException={(row) => onList('exceptions')([...form.exceptions, { _key: crypto.randomUUID(), ...row }])} />
-                    <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
-                    <ApprovalSection tier={routing.tier} rows={routing.rows} names={routing.names}
-                        link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
+                    {/* Page 1: the recommendation (I to VII) */}
+                    <div id="fp-page-1" role="tabpanel" aria-labelledby="fp-tab-1" data-fp-page="1" hidden={page !== 1} className="fp-page">
+                        <HeaderSection app={app} aoName={aoName} form={form.pkg} onPkg={onPkg} disabled={disabled} />
+                        <HighlightsSection app={app} computed={computed} />
+                        <FacilitySection app={app} computed={computed} form={form.pkg} pricing={form.pricing}
+                            onPkg={onPkg} onPricing={onPricing} disabled={disabled} />
+                        <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
+                        <CreditCheckingSection app={app} />
+                        <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
+                            onChange={onList('exceptions')} disabled={disabled} />
+                        <MracPanel app={app} computed={computed} score={score} pricing={form.pricing}
+                            exceptions={form.exceptions} canEdit={canEdit}
+                            onAddException={(row) => onList('exceptions')([...form.exceptions, { _key: crypto.randomUUID(), ...row }])} />
+                        <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
+                        <ApprovalSection tier={routing.tier} rows={routing.rows} names={routing.names}
+                            link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
+                        <div className="fp-pagenav">
+                            <button type="button" onClick={() => showPage(2)}>
+                                Next: Page 2, Application information<ArrowRight size={16} aria-hidden="true" />
+                            </button>
+                        </div>
+                    </div>
 
-                    <h2 className="fp-pagehead">Page 2: Credit Application Information</h2>
-                    <EmploymentSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
-                    <CashFlowSection computed={computed} details={form.parties} onParty={onParty} disabled={disabled} />
-                    <RowsSection id="fp-x" title="X. Deposit Checking" config={DEPOSIT_CHECK_FIELDS} rows={form.deposit_checks}
-                        onChange={onList('deposit_checks')} disabled={disabled}>
-                        <p className="fp-note">Bank accounts declared in the KYC:{' '}
-                            {kycBankAccounts.length === 0 ? 'none.' : kycBankAccounts.map((b) =>
-                                `${partyLabel(b.party)}: ${b.bank_name} ${b.account_type} ${b.account_number}`).join('; ')}
-                        </p>
-                    </RowsSection>
-                    <RowsSection id="fp-xi" title="XI. Loan Verification (Based on Loandex and Disclosure)" config={LOAN_CHECK_FIELDS}
-                        rows={form.loan_checks} onChange={onList('loan_checks')} disabled={disabled}>
-                        <p className="fp-note">Existing loans declared in the KYC:{' '}
-                            {kycLoans.length === 0 ? 'none.' : kycLoans.map((l) =>
-                                `${partyLabel(l.party)}: ${l.loan_type} with ${l.lending_institution}, ₱${formatMoney(l.monthly_payment)} / month`).join('; ')}
-                        </p>
-                    </RowsSection>
-                    <RowsSection id="fp-xii" title="XII. Trade Checking (if applicable)" config={TRADE_CHECK_FIELDS} rows={form.trade_checks}
-                        onChange={onList('trade_checks')} disabled={disabled} />
-                    <TitleSection titles={form.titles} onTitle={onTitle} disabled={disabled} />
-                    <CustomerSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
-                    <CreditResultSection form={form.pkg} onPkg={onPkg} disabled={disabled} />
+                    {/* Page 2: the application information (VIII onwards), the credit result and the history */}
+                    <div id="fp-page-2" role="tabpanel" aria-labelledby="fp-tab-2" data-fp-page="2" hidden={page !== 2} className="fp-page">
+                        <h2 className="fp-pagehead">Page 2: Credit Application Information</h2>
+                        <EmploymentSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
+                        <CashFlowSection computed={computed} details={form.parties} onParty={onParty} disabled={disabled} />
+                        <RowsSection id="fp-x" title="X. Deposit Checking" config={DEPOSIT_CHECK_FIELDS} rows={form.deposit_checks}
+                            onChange={onList('deposit_checks')} disabled={disabled}>
+                            <p className="fp-note">Bank accounts declared in the KYC:{' '}
+                                {kycBankAccounts.length === 0 ? 'none.' : kycBankAccounts.map((b) =>
+                                    `${partyLabel(b.party)}: ${b.bank_name} ${b.account_type} ${b.account_number}`).join('; ')}
+                            </p>
+                        </RowsSection>
+                        <RowsSection id="fp-xi" title="XI. Loan Verification (Based on Loandex and Disclosure)" config={LOAN_CHECK_FIELDS}
+                            rows={form.loan_checks} onChange={onList('loan_checks')} disabled={disabled}>
+                            <p className="fp-note">Existing loans declared in the KYC:{' '}
+                                {kycLoans.length === 0 ? 'none.' : kycLoans.map((l) =>
+                                    `${partyLabel(l.party)}: ${l.loan_type} with ${l.lending_institution}, ₱${formatMoney(l.monthly_payment)} / month`).join('; ')}
+                            </p>
+                        </RowsSection>
+                        <RowsSection id="fp-xii" title="XII. Trade Checking (if applicable)" config={TRADE_CHECK_FIELDS} rows={form.trade_checks}
+                            onChange={onList('trade_checks')} disabled={disabled} />
+                        <TitleSection titles={form.titles} onTitle={onTitle} disabled={disabled} />
+                        <CustomerSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
+                        <CreditResultSection form={form.pkg} onPkg={onPkg} disabled={disabled} />
 
-                    <section id="fp-history" className="lf-card">
-                        <div className="lf-cardhead"><h2>FP change history</h2></div>
-                        {audit.length === 0 ? <p className="fp-empty">No changes yet.</p> : <ChangeHistory app={app} entries={audit} names={names} />}
-                    </section>
+                        {/* A dropdown, closed until opened (same look as the loan folder's); the navigator link opens it */}
+                        <details id="fp-history" className="lf-card lf-history">
+                            <summary>
+                                <h2>FP change history</h2>
+                                <span className="lf-history-count">{audit.length} {audit.length === 1 ? 'entry' : 'entries'}</span>
+                                <ChevronDown size={18} className="lf-history-chevron" aria-hidden="true" />
+                            </summary>
+                            {audit.length === 0 ? <p className="fp-empty">No changes yet.</p> : <ChangeHistory app={app} entries={audit} names={names} />}
+                        </details>
+                        <div className="fp-pagenav">
+                            <button type="button" className="back" onClick={() => showPage(1)}>
+                                <ArrowLeft size={16} aria-hidden="true" />Back to Page 1, Recommendation
+                            </button>
+                        </div>
+                    </div>
 
                     {canEdit ? (
                         <div className="fp-savebar">

@@ -1,4 +1,6 @@
-// AO's verification of one form section: Verified, or Needs clarification with remarks
+// AO's verification of one form section: Verified, or Needs clarification with remarks.
+// The choice starts on the section's latest recorded result, so the form matches the chip when you come back to it.
+// Recording a check calls onRecorded, which moves the loan folder on to the next section.
 import { useState } from 'react';
 import { recordKycCheck } from './api';
 import { RESULT_LABELS, whenOf } from './options';
@@ -20,7 +22,7 @@ export const CheckChip = ({ check }) => (
 );
 
 const KycCheckPanel = ({ applicationId, section, complete, latest, names, onRecorded }) => {
-    const [result, setResult] = useState('');
+    const [result, setResult] = useState(latest?.result ?? '');
     const [remarks, setRemarks] = useState('');
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -39,9 +41,8 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
         setError(null);
         try {
             await recordKycCheck(applicationId, section, result, remarks);
-            setResult('');
             setRemarks('');
-            await onRecorded();
+            await onRecorded(); // the page moves on to the next section
         } catch (err) {
             setError(err.message);
         } finally {

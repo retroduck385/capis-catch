@@ -1,11 +1,9 @@
 import { UserAuth } from '../context/authContext';
 import { ROLE_LABELS } from '../roles';
-import PolicyAsk from './mrac/policyAsk';
 import WorkTray from './workTray/workTray';
 
 // Home for all staff roles (AO, CI, Dispatch Admin, CO, Reviewer, Approver, Dept Head): the work tray.
-// Below the tray: search the credit policy manuals (mrac-service).
-// Sign out, profile and role-specific links live in the sidebar (components/appLayout.jsx).
+// Sign out, profile, policy search and role-specific links live in the sidebar (components/appLayout.jsx).
 const AdminHomePage = () => {
     const { session, role } = UserAuth();
 
@@ -18,7 +16,6 @@ const AdminHomePage = () => {
                 </div>
             </div>
             <WorkTray />
-            <PolicyAsk />
         </div>
     );
 };

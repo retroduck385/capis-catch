@@ -43,7 +43,7 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
     const result = run?.status === 'DONE' ? run.result : null;
 
     return (
-        <Section id="fp-mrac" title="Policy check (MRAC)" className="mrac">
+        <Section id="fp-mrac" title="Policy check (MRAC)" className="mrac fp-key">
             <p className="fp-note">
                 Checks the figures on this page against the enabled MRAC criteria and finds the policy clauses that apply.
                 These are suggestions: nothing is saved to the Financial Package until you add it and save.

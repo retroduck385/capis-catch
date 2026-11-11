@@ -393,15 +393,22 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                     )}
                                     {needs && editable && (
                                         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm">
-                                            <label>
-                                                <input type="radio" name={`choice-${field.id}`} checked={choices[field.id] === 'KEEP'}
-                                                    onChange={() => setChoice(field.id, 'KEEP')} /> Keep application value
-                                            </label>
-                                            <label>
-                                                <input type="radio" name={`choice-${field.id}`} checked={choices[field.id] === 'UPDATE'}
-                                                    onChange={() => setChoice(field.id, 'UPDATE')} />
-                                                {' '}{status === 'NOT_IN_APPLICATION' ? 'Fill in the application with this value' : 'Update application to document value'}
-                                            </label>
+                                            {/* Two short choices; hovering one explains exactly what it will do with these values */}
+                                            {[
+                                                ['KEEP', 'Keep', status === 'NOT_IN_APPLICATION'
+                                                    ? 'Leave this blank in the application.'
+                                                    : `Keep what the applicant entered (${displayValue(appValue, def.data_type)}). The application is not changed.`],
+                                                ['UPDATE', 'Update', status === 'NOT_IN_APPLICATION'
+                                                    ? `Add ${displayValue(value, def.data_type)} to the application.`
+                                                    : `Change the application to what the document says (${displayValue(value, def.data_type)}).`],
+                                            ].map(([key, label, explain]) => (
+                                                <label key={key} title={explain} className="cursor-help">
+                                                    <input type="radio" name={`choice-${field.id}`} checked={choices[field.id] === key}
+                                                        onChange={() => setChoice(field.id, key)} />
+                                                    {' '}<span className="underline decoration-dotted underline-offset-2">{label}</span>
+                                                    <span className="sr-only">: {explain}</span>
+                                                </label>
+                                            ))}
                                         </div>
                                     )}
                                     {status === 'DIFFERS' && !def.target_column && editable && (
