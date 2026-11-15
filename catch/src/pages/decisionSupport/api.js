@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { fetchApplication, getParties } from '../applicationForm/api';
 import { BORROWER_ROLES } from '../applicationForm/options';
 import { fetchCiDone } from '../ciRequest/api';
+import { fetchOpenRequest } from '../documentRequests/api';
 import { fetchKycChecks, fetchStaffNames } from '../loanFolder/api';
 import { fetchAssignee, fetchCreditScoreRules, fetchFinancialPackage } from '../financialPackage/api';
 import { fetchLatestMracCheck } from '../mrac/api';
@@ -49,7 +50,7 @@ const fetchDocumentStates = async (documentIds) => {
 export const fetchDecisionSupport = async (applicationId) => {
     const app = await fetchApplication(applicationId);
     const ids = getParties(app, BORROWER_ROLES).map((p) => p.id);
-    const [fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, kycChecks, types] = await Promise.all([
+    const [fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, kycChecks, types, docRequest] = await Promise.all([
         fetchFinancialPackage(app.id, ids),
         fetchCreditScoreRules(),
         optional(fetchCiDone(app.id), false),
@@ -64,6 +65,7 @@ export const fetchDecisionSupport = async (applicationId) => {
         optional(fetchReviewStaff(), []),
         optional(fetchKycChecks(app.id), []),
         optional(fetchExtractionTypes(), new Set()),
+        optional(fetchOpenRequest(app.id), null),
     ]);
 
     // The documents the AI reads, with where each one is in OCR -> AI -> confirmation
@@ -78,6 +80,6 @@ export const fetchDecisionSupport = async (applicationId) => {
         ...reviews.map((d) => d.responded_by)]);
     return {
         app, fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, positions, names,
-        kycChecks, docs, docStates,
+        kycChecks, docs, docStates, docRequest,
     };
 };

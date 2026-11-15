@@ -16,6 +16,8 @@ import { fetchDocumentChecks, fetchFieldDefs, requestCiExtraction, requestExtrac
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
+import FileMark from '../documentRequests/fileMark';
+import { useFileMarks } from '../documentRequests/useFileMarks';
 
 const POLL_MS = 5000;
 const TYPE_ORDER = ['VALID_ID_PASSPORT', 'COE_ITR', 'PAYSLIPS_REMITTANCES', 'FS_BANK_STATEMENTS', 'CI_NFIS', 'CI_TU'];
@@ -62,6 +64,8 @@ const DocumentCheckPage = () => {
     const setDirty = useCallback((d) => { dirtyRef.current = d; }, []);
 
     const types = useMemo(() => new Set(defs.map((d) => d.document_type)), [defs]);
+    // Staff check of each applicant file (Cleared / Needs a new copy); not for the CI's reports
+    const marks = useFileMarks(ciMode ? null : applicationId);
 
     // Borrowers with at least one document the AI reads, and those documents (ID first, then income; NFIS, then TU)
     const parties = useMemo(() => getParties(app ?? {}, ciMode ? BORROWER_ROLES : undefined)
@@ -265,6 +269,11 @@ const DocumentCheckPage = () => {
                                 );
                             })}
                         </ul>
+                        {doc && !ciMode && (
+                            <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks} className="mb-3"
+                                unreadable={status.key === 'OCR_FAILED'}
+                                file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
+                        )}
                         {doc && (
                             <div className="flex-1 min-h-0">
                                 <DocumentViewer key={doc.id} doc={doc} pageSizes={check?.pages} highlights={highlights}

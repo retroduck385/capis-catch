@@ -15,6 +15,7 @@ import {
     uploadCiDocument,
 } from './api';
 import { CI_CHECKS, CI_RESULTS } from './options';
+import CiFindingFlags from './findingFlags';
 
 const resultLabel = (value) => CI_RESULTS.find((r) => r.value === value)?.label ?? null;
 
@@ -294,6 +295,10 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
                 {dirty ? <span className="text-amber-700">Unsaved changes</span> : <span className="text-sm">All changes saved</span>}
             </div>
 
+            <CiFindingFlags applicationId={app.id}
+                hasFindings={Object.values(byKey).some((c) => c.result === 'WITH_FINDINGS')}
+                unsaved={Object.values(edits).some((e) => e?.result === 'WITH_FINDINGS')} />
+
             <div className="border p-3 my-4">
                 <h3 className="font-semibold">Mark CI Done</h3>
                 {missing.length > 0 ? (
@@ -387,6 +392,8 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
                     </tbody>
                 </table>
             </div>
+            <CiFindingFlags applicationId={app.id}
+                hasFindings={Object.values(byKey).some((c) => c.result === 'WITH_FINDINGS')} />
             <p className="pt-2"><span className="font-semibold">Overall CI remarks:</span>{' '}
                 <span className="whitespace-pre-wrap">{meta.request.ci_remarks || '—'}</span></p>
         </div>

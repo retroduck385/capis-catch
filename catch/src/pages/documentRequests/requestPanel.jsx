@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { smsSegments } from '../applicantNotices/sms';
 import { closeRequest, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
+import { refreshCanAsk } from './askStore';
+import FileMark from './fileMark';
+import { useFileMarks } from './useFileMarks';
 
 // "Ask the applicant for documents" (the deferral loop): the assigned Account Officer sends a short message plus the
 // specific documents needed, in-app, by SMS and by email (no links). The applicant uploads them and sends them back;
@@ -23,7 +27,8 @@ const INPUT = 'rounded border border-gray-400 bg-white p-2 text-gray-900 focus:o
 const keyOf = (r) => `${r.applicant_id}:${r.requirement_type}`;
 const when = (t) => (t ? new Date(t).toLocaleString() : '');
 
-const Uploads = ({ item, onView }) => (
+// marks: useFileMarks() of the application (staff check of each uploaded file)
+const Uploads = ({ item, onView, applicationId, marks }) => (
     item.uploads.length === 0 ? <span className='text-gray-700'> · nothing uploaded yet</span> : (
         <ul className='ml-4 list-disc'>
             {item.uploads.map((u) => (
@@ -33,13 +38,17 @@ const Uploads = ({ item, onView }) => (
                         {u.file_name}
                     </button>
                     <span className='text-sm text-gray-700'> · {when(u.uploaded_at)}</span>
+                    {marks && (
+                        <FileMark applicationId={applicationId} marks={marks} className='my-1'
+                            file={{ documentId: u.document_id, applicantId: item.applicant_id, requirementType: item.requirement_type, label: item.label }} />
+                    )}
                 </li>
             ))}
         </ul>
     )
 );
 
-const RequestView = ({ req, onView }) => (
+const RequestView = ({ req, onView, marks }) => (
     <>
         <p className='whitespace-pre-wrap break-words text-gray-900'><span className='font-semibold'>Message:</span> {req.message}</p>
         <ul className='mt-1'>
@@ -47,7 +56,7 @@ const RequestView = ({ req, onView }) => (
                 <li key={i.id} className='py-1 text-gray-900'>
                     <span className='font-semibold'>{i.label}</span> ({i.party})
                     <span className='text-sm text-gray-700'> · {i.uploads.length} of {i.min_files} file{i.min_files === 1 ? '' : 's'}</span>
-                    <Uploads item={i} onView={onView} />
+                    <Uploads item={i} onView={onView} applicationId={req.application_id} marks={marks} />
                 </li>
             ))}
         </ul>
@@ -77,8 +86,16 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const [busy, setBusy] = useState(false);
     const [done, setDone] = useState(null);
     const [error, setError] = useState(null);
+    const [askSeen, setAskSeen] = useState(null);       // the "Ask the applicant" click already put into the box
+    const marks = useFileMarks(applicationId);
+    const boxRef = useRef(null);
+    // Set by an "Ask the applicant" button (ask.jsx): documents to tick and a note to prefill
+    const ask = useLocation().state?.ask ?? null;
 
-    const load = useCallback(() => fetchRequestContext(applicationId).then(setCtx, () => setCtx(null)), [applicationId]);
+    const load = useCallback(() => {
+        refreshCanAsk(applicationId);
+        return fetchRequestContext(applicationId).then(setCtx, () => setCtx(null));
+    }, [applicationId]);
     useEffect(() => {
         let cancelled = false;
         fetchRequestContext(applicationId)
@@ -98,6 +115,27 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     ], [checklist, selected, others]);
 
     const formVisible = Boolean(ctx?.can_open);
+
+    // An "Ask the applicant" click: tick its documents and prefill the note, once (state adjusted while rendering).
+    // Nothing is sent: the AO reviews the box and clicks Send request.
+    if (ask && formVisible && ask.at !== askSeen) {
+        setAskSeen(ask.at);
+        const onList = (i) => i.requirement_type && checklist.some((r) => keyOf(r) === keyOf(i));
+        const wanted = ask.items?.length ? ask.items
+            : checklist.filter((r) => r.uploaded < r.needed && (ask.missingFor == null || r.applicant_id === ask.missingFor));
+        setPicked(new Set(wanted.filter(onList).map(keyOf)));
+        setOthers(wanted.filter((i) => !onList(i) && i.label).map((i) => ({ applicant_id: i.applicant_id, label: String(i.label).slice(0, 80) })));
+        setMessage((ask.note ?? '').slice(0, ctx.max_length));
+        setConfirming(false);
+        setDone(null);
+    }
+    // ...then bring the box into view
+    useEffect(() => {
+        if (!askSeen) return;
+        boxRef.current?.scrollIntoView({ block: 'start' });
+        boxRef.current?.querySelector('textarea')?.focus({ preventScroll: true });
+    }, [askSeen]);
+
     useEffect(() => {
         if (!formVisible) return;
         let cancelled = false;
@@ -160,7 +198,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const parties = ctx.suggestions?.parties ?? [];
 
     return (
-        <section aria-labelledby='doc-request-heading' className='my-3 rounded-lg border border-gray-300 bg-white p-4 text-left text-gray-900'>
+        <section ref={boxRef} aria-labelledby='doc-request-heading' className='my-3 scroll-mt-20 rounded-lg border border-gray-300 bg-white p-4 text-left text-gray-900'>
             <h3 id='doc-request-heading' className='text-lg font-semibold text-gray-900'>Ask the applicant for documents</h3>
             {done && <p role='status' className='mt-1 font-semibold text-green-800'>{done}</p>}
             {error && <p role='alert' className='mt-1 text-red-800'>{error}</p>}
@@ -174,7 +212,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                     <p className='text-sm text-gray-700'>
                         Sent {when(cur.opened_at)} by {cur.opened_by ?? 'Account Officer'}{cur.sent_at ? ` · applicant sent the documents ${when(cur.sent_at)}` : ''}
                     </p>
-                    <RequestView req={cur} onView={view} />
+                    <RequestView req={cur} onView={view} marks={marks} />
 
                     {ctx.is_assigned_ao && (!closing ? (
                         <div className='mt-3 flex flex-wrap gap-2'>
@@ -207,6 +245,12 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
 
             {ctx.can_open && (
                 <div className='mt-2'>
+                    {askSeen && ask?.at === askSeen && (
+                        <p role='status' className='mb-2 rounded border border-blue-300 bg-blue-50 p-2 text-gray-900'>
+                            Prefilled from {ask.from ?? 'the item you picked'}. Check the documents and rewrite the note for the
+                            applicant, then click Send request. Nothing has been sent yet.
+                        </p>
+                    )}
                     <p className='text-gray-800'>
                         Sent in-app, by SMS {ctx.sms_to ? `(to ${ctx.sms_to})` : '(no valid mobile number: SMS will be skipped)'} and by email
                         {ctx.email_to ? ` (to ${ctx.email_to})` : ' (no valid email address: email will be skipped)'}. No links are allowed.
@@ -311,7 +355,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                                     <span className='text-sm text-gray-700'> · sent {when(r.opened_at)} by {r.opened_by ?? 'Account Officer'}, closed {when(r.closed_at)} by {r.closed_by ?? 'Account Officer'}</span>
                                 </p>
                                 {r.close_note && <p className='text-sm text-gray-800'>Note: {r.close_note}</p>}
-                                <RequestView req={r} onView={view} />
+                                <RequestView req={r} onView={view} marks={marks} />
                             </li>
                         ))}
                     </ul>

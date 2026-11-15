@@ -31,6 +31,8 @@ const TABLE_LABELS = {
     ci_checks: 'CI result',
     ci_documents: 'CI report file',
     extraction_runs: 'AI document extraction',
+    ci_finding_flags: 'CI findings flag',
+    document_file_marks: 'Staff check of a file',
 };
 
 const ACTION_LABELS = { INSERT: 'Added', UPDATE: 'Changed', DELETE: 'Removed' };

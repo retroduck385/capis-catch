@@ -8,7 +8,7 @@ import { DSS_ROLES } from '../../roles';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
-import { fetchApplication, getDocumentUrl, refreshApplication } from '../applicationForm/api';
+import { fetchApplication, getDocumentUrl, getParties, refreshApplication } from '../applicationForm/api';
 import ApplicationSummary from '../applicationForm/applicationSummary';
 import { buildSteps } from '../applicationForm/steps';
 import { fetchCiRequests } from '../ciRequest/api';
@@ -21,6 +21,7 @@ import MessagesPanel from '../messages/messagesPanel';
 import CommentButton from '../messages/commentButton';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
+import AskApplicantButton from '../documentRequests/ask';
 import './loanFolder.css';
 
 const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
@@ -98,6 +99,22 @@ const LoanFolderPage = () => {
     const latestCheck = (key) => checks.findLast((c) => c.section === key) ?? null;
     const verifiedCount = sections.filter((s) => latestCheck(s.key)?.result === 'VERIFIED').length;
     const section = sections.find((s) => s.key === currentKey) ?? null;
+
+    // "Ask the applicant" on a section marked Needs clarification: the AO's remark becomes the note and that
+    // borrower's still-missing documents are ticked (everyone's, for a section that isn't about one borrower)
+    const borrowerOf = (key) => {
+        const coBorrower = key.match(/^coBorrower-([0-9]+)$/);
+        if (key.startsWith('principal')) return getParties(app, ['PRINCIPAL'])[0]?.id ?? null;
+        if (key === 'spouse') return getParties(app, ['SPOUSE'])[0]?.id ?? null;
+        if (coBorrower) return getParties(app, ['CO_BORROWER']).find((p) => p.party_no === Number(coBorrower[1]))?.id ?? null;
+        return null;
+    };
+    const askFor = (s, check) => (check?.result === 'NEEDS_CLARIFICATION' ? (
+        <p className="lf-kyc-meta">
+            <AskApplicantButton applicationId={app.id}
+                ask={{ missingFor: borrowerOf(s.key), note: check.remarks ?? '', from: `the KYC check of "${s.title}" (Needs clarification)` }} />
+        </p>
+    ) : null);
 
     const refresh = async () => {
         const data = await refreshApplication(app.id);
@@ -208,6 +225,7 @@ const LoanFolderPage = () => {
                                     <CheckChip check={check} />
                                 </div>
                                 <CheckSummary check={check} names={names} />
+                                {askFor(s, check)}
                             </li>
                         );
                     })}
@@ -312,6 +330,7 @@ const LoanFolderPage = () => {
                                 complete={section.complete}
                                 latest={latestCheck(section.key)}
                                 names={names}
+                                extra={askFor(section, latestCheck(section.key))}
                                 onRecorded={handleRecorded} />
                             {saved && <p className="lf-ok-note" role="status">Changes saved.</p>}
                             <Component

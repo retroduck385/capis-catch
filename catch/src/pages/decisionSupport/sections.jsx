@@ -17,6 +17,7 @@ import { ApprovalProgress } from '../review/approvalParts';
 import { ReviewProgress } from '../review/reviewParts';
 import RoutingSummary from '../review/routingSummary';
 import { READY } from './readiness';
+import AskApplicantButton from '../documentRequests/ask';
 import './decisionSupport.css';
 
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
@@ -69,6 +70,9 @@ export const Readiness = ({ ctx }) => {
                                         <> · <Link to={item.to}>{item.action}<ArrowRight size={12} aria-hidden="true" /></Link></>
                                     )}
                                 </small>
+                                {item.ask && item.state !== READY.DONE && (
+                                    <p><AskApplicantButton applicationId={ctx.app.id} ask={item.ask} /></p>
+                                )}
                             </div>
                         </li>
                     );

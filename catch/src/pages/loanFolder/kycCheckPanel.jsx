@@ -22,7 +22,8 @@ export const CheckChip = ({ check }) => (
     </span>
 );
 
-const KycCheckPanel = ({ applicationId, section, complete, latest, names, onRecorded }) => {
+// extra: shown under the latest result (the loan folder passes "Ask the applicant" for a Needs clarification)
+const KycCheckPanel = ({ applicationId, section, complete, latest, names, onRecorded, extra = null }) => {
     const [result, setResult] = useState(latest?.result ?? '');
     const [remarks, setRemarks] = useState('');
     const [error, setError] = useState(null);
@@ -58,6 +59,7 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
                 <CheckChip check={latest} />
             </div>
             <CheckSummary check={latest} names={names} />
+            {extra}
             {!complete && <p className="lf-err">This section is incomplete, so it can't be marked Verified.</p>}
 
             <div className="lf-choices" role="radiogroup" aria-label="KYC result">
