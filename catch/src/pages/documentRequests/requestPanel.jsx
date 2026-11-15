@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { smsSegments } from '../applicantNotices/sms';
 import { closeRequest, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
 import { refreshCanAsk } from './askStore';
@@ -12,6 +13,8 @@ import { Terms } from '../../components/term';
 // the AO checks them (they go through OCR and the AI document check like any upload) and closes the request.
 // Everyone who can open the file sees the current request read-only. Light colours with an explicit text colour on
 // every element: index.css turns headings and body text light in OS dark mode.
+// A dropdown (native <details>), closed by default so it doesn't push the loan folder down; the header line shows
+// where the current request stands. It opens by itself when the applicant has sent documents back to check.
 
 const STATUS_TEXT = {
     OPEN: 'Waiting for the applicant',
@@ -87,6 +90,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const [busy, setBusy] = useState(false);
     const [done, setDone] = useState(null);
     const [error, setError] = useState(null);
+    const [expanded, setExpanded] = useState(null);    // null = not toggled yet: open only if documents came back
     const [askSeen, setAskSeen] = useState(null);       // the "Ask the applicant" click already put into the box
     const marks = useFileMarks(applicationId);
     const boxRef = useRef(null);
@@ -117,8 +121,8 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
 
     const formVisible = Boolean(ctx?.can_open);
 
-    // An "Ask the applicant" click: tick its documents and prefill the note, once (state adjusted while rendering).
-    // Nothing is sent: the AO reviews the box and clicks Send request.
+    // An "Ask the applicant" click: open the dropdown, tick its documents and prefill the note, once (state adjusted
+    // while rendering). Nothing is sent: the AO reviews the box and clicks Send request.
     if (ask && formVisible && ask.at !== askSeen) {
         setAskSeen(ask.at);
         const onList = (i) => i.requirement_type && checklist.some((r) => keyOf(r) === keyOf(i));
@@ -129,6 +133,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         setMessage((ask.note ?? '').slice(0, ctx.max_length));
         setConfirming(false);
         setDone(null);
+        setExpanded(true);
     }
     // ...then bring the box into view
     useEffect(() => {
@@ -199,8 +204,22 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const parties = ctx.suggestions?.parties ?? [];
 
     return (
-        <section ref={boxRef} aria-labelledby='doc-request-heading' className='my-3 scroll-mt-20 rounded-lg border border-gray-300 bg-white p-4 text-left text-gray-900'>
-            <h3 id='doc-request-heading' className='text-lg font-semibold text-gray-900'>Ask the applicant for documents</h3>
+        <details ref={boxRef} open={expanded ?? cur?.status === 'SENT'} onToggle={(e) => setExpanded(e.currentTarget.open)}
+            className='group my-3 scroll-mt-20 rounded-lg border border-gray-300 bg-white text-left text-gray-900'>
+            <summary className='flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-lg px-4 py-3 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 [&::-webkit-details-marker]:hidden'>
+                <h3 className='text-lg font-semibold text-gray-900'>Ask the applicant for documents</h3>
+                {cur && (
+                    <span className={`whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold ${cur.status === 'SENT'
+                        ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-gray-300 bg-gray-50 text-gray-800'}`}>
+                        {cur.status === 'SENT' ? 'Documents sent back: check them' : 'Waiting for the applicant'}
+                    </span>
+                )}
+                {ctx.history.length > 0 && (
+                    <span className='hidden text-sm text-gray-700 sm:inline'>{ctx.history.length} earlier</span>
+                )}
+                <ChevronDown size={20} aria-hidden='true' className='ml-auto shrink-0 text-gray-700 transition-transform group-open:rotate-180 motion-reduce:transition-none' />
+            </summary>
+            <div className='px-4 pb-4'>
             {done && <p role='status' className='mt-1 font-semibold text-green-800'>{done}</p>}
             {error && <p role='alert' className='mt-1 text-red-800'>{error}</p>}
 
@@ -362,7 +381,8 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                     </ul>
                 </details>
             )}
-        </section>
+            </div>
+        </details>
     );
 };
 

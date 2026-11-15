@@ -6,6 +6,7 @@
 // (update_review_routing()); the approvers follow the authority.
 // Everyone else with access reads.
 // Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
+// The assigned CO's header shows step 3 of their three steps (financialPackage/coSteps.jsx): FP -> score -> this.
 import { ApprovalRoutingSkeleton } from '../../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -20,6 +21,7 @@ import { fetchStaffNames } from '../loanFolder/api';
 import { fetchAssignee, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage } from '../financialPackage/api';
 import { totalCreditScore } from '../financialPackage/creditScore';
 import { CREDIT_RESULTS } from '../financialPackage/options';
+import CoSteps, { CoOptionalView } from '../financialPackage/coSteps';
 import { STAGE_STATUS_LABELS, stageLabel } from '../workTray/options';
 import { fetchCurrentStage, fetchReviewAssignments, fetchReviewStaff, sendForReview, updateReviewRouting } from './api';
 import {
@@ -287,12 +289,19 @@ const ApprovalRoutingPage = () => {
                     </div>
                     <div className="lf-actions">
                         <MessagesPanel applicationId={app.id} inline />
-                        <Link to="/adminHomePage" className="lf-btn">Work tray</Link>
-                        <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
-                            Loan folder<ArrowRight size={16} aria-hidden="true" />
-                        </Link>
+                        {/* The assigned CO gets these as steps / optional view below */}
+                        {!isAssignedCo && (
+                            <>
+                                <Link to="/adminHomePage" className="lf-btn">Work tray</Link>
+                                <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
+                                    Loan folder<ArrowRight size={16} aria-hidden="true" />
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
+
+                {isAssignedCo && <CoSteps appId={app.id} current="routing" pkg={fp.pkg ?? null} score={score} sent={sent} />}
 
                 <div className="fp-metrics">
                     {metrics.map((m) => (
@@ -303,6 +312,8 @@ const ApprovalRoutingPage = () => {
                         </div>
                     ))}
                 </div>
+
+                {isAssignedCo && <CoOptionalView appId={app.id} />}
 
                 {!editable && (
                     <p className="lf-note">

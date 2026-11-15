@@ -2,70 +2,26 @@
 // Per borrower and per check: the report file(s), a result and the CI's summarized findings, plus overall remarks.
 // Uploaded reports are OCR'd by the PaddleOCR worker; NFIS and TU reports are then read by the AI and checked
 // on the CI report check page (/documentCheckPage?ci=1, "AI check" next to each file).
-//   CiResultsEditor: the Credit Investigator, while the application is in Credit Investigation.
+//   CiResultsEditor: the Credit Investigator, while the application is in Credit Investigation. Draws one of the
+//     page's step subpages (show): 'upload' (a borrower x check grid), 'ai' (each NFIS / TU report and a link to its
+//     AI check on the document check page; confirming there fills in the result + summary) or 'results' (results,
+//     remarks, Save, Mark CI Done). It stays mounted across steps, so unsaved findings survive a step change.
+//     The AI check is optional: a NFIS / TU result entered by hand is tagged "Not AI-checked".
 //   CiResultsView:   read-only, for everyone else (CO's Financial Package, AO's loan folder) and after Done.
 import { PanelSkeleton } from '../../components/skeleton';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getParties } from '../applicationForm/api';
-import { BORROWER_ROLES, partyLabel } from '../applicationForm/options';
+import { CheckCircle2, ScanText, Upload } from 'lucide-react';
+import { partyLabel } from '../applicationForm/options';
 import { fetchStaffNames } from '../loanFolder/api';
-import {
-    completeCi, fetchCiDone, fetchCiRequests, fetchCiResults, getCiDocumentUrl, removeCiDocument, saveCiFindings,
-    uploadCiDocument,
-} from './api';
+import { completeCi, fetchCiDone, fetchCiRequests, getCiDocumentUrl, removeCiDocument, saveCiFindings, uploadCiDocument } from './api';
+import { AI_CHECKED, aiCheckUrl, fullName, isAiChecked, keyOf, missingItems, personLabel, useCiResults } from './ciResultsData';
 import { CI_CHECKS, CI_RESULTS } from './options';
 import CiFindingFlags from './findingFlags';
 import { Term, Terms } from '../../components/term';
 
+const AI_CHECKS = CI_CHECKS.filter((c) => AI_CHECKED.has(c.value));
 const resultLabel = (value) => CI_RESULTS.find((r) => r.value === value)?.label ?? null;
-
-const keyOf = (applicantId, checkType) => `${applicantId}:${checkType}`;
-const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ') || '—';
-const personLabel = (p) => `${partyLabel(p)}: ${fullName(p)}`;
-
-// Loads the borrowers' CI rows; bump `version` to reload
-const useCiResults = (app, version) => {
-    const borrowers = useMemo(() => getParties(app, BORROWER_ROLES), [app]);
-    const idsKey = borrowers.map((b) => b.id).join(',');
-    const [state, setState] = useState({ checks: [], documents: [], loading: true, error: null });
-
-    useEffect(() => {
-        let cancelled = false;
-        const load = async () => {
-            try {
-                const ids = idsKey ? idsKey.split(',').map(Number) : [];
-                const data = await fetchCiResults(ids);
-                if (!cancelled) setState({ ...data, loading: false, error: null });
-            } catch (err) {
-                if (!cancelled) setState((s) => ({ ...s, loading: false, error: err.message }));
-            }
-        };
-        load();
-        return () => { cancelled = true; };
-    }, [idsKey, version]);
-
-    const byKey = useMemo(() => {
-        const map = {};
-        for (const c of state.checks) map[keyOf(c.applicant_id, c.check_type)] = { ...c, documents: [] };
-        for (const d of state.documents) {
-            const k = keyOf(d.applicant_id, d.check_type);
-            (map[k] ??= { documents: [] }).documents.push(d);
-        }
-        return map;
-    }, [state.checks, state.documents]);
-
-    return { borrowers, byKey, loading: state.loading, error: state.error };
-};
-
-// Same rule as ci_missing() in the DB, on what's saved: every borrower needs an NFIS and a TU result + report
-const missingItems = (borrowers, byKey) => borrowers.flatMap((p) => CI_CHECKS.filter((c) => c.required).flatMap((c) => {
-    const saved = byKey[keyOf(p.id, c.value)];
-    return [
-        !saved?.documents?.length && `${personLabel(p)}: ${c.value} report (upload the file)`,
-        !saved?.result && `${personLabel(p)}: ${c.value} result`,
-    ].filter(Boolean);
-}));
 
 const openFile = async (doc, setError) => {
     try {
@@ -75,33 +31,18 @@ const openFile = async (doc, setError) => {
     }
 };
 
-// NFIS and TU reports have an AI extraction (20261109_ci_extraction.sql); BRAS doesn't yet
-const AI_CHECKED = new Set(['NFIS', 'TU']);
-const aiCheckUrl = (applicationId, doc) => (AI_CHECKED.has(doc.check_type)
-    ? `/documentCheckPage?id=${applicationId}&ci=1&doc=${doc.id}` : null);
+// Status of one borrower x check in the upload grid
+const slotStatus = (check, slot, confirmed) => {
+    if (!slot?.documents?.length) return check.required ? { label: 'Missing', tone: 'warn' } : { label: 'Optional', tone: 'none' };
+    if (AI_CHECKED.has(check.value) && isAiChecked(slot, confirmed)) return { label: 'AI-checked', tone: 'ok' };
+    return { label: 'Uploaded', tone: 'ok' };
+};
 
-const FileList = ({ docs, onView, onRemove, busy, applicationId, onLeave }) => (
-    docs.length ? (
-        <ul>
-            {docs.map((doc) => (
-                <li key={doc.id} className="flex gap-2 items-center flex-wrap">
-                    <span title={doc.original_file_name}>{doc.file_name}</span>
-                    <button type="button" className="border px-2" onClick={() => onView(doc)}>View</button>
-                    {aiCheckUrl(applicationId, doc) && (
-                        <Link to={aiCheckUrl(applicationId, doc)} className="border px-2"
-                            onClick={(e) => { if (onLeave && !onLeave()) e.preventDefault(); }}>
-                            AI check
-                        </Link>
-                    )}
-                    {onRemove && (
-                        <button type="button" className="border px-2" disabled={busy === doc.id}
-                            onClick={() => onRemove(doc)}>Remove</button>
-                    )}
-                </li>
-            ))}
-        </ul>
-    ) : <p className="italic text-gray-500">No file uploaded.</p>
-);
+const AiTag = ({ checkType, slot, confirmed, hasResult }) => {
+    if (!AI_CHECKED.has(checkType)) return null;
+    if (isAiChecked(slot, confirmed)) return <span className="lf-chip ok">AI-checked</span>;
+    return hasResult ? <span className="lf-chip warn">Not AI-checked</span> : null;
+};
 
 const ResultText = ({ value }) => (value
     ? <span className={value === 'WITH_FINDINGS' ? 'text-red-700 font-semibold' : 'text-green-700 font-semibold'}>{resultLabel(value)}</span>
@@ -110,10 +51,10 @@ const ResultText = ({ value }) => (value
 // ============================================================
 // Editor (Credit Investigator)
 // ============================================================
-export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
-    const [version, setVersion] = useState(0);
-    const { borrowers, byKey, loading, error: loadError } = useCiResults(app, version);
-    const reload = () => setVersion((v) => v + 1);
+// data: useCiResults(app) from the page (the steps read it too). show: 'upload' | 'ai' | 'results'.
+// onGoTo(step): open another step. onDirtyChange(bool): unsaved findings or not.
+export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged, onDirtyChange }) => {
+    const { borrowers, byKey, confirmed, loading, error: loadError, reload } = data;
 
     const [edits, setEdits] = useState({});           // key -> { result, summary } (unsaved)
     const [remarks, setRemarks] = useState(null);     // null = unchanged
@@ -134,14 +75,16 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
             || (e.summary !== undefined && e.summary.trim() !== (saved?.summary ?? ''));
     }) || currentRemarks.trim() !== savedRemarks;
 
-    // Ask before closing the tab with unsaved findings
+    // Ask before closing the tab with unsaved findings; tell the page so its step links can ask too
     useEffect(() => {
+        onDirtyChange?.(dirty);
         if (!dirty) return undefined;
         const warn = (e) => { e.preventDefault(); };
         window.addEventListener('beforeunload', warn);
         return () => window.removeEventListener('beforeunload', warn);
-    }, [dirty]);
+    }, [dirty, onDirtyChange]);
 
+    const leaveOk = () => !dirty || window.confirm('You have unsaved findings on this page. Leave without saving?');
     const setField = (k, field, value) => setEdits((prev) => ({ ...prev, [k]: { ...prev[k], [field]: value } }));
 
     const handleUpload = async (party, checkType, files) => {
@@ -220,60 +163,169 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
 
     const missing = serverMissing ?? missingItems(borrowers, byKey);
 
-    return (
-        <div className="text-left">
-            <h3 className="text-lg font-semibold pt-4"><Term k="CI" /> results</h3>
-            <p className="text-sm">
-                Upload each report (JPG, PNG or PDF, up to 10 MB) and record the result and your summary of the findings.
-                Files are saved right away; results and summaries are saved with "Save findings". The applicant can't see any of this.
+    const fileActions = (doc, { remove = true } = {}) => (
+        <span className="ci-file-actions">
+            {aiCheckUrl(app.id, doc) && (
+                <Link to={aiCheckUrl(app.id, doc)} className="ci-mini"
+                    onClick={(e) => { if (!leaveOk()) e.preventDefault(); }}>
+                    {confirmed.has(doc.id)
+                        ? <><CheckCircle2 size={14} aria-hidden="true" />AI checked: review</>
+                        : <><ScanText size={14} aria-hidden="true" />Open AI check</>}
+                </Link>
+            )}
+            {remove && (
+                <button type="button" className="ci-mini" disabled={busy === doc.id} onClick={() => handleRemove(doc)}>
+                    Remove<span className="sr-only"> {doc.file_name}</span>
+                </button>
+            )}
+        </span>
+    );
+    const fileName = (doc) => (
+        <button type="button" className="ci-file" title={doc.original_file_name} onClick={() => openFile(doc, setError)}>
+            {doc.file_name}
+        </button>
+    );
+
+    // Step 2: one card per borrower, one cell per check
+    const uploadStep = (
+        <>
+            <p className="ci-note">
+                <Term k="NFIS" /> and <Term k="TU" /> are required for every borrower; BRAS is optional. JPG, PNG or PDF, up to 10 MB each; files are
+                saved right away. The applicant can't see any of this.
             </p>
-            <p className="text-sm">
-                <Term k="NFIS" /> and <Term k="TU" /> reports are read by the AI after upload. Use "AI check" to compare the report with the application
-                and confirm the AI's draft result and summary; confirming saves them here.
+            <div className="ci-borrowers">
+                {borrowers.map((p) => (
+                    <div key={p.id} className="ci-borrower">
+                        <h3>{fullName(p)} <span>{partyLabel(p)}</span></h3>
+                        <ul className="ci-slots">
+                            {CI_CHECKS.map((c) => {
+                                const k = keyOf(p.id, c.value);
+                                const slot = byKey[k];
+                                const docs = slot?.documents ?? [];
+                                const status = slotStatus(c, slot, confirmed);
+                                return (
+                                    <li key={c.value} className={`ci-slot ${status.tone}`}>
+                                        <div className="ci-slot-top">
+                                            <b>{c.label}</b>
+                                            <span className={`lf-chip ${status.tone}`}>{status.label}</span>
+                                        </div>
+                                        {docs.length > 0 && (
+                                            <ul className="ci-files">
+                                                {docs.map((doc) => <li key={doc.id}>{fileName(doc)}{fileActions(doc)}</li>)}
+                                            </ul>
+                                        )}
+                                        <label className={`lf-btn quiet ci-upload${busy === k ? ' busy' : ''}`}>
+                                            <Upload size={16} aria-hidden="true" />
+                                            {busy === k ? 'Uploading...' : docs.length ? 'Add another file' : 'Upload report'}
+                                            <input type="file" multiple accept="image/jpeg,image/png,application/pdf" className="sr-only"
+                                                disabled={busy === k} aria-label={`Upload ${c.label} report for ${fullName(p)}`}
+                                                onChange={(e) => {
+                                                    const files = [...e.target.files];
+                                                    e.target.value = '';
+                                                    if (files.length) handleUpload(p, c.value, files);
+                                                }} />
+                                        </label>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+
+    // Step 3: every NFIS / TU report and its AI check (the check itself is on the document check page)
+    const anyAiReport = borrowers.some((p) => AI_CHECKS.some((c) => byKey[keyOf(p.id, c.value)]?.documents?.length));
+    const aiStep = (
+        <>
+            <p className="ci-note">
+                Optional. The AI reads each <Term k="NFIS" /> and <Term k="TU" /> report. Open its AI check, compare every value with the report, edit
+                what's wrong and confirm: the result and summary are then filled in for step 4. You can also skip this and
+                enter the results by hand; they're tagged "Not AI-checked".
             </p>
-            {loadError && <p className="text-red-600">{loadError}</p>}
+            {!anyAiReport ? (
+                <p className="ci-empty-step">
+                    No NFIS or TU report has been uploaded yet.{' '}
+                    <button type="button" className="ci-link" onClick={() => onGoTo('upload')}>Go to step 2: Upload the reports</button>
+                </p>
+            ) : (
+                <div className="ci-borrowers">
+                    {borrowers.map((p) => (
+                        <div key={p.id} className="ci-borrower">
+                            <h3>{fullName(p)} <span>{partyLabel(p)}</span></h3>
+                            <ul className="ci-slots two">
+                                {AI_CHECKS.map((c) => {
+                                    const slot = byKey[keyOf(p.id, c.value)];
+                                    const docs = slot?.documents ?? [];
+                                    const done = isAiChecked(slot, confirmed);
+                                    const tone = done ? 'ok' : docs.length ? 'warn' : 'none';
+                                    return (
+                                        <li key={c.value} className={`ci-slot ${tone}`}>
+                                            <div className="ci-slot-top">
+                                                <b>{c.label}</b>
+                                                <span className={`lf-chip ${tone}`}>
+                                                    {done ? 'AI-checked' : docs.length ? 'To check' : 'Not uploaded'}
+                                                </span>
+                                            </div>
+                                            {docs.length > 0 ? (
+                                                <ul className="ci-files">
+                                                    {docs.map((doc) => <li key={doc.id}>{fileName(doc)}{fileActions(doc, { remove: false })}</li>)}
+                                                </ul>
+                                            ) : (
+                                                <button type="button" className="ci-link" onClick={() => onGoTo('upload')}>Upload it in step 2</button>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </>
+    );
+
+    // Step 4: results + summaries (AI-confirmed ones are already filled in), remarks, save, Done
+    const resultsStep = (
+        <>
+            <p className="ci-note">
+                Results you confirmed in the AI check are already filled in; you can still change them. Enter BRAS, and any
+                report you didn't AI-check, by hand. Saved with "Save findings".
+            </p>
 
             {borrowers.map((p) => (
-                <fieldset key={p.id} className="border p-4 my-4">
-                    <legend className="font-semibold px-1">{personLabel(p)}</legend>
+                <fieldset key={p.id} className="ci-results">
+                    <legend>{personLabel(p)}</legend>
                     {CI_CHECKS.map((c) => {
                         const k = keyOf(p.id, c.value);
                         const v = valueOf(k);
-                        const docs = byKey[k]?.documents ?? [];
                         return (
-                            <div key={c.value} className="border-b py-3">
-                                <p className="font-semibold">
-                                    {c.label}{c.required ? <span className="text-red-600"> *</span> : ' (optional)'}
-                                </p>
-                                <FileList docs={docs} busy={busy} onView={(doc) => openFile(doc, setError)} onRemove={handleRemove}
-                                    applicationId={app.id}
-                                    onLeave={() => !dirty || window.confirm('You have unsaved findings on this page. Leave without saving?')} />
-                                <input type="file" multiple accept="image/jpeg,image/png,application/pdf"
-                                    disabled={busy === k} aria-label={`Upload ${c.label} report for ${fullName(p)}`}
-                                    onChange={(e) => {
-                                        const files = [...e.target.files];
-                                        e.target.value = '';
-                                        if (files.length) handleUpload(p, c.value, files);
-                                    }} />
-                                {busy === k && <span> Uploading...</span>}
-                                <div className="flex gap-4 py-2" role="radiogroup" aria-label={`${c.label} result`}>
-                                    {CI_RESULTS.map((r) => (
-                                        <label key={r.value} className="flex gap-1 items-center">
-                                            <input type="radio" name={`result-${k}`} checked={v.result === r.value}
-                                                onChange={() => setField(k, 'result', r.value)} />
-                                            {r.label}
-                                        </label>
-                                    ))}
+                            <div key={c.value} className="ci-result">
+                                <div className="ci-result-side">
+                                    <div className="ci-slot-top">
+                                        <b>{c.label}{c.required ? <span className="ci-req" aria-label="required"> *</span> : ' (optional)'}</b>
+                                        <AiTag checkType={c.value} slot={byKey[k]} confirmed={confirmed} hasResult={!!v.result} />
+                                    </div>
+                                    <div className="lf-choices" role="radiogroup" aria-label={`${c.label} result for ${fullName(p)}`}>
+                                        {CI_RESULTS.map((r) => (
+                                            <label key={r.value} className="lf-choice">
+                                                <input type="radio" name={`result-${k}`} checked={v.result === r.value}
+                                                    onChange={() => setField(k, 'result', r.value)} />
+                                                {r.label}
+                                            </label>
+                                        ))}
+                                    </div>
                                     {v.result && (
-                                        <button type="button" className="underline text-sm" onClick={() => setField(k, 'result', null)}>
-                                            Clear
+                                        <button type="button" className="ci-link" onClick={() => setField(k, 'result', null)}>
+                                            Clear result
                                         </button>
                                     )}
                                 </div>
-                                <label className="block">
+                                <label className="ci-summary">
                                     <span>Summary of findings</span>
-                                    <textarea rows={3} className="border block w-full px-2" value={v.summary}
-                                        maxLength={4000} onChange={(e) => setField(k, 'summary', e.target.value)} />
+                                    <textarea rows={3} value={v.summary} maxLength={4000}
+                                        onChange={(e) => setField(k, 'summary', e.target.value)} />
                                 </label>
                             </div>
                         );
@@ -281,42 +333,47 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
                 </fieldset>
             ))}
 
-            <label className="block py-2">
-                <span className="font-semibold">Overall CI remarks (optional)</span>
-                <textarea rows={3} className="border block w-full px-2" value={currentRemarks} maxLength={4000}
-                    onChange={(e) => setRemarks(e.target.value)} />
+            <label className="ci-summary ci-remarks">
+                <span>Overall CI remarks (optional)</span>
+                <textarea rows={3} value={currentRemarks} maxLength={4000} onChange={(e) => setRemarks(e.target.value)} />
             </label>
 
-            {error && <p className="text-red-600 py-2">{error}</p>}
-
-            <div className="sticky bottom-0 bg-white border-t py-2 flex gap-3 items-center">
-                <button type="button" className="border px-4 py-2" disabled={!dirty || busy === 'save'} onClick={handleSave}>
+            <div className="ci-savebar">
+                <button type="button" className="lf-btn" disabled={!dirty || busy === 'save'} onClick={handleSave}>
                     {busy === 'save' ? 'Saving...' : 'Save findings'}
                 </button>
-                {dirty ? <span className="text-amber-700">Unsaved changes</span> : <span className="text-sm">All changes saved</span>}
+                {dirty
+                    ? <span className="ci-unsaved" role="status">Unsaved changes</span>
+                    : <span className="ci-saved" role="status">All changes saved</span>}
             </div>
 
             <CiFindingFlags applicationId={app.id}
                 hasFindings={Object.values(byKey).some((c) => c.result === 'WITH_FINDINGS')}
                 unsaved={Object.values(edits).some((e) => e?.result === 'WITH_FINDINGS')} />
 
-            <div className="border p-3 my-4">
-                <h3 className="font-semibold">Mark CI Done</h3>
+            <div className={`ci-done ${missing.length ? 'warn' : 'ok'}`}>
+                <h3>Mark CI Done</h3>
                 {missing.length > 0 ? (
                     <>
                         <p>Still needed before this can go to the Credit Officer:</p>
-                        <ul className="list-disc pl-6 text-red-700">{missing.map((m) => <li key={m}>{m}</li>)}</ul>
+                        <ul>{missing.map((m) => <li key={m}>{m}</li>)}</ul>
                     </>
                 ) : (
                     <p>All NFIS and TU results and reports are in. BRAS is optional.</p>
                 )}
-                {dirty && <p className="text-amber-700">Save your findings first.</p>}
-                <button type="button" className="border px-4 py-2 mt-2"
-                    disabled={missing.length > 0 || dirty || busy === 'done'} onClick={handleDone}>
+                {dirty && <p className="ci-unsaved">Save your findings first.</p>}
+                <button type="button" disabled={missing.length > 0 || dirty || busy === 'done'} onClick={handleDone}>
                     {busy === 'done' ? 'Sending...' : 'Mark CI Done and send to Credit Evaluation'}
                 </button>
             </div>
-        </div>
+        </>
+    );
+
+    return (
+        <>
+            {(loadError || error) && <p className="ci-err" role="alert">{loadError || error}</p>}
+            {{ upload: uploadStep, ai: aiStep, results: resultsStep }[show] ?? null}
+        </>
     );
 };
 
@@ -324,7 +381,7 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
 // Read-only view (CO, AO, heads; and the CI after Done)
 // ============================================================
 export const CiResultsView = ({ app, title = 'CI results' }) => {
-    const { borrowers, byKey, loading, error: loadError } = useCiResults(app, 0);
+    const { borrowers, byKey, loading, error: loadError } = useCiResults(app);
     const [meta, setMeta] = useState({ request: null, done: null, names: {} });
     const [error, setError] = useState(null);
 

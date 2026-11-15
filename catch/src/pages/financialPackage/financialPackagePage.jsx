@@ -5,6 +5,8 @@
 // Two pages, like the paper FP: 1 = the recommendation (I to VII), 2 = the application information (VIII onwards, the
 // credit result and the change history). Both stay mounted inside ONE form (the inactive one is hidden), so switching
 // keeps every edit, the policy check result and the single Save button; the page is kept in ?page=2.
+// The assigned CO's header shows their work as three steps across pages (coSteps.jsx): this FP -> Credit score ->
+// Approval routing, and the read-only pages (loan folder, Decision support) under "Optional view".
 import { FinancialPackageSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScanText, ScrollText, ShieldCheck } from 'lucide-react';
@@ -17,6 +19,8 @@ import { BORROWER_ROLES, formatMoney, partyLabel } from '../applicationForm/opti
 import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
 import ChangeHistory from '../loanFolder/changeHistory';
 import { fetchReviewAssignments } from '../review/api';
+import { splitRouting } from '../review/approval';
+import CoSteps, { CoOptionalView } from './coSteps';
 import { ReturnNotice } from '../review/returnNotice';
 import { fetchAssignedAo, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage } from './api';
 import MessagesPanel from '../messages/messagesPanel';
@@ -167,6 +171,7 @@ const FinancialPackagePage = () => {
     const [savedScore, setSavedScore] = useState({}); // { [criterion]: { band } }, for the header's risk rating
     const [routing, setRouting] = useState({ tier: null, rows: [], names: {} }); // VII. Approval
     const [form, setForm] = useState(null);
+    const [savedPkg, setSavedPkg] = useState(null); // the saved FP row (null = never saved), for the CO's steps
     const [canEdit, setCanEdit] = useState(false);
     const [aoName, setAoName] = useState(null);
     const [audit, setAudit] = useState([]);
@@ -188,6 +193,7 @@ const FinancialPackagePage = () => {
         const staff = await fetchStaffNames([aoId, ...fpLog.map((e) => e.changed_by),
             ...reviewRows.filter((r) => !r.unassigned_at).map((r) => r.user_id)]);
         setForm(buildForm(record, savedFp));
+        setSavedPkg(savedFp.pkg ?? null);
         setSavedScore(Object.fromEntries(savedFp.creditScore.map((r) => [r.criterion, r])));
         setRouting({ tier: savedFp.pkg?.approval_tier ?? null, rows: reviewRows, names: staff });
         setAudit(fpLog);
@@ -353,21 +359,32 @@ const FinancialPackagePage = () => {
                     </div>
                     <div className="lf-actions">
                         <MessagesPanel applicationId={app.id} inline />
-                        {/* The same page as VII. Approval's button: it reads the saved FP, so warn about unsaved edits */}
-                        <Link to={`/approvalRoutingPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
-                            <BadgeCheck size={16} aria-hidden="true" />Approval routing
-                        </Link>
-                        {/* The applicant's documents beside what the AI read (the Credit Investigator has a CI version) */}
-                        {role !== 'CREDIT_INVESTIGATOR' && (
-                            <Link to={`/documentCheckPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
-                                <ScanText size={16} aria-hidden="true" />Document check
-                            </Link>
+                        {/* The assigned CO gets these as steps / optional view below */}
+                        {!canEdit && (
+                            <>
+                                {/* The same page as VII. Approval's button: it reads the saved FP, so warn about unsaved edits */}
+                                <Link to={`/approvalRoutingPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
+                                    <BadgeCheck size={16} aria-hidden="true" />Approval routing
+                                </Link>
+                                {/* The applicant's documents beside what the AI read (the Credit Investigator has a CI version) */}
+                                {role !== 'CREDIT_INVESTIGATOR' && (
+                                    <Link to={`/documentCheckPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
+                                        <ScanText size={16} aria-hidden="true" />Document check
+                                    </Link>
+                                )}
+                                <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
+                                    Loan folder<ArrowRight size={16} aria-hidden="true" />
+                                </Link>
+                            </>
                         )}
-                        <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
-                            Loan folder<ArrowRight size={16} aria-hidden="true" />
-                        </Link>
                     </div>
                 </div>
+
+                {canEdit && (
+                    <CoSteps appId={app.id} current="package" pkg={savedPkg} score={score}
+                        sent={splitRouting(routing.rows).reviewers.length > 0}
+                        guard={() => !dirty || window.confirm('The Financial Package has unsaved changes. Leave without saving?')} />
+                )}
 
                 <div className="fp-metrics">
                     {metrics.map((m) => (
@@ -379,6 +396,11 @@ const FinancialPackagePage = () => {
                         </div>
                     ))}
                 </div>
+
+                {canEdit && (
+                    <CoOptionalView appId={app.id} documentCheck
+                        guard={() => !dirty || window.confirm('The Financial Package has unsaved changes. Leave without saving?')} />
+                )}
 
                 {!canEdit && (
                     <p className="lf-note">

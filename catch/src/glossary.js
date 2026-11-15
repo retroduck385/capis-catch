@@ -31,9 +31,9 @@ export const GLOSSARY = {
 
     // ---- Policy ----
     // MRAC and RAAC both appear in the app. MRAC: docs/approval-rules.md. RAAC: expansion given by the user
-    // (2026-11-16); that the MRAC are the minimum within it is read from the docs listing them together ("MRAC / RAC").
+    // (2026-11-16). The docs don't say how the two relate, so neither line does.
     MRAC: ['Minimum Risk Acceptance Criteria', 'The baseline thresholds a file must meet to go on to full evaluation; the policy check tests the figures against them.'],
-    RAAC: ['Risk Asset Acceptance Criteria', 'The bank\'s acceptance criteria for housing loans, one of the policy documents; the MRAC are its minimum thresholds.'],
+    RAAC: ['Risk Asset Acceptance Criteria', 'The bank\'s acceptance criteria for housing loans, one of the policy documents.'],
     RAG: ['Retrieval-Augmented Generation', 'Finds the policy passages that apply; every flag cites the passage it came from.'],
     DOSRI: ['Directors, Officers, Stockholders and Related Interests'],
     RPT: ['Related Party Transaction'],
@@ -52,7 +52,7 @@ export const GLOSSARY = {
     OCR: ['Optical Character Recognition', 'Reading the text out of an uploaded file, before the AI labels the values.'],
 
     // ---- Bank units ----
-    CRMD: ['Credit and Risk Management Division'],
+    CRMD: ['Credit and Risk Management Division'],             // TO CONFIRM with groupmates
     CIAD: ['Credit Investigation and Appraisal Department'],   // TO CONFIRM with groupmates
     CrID: ['Credit Investigation Department'],                 // TO CONFIRM with groupmates
     CCS: ['Centralized Collection Services'],                  // TO CONFIRM with groupmates

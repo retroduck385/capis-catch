@@ -2,6 +2,7 @@
 // Suggestions are worked out from the record and the SAVED Financial Package (income basis, rate, appraised
 // value, loan / deposit checks); the CO accepts, changes or leaves each one and saves with save_credit_score().
 // Same edit rule as the FP: only the assigned CO, any stage before Decided; everyone else with access reads.
+// The assigned CO's header shows step 2 of their three steps (coSteps.jsx): FP -> this score -> Approval routing.
 import { CreditScoreSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -12,6 +13,9 @@ import { fetchApplication, getParties, toRow } from '../applicationForm/api';
 import { FormError, Section } from '../applicationForm/fields';
 import { BORROWER_ROLES, formatMoney } from '../applicationForm/options';
 import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
+import { fetchReviewAssignments } from '../review/api';
+import { splitRouting } from '../review/approval';
+import CoSteps, { CoOptionalView } from './coSteps';
 import ChangeHistory from '../loanFolder/changeHistory';
 import { fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveCreditScore } from './api';
 import { computeFp } from './compute';
@@ -47,6 +51,7 @@ const CreditScorePage = () => {
     const [fp, setFp] = useState(null);
     const [scores, setScores] = useState(null); // { [criterion]: { band, suggested_band, remarks } }
     const [canEdit, setCanEdit] = useState(false);
+    const [sent, setSent] = useState(false); // sent for review (the CO's step 3)
     const [audit, setAudit] = useState([]);
     const [names, setNames] = useState({});
     const [dirty, setDirty] = useState(false);
@@ -59,7 +64,9 @@ const CreditScorePage = () => {
     // Saved FP + score + the score's change history (+ the staff names in it)
     const loadScore = useCallback(async (record) => {
         const ids = getParties(record, BORROWER_ROLES).map((p) => p.id);
-        const [savedFp, log] = await Promise.all([fetchFinancialPackage(record.id, ids), fetchAuditLog(record.id)]);
+        const [savedFp, log, reviewRows] = await Promise.all([
+            fetchFinancialPackage(record.id, ids), fetchAuditLog(record.id), fetchReviewAssignments(record.id)]);
+        setSent(splitRouting(reviewRows).reviewers.length > 0);
         const scoreLog = log.filter((e) => e.table_name === 'credit_score_entries');
         setFp(savedFp);
         setScores(Object.fromEntries(savedFp.creditScore.map((r) => [r.criterion, formOf(r)])));
@@ -132,8 +139,9 @@ const CreditScorePage = () => {
         }
     };
 
+    const leaveOk = () => !dirty || window.confirm('The credit score has unsaved changes. Leave without saving?');
     const leave = (e) => {
-        if (dirty && !window.confirm('The credit score has unsaved changes. Leave without saving?')) e.preventDefault();
+        if (!leaveOk()) e.preventDefault();
     };
     const borrowers = getParties(app, BORROWER_ROLES).map(fullName).filter(Boolean).join(', ');
 
@@ -176,12 +184,22 @@ const CreditScorePage = () => {
                     </div>
                     <div className="lf-actions">
                         <MessagesPanel applicationId={app.id} inline />
-                        <Link to="/adminHomePage" onClick={leave} className="lf-btn">Work tray</Link>
-                        <Link to={`/loanFolderPage?id=${app.id}`} onClick={leave} className="lf-btn">
-                            Loan folder<ArrowRight size={16} aria-hidden="true" />
-                        </Link>
+                        {/* The assigned CO gets these as steps / optional view below */}
+                        {!canEdit && (
+                            <>
+                                <Link to="/adminHomePage" onClick={leave} className="lf-btn">Work tray</Link>
+                                <Link to={`/loanFolderPage?id=${app.id}`} onClick={leave} className="lf-btn">
+                                    Loan folder<ArrowRight size={16} aria-hidden="true" />
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
+
+                {canEdit && (
+                    <CoSteps appId={app.id} current="score" pkg={fp.pkg ?? null} sent={sent} guard={leaveOk}
+                        score={totalCreditScore(rules, Object.fromEntries(fp.creditScore.map((r) => [r.criterion, r])))} />
+                )}
 
                 <div className="fp-metrics">
                     {metrics.map((m) => (
@@ -192,6 +210,8 @@ const CreditScorePage = () => {
                         </div>
                     ))}
                 </div>
+
+                {canEdit && <CoOptionalView appId={app.id} guard={leaveOk} />}
 
                 {!canEdit && (
                     <p className="lf-note">
