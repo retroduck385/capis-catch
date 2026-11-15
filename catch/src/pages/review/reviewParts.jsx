@@ -1,5 +1,8 @@
 // Pieces of the reviewer sign-off (review summary page, VII. Approval page, FP banner).
+// MyWorkProgress: the progress bar in the review summary's header for the reviewer / approver whose turn it is,
+// fed by ReviewForm's / ApprovalForm's onProgress (what's filled in so far; nothing is saved until Submit).
 import { useEffect, useState } from 'react';
+import { ArrowDown, CheckCircle2, Circle } from 'lucide-react';
 import { getDocumentUrl, getParties } from '../applicationForm/api';
 import { BORROWER_ROLES, EMPLOYMENT_TYPES, REQUIREMENT_LABELS, formatMoney, labelFor, partyLabel } from '../applicationForm/options';
 import {
@@ -184,7 +187,8 @@ export const IncomeEvidence = ({ app, computed, fp, onError }) => {
 const emptyChecks = (items) => Object.fromEntries(items.map((i) => [i.code, { result: '', remark: '' }]));
 
 // The current reviewer's checklist + decision. flags = reviewFlags() (shown under their checklist item)
-export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error }) => {
+// onProgress({ kind: 'review', marked, total, action, actionLabel, isReturn, hasRemarks, ready }): for the header bar
+export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error, onProgress }) => {
     const [checks, setChecks] = useState(() => emptyChecks(checkItems));
     const [action, setAction] = useState('');
     const [remarks, setRemarks] = useState('');
@@ -212,6 +216,12 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
         !remarks.trim() && (isReturn ? 'Say what the Credit Officer needs to revise.' : 'Write the justification.'),
     ].filter(Boolean);
     const signingOffWithFlags = !isReturn && action && flagged.length > 0;
+    const ready = blockers.length === 0;
+    const hasRemarks = remarks.trim() !== '';
+    const actionLabel = REVIEW_ACTIONS.find((a) => a.value === action)?.label ?? null;
+    useEffect(() => {
+        onProgress?.({ kind: 'review', marked: marked.length, total: checkItems.length, action, actionLabel, isReturn, hasRemarks, ready });
+    }, [onProgress, marked.length, checkItems.length, action, actionLabel, isReturn, hasRemarks, ready]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -326,5 +336,72 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                 </button>
             </div>
         </form>
+    );
+};
+
+// ============================================================
+// Header progress bar for the reviewer / approver whose turn it is
+// ============================================================
+const Part = ({ done, label, value }) => (
+    <li className={done ? 'is-done' : undefined}>
+        {done ? <CheckCircle2 size={16} aria-hidden="true" /> : <Circle size={16} aria-hidden="true" />}
+        <span><b>{label}</b> {value}<span className="sr-only">{done ? ' (done)' : ' (to do)'}</span></span>
+    </li>
+);
+
+// progress: the form's last onProgress (null until it reports); kind: 'review' | 'approval'; total: checklist items;
+// onJump: scroll to the form
+export const MyWorkProgress = ({ kind, progress, total = 0, onJump }) => {
+    const p = progress?.kind === kind ? progress : null;
+    let parts;
+    let max;
+    let value;
+    if (kind === 'review') {
+        const marked = p?.marked ?? 0;
+        const items = p?.total ?? total;
+        // A return only needs the items that need revising; a sign-off needs every item
+        const listDone = items > 0 && (marked === items || (p?.isReturn && marked > 0));
+        parts = [
+            { key: 'list', label: 'Checklist', value: `${marked} of ${items} marked`, done: listDone },
+            { key: 'decision', label: 'Decision', value: p?.actionLabel ?? 'not picked', done: Boolean(p?.action) },
+            {
+                key: 'remarks', label: p?.isReturn ? 'What to revise' : 'Justification',
+                value: p?.hasRemarks ? 'written' : 'not written', done: Boolean(p?.hasRemarks),
+            },
+        ];
+        max = items + 2;
+        value = (listDone ? items : Math.min(marked, items)) + (p?.action ? 1 : 0) + (p?.hasRemarks ? 1 : 0);
+    } else {
+        parts = [
+            { key: 'decision', label: 'Decision', value: p?.choiceLabel ?? 'not picked', done: Boolean(p?.choiceLabel) },
+            { key: 'details', label: 'Details', value: p?.ready ? 'complete' : 'see the form', done: Boolean(p?.ready) },
+        ];
+        max = 2;
+        value = (p?.choiceLabel ? 1 : 0) + (p?.ready ? 1 : 0);
+    }
+    // Full only when the form would let you submit (it may still need e.g. a remark on a flagged item)
+    const ready = Boolean(p?.ready);
+    const shown = ready ? max : Math.min(value, max - 1);
+    const pct = max > 0 ? Math.round((shown / max) * 100) : 0;
+    const title = kind === 'review' ? 'Your review' : 'Your decision';
+
+    return (
+        <div className="rv-mywork">
+            <div className="rv-mywork-top">
+                <p className="lf-steps-label">{title}</p>
+                <span className={`fp-chip ${ready ? 'ok' : 'warn'}`}>{ready ? 'Ready to submit' : `${pct}% done`}</span>
+                <button type="button" className="lf-btn quiet rv-mywork-jump" onClick={onJump}>
+                    Go to {title.toLowerCase()}<ArrowDown size={16} aria-hidden="true" />
+                </button>
+            </div>
+            <div className="lf-meter" role="progressbar" aria-label={`${title} progress`}
+                aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+                <span style={{ width: `${pct}%` }} />
+            </div>
+            <ul className="rv-mywork-parts">
+                {parts.map((x) => <Part key={x.key} done={x.done} label={x.label} value={x.value} />)}
+            </ul>
+            <p className="rv-mywork-note">Nothing is saved until you submit.</p>
+        </div>
     );
 };

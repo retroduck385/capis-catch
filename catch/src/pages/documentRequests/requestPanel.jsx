@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { smsSegments } from '../applicantNotices/sms';
 import { closeRequest, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
 
@@ -7,6 +8,8 @@ import { closeRequest, fetchRequestContext, fileUrl, openRequest, previewRequest
 // the AO checks them (they go through OCR and the AI document check like any upload) and closes the request.
 // Everyone who can open the file sees the current request read-only. Light colours with an explicit text colour on
 // every element: index.css turns headings and body text light in OS dark mode.
+// A dropdown (native <details>), closed by default so it doesn't push the loan folder down; the header line shows
+// where the current request stands. It opens by itself when the applicant has sent documents back to check.
 
 const STATUS_TEXT = {
     OPEN: 'Waiting for the applicant',
@@ -77,6 +80,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const [busy, setBusy] = useState(false);
     const [done, setDone] = useState(null);
     const [error, setError] = useState(null);
+    const [expanded, setExpanded] = useState(null);    // null = not toggled yet: open only if documents came back
 
     const load = useCallback(() => fetchRequestContext(applicationId).then(setCtx, () => setCtx(null)), [applicationId]);
     useEffect(() => {
@@ -160,8 +164,22 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const parties = ctx.suggestions?.parties ?? [];
 
     return (
-        <section aria-labelledby='doc-request-heading' className='my-3 rounded-lg border border-gray-300 bg-white p-4 text-left text-gray-900'>
-            <h3 id='doc-request-heading' className='text-lg font-semibold text-gray-900'>Ask the applicant for documents</h3>
+        <details open={expanded ?? cur?.status === 'SENT'} onToggle={(e) => setExpanded(e.currentTarget.open)}
+            className='group my-3 rounded-lg border border-gray-300 bg-white text-left text-gray-900'>
+            <summary className='flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-lg px-4 py-3 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 [&::-webkit-details-marker]:hidden'>
+                <h3 className='text-lg font-semibold text-gray-900'>Ask the applicant for documents</h3>
+                {cur && (
+                    <span className={`whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold ${cur.status === 'SENT'
+                        ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-gray-300 bg-gray-50 text-gray-800'}`}>
+                        {cur.status === 'SENT' ? 'Documents sent back: check them' : 'Waiting for the applicant'}
+                    </span>
+                )}
+                {ctx.history.length > 0 && (
+                    <span className='hidden text-sm text-gray-700 sm:inline'>{ctx.history.length} earlier</span>
+                )}
+                <ChevronDown size={20} aria-hidden='true' className='ml-auto shrink-0 text-gray-700 transition-transform group-open:rotate-180 motion-reduce:transition-none' />
+            </summary>
+            <div className='px-4 pb-4'>
             {done && <p role='status' className='mt-1 font-semibold text-green-800'>{done}</p>}
             {error && <p role='alert' className='mt-1 text-red-800'>{error}</p>}
 
@@ -317,7 +335,8 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                     </ul>
                 </details>
             )}
-        </section>
+            </div>
+        </details>
     );
 };
 

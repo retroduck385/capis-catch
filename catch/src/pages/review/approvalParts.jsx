@@ -69,7 +69,8 @@ export const ApprovalProgress = ({ tier, approvers, decisions, names, positions,
 };
 
 // The approver's decision. onSubmit({ action, remarks, conditions }); afterText(choice) = what happens next (confirm)
-export const ApprovalForm = ({ onSubmit, afterText, busy, error }) => {
+// onProgress({ kind: 'approval', choiceLabel, ready }): for the progress bar in the page header
+export const ApprovalForm = ({ onSubmit, afterText, busy, error, onProgress }) => {
     const [choice, setChoice] = useState('');
     const [conditions, setConditions] = useState('');
     const [remarks, setRemarks] = useState('');
@@ -89,6 +90,11 @@ export const ApprovalForm = ({ onSubmit, afterText, busy, error }) => {
         withConditions && !conditions.trim() && 'Write the conditions.',
         isNo && !remarks.trim() && 'Give the reason for disapproving.',
     ].filter(Boolean);
+    const ready = blockers.length === 0;
+    const choiceLabel = CHOICES.find((c) => c.value === choice)?.label ?? null;
+    useEffect(() => {
+        onProgress?.({ kind: 'approval', choiceLabel, ready });
+    }, [onProgress, choiceLabel, ready]);
 
     const handleSubmit = (e) => {
         e.preventDefault();

@@ -57,6 +57,28 @@ export const fetchDocumentChecks = async (documentIds, { ci = false } = {}) => {
     return result;
 };
 
+// Which of these documents have a confirmed AI extraction (a Set of their ids). ci = true: ci_documents ids.
+// Reads run status only, not the extracted fields, so it is cheap enough for page headers and step lists.
+export const fetchConfirmedIds = async (documentIds, { ci = false } = {}) => {
+    if (documentIds.length === 0) return new Set();
+    const source = ci ? 'ci_document_id' : 'document_id';
+    const ocrRuns = check(await supabase.from('ocr_runs').select(`id, ${source}`).in(source, documentIds)) ?? [];
+    if (ocrRuns.length === 0) return new Set();
+    const docOfOcr = Object.fromEntries(ocrRuns.map((r) => [r.id, r[source]]));
+    const confirmed = check(await supabase.from('extraction_runs')
+        .select('ocr_run_id').in('ocr_run_id', ocrRuns.map((r) => r.id)).not('confirmed_at', 'is', null)) ?? [];
+    return new Set(confirmed.map((r) => docOfOcr[r.ocr_run_id]));
+};
+
+// Loan folder step 1: of the application's documents the AI reads (a type in extraction_field_defs), how many the
+// AO has confirmed. documents = every application document; returns { total, confirmed }.
+export const fetchDocumentProgress = async (documents) => {
+    const defs = check(await supabase.from('extraction_field_defs').select('document_type')) ?? [];
+    const types = new Set(defs.map((d) => d.document_type));
+    const ids = documents.filter((d) => types.has(d.document_type)).map((d) => d.id);
+    return { total: ids.length, confirmed: (await fetchConfirmedIds(ids)).size };
+};
+
 // AO: run the AI again on the document's latest OCR (refused once confirmed)
 export const requestExtraction = async (documentId) =>
     check(await supabase.rpc('request_extraction', { p_document_id: documentId }));
