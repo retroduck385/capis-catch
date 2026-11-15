@@ -10,7 +10,7 @@ const check = ({ data, error }) => {
 export const PAGE_SIZE = 30;
 export const MAX_LENGTH = 2000;
 
-const COLUMNS = 'id, application_id, sender_id, sender_role, stage, body, created_at';
+const COLUMNS = 'id, application_id, sender_id, sender_role, stage, body, mentions, topic, created_at';
 
 // Newest first; pass the oldest loaded id to get the next (older) page
 export const fetchMessages = async (applicationId, beforeId = null) => {
@@ -39,8 +39,14 @@ export const fetchLastRead = async (applicationId) => {
 export const markMessagesRead = async (applicationId) =>
     check(await supabase.rpc('mark_messages_read', { p_application_id: applicationId }));
 
-export const postMessage = async (applicationId, body) =>
-    check(await supabase.rpc('post_message', { p_application_id: applicationId, p_body: body }));
+// mentions: user ids picked from the @ list; topic: the section the message is about (topics.js), or null
+export const postMessage = async (applicationId, body, mentions = [], topic = null) =>
+    check(await supabase.rpc('post_message',
+        { p_application_id: applicationId, p_body: body, p_mentions: mentions, p_topic: topic }));
+
+// Staff who can open this file (never me), the people working on it first: [{ user_id, name, role, on_file }]
+export const fetchMentionCandidates = async (applicationId) =>
+    check(await supabase.rpc('message_mention_candidates', { p_application_id: applicationId })) ?? [];
 
 export const fetchSenderName = async (userId) =>
     check(await supabase.rpc('staff_name', { p_user_id: userId }));

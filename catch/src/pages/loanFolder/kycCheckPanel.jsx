@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { recordKycCheck } from './api';
 import { RESULT_LABELS, whenOf } from './options';
+import CommentButton from '../messages/commentButton';
 
 const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
 
@@ -51,9 +52,9 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
     };
 
     return (
-        <form onSubmit={handleSubmit} className="lf-card lf-check">
+        <form id={`kyc-${section}`} onSubmit={handleSubmit} className="lf-card lf-check">
             <div className="lf-cardhead">
-                <h3>KYC verification</h3>
+                <h3>KYC verification<CommentButton topic={`kyc-${section}`} /></h3>
                 <CheckChip check={latest} />
             </div>
             <CheckSummary check={latest} names={names} />

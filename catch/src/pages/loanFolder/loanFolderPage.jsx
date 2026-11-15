@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Circle, LayoutList, Lock, Scale, ScanText, Send } from 'lucide-react';
 import { DSS_ROLES } from '../../roles';
 import Breadcrumbs from '../../components/breadcrumbs';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getDocumentUrl, refreshApplication } from '../applicationForm/api';
 import ApplicationSummary from '../applicationForm/applicationSummary';
@@ -18,6 +18,7 @@ import ChangeHistory from './changeHistory';
 import KycCheckPanel, { CheckChip, CheckSummary } from './kycCheckPanel';
 import { RESULT_LABELS, whenOf } from './options';
 import MessagesPanel from '../messages/messagesPanel';
+import CommentButton from '../messages/commentButton';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import './loanFolder.css';
@@ -32,6 +33,7 @@ const sectionsFor = (app) => buildSteps(app).filter((s) => s.key !== 'review');
 const LoanFolderPage = () => {
     const { session, role } = UserAuth();
     const [searchParams] = useSearchParams();
+    const { hash } = useLocation();
     const applicationId = Number(searchParams.get('id'));
 
     const [app, setApp] = useState(null);
@@ -41,6 +43,7 @@ const LoanFolderPage = () => {
     const [names, setNames] = useState({});
     const [ciRequest, setCiRequest] = useState(null);
     const [currentKey, setCurrentKey] = useState(OVERVIEW);
+    const [openedHash, setOpenedHash] = useState('');
     const [saved, setSaved] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -78,6 +81,14 @@ const LoanFolderPage = () => {
         load();
         return () => { cancelled = true; };
     }, [applicationId, loadTrail]);
+
+    // A message's topic chip (#kyc-<section>) opens that section for the editing AO: once per link, when the file
+    // has loaded (state adjusted while rendering, not in an effect)
+    if (app && canEdit && hash !== openedHash) {
+        setOpenedHash(hash);
+        const key = hash.startsWith('#kyc-') ? hash.slice(5) : null;
+        if (key && sectionsFor(app).some((s) => s.key === key)) { setCurrentKey(key); setSaved(false); }
+    }
 
     if (loading) return <LoanFolderSkeleton />;
     if (error && !app) return <p className="text-red-600">{error}</p>;
@@ -191,9 +202,9 @@ const LoanFolderPage = () => {
                     {sections.map((s) => {
                         const check = latestCheck(s.key);
                         return (
-                            <li key={s.key} className={`lf-kyc-item ${check ? TONES[check.result] : 'none'}`}>
+                            <li key={s.key} id={canEdit ? undefined : `kyc-${s.key}`} className={`lf-kyc-item ${check ? TONES[check.result] : 'none'}`}>
                                 <div className="lf-kyc-top">
-                                    <b>{s.title}</b>
+                                    <b>{s.title}<CommentButton topic={`kyc-${s.key}`} /></b>
                                     <CheckChip check={check} />
                                 </div>
                                 <CheckSummary check={check} names={names} />

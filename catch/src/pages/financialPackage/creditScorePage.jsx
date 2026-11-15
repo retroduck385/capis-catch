@@ -18,6 +18,7 @@ import { computeFp } from './compute';
 import { suggestCreditScore, totalCreditScore } from './creditScore';
 import { CreditScoreSection } from './creditScoreSection';
 import { scrollToSection, useActiveSection } from '../review/useActiveSection';
+import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
 import './financialPackage.css';
 import '../review/review.css';
@@ -173,6 +174,7 @@ const CreditScorePage = () => {
                         </ul>
                     </div>
                     <div className="lf-actions">
+                        <MessagesPanel applicationId={app.id} inline />
                         <Link to="/adminHomePage" onClick={leave} className="lf-btn">Work tray</Link>
                         <Link to={`/loanFolderPage?id=${app.id}`} onClick={leave} className="lf-btn">
                             Loan folder<ArrowRight size={16} aria-hidden="true" />
