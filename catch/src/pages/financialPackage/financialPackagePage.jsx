@@ -7,7 +7,7 @@
 // keeps every edit, the policy check result and the single Save button; the page is kept in ?page=2.
 import { FinancialPackageSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScrollText, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScanText, ScrollText, ShieldCheck } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
@@ -356,6 +356,12 @@ const FinancialPackagePage = () => {
                         <Link to={`/approvalRoutingPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
                             <BadgeCheck size={16} aria-hidden="true" />Approval routing
                         </Link>
+                        {/* The applicant's documents beside what the AI read (the Credit Investigator has a CI version) */}
+                        {role !== 'CREDIT_INVESTIGATOR' && (
+                            <Link to={`/documentCheckPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
+                                <ScanText size={16} aria-hidden="true" />Document check
+                            </Link>
+                        )}
                         <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
                             Loan folder<ArrowRight size={16} aria-hidden="true" />
                         </Link>
