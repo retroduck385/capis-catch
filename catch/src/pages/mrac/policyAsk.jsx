@@ -6,6 +6,7 @@ import { Search } from 'lucide-react';
 import { Citations } from './mracResult';
 import { askPolicy, waitForMracRun } from './api';
 import './mrac.css';
+import { Term } from '../../components/term';
 
 const PolicyAsk = () => {
     const [question, setQuestion] = useState('');
@@ -34,7 +35,7 @@ const PolicyAsk = () => {
     return (
         <section className="wt-card mrac mrac-ask" aria-labelledby="mrac-ask-title">
             <h2 id="mrac-ask-title">Search the credit policy</h2>
-            <p>Finds the most relevant passages in the policy manuals and the housing RAAC. Passages are quoted, not generated.</p>
+            <p>Finds the most relevant passages in the policy manuals and the housing <Term k="RAAC" />. Passages are quoted, not generated.</p>
             <form role="search" onSubmit={ask}>
                 <input aria-label="Policy question" maxLength={500} value={question}
                     placeholder="e.g. Who must the mortgage redemption insurance cover?"

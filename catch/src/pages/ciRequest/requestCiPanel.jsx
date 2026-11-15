@@ -10,6 +10,7 @@ import CiRequestForms from './ciRequestForms';
 import useIdDetails from './useIdDetails';
 import { CiResultsView } from './ciResults';
 import './ciRequest.css';
+import { Term } from '../../components/term';
 
 const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionCount, onRequested }) => {
     const [nfisRemarks, setNfisRemarks] = useState('');
@@ -40,7 +41,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
             <>
                 <section className="lf-card">
                     <div className="lf-cardhead">
-                        <h2>Request CI (NFIS & TransUnion)</h2>
+                        <h2>Request <Term k="CI" /> (<Term k="NFIS" /> & TransUnion)</h2>
                         <span className="lf-chip ok">Sent</span>
                     </div>
                     <p className="ci-note">
@@ -60,11 +61,11 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                     <div className="lf-cardhead"><h2>Your remarks</h2></div>
                     <div className="ci-cols">
                         <div>
-                            <div className="ci-remark-label">NFIS remarks</div>
+                            <div className="ci-remark-label"><Term k="NFIS" /> remarks</div>
                             <p className={`ci-remark${ciRequest.nfis_remarks ? '' : ' empty'}`}>{ciRequest.nfis_remarks || 'No remarks.'}</p>
                         </div>
                         <div>
-                            <div className="ci-remark-label">TU remarks</div>
+                            <div className="ci-remark-label"><Term k="TU" /> remarks</div>
                             <p className={`ci-remark${ciRequest.tu_remarks ? '' : ' empty'}`}>{ciRequest.tu_remarks || 'No remarks.'}</p>
                         </div>
                     </div>
@@ -78,7 +79,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
         <>
             <section className="lf-card">
                 <div className="lf-cardhead">
-                    <h2>Request CI (NFIS & TransUnion)</h2>
+                    <h2>Request <Term k="CI" /> (<Term k="NFIS" /> & TransUnion)</h2>
                     <span className="lf-chip warn">Not sent</span>
                 </div>
                 <p className="ci-note">

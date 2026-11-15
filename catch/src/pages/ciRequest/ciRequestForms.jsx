@@ -3,6 +3,7 @@
 // Blank mandatory fields show as "Missing" (the sheet: "request will not be accommodated if with lacking").
 import { ID_ROWS, TU_ROWS, buildCiRequest, isBlank, peso } from './buildRequest';
 import './ciRequest.css';
+import { Term } from '../../components/term';
 
 const Missing = () => <span className="ci-missing">Missing</span>;
 const Value = ({ children, optional }) => (isBlank(children) ? (optional ? '—' : <Missing />) : children);
@@ -14,7 +15,7 @@ const NfisForm = ({ request }) => {
     const businesses = request.people.filter((p) => p.employer);
     return (
         <section className="lf-card" aria-label="NFIS Request Form">
-            <div className="lf-cardhead"><h2>NFIS Request Form</h2></div>
+            <div className="lf-cardhead"><h2><Term k="NFIS" /> Request Form</h2></div>
             <p className="ci-note">For individual name of inquiry. If any borrower is married, include maiden name.</p>
             <div className="ci-tablewrap">
                 <table>
@@ -85,7 +86,7 @@ const TuRow = ({ label, get, optional, people }) => (
 
 const TuForm = ({ request }) => (
     <section className="lf-card" aria-label="TransUnion Request Template">
-        <div className="lf-cardhead"><h2>TransUnion (TU) Request Template</h2></div>
+        <div className="lf-cardhead"><h2>TransUnion (<Term k="TU" />) Request Template</h2></div>
         <dl className="ci-kv">
             <div><dt>Loan Type</dt><dd><Value>{request.loanType}</Value></dd></div>
             <div><dt>Desired amount to be loaned</dt><dd><Value>{peso(request.loanAmount)}</Value></dd></div>

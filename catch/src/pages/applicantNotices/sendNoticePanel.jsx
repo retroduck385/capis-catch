@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchNoticeContext, previewNotice, sendNotice } from './api';
 import { smsSegments } from './sms';
+import { Terms } from '../../components/term';
 
 // "Send notice to applicant" (the bank's answer to Q-42): the assigned Account Officer tells the applicant the outcome
 // and a reason, in-app, by SMS and by email. Shown only to the assigned AO, once the status is Approved / Rejected /
@@ -110,7 +111,7 @@ const SendNoticePanel = ({ applicationId }) => {
                                 {ctx.suggestions.map((s, i) => (
                                     <li key={i} className='flex items-start justify-between gap-3 border-b border-gray-200 py-2 text-gray-900'>
                                         <span className='min-w-0 text-gray-900'>
-                                            <span className='block text-sm text-gray-700'>{s.source}</span>
+                                            <span className='block text-sm text-gray-700'><Terms text={s.source} /></span>
                                             <span className='block whitespace-pre-wrap break-words text-gray-900'>{s.text}</span>
                                         </span>
                                         <button type='button' onClick={() => setReason(s.text.slice(0, ctx.max_length))}

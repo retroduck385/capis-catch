@@ -5,6 +5,7 @@ import {
     parseMoney, PERSON_FIELDS,
 } from './options';
 import CommentButton from '../messages/commentButton';
+import { Terms } from '../../components/term';
 
 // Shows commas while typing (1,500,000.5) and always 2 decimals once you leave the box (1,500,000.50).
 // The value passed to onChange has no commas, so validators and Postgres get a plain number.
@@ -70,8 +71,9 @@ export const FieldGroup = ({ config, fields, values, errors = {}, required = [],
 
 export const Section = ({ title, children, className = '', id }) => (
     <fieldset id={id} className={`ct-section ${className}`.trim()}>
+        {/* Terms: acronym hovers, staff only (plain text for applicants). */}
         {/* CommentButton renders nothing unless a staff member is on a loan-file page with a Messages drawer */}
-        <legend>{title}<CommentButton topic={id} /></legend>
+        <legend><Terms text={title} /><CommentButton topic={id} /></legend>
         {children}
     </fieldset>
 );

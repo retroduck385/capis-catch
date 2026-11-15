@@ -33,6 +33,7 @@ import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
 import './review.css';
 import { scrollToSection, useActiveSection } from './useActiveSection';
+import { Terms } from '../../components/term';
 
 const SEND_STAGES = ['CREDIT_INVESTIGATION', 'CREDIT_EVALUATION'];
 const UPDATE_STAGES = ['REVIEW', 'APPROVAL'];
@@ -298,7 +299,7 @@ const ApprovalRoutingPage = () => {
                         <div key={m.key} className={`fp-metric ${m.tone}`}>
                             <span className="lbl">{m.label}</span>
                             <span className="val">{m.value}</span>
-                            <span className="sub">{m.sub}</span>
+                            <span className="sub"><Terms text={m.sub} /></span>
                         </div>
                     ))}
                 </div>

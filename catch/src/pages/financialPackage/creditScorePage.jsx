@@ -23,6 +23,7 @@ import '../loanFolder/loanFolder.css';
 import './financialPackage.css';
 import '../review/review.css';
 import './creditScore.css';
+import { Term, Terms } from '../../components/term';
 
 const SCORE_KEYS = ['band', 'suggested_band', 'remarks'];
 const formOf = (row) => Object.fromEntries(SCORE_KEYS.map((k) => [k, row?.[k] ?? '']));
@@ -187,7 +188,7 @@ const CreditScorePage = () => {
                         <div key={m.key} className={`fp-metric ${m.tone}`}>
                             <span className="lbl">{m.label}</span>
                             <span className="val">{m.value}</span>
-                            <span className="sub">{m.sub}</span>
+                            <span className="sub"><Terms text={m.sub} /></span>
                         </div>
                     ))}
                 </div>
@@ -203,7 +204,7 @@ const CreditScorePage = () => {
                 )}
                 <p className="fp-note cs-hint">
                     Suggestions use the saved Financial Package (income basis, interest rate, appraised value, loan and
-                    deposit checks). Save the FP first if you changed any of those.
+                    deposit checks). Save the <Term k="FP" /> first if you changed any of those.
                 </p>
             </header>
 

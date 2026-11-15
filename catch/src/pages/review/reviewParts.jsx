@@ -5,6 +5,7 @@ import { BORROWER_ROLES, EMPLOYMENT_TYPES, REQUIREMENT_LABELS, formatMoney, labe
 import {
     DECISION_LABELS, INCOME_DOCUMENT_TYPES, REVIEW_ACTIONS, SEVERITIES, deciderOf, jobOf, severityLabel,
 } from './reviewChecks';
+import { Term } from '../../components/term';
 
 const money = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
 const when = (t) => new Date(t).toLocaleString();
@@ -130,8 +131,8 @@ export const IncomeEvidence = ({ app, computed, fp, onError }) => {
                 <thead>
                     <tr>
                         <th>Borrower</th>
-                        <th>Declared (KYC)</th>
-                        <th>Basis used by the CO</th>
+                        <th>Declared (<Term k="KYC" />)</th>
+                        <th>Basis used by the <Term k="CO" /></th>
                         <th>(A) Basic + (B) Other = Gross</th>
                         <th>Income documents</th>
                     </tr>

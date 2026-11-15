@@ -16,6 +16,7 @@ import {
 } from './api';
 import { CI_CHECKS, CI_RESULTS } from './options';
 import CiFindingFlags from './findingFlags';
+import { Term, Terms } from '../../components/term';
 
 const resultLabel = (value) => CI_RESULTS.find((r) => r.value === value)?.label ?? null;
 
@@ -221,13 +222,13 @@ export const CiResultsEditor = ({ app, ciRequest, onChanged }) => {
 
     return (
         <div className="text-left">
-            <h3 className="text-lg font-semibold pt-4">CI results</h3>
+            <h3 className="text-lg font-semibold pt-4"><Term k="CI" /> results</h3>
             <p className="text-sm">
                 Upload each report (JPG, PNG or PDF, up to 10 MB) and record the result and your summary of the findings.
                 Files are saved right away; results and summaries are saved with "Save findings". The applicant can't see any of this.
             </p>
             <p className="text-sm">
-                NFIS and TU reports are read by the AI after upload. Use "AI check" to compare the report with the application
+                <Term k="NFIS" /> and <Term k="TU" /> reports are read by the AI after upload. Use "AI check" to compare the report with the application
                 and confirm the AI's draft result and summary; confirming saves them here.
             </p>
             {loadError && <p className="text-red-600">{loadError}</p>}
@@ -348,7 +349,7 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
 
     return (
         <div className="text-left">
-            {title && <h3 className="font-semibold">{title}</h3>}
+            {title && <h3 className="font-semibold"><Terms text={title} /></h3>}
             <p className="text-sm">
                 {meta.done
                     ? `CI done ${new Date(meta.done.changed_at).toLocaleString()} by ${meta.names[meta.done.changed_by] ?? 'Credit Investigator'}.`
@@ -360,7 +361,7 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
                     <thead>
                         <tr>
                             <th className="border px-2 text-left align-top">Name</th>
-                            {CI_CHECKS.map((c) => <th key={c.value} className="border px-2 text-left align-top">{c.label}</th>)}
+                            {CI_CHECKS.map((c) => <th key={c.value} className="border px-2 text-left align-top"><Terms text={c.label} /></th>)}
                         </tr>
                     </thead>
                     <tbody>

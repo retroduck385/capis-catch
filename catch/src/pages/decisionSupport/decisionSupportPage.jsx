@@ -30,6 +30,7 @@ import { SECTIONS } from './registry';
 import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
 import '../review/review.css';
+import { Terms } from '../../components/term';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const humanize = (key) => key.replaceAll('_', ' ');
@@ -161,7 +162,7 @@ const DecisionSupportPage = () => {
                         <div key={m.key} className={`fp-metric ${m.tone}`}>
                             <span className="lbl">{m.label}</span>
                             <span className="val">{m.value}</span>
-                            <span className="sub">{m.sub}</span>
+                            <span className="sub"><Terms text={m.sub} /></span>
                         </div>
                     ))}
                 </div>

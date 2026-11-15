@@ -7,6 +7,7 @@ import { stageLabel } from '../workTray/options';
 import { MAX_LENGTH, fetchMentionCandidates } from './api';
 import { jumpToTopic, registerPanel, topicLabel, topicTarget } from './topics';
 import { useMessages } from './useMessages';
+import { Terms } from '../../components/term';
 
 // The "@na" being typed right before the caret, or null. Names have spaces, so the query runs from the last @
 // (at the start or after a space) to the caret, on one line.
@@ -297,7 +298,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
                                 {topic && (
                                     <p className='flex items-center gap-2 pb-1 text-sm'>
                                         <span className='min-w-0 truncate rounded-full border border-blue-300 bg-blue-50 px-2.5 py-0.5 font-semibold text-blue-900'>
-                                            About: {topicLabel(topic)}
+                                            About: <Terms text={topicLabel(topic)} />
                                         </span>
                                         <button type='button' onClick={() => setTopic(null)}
                                             className='shrink-0 text-blue-800 underline hover:text-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>

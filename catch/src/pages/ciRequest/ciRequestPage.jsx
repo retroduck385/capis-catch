@@ -18,10 +18,11 @@ import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
 import './ciRequest.css';
+import { Term, Terms } from '../../components/term';
 
 const Remark = ({ title, text }) => (
     <div>
-        <div className="ci-remark-label">{title}<small>from the Account Officer</small></div>
+        <div className="ci-remark-label"><Terms text={title} /><small>from the Account Officer</small></div>
         <p className={`ci-remark${text ? '' : ' empty'}`}>{text || 'No remarks.'}</p>
     </div>
 );
@@ -102,7 +103,7 @@ const CiRequestPage = () => {
             <header className="lf-card">
                 <div className="lf-titlerow">
                     <div>
-                        <h1>CI request {app.application_no}</h1>
+                        <h1><Term k="CI" /> request {app.application_no}</h1>
                         <ul className="lf-meta">
                             <li>NFIS and TransUnion inquiry details</li>
                             {request && <li>Requested by {requesterName ?? 'Account Officer'}</li>}
@@ -118,7 +119,7 @@ const CiRequestPage = () => {
                         <div key={m.key} className={`fp-metric ${m.tone}`}>
                             <span className="lbl">{m.label}</span>
                             <span className="val">{m.value}</span>
-                            <span className="sub">{m.sub}</span>
+                            <span className="sub"><Terms text={m.sub} /></span>
                         </div>
                     ))}
                 </div>

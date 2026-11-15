@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ROLE_LABELS } from '../../roles';
 import { markFile } from './api';
 import AskApplicantButton from './ask';
+import { Term } from '../../components/term';
 
 const MARKS = {
     CLEARED: ['Cleared', 'border-green-700 bg-green-50 text-green-900'],
@@ -59,7 +60,7 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
 
     return (
         <div className={`rounded border border-gray-300 bg-white p-2 text-left text-gray-900 ${className}`}>
-            <p className='text-sm font-semibold text-gray-900'>Staff check of this file <span className='font-normal text-gray-700'>(staff only)</span></p>
+            <p className='text-sm font-semibold text-gray-900'>Staff check of this file <span className='font-normal text-gray-700'>(staff only: the assigned <Term k="AO" /> and <Term k="CO" /> mark)</span></p>
             <p className='text-gray-900'>
                 {latest ? <Line row={latest} names={marks.names} /> : <span className='text-sm text-gray-700'>Not marked yet.</span>}
             </p>

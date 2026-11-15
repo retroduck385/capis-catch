@@ -18,6 +18,7 @@ import ExtractionPanel from './extractionPanel';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
 import FileMark from '../documentRequests/fileMark';
 import { useFileMarks } from '../documentRequests/useFileMarks';
+import { Term } from '../../components/term';
 
 const POLL_MS = 5000;
 const TYPE_ORDER = ['VALID_ID_PASSPORT', 'COE_ITR', 'PAYSLIPS_REMITTANCES', 'FS_BANK_STATEMENTS', 'CI_NFIS', 'CI_TU'];
@@ -221,7 +222,7 @@ const DocumentCheckPage = () => {
                     onClick={(e) => { if (!leaveEdits()) e.preventDefault(); }}>
                     {backTo.label}
                 </Link>
-                <h2 className="text-xl font-semibold">{ciMode ? 'CI report check' : 'Document check'}</h2>
+                <h2 className="text-xl font-semibold">{ciMode ? <><Term k="CI" /> report check</> : 'Document check'}</h2>
                 <span className="text-gray-600">Application {app.application_no}</span>
                 <span className="lg:ml-auto text-xs text-gray-600 max-w-md">
                     {ciMode

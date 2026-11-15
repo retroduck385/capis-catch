@@ -8,6 +8,7 @@ import { Flag } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { UserAuth } from '../../context/authContext';
 import { fetchStaffNames } from '../loanFolder/api';
+import { Term } from '../../components/term';
 
 const MAX = 500;
 
@@ -67,7 +68,7 @@ const CiFindingFlags = ({ applicationId, hasFindings, unsaved = false }) => {
         <div className='my-3 rounded border border-amber-500 bg-amber-50 p-3 text-left text-gray-900'>
             <p className='flex items-center gap-2 font-semibold text-gray-900'>
                 <Flag size={16} aria-hidden='true' />
-                {flags.length > 0 ? `Findings flagged (${flags.length})` : 'Findings not flagged yet'}
+                <span><Term k="CI" /> {flags.length > 0 ? `findings flagged (${flags.length})` : 'findings not flagged yet'}</span>
             </p>
             {flags.length > 0 && (
                 <ul className='pt-1'>

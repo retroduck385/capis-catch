@@ -33,6 +33,7 @@ import {
     DEPOSIT_CHECK_FIELDS, EXCEPTION_FIELDS, FP_TABLES, LOAN_CHECK_FIELDS, OTHER_INFO_TEMPLATE, PACKAGE_DEFAULTS,
     TITLE_FIELDS, TITLE_KINDS, TRADE_CHECK_FIELDS, termsTemplate,
 } from './options';
+import { Terms } from '../../components/term';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -373,7 +374,7 @@ const FinancialPackagePage = () => {
                         <div key={m.key} className={`fp-metric ${m.tone}`}>
                             <span className="lbl">{m.label}</span>
                             <span className="val">{m.value}</span>
-                            <span className="sub">{m.sub}</span>
+                            <span className="sub"><Terms text={m.sub} /></span>
                             {m.link && <Link to={m.link[0]} onClick={confirmLeave} className="more">{m.link[1]}</Link>}
                         </div>
                     ))}

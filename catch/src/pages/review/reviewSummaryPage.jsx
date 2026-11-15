@@ -40,6 +40,7 @@ import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
 import './review.css';
 import { scrollToSection, useActiveSection } from './useActiveSection';
+import { Term, Terms } from '../../components/term';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const money = (v) => (v === null || v === undefined || v === '' ? '—' : `₱${formatMoney(v)}`);
@@ -48,7 +49,7 @@ const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 // One label / value line in a card (same look as the Financial Package's read-only rows)
 const Info = ({ label, children, wrap = false }) => (
     <div className="fp-info-row">
-        <dt>{label}</dt>
+        <dt><Terms text={label} /></dt>
         <dd className={wrap ? 'wrap' : undefined}>{children}</dd>
     </div>
 );
@@ -257,8 +258,8 @@ const ReviewSummaryPage = () => {
             <Section id="rv-flags" title={`Flags to check (${flags.length})`}>
                 {flags.length === 0 ? <p className="fp-empty">Nothing flagged.</p> : <FlagList flags={flags} />}
                 <p className="fp-note">
-                    Computed from the record. Flags point at something to check; you decide. DBR / LCR limits are the
-                    credit score's worst bands, not the bank's MRAC (policy checks come later).
+                    Computed from the record. Flags point at something to check; you decide. <Term k="DBR" /> / <Term k="LCR" /> limits are the
+                    credit score's worst bands, not the bank's <Term k="MRAC" /> (policy checks come later).
                 </p>
             </Section>
         ),
@@ -418,7 +419,7 @@ const ReviewSummaryPage = () => {
                         <div key={m.key} className={`fp-metric ${m.tone}`}>
                             <span className="lbl">{m.label}</span>
                             <span className="val">{m.value}</span>
-                            <span className="sub">{m.sub}</span>
+                            <span className="sub"><Terms text={m.sub} /></span>
                         </div>
                     ))}
                 </div>

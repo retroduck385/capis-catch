@@ -4,6 +4,7 @@
 // leaves each one. Only the CO's picks count toward the total.
 import { Section } from '../applicationForm/fields';
 import { CATEGORIES } from './creditScore';
+import { Terms } from '../../components/term';
 
 const pts = (n) => `${n} ${Math.abs(n) === 1 ? 'pt' : 'pts'}`;
 
@@ -118,7 +119,7 @@ export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore
                     {[['Description', totals.description], ['Risk Rating', totals.riskRating], ['Recommendation', totals.recommendation]].map(([label, value]) => (
                         <div key={label} className="fp-info-row">
                             <dt>{label}</dt>
-                            <dd>{value ?? <span className="fp-pending">When every criterion is scored</span>}</dd>
+                            <dd>{value ? <Terms text={value} /> : <span className="fp-pending">When every criterion is scored</span>}</dd>
                         </div>
                     ))}
                 </dl>

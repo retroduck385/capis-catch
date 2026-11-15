@@ -23,6 +23,7 @@ import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import AskApplicantButton from '../documentRequests/ask';
 import './loanFolder.css';
+import { Term } from '../../components/term';
 
 const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
 const OVERVIEW = 'overview';
@@ -187,7 +188,7 @@ const LoanFolderPage = () => {
 
             <div className="lf-progress">
                 <div className="lf-progress-top">
-                    <span>KYC verification</span>
+                    <span><Term k="KYC" /> verification</span>
                     <span><b>{verifiedCount}</b> of {sections.length} sections verified</span>
                 </div>
                 <div className="lf-meter" role="img" aria-label={`${progressPct}% of sections verified`}>
@@ -212,7 +213,7 @@ const LoanFolderPage = () => {
         <>
             <section className="lf-card" aria-label="KYC verification by section">
                 <div className="lf-cardhead">
-                    <h2>KYC verification</h2>
+                    <h2><Term k="KYC" /> verification</h2>
                     <span>{verifiedCount} of {sections.length} verified</span>
                 </div>
                 <ul className="lf-kyc">

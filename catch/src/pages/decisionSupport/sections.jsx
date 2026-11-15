@@ -19,12 +19,13 @@ import RoutingSummary from '../review/routingSummary';
 import { READY } from './readiness';
 import AskApplicantButton from '../documentRequests/ask';
 import './decisionSupport.css';
+import { Terms } from '../../components/term';
 
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
 const Info = ({ label, children, wrap = false }) => (
     <div className="fp-info-row">
-        <dt>{label}</dt>
+        <dt><Terms text={label} /></dt>
         <dd className={wrap ? 'wrap' : undefined}>{children}</dd>
     </div>
 );

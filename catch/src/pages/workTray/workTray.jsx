@@ -13,6 +13,7 @@ import {
 import { folderPath } from './paths';
 import { clearTrails } from '../../components/trailStore';
 import './workTray.css';
+import { Term } from '../../components/term';
 
 const employmentLabel = (type) => EMPLOYMENT_TYPES.find((t) => t.value === type)?.label ?? '';
 
@@ -441,7 +442,7 @@ const WorkTray = () => {
                                 <th>Application</th>
                                 <th>Stage</th>
                                 <th className='wt-amt'>Amount</th>
-                                <th>TAT position</th>
+                                <th><Term k="TAT" /> position</th>
                                 <th>Assigned to</th>
                             </tr>
                         </thead>

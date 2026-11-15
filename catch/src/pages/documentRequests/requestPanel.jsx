@@ -5,6 +5,7 @@ import { closeRequest, fetchRequestContext, fileUrl, openRequest, previewRequest
 import { refreshCanAsk } from './askStore';
 import FileMark from './fileMark';
 import { useFileMarks } from './useFileMarks';
+import { Terms } from '../../components/term';
 
 // "Ask the applicant for documents" (the deferral loop): the assigned Account Officer sends a short message plus the
 // specific documents needed, in-app, by SMS and by email (no links). The applicant uploads them and sends them back;
@@ -264,7 +265,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                                 {ctx.suggestions.texts.map((s, i) => (
                                     <li key={i} className='flex items-start justify-between gap-3 border-b border-gray-200 py-2 text-gray-900'>
                                         <span className='min-w-0'>
-                                            <span className='block text-sm text-gray-700'>{s.source}</span>
+                                            <span className='block text-sm text-gray-700'><Terms text={s.source} /></span>
                                             <span className='block whitespace-pre-wrap break-words text-gray-900'>{s.text}</span>
                                         </span>
                                         <button type='button' className={`shrink-0 ${BTN_LIGHT}`} onClick={() => setMessage(s.text.slice(0, ctx.max_length))}>Use this</button>
