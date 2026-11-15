@@ -271,7 +271,7 @@ const DocumentCheckPage = () => {
                         </ul>
                         {doc && !ciMode && (
                             <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks} className="mb-3"
-                                unreadable={status.key === 'OCR_FAILED'}
+                                unreadable={status.key === 'OCR_FAILED'} confirmLeave={leaveEdits}
                                 file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
                         )}
                         {doc && (

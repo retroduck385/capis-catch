@@ -27,7 +27,8 @@ const Line = ({ row, names }) => (
 // marks: useFileMarks() of the application (useFileMarks.js)
 // file: { documentId, applicantId, requirementType (null = not a checklist document), label }
 // unreadable: the file could not be read (OCR failed), so "Ask the applicant" is offered even before a mark
-const FileMark = ({ applicationId, file, marks, unreadable = false, className = '' }) => {
+// confirmLeave: optional, returns false to stay on the page (Document check: unsaved edits of the AI's values)
+const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave, className = '' }) => {
     const [comment, setComment] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
@@ -65,7 +66,7 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, className = 
 
             {askAgain && (
                 <p className='pt-1'>
-                    <AskApplicantButton applicationId={applicationId}
+                    <AskApplicantButton applicationId={applicationId} confirmLeave={confirmLeave}
                         ask={{
                             items: [{ applicant_id: file.applicantId, requirement_type: file.requirementType, label: file.label }],
                             note: latest?.mark === 'NEEDS_NEW_COPY' ? latest.comment : '',
