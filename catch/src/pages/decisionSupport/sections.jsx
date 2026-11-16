@@ -17,13 +17,15 @@ import { ApprovalProgress } from '../review/approvalParts';
 import { ReviewProgress } from '../review/reviewParts';
 import RoutingSummary from '../review/routingSummary';
 import { READY } from './readiness';
+import AskApplicantButton from '../documentRequests/ask';
 import './decisionSupport.css';
+import { Terms } from '../../components/term';
 
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
 const Info = ({ label, children, wrap = false }) => (
     <div className="fp-info-row">
-        <dt>{label}</dt>
+        <dt><Terms text={label} /></dt>
         <dd className={wrap ? 'wrap' : undefined}>{children}</dd>
     </div>
 );
@@ -69,6 +71,9 @@ export const Readiness = ({ ctx }) => {
                                         <> · <Link to={item.to}>{item.action}<ArrowRight size={12} aria-hidden="true" /></Link></>
                                     )}
                                 </small>
+                                {item.ask && item.state !== READY.DONE && (
+                                    <p><AskApplicantButton applicationId={ctx.app.id} ask={item.ask} /></p>
+                                )}
                             </div>
                         </li>
                     );

@@ -4,7 +4,7 @@
 // Steps are worked out from what is SAVED (the other pages read the saved FP / score), so unsaved edits don't count
 // and guard() asks before leaving with them. Sending for review needs a saved Credit Result of Endorsed or
 // Not endorsed (send_for_review()), not the credit score, so step 3 says so when it's missing.
-import { ArrowRight, Scale } from 'lucide-react';
+import { ArrowRight, Scale, ScanText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import OptionalView from '../../components/optionalView';
 import StepStrip from '../../components/stepStrip';
@@ -45,13 +45,19 @@ const CoSteps = ({ appId, current, pkg, score, sent, guard }) => {
     );
 };
 
-export const CoOptionalView = ({ appId, guard }) => {
+// documentCheck: also link the document check (the Financial Package page only)
+export const CoOptionalView = ({ appId, guard, documentCheck = false }) => {
     const onLeave = (e) => { if (guard && !guard()) e.preventDefault(); };
     return (
         <OptionalView who="Credit Officers">
             <Link to={`/decisionSupportPage?id=${appId}`} onClick={onLeave} className="lf-btn quiet">
                 <Scale size={16} aria-hidden="true" />Decision support
             </Link>
+            {documentCheck && (
+                <Link to={`/documentCheckPage?id=${appId}`} onClick={onLeave} className="lf-btn quiet">
+                    <ScanText size={16} aria-hidden="true" />Document check
+                </Link>
+            )}
             <Link to={`/loanFolderPage?id=${appId}`} onClick={onLeave} className="lf-btn quiet">
                 Loan folder<ArrowRight size={16} aria-hidden="true" />
             </Link>

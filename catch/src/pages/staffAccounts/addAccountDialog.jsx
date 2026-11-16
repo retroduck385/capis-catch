@@ -6,6 +6,7 @@ import { ROLE_LABELS, STAFF_ROLES } from '../../roles';
 import { APPROVAL_POSITIONS } from '../review/approval';
 import { createStaffAccount } from './api';
 import { ROLE_INFO, generatePassword } from './options';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const MIN_PASSWORD = 8;
 const EMPTY = { email: '', password: '', role: '', position: '' };
@@ -20,6 +21,7 @@ const validate = (form) => {
 };
 
 const AddAccountDialog = ({ open, onClose, onCreated }) => {
+    const tt = useTermTitle();
     const ref = useRef(null);
     const [form, setForm] = useState(EMPTY);
     const [errors, setErrors] = useState({});
@@ -111,7 +113,7 @@ const AddAccountDialog = ({ open, onClose, onCreated }) => {
                     <legend>Role</legend>
                     <div className="sa-picks">
                         {STAFF_ROLES.map((r) => (
-                            <label key={r} className="sa-pick" style={{ '--hue': ROLE_INFO[r].hue }}>
+                            <label key={r} className="sa-pick" title={tt(ROLE_INFO[r].blurb)} style={{ '--hue': ROLE_INFO[r].hue }}>
                                 <input type="radio" name="sa-role" value={r} checked={form.role === r}
                                     onChange={() => set('role', r)} />
                                 <span className="name">{ROLE_LABELS[r]}</span>

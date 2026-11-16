@@ -9,7 +9,7 @@
 // Approval routing, and the read-only pages (loan folder, Decision support) under "Optional view".
 import { FinancialPackageSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScrollText, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScanText, ScrollText, ShieldCheck } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
@@ -37,6 +37,8 @@ import {
     DEPOSIT_CHECK_FIELDS, EXCEPTION_FIELDS, FP_TABLES, LOAN_CHECK_FIELDS, OTHER_INFO_TEMPLATE, PACKAGE_DEFAULTS,
     TITLE_FIELDS, TITLE_KINDS, TRADE_CHECK_FIELDS, termsTemplate,
 } from './options';
+import { Term, Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -157,6 +159,7 @@ const useActiveSection = (ids, ready) => {
 
 const FinancialPackagePage = () => {
     const { role } = UserAuth();
+    const tt = useTermTitle();
     const [searchParams, setSearchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
     const page = searchParams.get('page') === '2' ? 2 : 1;
@@ -365,6 +368,12 @@ const FinancialPackagePage = () => {
                                 <Link to={`/approvalRoutingPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
                                     <BadgeCheck size={16} aria-hidden="true" />Approval routing
                                 </Link>
+                                {/* The applicant's documents beside what the AI read (the Credit Investigator has a CI version) */}
+                                {role !== 'CREDIT_INVESTIGATOR' && (
+                                    <Link to={`/documentCheckPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
+                                        <ScanText size={16} aria-hidden="true" />Document check
+                                    </Link>
+                                )}
                                 <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
                                     Loan folder<ArrowRight size={16} aria-hidden="true" />
                                 </Link>
@@ -384,14 +393,14 @@ const FinancialPackagePage = () => {
                         <div key={m.key} className={`fp-metric ${m.tone}`}>
                             <span className="lbl">{m.label}</span>
                             <span className="val">{m.value}</span>
-                            <span className="sub">{m.sub}</span>
+                            <span className="sub"><Terms text={m.sub} /></span>
                             {m.link && <Link to={m.link[0]} onClick={confirmLeave} className="more">{m.link[1]}</Link>}
                         </div>
                     ))}
                 </div>
 
                 {canEdit && (
-                    <CoOptionalView appId={app.id}
+                    <CoOptionalView appId={app.id} documentCheck
                         guard={() => !dirty || window.confirm('The Financial Package has unsaved changes. Leave without saving?')} />
                 )}
 
@@ -423,7 +432,7 @@ const FinancialPackagePage = () => {
                     {TOC.filter((g) => g.page === page).map(({ group, items }) => {
                         const link = ([id, label]) => (
                             <li key={id}>
-                                <a href={`#${id}`} onClick={goTo(id)} aria-current={activeId === id ? 'true' : undefined}>
+                                <a href={`#${id}`} onClick={goTo(id)} title={tt(label)} aria-current={activeId === id ? 'true' : undefined}>
                                     <NavIcon id={id} />
                                     <span>{label}</span>
                                 </a>
@@ -477,14 +486,14 @@ const FinancialPackagePage = () => {
                         <CashFlowSection computed={computed} details={form.parties} onParty={onParty} disabled={disabled} />
                         <RowsSection id="fp-x" title="X. Deposit Checking" config={DEPOSIT_CHECK_FIELDS} rows={form.deposit_checks}
                             onChange={onList('deposit_checks')} disabled={disabled}>
-                            <p className="fp-note">Bank accounts declared in the KYC:{' '}
+                            <p className="fp-note">Bank accounts declared in the <Term k="KYC" />:{' '}
                                 {kycBankAccounts.length === 0 ? 'none.' : kycBankAccounts.map((b) =>
                                     `${partyLabel(b.party)}: ${b.bank_name} ${b.account_type} ${b.account_number}`).join('; ')}
                             </p>
                         </RowsSection>
                         <RowsSection id="fp-xi" title="XI. Loan Verification (Based on Loandex and Disclosure)" config={LOAN_CHECK_FIELDS}
                             rows={form.loan_checks} onChange={onList('loan_checks')} disabled={disabled}>
-                            <p className="fp-note">Existing loans declared in the KYC:{' '}
+                            <p className="fp-note">Existing loans declared in the <Term k="KYC" />:{' '}
                                 {kycLoans.length === 0 ? 'none.' : kycLoans.map((l) =>
                                     `${partyLabel(l.party)}: ${l.loan_type} with ${l.lending_institution}, ₱${formatMoney(l.monthly_payment)} / month`).join('; ')}
                             </p>
@@ -498,7 +507,7 @@ const FinancialPackagePage = () => {
                         {/* A dropdown, closed until opened (same look as the loan folder's); the navigator link opens it */}
                         <details id="fp-history" className="lf-card lf-history">
                             <summary>
-                                <h2>FP change history</h2>
+                                <h2><Term k="FP" /> change history</h2>
                                 <span className="lf-history-count">{audit.length} {audit.length === 1 ? 'entry' : 'entries'}</span>
                                 <ChevronDown size={18} className="lf-history-chevron" aria-hidden="true" />
                             </summary>

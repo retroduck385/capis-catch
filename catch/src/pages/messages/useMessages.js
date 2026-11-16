@@ -24,11 +24,12 @@ export const useMessages = (applicationId, userId, open) => {
     useEffect(() => { openRef.current = open; }, [open]);
 
     const loadNames = useCallback((rows) => {
-        rows.forEach((m) => {
-            if (asked.current.has(m.sender_id)) return;
-            asked.current.add(m.sender_id);
-            fetchSenderName(m.sender_id)
-                .then((name) => setNames((prev) => ({ ...prev, [m.sender_id]: name })))
+        // Senders and the people mentioned (their names are highlighted in the text)
+        rows.flatMap((m) => [m.sender_id, ...(m.mentions ?? [])]).forEach((id) => {
+            if (asked.current.has(id)) return;
+            asked.current.add(id);
+            fetchSenderName(id)
+                .then((name) => setNames((prev) => ({ ...prev, [id]: name })))
                 .catch(() => {});
         });
     }, []);
@@ -95,12 +96,15 @@ export const useMessages = (applicationId, userId, open) => {
     }, [applicationId, items, loadNames]);
 
     // Resolves true when sent (the realtime event adds the row; this adds it too in case Realtime is slow)
-    const send = useCallback(async (body) => {
+    const send = useCallback(async (body, mentions = [], topic = null) => {
         setSending(true);
         setError(null);
         try {
-            const row = await postMessage(applicationId, body);
-            if (row?.id) setItems((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
+            const row = await postMessage(applicationId, body, mentions, topic);
+            if (row?.id) {
+                setItems((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
+                loadNames([row]);
+            }
             return true;
         } catch (err) {
             setError(err.message);
@@ -108,7 +112,7 @@ export const useMessages = (applicationId, userId, open) => {
         } finally {
             setSending(false);
         }
-    }, [applicationId]);
+    }, [applicationId, loadNames]);
 
     return { items, hasMore, unread, canPost, names, dividerId, latest, error, sending, loadEarlier, send };
 };

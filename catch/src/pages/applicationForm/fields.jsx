@@ -4,6 +4,9 @@ import {
     ADDRESS_FIELDS, EMPLOYMENT_FIELDS, EMPLOYMENT_KEYS, EMPLOYMENT_TYPES, formatMoney, HOME_OWNERSHIP, PARTY_FIELDS,
     parseMoney, PERSON_FIELDS,
 } from './options';
+import CommentButton from '../messages/commentButton';
+import { Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 // Shows commas while typing (1,500,000.5) and always 2 decimals once you leave the box (1,500,000.50).
 // The value passed to onChange has no commas, so validators and Postgres get a plain number.
@@ -18,9 +21,11 @@ const MoneyInput = ({ id, value, onChange, placeholder, disabled, ...aria }) => 
 };
 
 export const Field = ({ name, label, value, onChange, error, required, type = 'text', options, placeholder, disabled, hint }) => {
+    const tt = useTermTitle();   // staff only: explains a short term in the label (DOSRI / RPT, HGC, AMD ...)
+    const title = typeof label === 'string' ? tt(label) : undefined;
     if (type === 'checkbox') {
         return (
-            <label className="ct-check">
+            <label className="ct-check" title={title}>
                 <input type="checkbox" checked={!!value} disabled={disabled}
                     onChange={(e) => onChange(name, e.target.checked)} />
                 {label}
@@ -33,7 +38,7 @@ export const Field = ({ name, label, value, onChange, error, required, type = 't
     const aria = { ...(error ? { 'aria-invalid': true } : {}), ...(describedBy ? { 'aria-describedby': describedBy } : {}) };
     return (
         <div className="ct-field">
-            <label htmlFor={name}>
+            <label htmlFor={name} title={title}>
                 {label}{required && <span className="text-red-600"> *</span>}
             </label>
             {options ? (
@@ -69,7 +74,9 @@ export const FieldGroup = ({ config, fields, values, errors = {}, required = [],
 
 export const Section = ({ title, children, className = '', id }) => (
     <fieldset id={id} className={`ct-section ${className}`.trim()}>
-        <legend>{title}</legend>
+        {/* Terms: acronym hovers, staff only (plain text for applicants). */}
+        {/* CommentButton renders nothing unless a staff member is on a loan-file page with a Messages drawer */}
+        <legend><Terms text={title} /><CommentButton topic={id} /></legend>
         {children}
     </fieldset>
 );

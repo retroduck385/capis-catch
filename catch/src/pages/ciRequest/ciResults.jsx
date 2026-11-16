@@ -17,6 +17,9 @@ import { fetchStaffNames } from '../loanFolder/api';
 import { completeCi, fetchCiDone, fetchCiRequests, getCiDocumentUrl, removeCiDocument, saveCiFindings, uploadCiDocument } from './api';
 import { AI_CHECKED, aiCheckUrl, fullName, isAiChecked, keyOf, missingItems, personLabel, useCiResults } from './ciResultsData';
 import { CI_CHECKS, CI_RESULTS } from './options';
+import CiFindingFlags from './findingFlags';
+import { Term, Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const AI_CHECKS = CI_CHECKS.filter((c) => AI_CHECKED.has(c.value));
 const resultLabel = (value) => CI_RESULTS.find((r) => r.value === value)?.label ?? null;
@@ -53,6 +56,7 @@ const ResultText = ({ value }) => (value
 // onGoTo(step): open another step. onDirtyChange(bool): unsaved findings or not.
 export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged, onDirtyChange }) => {
     const { borrowers, byKey, confirmed, loading, error: loadError, reload } = data;
+    const tt = useTermTitle();
 
     const [edits, setEdits] = useState({});           // key -> { result, summary } (unsaved)
     const [remarks, setRemarks] = useState(null);     // null = unchanged
@@ -188,7 +192,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
     const uploadStep = (
         <>
             <p className="ci-note">
-                NFIS and TU are required for every borrower; BRAS is optional. JPG, PNG or PDF, up to 10 MB each; files are
+                <Term k="NFIS" /> and <Term k="TU" /> are required for every borrower; <Term k="BRAS" /> is optional. JPG, PNG or PDF, up to 10 MB each; files are
                 saved right away. The applicant can't see any of this.
             </p>
             <div className="ci-borrowers">
@@ -204,7 +208,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                                 return (
                                     <li key={c.value} className={`ci-slot ${status.tone}`}>
                                         <div className="ci-slot-top">
-                                            <b>{c.label}</b>
+                                            <b><Terms text={c.label} /></b>
                                             <span className={`lf-chip ${status.tone}`}>{status.label}</span>
                                         </div>
                                         {docs.length > 0 && (
@@ -238,13 +242,13 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
     const aiStep = (
         <>
             <p className="ci-note">
-                Optional. The AI reads each NFIS and TU report. Open its AI check, compare every value with the report, edit
+                Optional. The AI reads each <Term k="NFIS" /> and <Term k="TU" /> report. Open its AI check, compare every value with the report, edit
                 what's wrong and confirm: the result and summary are then filled in for step 4. You can also skip this and
                 enter the results by hand; they're tagged "Not AI-checked".
             </p>
             {!anyAiReport ? (
                 <p className="ci-empty-step">
-                    No NFIS or TU report has been uploaded yet.{' '}
+                    <Terms>No NFIS or TU report has been uploaded yet.</Terms>{' '}
                     <button type="button" className="ci-link" onClick={() => onGoTo('upload')}>Go to step 2: Upload the reports</button>
                 </p>
             ) : (
@@ -261,7 +265,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                                     return (
                                         <li key={c.value} className={`ci-slot ${tone}`}>
                                             <div className="ci-slot-top">
-                                                <b>{c.label}</b>
+                                                <b><Terms text={c.label} /></b>
                                                 <span className={`lf-chip ${tone}`}>
                                                     {done ? 'AI-checked' : docs.length ? 'To check' : 'Not uploaded'}
                                                 </span>
@@ -288,7 +292,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
     const resultsStep = (
         <>
             <p className="ci-note">
-                Results you confirmed in the AI check are already filled in; you can still change them. Enter BRAS, and any
+                Results you confirmed in the AI check are already filled in; you can still change them. Enter <Term k="BRAS" />, and any
                 report you didn't AI-check, by hand. Saved with "Save findings".
             </p>
 
@@ -302,7 +306,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                             <div key={c.value} className="ci-result">
                                 <div className="ci-result-side">
                                     <div className="ci-slot-top">
-                                        <b>{c.label}{c.required ? <span className="ci-req" aria-label="required"> *</span> : ' (optional)'}</b>
+                                        <b><Terms text={c.label} />{c.required ? <span className="ci-req" aria-label="required"> *</span> : ' (optional)'}</b>
                                         <AiTag checkType={c.value} slot={byKey[k]} confirmed={confirmed} hasResult={!!v.result} />
                                     </div>
                                     <div className="lf-choices" role="radiogroup" aria-label={`${c.label} result for ${fullName(p)}`}>
@@ -331,7 +335,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                 </fieldset>
             ))}
 
-            <label className="ci-summary ci-remarks">
+            <label className="ci-summary ci-remarks" title={tt('Overall CI remarks')}>
                 <span>Overall CI remarks (optional)</span>
                 <textarea rows={3} value={currentRemarks} maxLength={4000} onChange={(e) => setRemarks(e.target.value)} />
             </label>
@@ -345,18 +349,22 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                     : <span className="ci-saved" role="status">All changes saved</span>}
             </div>
 
+            <CiFindingFlags applicationId={app.id}
+                hasFindings={Object.values(byKey).some((c) => c.result === 'WITH_FINDINGS')}
+                unsaved={Object.values(edits).some((e) => e?.result === 'WITH_FINDINGS')} />
+
             <div className={`ci-done ${missing.length ? 'warn' : 'ok'}`}>
-                <h3>Mark CI Done</h3>
+                <h3>Mark <Term k="CI" /> Done</h3>
                 {missing.length > 0 ? (
                     <>
                         <p>Still needed before this can go to the Credit Officer:</p>
-                        <ul>{missing.map((m) => <li key={m}>{m}</li>)}</ul>
+                        <ul>{missing.map((m) => <li key={m}><Terms text={m} /></li>)}</ul>
                     </>
                 ) : (
-                    <p>All NFIS and TU results and reports are in. BRAS is optional.</p>
+                    <p><Terms>All NFIS and TU results and reports are in. BRAS is optional.</Terms></p>
                 )}
                 {dirty && <p className="ci-unsaved">Save your findings first.</p>}
-                <button type="button" disabled={missing.length > 0 || dirty || busy === 'done'} onClick={handleDone}>
+                <button type="button" title={tt('Mark CI Done')} disabled={missing.length > 0 || dirty || busy === 'done'} onClick={handleDone}>
                     {busy === 'done' ? 'Sending...' : 'Mark CI Done and send to Credit Evaluation'}
                 </button>
             </div>
@@ -396,15 +404,15 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
     }, [app.id]);
 
     if (loading) return <PanelSkeleton label="Loading CI results" lines={5} />;
-    if (!meta.request) return <p className="italic text-gray-500">No CI request has been sent yet.</p>;
+    if (!meta.request) return <p className="italic text-gray-500"><Terms>No CI request has been sent yet.</Terms></p>;
 
     return (
         <div className="text-left">
-            {title && <h3 className="font-semibold">{title}</h3>}
+            {title && <h3 className="font-semibold"><Terms text={title} /></h3>}
             <p className="text-sm">
-                {meta.done
+                <Terms text={meta.done
                     ? `CI done ${new Date(meta.done.changed_at).toLocaleString()} by ${meta.names[meta.done.changed_by] ?? 'Credit Investigator'}.`
-                    : 'Credit Investigation is still open; results may change.'}
+                    : 'Credit Investigation is still open; results may change.'} />
             </p>
             {(loadError || error) && <p className="text-red-600">{loadError || error}</p>}
             <div className="overflow-x-auto">
@@ -412,7 +420,7 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
                     <thead>
                         <tr>
                             <th className="border px-2 text-left align-top">Name</th>
-                            {CI_CHECKS.map((c) => <th key={c.value} className="border px-2 text-left align-top">{c.label}</th>)}
+                            {CI_CHECKS.map((c) => <th key={c.value} className="border px-2 text-left align-top"><Terms text={c.label} /></th>)}
                         </tr>
                     </thead>
                     <tbody>
@@ -444,7 +452,9 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
                     </tbody>
                 </table>
             </div>
-            <p className="pt-2"><span className="font-semibold">Overall CI remarks:</span>{' '}
+            <CiFindingFlags applicationId={app.id}
+                hasFindings={Object.values(byKey).some((c) => c.result === 'WITH_FINDINGS')} />
+            <p className="pt-2"><span className="font-semibold">Overall <Term k="CI" /> remarks:</span>{' '}
                 <span className="whitespace-pre-wrap">{meta.request.ci_remarks || '—'}</span></p>
         </div>
     );

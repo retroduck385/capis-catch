@@ -7,6 +7,7 @@ import { useState } from 'react';
 import Excerpt from './excerpt';
 import { OVERALL, showFact, showRequirement, STATUS } from './labels';
 import './mrac.css';
+import { Terms } from '../../components/term';
 
 const pages = (c) => (c.manual_pages?.length ? `p. ${c.manual_pages.join(', ')}` : null);
 
@@ -43,7 +44,7 @@ const MracResult = ({ run, onAddException }) => {
         <div aria-live="polite">
             <div className={`mrac-banner ${overallTone}`}>
                 <div className="top">
-                    <b>{overallLabel}</b>
+                    <b><Terms text={overallLabel} /></b>
                     {run.finished_at && <time dateTime={run.finished_at}>{new Date(run.finished_at).toLocaleString()}</time>}
                 </div>
                 {reasoning?.headline && <p>{reasoning.headline}</p>}

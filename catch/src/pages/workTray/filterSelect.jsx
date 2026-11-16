@@ -6,7 +6,8 @@
 import { Check, ChevronDown } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
-const FilterSelect = ({ label, value, options, onChange, active = false }) => {
+// title: optional tooltip on the button; an option's own `title` shows on that option
+const FilterSelect = ({ label, value, options, onChange, active = false, title }) => {
     const id = useId();
     const [open, setOpen] = useState(false);
     const [hi, setHi] = useState(0);
@@ -60,6 +61,7 @@ const FilterSelect = ({ label, value, options, onChange, active = false }) => {
                 aria-haspopup='listbox'
                 aria-expanded={open}
                 aria-label={`${label}: ${current.label}`}
+                title={title}
                 onClick={() => (open ? close() : openList())}
                 onKeyDown={(e) => {
                     if (['ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); openList(); }
@@ -83,6 +85,7 @@ const FilterSelect = ({ label, value, options, onChange, active = false }) => {
                             aria-selected={o.value === value}
                             className={i === hi ? 'hi' : undefined}
                             style={{ '--i': i }}
+                            title={o.title}
                             onMouseEnter={() => setHi(i)}
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => choose(o.value)}>

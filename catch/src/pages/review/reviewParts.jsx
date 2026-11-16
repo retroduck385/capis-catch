@@ -8,6 +8,7 @@ import { BORROWER_ROLES, EMPLOYMENT_TYPES, REQUIREMENT_LABELS, formatMoney, labe
 import {
     DECISION_LABELS, INCOME_DOCUMENT_TYPES, REVIEW_ACTIONS, SEVERITIES, deciderOf, jobOf, severityLabel,
 } from './reviewChecks';
+import { Term, Terms } from '../../components/term';
 
 const money = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
 const when = (t) => new Date(t).toLocaleString();
@@ -15,7 +16,7 @@ const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extens
 
 export const FlagList = ({ flags }) => (flags.length === 0 ? null : (
     <ul className="rv-flags">
-        {flags.map((f) => <li key={f.text} className={`rv-flag ${f.level === 'warn' ? 'warn' : 'none'}`}>{f.text}</li>)}
+        {flags.map((f) => <li key={f.text} className={`rv-flag ${f.level === 'warn' ? 'warn' : 'none'}`}><Terms text={f.text} /></li>)}
     </ul>
 ));
 
@@ -133,8 +134,8 @@ export const IncomeEvidence = ({ app, computed, fp, onError }) => {
                 <thead>
                     <tr>
                         <th>Borrower</th>
-                        <th>Declared (KYC)</th>
-                        <th>Basis used by the CO</th>
+                        <th>Declared (<Term k="KYC" />)</th>
+                        <th>Basis used by the <Term k="CO" /></th>
                         <th>(A) Basic + (B) Other = Gross</th>
                         <th>Income documents</th>
                     </tr>
@@ -154,7 +155,7 @@ export const IncomeEvidence = ({ app, computed, fp, onError }) => {
                                 <td>{money(declared)}</td>
                                 <td>
                                     {basis ? basis.label : declared === 0 ? 'No income' : <span className="lf-err">Not picked</span>}
-                                    {remarks && <p className="whitespace-pre-wrap fp-note">CO: {remarks}</p>}
+                                    {remarks && <p className="whitespace-pre-wrap fp-note"><Term k="CO" />: {remarks}</p>}
                                 </td>
                                 <td>
                                     {money(basic)} + {money(other)} = <b>{money(gross)}</b>

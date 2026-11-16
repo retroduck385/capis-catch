@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Info, Plus, ShieldCheck } from 'lucide-react';
 import { ROLE_LABELS, STAFF_ROLES } from '../../roles';
 import { PERMISSIONS, ROLE_INFO, SAMPLE_ACCESS } from './options';
+import { Terms } from '../../components/term';
 
 const initialState = () => Object.fromEntries(STAFF_ROLES.map((r) => [r, new Set(SAMPLE_ACCESS[r].on)]));
 
@@ -66,7 +67,7 @@ const RoleAccessPreview = ({ focusRole, counts }) => {
                                 </div>
                                 <ShieldCheck size={18} aria-hidden="true" />
                             </header>
-                            <p className="blurb">{ROLE_INFO[role].blurb}</p>
+                            <p className="blurb"><Terms text={ROLE_INFO[role].blurb} /></p>
                             <ul>
                                 {PERMISSIONS.map((p) => {
                                     const checked = on.has(p.key);

@@ -12,6 +12,8 @@ import { CiResultsView } from '../ciRequest/ciResults';
 import RoutingSummary from '../review/routingSummary';
 import { percent } from './compute';
 import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS } from './options';
+import { Term, Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const blank = (v) => v === null || v === undefined || v === '';
 const show = (v) => (blank(v) ? '—' : v);
@@ -23,7 +25,7 @@ const Info = ({ rows }) => (
     <dl className="fp-info">
         {rows.map(([label, value]) => (
             <div key={label} className="fp-info-row">
-                <dt>{label}</dt>
+                <dt><Terms text={label} /></dt>
                 <dd>{show(value)}</dd>
             </div>
         ))}
@@ -31,17 +33,20 @@ const Info = ({ rows }) => (
 );
 
 const Cell = ({ children, className = '' }) => <td className={className}>{children}</td>;
-const Head = ({ children }) => <th>{children}</th>;
+const Head = ({ children }) => <th><Terms>{children}</Terms></th>;
 
-const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required }) => (
+const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required }) => {
+    const tt = useTermTitle();
+    return (
     <div className="ct-field fp-textarea">
-        <label htmlFor={name}>{label}{required && <span className="text-red-600"> *</span>}</label>
+        <label htmlFor={name} title={tt(label)}>{label}{required && <span className="text-red-600"> *</span>}</label>
         <textarea id={name} rows={rows} value={value ?? ''} disabled={disabled}
             onChange={(e) => onChange(name, e.target.value)} />
     </div>
-);
+    );
+};
 
-const KycNote = () => <p className="fp-note">Copied from the KYC (read-only). The AO corrects these in the loan folder.</p>;
+const KycNote = () => <p className="fp-note">Copied from the <Term k="KYC" /> (read-only). The <Term k="AO" /> corrects these in the loan folder.</p>;
 
 // ---------- General information ----------
 export const HeaderSection = ({ app, aoName, form, onPkg, disabled }) => {
@@ -120,8 +125,8 @@ export const FacilitySection = ({ app, computed, form, pricing, onPkg, onPricing
                     ['Monthly Amortization', computed.amortization === null ? 'Needs the interest rate' : peso(computed.amortization)],
                 ]} />
                 <p className="fp-note">
-                    Amortization = PMT(rate / 12, 12 × term, −loan amount). LCR = loan amount ÷{' '}
-                    {computed.appraised !== null ? 'appraised value' : 'TCP (selling price) until an appraised value is entered'}.
+                    Amortization = PMT(rate / 12, 12 × term, −loan amount). <Term k="LCR" /> = loan amount ÷{' '}
+                    <Terms text={computed.appraised !== null ? 'appraised value' : 'TCP (selling price) until an appraised value is entered'} />.
                 </p>
             </div>
             <div>
@@ -289,13 +294,13 @@ export const CashFlowSection = ({ computed, details, onParty, disabled }) => (
             </div>
         ))}
 
-        <h4 className="fp-subhead">Existing Monthly Amortization (C) — from the KYC</h4>
+        <h4 className="fp-subhead">Existing Monthly Amortization (C) — from the <Term k="KYC" /></h4>
         {computed.existingLoans.length === 0 ? <p>No existing loans declared.</p> : (
             <ul className="list-disc pl-6">
                 {computed.existingLoans.map((l) => (
                     <li key={l.id}>
                         {partyLabel(l.party)}: {l.loan_type} with {l.lending_institution}, {peso(l.monthly_payment)} / month
-                        {l.term_over_6_months ? '' : ' (6 months or less left: not counted in DBR)'}
+                        {l.term_over_6_months ? '' : <Terms text=' (6 months or less left: not counted in DBR)' />}
                     </li>
                 ))}
             </ul>
@@ -306,7 +311,7 @@ export const CashFlowSection = ({ computed, details, onParty, disabled }) => (
             ['New Monthly Amortization', computed.amortization === null ? 'Needs the interest rate' : peso(computed.amortization)],
             ['DBR = (new amortization + C) ÷ D', percent(computed.dbr)],
         ]} />
-        <p className="fp-note">Income basis: COE counts 80% of declared income, payslips 90%, as declared 100%. Seafarers (gross × contracts ÷ 12) and self-employed AMD aren't computed yet.</p>
+        <p className="fp-note">Income basis: <Term k="COE" /> counts 80% of declared income, payslips 90%, as declared 100%. Seafarers (gross × contracts ÷ 12) and self-employed <Term k="AMD" /> aren't computed yet.</p>
     </Section>
 );
 
@@ -351,7 +356,7 @@ export const CustomerSection = ({ app, details, onParty, disabled }) => {
                     <div key={p.id} className="fp-sub">
                         <h4 className="fp-subhead">
                             {p.role === 'PRINCIPAL' ? 'Principal Borrower / Mortgagor'
-                                : p.role === 'ATTORNEY_IN_FACT' ? 'AIF' : partyLabel(p)}
+                                : p.role === 'ATTORNEY_IN_FACT' ? <Term k="AIF" /> : partyLabel(p)}
                             {p.relationship_to_principal && p.role !== 'PRINCIPAL' ? ` — ${p.relationship_to_principal}` : ''}
                         </h4>
                         <Info rows={[
@@ -390,6 +395,6 @@ export const CreditResultSection = ({ form, onPkg, disabled }) => (
         <TextArea name="waiver_and_acceptance" label="Waiver and Acceptance" rows={2} value={form.waiver_and_acceptance}
             onChange={onPkg} disabled={disabled} />
         <TextArea name="deferrals" label="Deferral(s)" rows={2} value={form.deferrals} onChange={onPkg} disabled={disabled} />
-        <p className="fp-note">Saved on the FP. To send it to the reviewers and approvers, save the FP, then open VII. Approval.</p>
+        <p className="fp-note"><Terms>Saved on the FP. To send it to the reviewers and approvers, save the FP, then open VII. Approval.</Terms></p>
     </Section>
 );

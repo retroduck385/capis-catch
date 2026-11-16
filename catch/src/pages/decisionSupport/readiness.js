@@ -2,6 +2,7 @@
 // missing and who owns it. It informs; it never blocks (blocking stays in the stage rules).
 // Pure function over what fetchDecisionSupport() loaded plus what the page derived (score, mracChanges, ...).
 import { buildSteps } from '../applicationForm/steps';
+import { REQUIREMENT_LABELS } from '../applicationForm/options';
 import { missingApprovers } from '../review/approval';
 
 export const READY = { DONE: 'done', MISSING: 'missing', CHECK: 'check' };
@@ -14,7 +15,7 @@ const verifiedSections = (app, kycChecks) => {
 };
 
 export const buildReadiness = (ctx) => {
-    const { app, kycChecks, docs, docStates, ciDone, score, fp, pkg, mrac, mracChanges, reviewers, approvers, staff } = ctx;
+    const { app, kycChecks, docs, docStates, ciDone, score, fp, pkg, mrac, mracChanges, reviewers, approvers, staff, docRequest } = ctx;
     const items = [];
     const add = (item) => items.push(item);
     const id = app.id;
@@ -30,8 +31,12 @@ export const buildReadiness = (ctx) => {
 
     // 2. Documents the AI reads, each confirmed by a person
     const confirmed = docs.filter((d) => docStates[d.id]?.run?.confirmed_at).length;
-    const failed = docs.filter((d) => ['FAILED'].includes(docStates[d.id]?.run?.status)
-        || docStates[d.id]?.ocr?.status === 'FAILED').length;
+    const failedDocs = docs.filter((d) => ['FAILED'].includes(docStates[d.id]?.run?.status)
+        || docStates[d.id]?.ocr?.status === 'FAILED');
+    const failed = failedDocs.length;
+    // "Ask the applicant" for the documents that could not be read (one entry per borrower and document)
+    const unread = [...new Map(failedDocs.map((d) => [`${d.partyId}:${d.type}`,
+        { applicant_id: d.partyId, requirement_type: d.type, label: REQUIREMENT_LABELS[d.type] ?? d.type }])).values()];
     add({
         key: 'documents', label: 'Documents read and confirmed',
         state: docs.length > 0 && confirmed === docs.length ? READY.DONE : READY.MISSING,
@@ -39,7 +44,20 @@ export const buildReadiness = (ctx) => {
             ? 'No ID, income or bank documents have been uploaded yet.'
             : `${confirmed} of ${docs.length} documents confirmed by the Account Officer${failed ? `; ${failed} could not be read` : ''}.`,
         owner: 'ACCOUNT_OFFICER', to: `/documentCheckPage?id=${id}`, action: 'Document check',
+        ask: unread.length > 0 ? { items: unread, note: '', from: 'the documents that could not be read (Decision support)' } : null,
     });
+
+    // 2b. Only while a document request is with the applicant: the file is waiting on them, not on staff
+    if (docRequest) {
+        const sent = docRequest.status === 'SENT';
+        add({
+            key: 'applicant', label: 'Waiting on the applicant', state: READY.CHECK,
+            detail: sent
+                ? `The applicant sent the requested documents on ${new Date(docRequest.sent_at).toLocaleDateString()}. The Account Officer still has to check them and close the request.`
+                : `A document request has been open since ${new Date(docRequest.opened_at).toLocaleDateString()}. The applicant has not sent the documents yet.`,
+            owner: sent ? 'ACCOUNT_OFFICER' : 'APPLICANT', to: `/loanFolderPage?id=${id}`, action: 'Loan folder',
+        });
+    }
 
     // 3. Credit investigation
     add({

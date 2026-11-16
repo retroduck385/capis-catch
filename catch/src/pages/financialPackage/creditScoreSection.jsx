@@ -4,6 +4,7 @@
 // leaves each one. Only the CO's picks count toward the total.
 import { Section } from '../applicationForm/fields';
 import { CATEGORIES } from './creditScore';
+import { Terms } from '../../components/term';
 
 const pts = (n) => `${n} ${Math.abs(n) === 1 ? 'pt' : 'pts'}`;
 
@@ -20,13 +21,13 @@ const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks,
 
     return (
         <tr>
-            <td><b>{criterion.label}</b></td>
+            <td><b><Terms text={criterion.label} /></b></td>
             <td>{suggestion.input ?? '—'}</td>
             <td>
                 {suggested
                     ? <b>{bandLabel(suggested)}</b>
                     : <span className="fp-pending">No suggestion</span>}
-                <p className="fp-note cs-source">{suggestion.source}</p>
+                <p className="fp-note cs-source"><Terms text={suggestion.source} /></p>
                 {!disabled && suggested && entry?.band !== suggested && (
                     <button type="button" className="rv-link" onClick={() => onScore(criterion.code, suggested)}>
                         Use suggestion
@@ -118,7 +119,7 @@ export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore
                     {[['Description', totals.description], ['Risk Rating', totals.riskRating], ['Recommendation', totals.recommendation]].map(([label, value]) => (
                         <div key={label} className="fp-info-row">
                             <dt>{label}</dt>
-                            <dd>{value ?? <span className="fp-pending">When every criterion is scored</span>}</dd>
+                            <dd>{value ? <Terms text={value} /> : <span className="fp-pending">When every criterion is scored</span>}</dd>
                         </div>
                     ))}
                 </dl>

@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import { recordKycCheck } from './api';
 import { RESULT_LABELS, whenOf } from './options';
+import CommentButton from '../messages/commentButton';
+import { Term } from '../../components/term';
 
 const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
 
@@ -21,7 +23,8 @@ export const CheckChip = ({ check }) => (
     </span>
 );
 
-const KycCheckPanel = ({ applicationId, section, complete, latest, names, onRecorded }) => {
+// extra: shown under the latest result (the loan folder passes "Ask the applicant" for a Needs clarification)
+const KycCheckPanel = ({ applicationId, section, complete, latest, names, onRecorded, extra = null }) => {
     const [result, setResult] = useState(latest?.result ?? '');
     const [remarks, setRemarks] = useState('');
     const [error, setError] = useState(null);
@@ -51,12 +54,13 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
     };
 
     return (
-        <form onSubmit={handleSubmit} className="lf-card lf-check">
+        <form id={`kyc-${section}`} onSubmit={handleSubmit} className="lf-card lf-check">
             <div className="lf-cardhead">
-                <h3>KYC verification</h3>
+                <h3><Term k="KYC" /> verification<CommentButton topic={`kyc-${section}`} /></h3>
                 <CheckChip check={latest} />
             </div>
             <CheckSummary check={latest} names={names} />
+            {extra}
             {!complete && <p className="lf-err">This section is incomplete, so it can't be marked Verified.</p>}
 
             <div className="lf-choices" role="radiogroup" aria-label="KYC result">

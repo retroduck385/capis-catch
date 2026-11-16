@@ -31,6 +31,31 @@ export const closeRequest = async (requestId, note) =>
 export const fileUrl = async (path) =>
     check(await supabase.storage.from(BUCKET).createSignedUrl(path, 60)).signedUrl;
 
+// Am I the assigned AO, and may I open a request on this file right now? (shows or hides "Ask the applicant")
+export const fetchCanOpen = async (applicationId) =>
+    check(await supabase.rpc('document_request_can_open', { p_application_id: applicationId })) ?? false;
+
+// The request the applicant still owes or has just sent, if any (staff read; null = none in progress)
+export const fetchOpenRequest = async (applicationId) =>
+    (check(await supabase.from('document_requests').select('id, status, opened_at, sent_at')
+        .eq('application_id', applicationId).neq('status', 'CLOSED')) ?? [])[0] ?? null;
+
+// ---------- Staff marks on uploaded files (20261116_findings_and_file_marks.sql) ----------
+// Every mark on the application's files, oldest first: the last one per document is its current mark
+export const fetchFileMarks = async (applicationId) =>
+    check(await supabase.from('document_file_marks')
+        .select('id, document_id, mark, comment, marked_by, marked_role, marked_at')
+        .eq('application_id', applicationId).order('id')) ?? [];
+
+// The assigned Account Officer or the assigned Credit Officer
+export const fetchCanMark = async (applicationId) =>
+    check(await supabase.rpc('document_file_can_mark', { p_application_id: applicationId })) ?? false;
+
+// mark: 'CLEARED' | 'NEEDS_NEW_COPY' (a comment is required for the second)
+export const markFile = async (documentId, mark, comment) =>
+    check(await supabase.rpc('mark_document_file',
+        { p_document_id: documentId, p_mark: mark, p_comment: comment?.trim() || null }));
+
 // ---------- Applicant ----------
 // Same rules as the application form's uploads (the bucket enforces them too)
 export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];

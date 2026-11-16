@@ -19,6 +19,10 @@ import { fetchDocumentChecks, fetchFieldDefs, requestCiExtraction, requestExtrac
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
+import FileMark from '../documentRequests/fileMark';
+import { useFileMarks } from '../documentRequests/useFileMarks';
+import { Term, Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const POLL_MS = 5000;
 const TYPE_ORDER = ['VALID_ID_PASSPORT', 'COE_ITR', 'PAYSLIPS_REMITTANCES', 'FS_BANK_STATEMENTS', 'CI_NFIS', 'CI_TU'];
@@ -42,6 +46,7 @@ const stillWorking = (c) => ['OCR', 'AI', 'WAITING'].includes(docStatus(c).key);
 const nameOf = (party) => [party.first_name, party.last_name].filter(Boolean).join(' ') || partyLabel(party);
 
 const DocumentCheckPage = () => {
+    const tt = useTermTitle();
     const [searchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
     const docParam = Number(searchParams.get('doc')) || null;
@@ -65,6 +70,8 @@ const DocumentCheckPage = () => {
     const setDirty = useCallback((d) => { dirtyRef.current = d; }, []);
 
     const types = useMemo(() => new Set(defs.map((d) => d.document_type)), [defs]);
+    // Staff check of each applicant file (Cleared / Needs a new copy); not for the CI's reports
+    const marks = useFileMarks(ciMode ? null : applicationId);
 
     // Borrowers with at least one document the AI reads, and those documents (ID first, then income; NFIS, then TU)
     const parties = useMemo(() => getParties(app ?? {}, ciMode ? BORROWER_ROLES : undefined)
@@ -221,12 +228,12 @@ const DocumentCheckPage = () => {
                     onClick={(e) => { if (!leaveEdits()) e.preventDefault(); }}>
                     {backTo.label}
                 </Link>
-                <h2 className="text-xl font-semibold">{ciMode ? 'CI report check' : 'Document check'}</h2>
+                <h2 className="text-xl font-semibold">{ciMode ? <><Term k="CI" /> report check</> : 'Document check'}</h2>
                 <span className="text-gray-600">Application {app.application_no}</span>
                 <span className="lg:ml-auto text-xs text-gray-600 max-w-md">
-                    {ciMode
+                    <Terms text={ciMode
                         ? 'The AI only proposes values and a draft result. Nothing is saved to the CI results until a Credit Investigator confirms. The application record is never changed here.'
-                        : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'}
+                        : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} />
                 </span>
             </header>
 
@@ -249,12 +256,13 @@ const DocumentCheckPage = () => {
                 <div role="status" className="mx-4 mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-gray-900">
                     <CheckCircle2 size={20} aria-hidden="true" className="shrink-0 text-green-800" />
                     <p className="flex-1 min-w-[16rem]">
-                        <span className="font-semibold">{ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'}</span>{' '}
-                        {ciMode
+                        <span className="font-semibold"><Terms text={ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'} /></span>{' '}
+                        <Terms text={ciMode
                             ? 'Next: review the results, add BRAS if you have it, save, then Mark CI Done.'
-                            : 'Next: KYC verification of each section in the loan folder.'}
+                            : 'Next: KYC verification of each section in the loan folder.'} />
                     </p>
                     <Link to={ciMode ? `/ciRequestPage?id=${app.id}&step=results` : `/loanFolderPage?id=${app.id}`}
+                        title={tt(ciMode ? 'Mark CI Done' : 'KYC verification')}
                         onClick={(e) => { if (!leaveEdits()) e.preventDefault(); }}
                         className="inline-flex min-h-11 items-center gap-2 rounded bg-green-800 px-4 py-2 font-semibold text-white hover:bg-green-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2">
                         {ciMode ? 'Go to step 4: Results' : 'Go to step 2: KYC verification'}
@@ -264,13 +272,13 @@ const DocumentCheckPage = () => {
             )}
 
             {parties.length === 0 ? (
-                <p className="p-4">{ciMode
+                <p className="p-4"><Terms text={ciMode
                     ? 'No NFIS or TU reports have been uploaded for this application yet. Upload them on the CI request page.'
-                    : 'No IDs, COE / ITR, payslips or bank statements have been uploaded for this application.'}</p>
+                    : 'No IDs, COE / ITR, payslips or bank statements have been uploaded for this application.'} /></p>
             ) : (
                 <div className="flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-gray-50">
                     <section className="bg-white rounded-lg border p-3 flex flex-col h-[80vh] lg:h-auto lg:min-h-0">
-                        <h3 className="font-semibold pb-2">{ciMode ? 'CI reports' : 'Documents'} for {nameOf(selectedParty.party)}</h3>
+                        <h3 className="font-semibold pb-2">{ciMode ? <><Term k="CI" /> reports</> : 'Documents'} for {nameOf(selectedParty.party)}</h3>
                         <ul className="space-y-1 pb-3 max-h-48 overflow-auto">
                             {selectedParty.docs.map((d) => {
                                 const s = docStatus(checks[d.id]);
@@ -288,6 +296,11 @@ const DocumentCheckPage = () => {
                                 );
                             })}
                         </ul>
+                        {doc && !ciMode && (
+                            <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks} className="mb-3"
+                                unreadable={status.key === 'OCR_FAILED'} confirmLeave={leaveEdits}
+                                file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
+                        )}
                         {doc && (
                             <div className="flex-1 min-h-0">
                                 <DocumentViewer key={doc.id} doc={doc} pageSizes={check?.pages} highlights={highlights}
@@ -309,7 +322,7 @@ const DocumentCheckPage = () => {
                             ) : (
                                 <div className="space-y-2">
                                     <p><span className={`text-xs rounded-full px-2 py-0.5 ${status.tone}`}>{status.label}</span></p>
-                                    {['OCR', 'AI', 'WAITING'].includes(status.key) && <p className="text-sm text-gray-600">{workerHint}</p>}
+                                    {['OCR', 'AI', 'WAITING'].includes(status.key) && <p className="text-sm text-gray-600"><Terms text={workerHint} /></p>}
                                     {status.key === 'OCR_FAILED' && <p className="text-sm text-red-700">{check.ocr.error}</p>}
                                     {status.key === 'AI_FAILED' && <p className="text-sm text-red-700">{check.run.error}</p>}
                                     {canEdit && status.key === 'AI_FAILED' && (
