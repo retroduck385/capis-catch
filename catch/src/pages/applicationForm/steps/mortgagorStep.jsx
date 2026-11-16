@@ -6,13 +6,21 @@ import { hasErrors, validateAddress, validatePerson } from '../validators';
 
 const CONTACT_ADDRESS_KEYS = Object.keys(ADDRESS_FIELDS);
 
+// A "No" isn't stored (no party row is created), so the saved record can't tell "No" from "not answered".
+// Once the application is submitted (what staff see) every question has been answered, so no record = No.
+// While it is still a draft, no record = not answered yet (null).
+const answerFor = (party, app) => {
+    if (party) return true;
+    return app.status === 'DRAFT' ? null : false;
+};
+
 const MortgagorStep = ({ app, onSaved, onBack }) => {
     const mortgagor = getParty(app, 'MORTGAGOR');
     const aif = getParty(app, 'ATTORNEY_IN_FACT');
 
     // null = not answered yet
-    const [hasMortgagor, setHasMortgagor] = useState(mortgagor ? true : null);
-    const [hasAif, setHasAif] = useState(aif ? true : null);
+    const [hasMortgagor, setHasMortgagor] = useState(answerFor(mortgagor, app));
+    const [hasAif, setHasAif] = useState(answerFor(aif, app));
     const [mortgagorForm, setMortgagorForm] = useState(() => toForm(mortgagor, PARTY_FIELDS.MORTGAGOR.map(([f]) => f)));
     const [aifForm, setAifForm] = useState(() => toForm(aif, PARTY_FIELDS.ATTORNEY_IN_FACT.map(([f]) => f)));
     const [aifAddress, setAifAddress] = useState(() => toForm(getAddress(aif, 'PRESENT'), CONTACT_ADDRESS_KEYS));

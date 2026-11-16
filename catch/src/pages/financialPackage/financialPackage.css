@@ -93,3 +93,75 @@
   .fp .fp-nav { max-height: none; }
   .fp-info-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }
+
+/* Two pages (tabs). Both stay in the DOM inside one form; the inactive one is hidden, so every edit and the policy check
+   result survive a switch. */
+.fp-pagetabs { display: flex; gap: 0.5rem; margin: 0 0 1rem; }
+.fp-pagetabs button {
+  flex: 1 1 0; display: grid; gap: 0.1rem; text-align: left; padding: 0.65rem 1rem; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.fp-pagetabs button b { font-size: 0.95rem; }
+.fp-pagetabs button span { color: var(--muted); font-size: 0.82rem; }
+.fp-pagetabs button:hover { background: #f6f8fc; }
+.fp-pagetabs button[aria-selected='true'] {
+  background: var(--blue-50); border-color: var(--blue); box-shadow: inset 0 -3px 0 var(--blue);
+}
+.fp-pagetabs button[aria-selected='true'] b { color: var(--blue-700); }
+.fp-pagetabs button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.fp-page { display: grid; gap: 1.1rem; min-width: 0; }
+.fp-page[hidden] { display: none; }
+.fp-page:not([hidden]) { animation: fp-page-in 0.2s ease both; }
+@keyframes fp-page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.fp-pagenav { display: flex; justify-content: flex-end; margin-top: 0.25rem; }
+.fp-pagenav button {
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.5rem; padding: 0.4rem 1.1rem; cursor: pointer;
+  border: 1px solid var(--blue); border-radius: var(--radius); background: #fff; color: var(--blue-700); font-weight: 600;
+}
+.fp-pagenav button:hover { background: var(--blue-50); }
+.fp-pagenav button.back { margin-right: auto; border-color: var(--line-strong); color: var(--ink); }
+
+@media (max-width: 40rem) { .fp-pagetabs { flex-direction: column; } }
+@media (prefers-reduced-motion: reduce) {
+  .fp-page:not([hidden]) { animation: none; }
+  .fp-pagetabs button { transition: none; }
+}
+
+/* ---------- key sections: Policy check (MRAC), VI. Terms and conditions, VII. Approval ----------
+   The decision rests on these three. In the navigator they sit in their own tinted block with an icon each; on the page
+   the card gets a heavier top edge, a tinted heading and a "Key to the decision" tag. Not colour alone: icon + label. */
+.fp-navkey {
+  margin: 0.7rem 0.1rem 0.2rem; padding: 0.55rem 0.4rem 0.45rem; border: 1px solid var(--blue-200);
+  border-left: 4px solid var(--blue-700); border-radius: 8px; background: var(--blue-50);
+}
+.fp-navkey-title {
+  margin: 0 0.35rem 0.3rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--blue-700);
+}
+.fp .fp-nav .fp-navkey a {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.55rem; font-weight: 600; color: var(--navy);
+}
+.fp .fp-nav .fp-navkey a svg { flex: none; color: var(--blue-700); }
+.fp .fp-nav .fp-navkey a:hover { background: #fff; }
+.fp .fp-nav .fp-navkey a[aria-current='true'] { background: var(--blue-700); color: #fff; font-weight: 700; }
+.fp .fp-nav .fp-navkey a[aria-current='true'] svg { color: #fff; }
+
+.fp .ct-section.fp-key { border-color: var(--blue-200); border-top: 3px solid var(--blue-700); box-shadow: 0 1px 0 rgba(26, 74, 168, 0.06), 0 6px 18px -10px rgba(26, 74, 168, 0.35); }
+.fp .ct-section.fp-key > legend { background: var(--blue-50); border-bottom-color: var(--blue-200); border-radius: 6px 6px 0 0; color: var(--navy); }
+.fp .ct-section.fp-key > legend::after {
+  content: 'Key to the decision'; display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.6rem; vertical-align: 0.1em;
+  border: 1px solid var(--blue-200); border-radius: 999px; background: #fff; color: var(--blue-700);
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+}
+
+/* Header: the title block gives way so the action buttons (Messages, Approval routing, Loan folder, ...) stay at the
+   top right instead of wrapping under the title. Narrow screens still stack them. Also applies to the review summary
+   and decision support headers, which share these classes. */
+@media (min-width: 56rem) {
+  .fp .lf-titlerow { flex-wrap: nowrap; }
+  .fp .lf-titlerow > :first-child { flex: 1 1 0; min-width: 0; }
+  .fp .lf-titlerow > .lf-actions { flex: 0 0 auto; justify-content: flex-end; }
+}

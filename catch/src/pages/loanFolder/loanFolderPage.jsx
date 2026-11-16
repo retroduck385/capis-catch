@@ -1,18 +1,24 @@
 // Loan folder: staff view of one submitted application, opened from the work tray.
 // The assigned AO (while in Intake or Credit Investigation) edits each section with the same forms the applicant
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
+// The assigned AO's header shows their work as numbered steps (aoSteps.jsx): document check, KYC, Request CI.
+// For any AO, Decision support and the Financial Package sit apart under "Optional view": they are read-only to an AO.
 import { LoanFolderSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Circle, LayoutList, Lock, ScanText, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Circle, LayoutList, Lock, Scale, ScanText, Send } from 'lucide-react';
+import { DSS_ROLES } from '../../roles';
 import Breadcrumbs from '../../components/breadcrumbs';
+import OptionalView from '../../components/optionalView';
 import { Link, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
-import { fetchApplication, getDocumentUrl, refreshApplication } from '../applicationForm/api';
+import { fetchApplication, getDocumentUrl, getParties, refreshApplication } from '../applicationForm/api';
 import ApplicationSummary from '../applicationForm/applicationSummary';
 import { buildSteps } from '../applicationForm/steps';
 import { fetchCiRequests } from '../ciRequest/api';
+import { fetchDocumentProgress } from '../documentCheck/api';
 import RequestCiPanel from '../ciRequest/requestCiPanel';
 import { fetchAuditLog, fetchCanEdit, fetchKycChecks, fetchStaffNames } from './api';
+import AoSteps from './aoSteps';
 import ChangeHistory from './changeHistory';
 import KycCheckPanel, { CheckChip, CheckSummary } from './kycCheckPanel';
 import { RESULT_LABELS, whenOf } from './options';
@@ -27,6 +33,8 @@ const REQUEST_CI = 'request-ci';
 
 // Form sections the AO verifies (the wizard's steps without Review & Submit)
 const sectionsFor = (app) => buildSteps(app).filter((s) => s.key !== 'review');
+// Every uploaded document of every party (step 1 counts the ones the AI reads)
+const documentsOf = (app) => getParties(app).flatMap((p) => (p.application_requirements ?? []).flatMap((r) => r.documents ?? []));
 
 const LoanFolderPage = () => {
     const { session, role } = UserAuth();
@@ -39,6 +47,7 @@ const LoanFolderPage = () => {
     const [audit, setAudit] = useState([]);
     const [names, setNames] = useState({});
     const [ciRequest, setCiRequest] = useState(null);
+    const [docProgress, setDocProgress] = useState(null); // assigned AO only: step 1's { total, confirmed }
     const [currentKey, setCurrentKey] = useState(OVERVIEW);
     const [saved, setSaved] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -67,6 +76,11 @@ const LoanFolderPage = () => {
                 if (cancelled) return;
                 setCanEdit(editable);
                 setApp(data);
+                // Step 1's count is only a hint: if it fails, the step still opens, just without a count
+                if (editable) {
+                    fetchDocumentProgress(documentsOf(data))
+                        .then((p) => { if (!cancelled) setDocProgress(p); }, () => {});
+                }
                 await loadTrail();
             } catch (err) {
                 if (!cancelled) setError(err.message);
@@ -104,6 +118,13 @@ const LoanFolderPage = () => {
         setSaved(false);
     };
 
+    // After a KYC check is recorded: reload the trail, then go to the next section (after the last one, Request CI)
+    const handleRecorded = async () => {
+        await loadTrail();
+        const at = sections.findIndex((s) => s.key === currentKey);
+        open(sections[at + 1]?.key ?? REQUEST_CI);
+    };
+
     // The AO keeps editing after the request (Intake -> Credit Investigation); just reload
     const handleCiRequested = async () => {
         await refresh();
@@ -118,6 +139,20 @@ const LoanFolderPage = () => {
     };
 
     const progressPct = sections.length ? Math.round((verifiedCount / sections.length) * 100) : 0;
+    const isAo = role === 'ACCOUNT_OFFICER';
+    // Step 2 opens the first section that isn't verified yet
+    const openKyc = () => open((sections.find((s) => latestCheck(s.key)?.result !== 'VERIFIED') ?? sections[0])?.key ?? OVERVIEW);
+
+    const decisionLink = DSS_ROLES.includes(role) && (
+        <Link to={`/decisionSupportPage?id=${app.id}`} className={`lf-btn${isAo ? ' quiet' : ''}`}>
+            <Scale size={16} aria-hidden="true" />Decision support
+        </Link>
+    );
+    const packageLink = (
+        <Link to={`/financialPackagePage?id=${app.id}`} className={`lf-btn${isAo ? ' quiet' : ''}`}>
+            Financial package<ArrowRight size={16} aria-hidden="true" />
+        </Link>
+    );
 
     const header = (
         <>
@@ -135,15 +170,28 @@ const LoanFolderPage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
-                    <Link to={`/documentCheckPage?id=${app.id}`} className="lf-btn">
-                        <ScanText size={16} aria-hidden="true" />Document check (AI)
-                    </Link>
-                    <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">
-                        Financial package<ArrowRight size={16} aria-hidden="true" />
-                    </Link>
+                    {/* The assigned AO reaches the document check from step 1 below */}
+                    {!canEdit && (
+                        <Link to={`/documentCheckPage?id=${app.id}`} className="lf-btn">
+                            <ScanText size={16} aria-hidden="true" />Document check (AI)
+                        </Link>
+                    )}
+                    {!isAo && decisionLink}
+                    {!isAo && packageLink}
                 </div>
             </div>
 
+            {canEdit ? (
+                <AoSteps
+                    appId={app.id}
+                    docProgress={docProgress}
+                    verifiedCount={verifiedCount}
+                    sectionCount={sections.length}
+                    ciRequest={ciRequest}
+                    openStep={currentKey === REQUEST_CI ? 'ci' : section ? 'kyc' : null}
+                    onOpenKyc={openKyc}
+                    onOpenCi={() => open(REQUEST_CI)} />
+            ) : (
             <div className="lf-progress">
                 <div className="lf-progress-top">
                     <span>KYC verification</span>
@@ -153,6 +201,14 @@ const LoanFolderPage = () => {
                     <span style={{ width: `${progressPct}%` }} />
                 </div>
             </div>
+            )}
+
+            {isAo && (
+                <OptionalView who="Account Officers">
+                    {decisionLink}
+                    {packageLink}
+                </OptionalView>
+            )}
 
             {!canEdit && (
                 <p className="lf-note">
@@ -190,10 +246,15 @@ const LoanFolderPage = () => {
                 </ul>
             </section>
             <ApplicationSummary app={app} onViewDocument={handleViewDocument} />
-            <section className="lf-card" aria-label="Change history">
-                <div className="lf-cardhead"><h2>Change history</h2></div>
+            {/* Collapsed until opened: the history gets long and pushes everything else down */}
+            <details className="lf-card lf-history">
+                <summary>
+                    <h2>Change history</h2>
+                    <span className="lf-history-count">{audit.length} {audit.length === 1 ? 'entry' : 'entries'}</span>
+                    <ChevronDown size={18} className="lf-history-chevron" aria-hidden="true" />
+                </summary>
                 <ChangeHistory app={app} entries={audit} names={names} />
-            </section>
+            </details>
         </>
     );
 
@@ -232,6 +293,19 @@ const LoanFolderPage = () => {
                                 <span className="label">Overview & history</span>
                             </button>
                         </li>
+                        <li className="lf-nav-grp">1 · Documents</li>
+                        <li>
+                            <Link to={`/documentCheckPage?id=${app.id}`}>
+                                <ScanText size={18} aria-hidden="true" />
+                                <span className="label">Document check (AI)</span>
+                                {docProgress?.total > 0 && (
+                                    <span className={`lf-chip ${docProgress.confirmed === docProgress.total ? 'ok' : 'none'}`}>
+                                        {docProgress.confirmed}/{docProgress.total}
+                                    </span>
+                                )}
+                            </Link>
+                        </li>
+                        <li className="lf-nav-grp">2 · KYC verification</li>
                         {sections.map((s) => {
                             const check = latestCheck(s.key);
                             return (
@@ -247,18 +321,13 @@ const LoanFolderPage = () => {
                                 </li>
                             );
                         })}
-                        <li className="sep">
+                        <li className="lf-nav-grp">3 · Credit investigation</li>
+                        <li>
                             <button type="button" onClick={() => open(REQUEST_CI)} aria-current={currentKey === REQUEST_CI}>
                                 <Send size={18} aria-hidden="true" />
                                 <span className="label">Request CI (NFIS & TU)</span>
                                 {ciRequest && <span className="lf-chip ok">Sent</span>}
                             </button>
-                        </li>
-                        <li>
-                            <Link to={`/documentCheckPage?id=${app.id}`}>
-                                <ScanText size={18} aria-hidden="true" />
-                                <span className="label">Document check (AI)</span>
-                            </Link>
                         </li>
                     </ol>
                 </nav>
@@ -283,7 +352,7 @@ const LoanFolderPage = () => {
                                 complete={section.complete}
                                 latest={latestCheck(section.key)}
                                 names={names}
-                                onRecorded={loadTrail} />
+                                onRecorded={handleRecorded} />
                             {saved && <p className="lf-ok-note" role="status">Changes saved.</p>}
                             <Component
                                 key={section.key}

@@ -2,6 +2,10 @@
 supplementary_files/*
 !supplementary_files/Test Datas # 1/
 !supplementary_files/Test Datas # 2/
+!supplementary_files/Test Datas # 3/
+!supplementary_files/Test Datas # 4/
+!supplementary_files/Test Datas # 5/
+!supplementary_files/Test Datas # 6/
 .DS_Store
 
 CLAUDE.md
@@ -10,3 +14,4 @@ HANDOFF.md
 fake_accounts.md
 josh-notes.md
 FUTURE_TODO.md
+demo_accounts.md

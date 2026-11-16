@@ -182,7 +182,7 @@ export const CreditCheckingSection = ({ app }) => (
 
 // ---------- VII. Approval (picked on its own page) ----------
 export const ApprovalSection = ({ tier, rows, names, link, onOpen }) => (
-    <Section id="fp-vii" title="VII. Approval">
+    <Section id="fp-vii" title="VII. Approval" className="fp-key">
         <RoutingSummary tier={tier} rows={rows} names={names} />
         <Link to={link} onClick={onOpen} className="fp-btn">Open VII. Approval</Link>
     </Section>
@@ -222,7 +222,7 @@ export const RowsSection = ({ id, title, config, rows, onChange, disabled, child
 
 // ---------- VI. Terms and conditions ----------
 export const TermsSection = ({ form, onPkg, onReset, disabled }) => (
-    <Section id="fp-vi" title="VI. Terms and Conditions">
+    <Section id="fp-vi" title="VI. Terms and Conditions" className="fp-key">
         <TextArea name="terms_and_conditions" label="Terms and Conditions" rows={16} value={form.terms_and_conditions}
             onChange={onPkg} disabled={disabled} />
         {!disabled && (

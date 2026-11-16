@@ -323,35 +323,37 @@ export const WorkTraySkeleton = () => (
                 </div>
             </article>
             <article className="wt-card wt-widget">
-                <h2 className="wt-wtitle"><T>Pipeline</T></h2>
-                <div className="wt-cols">
-                    {STAGE_NAMES.map((s) => (
-                        <div key={s} className="wt-col"><span className="num"><T>0</T></span><span className="well"><span className="fill" /></span><span className="name"><T>{s}</T></span></div>
+                <h2 className="wt-wtitle"><T>Applications by stage</T></h2>
+                <ol className="wt-flow">
+                    {STAGE_NAMES.filter((s) => s !== 'Decided').map((s) => (
+                        <li key={s} className="zero" style={{ '--st': '#94a3b8', '--mix': '12%' }}><button type="button" tabIndex={-1} disabled><span className="name"><T>{s}</T></span><span className="num"><T>0</T></span></button></li>
                     ))}
-                </div>
+                </ol>
             </article>
             <div className="wt-kpis">
-                {['Unassigned', 'Assigned to me'].map((l) => (
+                {['Assigned to me', 'Unassigned'].map((l) => (
                     <div key={l} className="wt-tile plain"><span className="ic sk-btn" /><span className="val"><T>00</T></span><span className="lbl"><T>{l}</T></span></div>
                 ))}
             </div>
         </section>
 
-        <section className="wt-card" aria-hidden="true">
+        <section className="wt-card wt-tablecard" aria-hidden="true">
             <div className="wt-toolbar">
-                <div className="wt-search"><Box h="2.5rem" /></div>
-                <Box w="7.5rem" h="2.5rem" /><Box w="11rem" h="2.5rem" /><Box w="11.5rem" h="2.5rem" />
-                <span className="spacer" />
-                <small><T>Updated 00:00 PM</T></small>
-                <Box w="5.5rem" h="2.5rem" />
+                <div className="wt-toolbar-top">
+                    <div className="wt-tabletitle"><h2><T>Applications</T></h2><p className="wt-count"><T>0 of 0</T></p></div>
+                    <Box w="6rem" h="2.6rem" />
+                </div>
+                <div className="wt-toolbar-filters">
+                    <div className="wt-search"><Box h="2.6rem" /></div>
+                    <Box w="10rem" h="2.6rem" /><Box w="10rem" h="2.6rem" /><Box w="10rem" h="2.6rem" />
+                </div>
             </div>
-            <p className="wt-count"><T>Showing 0 of 0 applications · first in, first out by submission</T></p>
             <div className="wt-scroll">
                 <table>
                     <thead>
                         <tr>
                             <th><T>#</T></th><th><T>Application</T></th><th><T>Stage</T></th><th className="wt-amt"><T>Amount</T></th>
-                            <th><T>TAT position</T></th><th><T>Assigned to</T></th>
+                            <th><T>TAT position</T></th><th><T>Assigned to</T></th><th><T>Review &amp; approval</T></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -364,7 +366,7 @@ export const WorkTraySkeleton = () => (
                                     <span className="wt-sub"><T>Employed · Main Branch</T></span>
                                 </td>
                                 <td>
-                                    <div className="wt-stagecell"><span><T>Credit Evaluation</T></span><span className="wt-chip plain sk-btn">In progress</span></div>
+                                    <div className="wt-stagecell"><span><T>Credit Evaluation</T></span><span className="wt-status plain sk-btn">In progress</span></div>
                                 </td>
                                 <td className="wt-amt"><T>₱1,000,000.00</T></td>
                                 <td>
@@ -379,6 +381,7 @@ export const WorkTraySkeleton = () => (
                                         <span className="wt-sub"><T>Credit Officer: Unassigned</T></span>
                                     </div>
                                 </td>
+                                <td><span className="wt-sub"><T>Not routed yet</T></span></td>
                             </tr>
                         ))}
                     </tbody>

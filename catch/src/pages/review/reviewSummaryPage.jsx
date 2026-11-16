@@ -8,11 +8,15 @@
 // Approve / Disapprove (submit_approval(), 20261110_approver_decision.sql). Everyone else with access reads the
 // full page, including every reviewer's sign-off and every approver's decision.
 // Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
+// For a reviewer / approver: a progress bar of their own review / decision in the header (MyWorkProgress, fed by
+// the form), and the pages they can only read (FP, credit scoring, loan folder, Decision support) under "Optional view".
 import { ReviewSummarySkeleton } from '../../components/skeleton';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, UserCheck } from 'lucide-react';
+import { ArrowRight, Scale, UserCheck } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
+import OptionalView from '../../components/optionalView';
+import { DSS_ROLES, REVIEW_ROLES } from '../../roles';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
 import { Section } from '../applicationForm/fields';
@@ -33,7 +37,7 @@ import {
 import { approvalProgress, splitRouting, tierLabel } from './approval';
 import { ApprovalForm, ApprovalProgress } from './approvalParts';
 import { isReviewedChange, reviewFlags, reviewState } from './reviewChecks';
-import { FlagList, IncomeEvidence, ReviewForm, ReviewProgress } from './reviewParts';
+import { FlagList, IncomeEvidence, MyWorkProgress, ReviewForm, ReviewProgress } from './reviewParts';
 import RoutingSummary from './routingSummary';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
@@ -93,7 +97,7 @@ const load = async (applicationId) => {
 };
 
 const ReviewSummaryPage = () => {
-    const { session } = UserAuth();
+    const { session, role } = UserAuth();
     const [searchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
 
@@ -103,6 +107,7 @@ const ReviewSummaryPage = () => {
     const [busy, setBusy] = useState(false);
     const [submitError, setSubmitError] = useState(null);
     const [done, setDone] = useState(null);
+    const [myWork, setMyWork] = useState(null); // the review / decision form's progress, for the header bar
 
     const reload = useCallback(async () => setData(await load(applicationId)), [applicationId]);
     const myId = session?.user?.id;
@@ -372,12 +377,13 @@ const ReviewSummaryPage = () => {
         'rv-review': canAct && (
             <Section id="rv-review" title={`Your review (reviewer ${current.seq} of ${reviewers.length})`}>
                 <ReviewForm checkItems={checkItems} flags={flags} nextLabel={nextLabel}
-                    onSubmit={handleSubmit} busy={busy} error={submitError} />
+                    onSubmit={handleSubmit} busy={busy} error={submitError} onProgress={setMyWork} />
             </Section>
         ),
         'rv-decision': canApprove && (
             <Section id="rv-decision" title="Your decision">
-                <ApprovalForm onSubmit={handleApproval} afterText={approveAfter} busy={busy} error={submitError} />
+                <ApprovalForm onSubmit={handleApproval} afterText={approveAfter} busy={busy} error={submitError}
+                    onProgress={setMyWork} />
             </Section>
         ),
     };
@@ -387,6 +393,19 @@ const ReviewSummaryPage = () => {
         pickSection(id);
         scrollToSection(id);
     };
+
+    // Reviewers / approvers only read these pages, so they go under "Optional view"; others keep them as buttons
+    const reviewRole = REVIEW_ROLES.includes(role);
+    const linkClass = `lf-btn${reviewRole ? ' quiet' : ''}`;
+    const pageLinks = (
+        <>
+            <Link to={`/financialPackagePage?id=${app.id}`} className={linkClass}>Financial Package</Link>
+            <Link to={`/creditScorePage?id=${app.id}`} className={linkClass}>Credit scoring</Link>
+            <Link to={`/loanFolderPage?id=${app.id}`} className={linkClass}>
+                Loan folder<ArrowRight size={16} aria-hidden="true" />
+            </Link>
+        </>
+    );
 
     return (
         <div className="lf fp rv">
@@ -405,11 +424,7 @@ const ReviewSummaryPage = () => {
                     </div>
                     <div className="lf-actions">
                         <MessagesPanel applicationId={app.id} inline />
-                        <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">Financial Package</Link>
-                        <Link to={`/creditScorePage?id=${app.id}`} className="lf-btn">Credit scoring</Link>
-                        <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
-                            Loan folder<ArrowRight size={16} aria-hidden="true" />
-                        </Link>
+                        {!reviewRole && pageLinks}
                     </div>
                 </div>
 
@@ -423,10 +438,30 @@ const ReviewSummaryPage = () => {
                     ))}
                 </div>
 
+                {(canAct || canApprove) && (
+                    <MyWorkProgress kind={canAct ? 'review' : 'approval'} progress={myWork} total={checkItems.length}
+                        onJump={() => {
+                            const id = canAct ? 'rv-review' : 'rv-decision';
+                            pickSection(id);
+                            scrollToSection(id);
+                        }} />
+                )}
+
                 <p className="lf-note">
                     <UserCheck size={16} aria-hidden="true" />
                     <span>{yourPart}</span>
                 </p>
+
+                {reviewRole && (
+                    <OptionalView who={isApprover ? 'Approvers' : 'Reviewers'}>
+                        {DSS_ROLES.includes(role) && (
+                            <Link to={`/decisionSupportPage?id=${app.id}`} className="lf-btn quiet">
+                                <Scale size={16} aria-hidden="true" />Decision support
+                            </Link>
+                        )}
+                        {pageLinks}
+                    </OptionalView>
+                )}
                 {done && <p className="lf-ok-note rv-done" role="status">{done}</p>}
             </header>
 

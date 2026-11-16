@@ -58,6 +58,48 @@
 }
 .lf-note svg { flex: none; margin-top: 0.15rem; color: var(--blue-700); }
 
+/* ---------- numbered steps (components/stepStrip.jsx: AO loan folder, CI request), like the applicant wizard ---------- */
+.lf-steps-wrap { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.lf-steps-label, .lf-optional-label { margin: 0 0 0.55rem; color: var(--muted); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.02em; }
+.lf-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--lf-step-count, 3), minmax(0, 1fr)); gap: 0.75rem; }
+.lf-step { margin: 0; min-width: 0; }
+.lf .lf-step > a, .lf .lf-step > button {
+  display: flex; align-items: flex-start; gap: 0.75rem; width: 100%; height: 100%; min-height: 4.5rem; padding: 0.8rem 0.95rem;
+  border: 1.5px solid var(--line-strong); border-radius: 8px; background: #fff; color: var(--ink);
+  font: inherit; text-align: left; text-decoration: none; cursor: pointer; transition: background-color 0.15s, border-color 0.15s;
+}
+.lf .lf-step > a:hover, .lf .lf-step > button:hover { background: #f6f8fc; color: var(--ink); }
+.lf .lf-step > a:focus-visible, .lf .lf-step > button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.lf .lf-step.is-next > a, .lf .lf-step.is-next > button { border-color: var(--amber); }
+.lf .lf-step > [aria-current='step'] { background: var(--blue-50); border-color: var(--blue); }
+.lf-step .n {
+  flex: none; display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 999px;
+  border: 1.5px solid var(--line-strong); background: #fff; color: var(--muted); font-weight: 700; font-size: 0.92rem;
+}
+.lf-step.is-done .n { background: var(--blue); border-color: var(--blue); color: #fff; }
+.lf-step.is-next .n { border: 2px solid var(--amber); color: var(--ink); }
+.lf-step .txt { flex: 1; min-width: 0; display: grid; gap: 0.2rem; }
+.lf-step .title { font-weight: 700; line-height: 1.3; }
+.lf-step .sub { color: var(--muted); font-size: 0.87rem; line-height: 1.35; }
+.lf-step-meter { display: block; height: 5px; margin-top: 0.3rem; border-radius: 999px; background: #e3e8f5; overflow: hidden; }
+.lf-step-meter > span { display: block; height: 100%; border-radius: 999px; background: var(--lf-ok); }
+.lf-next {
+  flex: none; align-self: flex-start; padding: 0.05rem 0.55rem; border-radius: 999px; background: #fff4e0;
+  border: 1px solid #f3c77a; color: #8a4b00; font-size: 0.75rem; font-weight: 700;
+}
+/* a step skipped on purpose (optional, done another way): quiet tag instead of "Next" */
+.lf-step-tag { flex: none; align-self: flex-start; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--lf-none-bg); border: 1px solid var(--lf-none-line); color: var(--lf-none); font-size: 0.75rem; font-weight: 700; }
+@media (max-width: 1100px) { .lf-steps.many { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .lf-steps { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .lf .lf-step > a, .lf .lf-step > button { transition: none; } }
+
+/* Any AO: pages they can only read, kept apart from their own steps */
+.lf-optional { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1.5rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px dashed var(--line-strong); }
+.lf-optional-label { display: inline-flex; align-items: center; gap: 0.45rem; margin: 0; font-weight: 500; }
+.lf-optional-label b { color: var(--ink); font-weight: 700; }
+.lf .lf-btn.quiet, .lf a.lf-btn.quiet { min-height: 2.5rem; border-color: var(--line-strong); color: var(--ink); font-weight: 600; }
+.lf .lf-btn.quiet:hover, .lf a.lf-btn.quiet:hover { background: #f1f4fa; color: var(--ink); }
+
 /* ---------- body: section navigator + content ---------- */
 .lf-body { display: grid; gap: 1.25rem; align-items: start; }
 .lf-body.edit { grid-template-columns: 17.5rem minmax(0, 1fr); }
@@ -74,8 +116,12 @@
 .lf-nav .label { flex: 1; min-width: 0; line-height: 1.25; }
 .lf-ico { flex: none; color: var(--tone); }
 .lf-tag { flex: none; padding: 0 0.45rem; border-radius: 999px; background: var(--lf-warn-bg); color: var(--lf-warn); font-size: 0.72rem; font-weight: 700; }
-.lf-nav .sep { margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--line); }
-.lf .lf-nav .sep button, .lf .lf-nav a { color: var(--blue-700); font-weight: 600; text-decoration: none; }
+.lf .lf-nav a { color: var(--blue-700); font-weight: 600; text-decoration: none; }
+/* step headings in the navigator, matching the numbered steps in the header */
+.lf-nav .lf-nav-grp {
+  margin-top: 0.5rem; padding: 0.55rem 0.65rem 0.2rem; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+}
 
 /* ---------- KYC status cards ---------- */
 .lf-kyc { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
@@ -107,3 +153,17 @@
   .lf-nav { position: static; }
   .lf-choices { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Change history: a collapsible card (native <details>), closed by default */
+.lf-history > summary {
+  display: flex; align-items: center; gap: 0.75rem; cursor: pointer; list-style: none; margin: -0.25rem 0;
+  padding: 0.25rem 0; border-radius: 6px;
+}
+.lf-history > summary::-webkit-details-marker { display: none; }
+.lf-history > summary h2 { margin: 0; font-size: 1.05rem; }
+.lf-history > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.lf-history-count { color: var(--muted); font-size: 0.88rem; }
+.lf-history-chevron { margin-left: auto; color: var(--muted); transition: transform 0.15s ease; }
+.lf-history[open] > summary { margin-bottom: 0.75rem; }
+.lf-history[open] .lf-history-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .lf-history-chevron { transition: none; } }

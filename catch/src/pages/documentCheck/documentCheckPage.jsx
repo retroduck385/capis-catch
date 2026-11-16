@@ -4,8 +4,11 @@
 // Opened from the loan folder: /documentCheckPage?id=<application id>[&doc=<document id>]
 // CI mode (&ci=1, opened from the CI page): the NFIS / TU reports of each borrower instead. A Credit Investigator
 // checks the values and the AI's proposed result + summary, and confirms them into the CI results.
+// Once every document here is confirmed, a banner points at the next step: the loan folder's KYC verification (AO)
+// or the CI request's results + Mark CI Done (CI).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
 import { joinAddress, presentAddressOf } from '../applicationForm/derived';
@@ -162,7 +165,8 @@ const DocumentCheckPage = () => {
         label: `${ciCheckType} for ${nameOf(selectedParty.party)}`,
     } : null;
 
-    const leaveEdits = () => !dirtyRef.current || window.confirm('Discard your unsaved changes on this document?');
+    const allConfirmed = docIds.length > 0 && docIds.every((id) => checks[id]?.run?.confirmed_at);
+    const leaveEdits = () =>!dirtyRef.current || window.confirm('Discard your unsaved changes on this document?');
     const openDoc = (id) => {
         if (id === doc?.id || !leaveEdits()) return;
         setDocId(id);
@@ -207,7 +211,7 @@ const DocumentCheckPage = () => {
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
     const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
-        ? { to: `/ciRequestPage?id=${app.id}`, label: '← Back to CI request' }
+        ? { to: `/ciRequestPage?id=${app.id}&step=ai`, label: '← Back to CI request (AI check list)' }
         : { to: `/loanFolderPage?id=${app.id}`, label: '← Back to loan folder' };
 
     return (
@@ -239,6 +243,25 @@ const DocumentCheckPage = () => {
             )}
 
             {error && <p className="px-4 pt-2 text-red-600">{error}</p>}
+
+            {/* Everything here is confirmed: point at the next step (CI: results + Mark CI Done; AO: KYC verification) */}
+            {canEdit && allConfirmed && (
+                <div role="status" className="mx-4 mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-gray-900">
+                    <CheckCircle2 size={20} aria-hidden="true" className="shrink-0 text-green-800" />
+                    <p className="flex-1 min-w-[16rem]">
+                        <span className="font-semibold">{ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'}</span>{' '}
+                        {ciMode
+                            ? 'Next: review the results, add BRAS if you have it, save, then Mark CI Done.'
+                            : 'Next: KYC verification of each section in the loan folder.'}
+                    </p>
+                    <Link to={ciMode ? `/ciRequestPage?id=${app.id}&step=results` : `/loanFolderPage?id=${app.id}`}
+                        onClick={(e) => { if (!leaveEdits()) e.preventDefault(); }}
+                        className="inline-flex min-h-11 items-center gap-2 rounded bg-green-800 px-4 py-2 font-semibold text-white hover:bg-green-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2">
+                        {ciMode ? 'Go to step 4: Results' : 'Go to step 2: KYC verification'}
+                        <ArrowRight size={16} aria-hidden="true" />
+                    </Link>
+                </div>
+            )}
 
             {parties.length === 0 ? (
                 <p className="p-4">{ciMode

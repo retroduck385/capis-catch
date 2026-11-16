@@ -1,8 +1,9 @@
 // "Search the credit policy": a staff member types a question and gets the most relevant passages of the bank's policy
-// manuals, with heading, document and manual page. Extractive only (no generated answer). Shown on the staff work tray.
+// manuals, with heading, document and manual page. Extractive only (no generated answer). Shown on the Policy search
+// page (policySearchPage.jsx), a tab in the staff sidebar.
 import { useState } from 'react';
 import { Search } from 'lucide-react';
-import { Citations } from './mracPanel';
+import { Citations } from './mracResult';
 import { askPolicy, waitForMracRun } from './api';
 import './mrac.css';
 

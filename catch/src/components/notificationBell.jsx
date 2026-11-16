@@ -14,9 +14,10 @@ const timeAgo = (iso) => {
     return days < 7 ? `${days} d ago` : new Date(iso).toLocaleDateString();
 };
 
-// Bell with unread count, top right of every signed-in page (mounted once in PrivateRoute).
+// Bell with unread count, top right of every signed-in page (mounted in the app layout's top bar).
 // Light colours on purpose (meeting feedback: no dark mode); restyle freely.
-const NotificationBell = () => {
+// onDark: light icon for the navy top bar; the dropdown panel stays white either way.
+const NotificationBell = ({ onDark = false }) => {
     const { session } = UserAuth();
     const navigate = useNavigate();
     const { items, unread, hasMore, latest, error, loadMore, markOneRead, markAllRead } =
@@ -59,14 +60,16 @@ const NotificationBell = () => {
                 aria-expanded={open}
                 aria-controls='notification-panel'
                 aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-                className='relative rounded-full border-0 bg-transparent p-2 text-neutral-700 hover:bg-black/5 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-black'>
+                className={`relative rounded-full border-0 bg-transparent p-2.5 focus:outline-none focus-visible:ring-2 ${onDark
+                    ? 'text-white/85 hover:bg-white/10 hover:text-white focus-visible:ring-white/75'
+                    : 'text-neutral-700 hover:bg-black/5 hover:text-black focus-visible:ring-black'}`}>
                 <svg aria-hidden='true' viewBox='0 0 24 24' className='h-5 w-5' fill='none' stroke='currentColor' strokeWidth='2'>
                     <path strokeLinecap='round' strokeLinejoin='round'
                         d='M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0' />
                 </svg>
                 {unread > 0 && (
                     <span aria-hidden='true'
-                        className='absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full bg-orange-700 px-1 text-center text-[11px] font-bold leading-[18px] text-white ring-2 ring-white'>
+                        className={`absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full bg-orange-700 px-1 text-center text-[11px] font-bold leading-[18px] text-white ring-2 ${onDark ? 'ring-[#14295f]' : 'ring-white'}`}>
                         {badge}
                     </span>
                 )}
