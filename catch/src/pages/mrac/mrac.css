@@ -67,6 +67,8 @@
 .mrac-cites { margin: 0; padding: 0; list-style: none; }
 .mrac-cites > li { margin: 0; }
 .mrac .mrac-more { margin: 0 0 0 0.35rem; padding: 0; min-height: 0; border: 0; background: none; color: var(--blue-700); font-size: 0.82rem; font-weight: 600; text-decoration: underline; }
+/* "Show more (n)" under a list of passages in a policy check result */
+.mrac .mrac-more.list { display: block; margin: 0.4rem 0 0; }
 
 /* suggested exceptions */
 .mrac-suggest .fp-sub > p:first-child { margin: 0; font-weight: 600; }

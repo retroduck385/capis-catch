@@ -35,14 +35,14 @@ const openFile = async (doc, setError) => {
 // Status of one borrower x check in the upload grid
 const slotStatus = (check, slot, confirmed) => {
     if (!slot?.documents?.length) return check.required ? { label: 'Missing', tone: 'warn' } : { label: 'Optional', tone: 'none' };
-    if (AI_CHECKED.has(check.value) && isAiChecked(slot, confirmed)) return { label: 'AI-checked', tone: 'ok' };
+    if (AI_CHECKED.has(check.value) && isAiChecked(slot, confirmed)) return { label: 'OCR-extracted', tone: 'ok' };
     return { label: 'Uploaded', tone: 'ok' };
 };
 
 const AiTag = ({ checkType, slot, confirmed, hasResult }) => {
     if (!AI_CHECKED.has(checkType)) return null;
-    if (isAiChecked(slot, confirmed)) return <span className="lf-chip ok">AI-checked</span>;
-    return hasResult ? <span className="lf-chip warn">Not AI-checked</span> : null;
+    if (isAiChecked(slot, confirmed)) return <span className="lf-chip ok">OCR-extracted</span>;
+    return hasResult ? <span className="lf-chip warn">Not OCR-extracted</span> : null;
 };
 
 const ResultText = ({ value }) => (value
@@ -171,8 +171,8 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                 <Link to={aiCheckUrl(app.id, doc)} className="ci-mini"
                     onClick={(e) => { if (!leaveOk()) e.preventDefault(); }}>
                     {confirmed.has(doc.id)
-                        ? <><CheckCircle2 size={14} aria-hidden="true" />AI checked: review</>
-                        : <><ScanText size={14} aria-hidden="true" />Open AI check</>}
+                        ? <><CheckCircle2 size={14} aria-hidden="true" />OCR extracted: review</>
+                        : <><ScanText size={14} aria-hidden="true" />Open OCR extraction</>}
                 </Link>
             )}
             {remove && (
@@ -242,9 +242,9 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
     const aiStep = (
         <>
             <p className="ci-note">
-                Optional. The AI reads each <Term k="NFIS" /> and <Term k="TU" /> report. Open its AI check, compare every value with the report, edit
+                Optional. Each <Term k="NFIS" /> and <Term k="TU" /> report is read by <Term k="OCR" /> extraction. Open its OCR extraction, compare every value with the report, edit
                 what's wrong and confirm: the result and summary are then filled in for step 4. You can also skip this and
-                enter the results by hand; they're tagged "Not AI-checked".
+                enter the results by hand; they're tagged "Not OCR-extracted".
             </p>
             {!anyAiReport ? (
                 <p className="ci-empty-step">
@@ -267,7 +267,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                                             <div className="ci-slot-top">
                                                 <b><Terms text={c.label} /></b>
                                                 <span className={`lf-chip ${tone}`}>
-                                                    {done ? 'AI-checked' : docs.length ? 'To check' : 'Not uploaded'}
+                                                    {done ? 'OCR-extracted' : docs.length ? 'To check' : 'Not uploaded'}
                                                 </span>
                                             </div>
                                             {docs.length > 0 ? (
@@ -292,8 +292,8 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
     const resultsStep = (
         <>
             <p className="ci-note">
-                Results you confirmed in the AI check are already filled in; you can still change them. Enter <Term k="BRAS" />, and any
-                report you didn't AI-check, by hand. Saved with "Save findings".
+                Results you confirmed in the OCR extraction are already filled in; you can still change them. Enter <Term k="BRAS" />, and any
+                report you didn't confirm in the OCR extraction, by hand. Saved with "Save findings".
             </p>
 
             {borrowers.map((p) => (
@@ -440,7 +440,7 @@ export const CiResultsView = ({ app, title = 'CI results' }) => {
                                                         {doc.file_name}
                                                     </button>
                                                     {aiCheckUrl(app.id, doc) && (
-                                                        <Link to={aiCheckUrl(app.id, doc)} className="underline text-sm ml-2">AI check</Link>
+                                                        <Link to={aiCheckUrl(app.id, doc)} className="underline text-sm ml-2">OCR extraction</Link>
                                                     )}
                                                 </span>
                                             ))}

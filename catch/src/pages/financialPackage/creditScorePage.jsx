@@ -6,7 +6,8 @@
 import { CreditScoreSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Lock } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Lock } from 'lucide-react';
+import { fetchCiFindingFlagCount, fetchCiResults } from '../ciRequest/api';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, toRow } from '../applicationForm/api';
@@ -59,7 +60,21 @@ const CreditScorePage = () => {
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [ciFindings, setCiFindings] = useState(false); // a CI result is "With findings" or a CI flagged findings
     const [activeId, pickSection] = useActiveSection(TOC_IDS, Boolean(app && scores && rules));
+
+    // CI findings note: only a hint, so a failed load just leaves it out
+    useEffect(() => {
+        if (!app) return undefined;
+        let cancelled = false;
+        const ids = getParties(app, BORROWER_ROLES).map((p) => p.id);
+        Promise.all([fetchCiResults(ids), fetchCiFindingFlagCount(app.id)])
+            .then(([ci, flags]) => {
+                if (!cancelled) setCiFindings(flags > 0 || ci.checks.some((c) => c.result === 'WITH_FINDINGS'));
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [app]);
 
     // Saved FP + score + the score's change history (+ the staff names in it)
     const loadScore = useCallback(async (record) => {
@@ -195,6 +210,17 @@ const CreditScorePage = () => {
                         )}
                     </div>
                 </div>
+
+                {ciFindings && (
+                    <p className="lf-note warn" role="note">
+                        <AlertTriangle size={16} aria-hidden="true" />
+                        <span>
+                            <Term k="CI" /> findings exist on this file and may lower the score. See{' '}
+                            <Link to={`/financialPackagePage?id=${app.id}#fp-iv`} onClick={leave}>IV. Credit Checking</Link>{' '}
+                            on the Financial Package.
+                        </span>
+                    </p>
+                )}
 
                 {canEdit && (
                     <CoSteps appId={app.id} current="score" pkg={fp.pkg ?? null} sent={sent} guard={leaveOk}

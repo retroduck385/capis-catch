@@ -11,7 +11,8 @@ import { fetchStaffNames } from '../loanFolder/api';
 import { fetchActiveReviewAssignments, fetchSignoffs } from '../review/api';
 import { assignApplication, fetchAssignableStaff, fetchWorkTray, unassignApplication } from './api';
 import {
-    AVATAR_TONES, SLOT_LABELS, STAGES, STAGE_COLORS, STAGE_STATUS_LABELS, STATUS_TONES, TAT_LABELS, TAT_TONES, stageLabel,
+    AVATAR_TONES, SLOT_LABELS, STAGES, STAGE_COLORS, STAGE_STATUS_LABELS, STATUS_TONES, TAT_LABELS, TAT_RULE, TAT_STATE_RULES,
+    TAT_TARGETS_TEXT, TAT_TONES, stageLabel, tatDetail,
 } from './options';
 import { folderPath } from './paths';
 import { clearTrails } from '../../components/trailStore';
@@ -20,6 +21,9 @@ import { useCountUp } from './useCountUp';
 import './workTray.css';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
+
+// A title of several lines, skipping the empty ones (tt() is undefined for a text without known terms)
+const lines = (...parts) => parts.filter(Boolean).join('\n');
 
 // Toolbar filter choices
 const TAT_FILTERS = [
@@ -257,8 +261,7 @@ const TatCell = ({ row }) => {
     const days = Number(row.days_in_stage);
     const limit = Number(row.tat_days);
     const pct = limit > 0 ? Math.min(100, Math.round((days / limit) * 100)) : 100;
-    const over = days - limit;
-    const detail = over > 0 ? `${days}d / ${limit}d (${over.toFixed(1)}d over)` : `${days}d / ${limit}d`;
+    const detail = tatDetail(days, limit);
     return (
         <div className={`wt-tat ${TAT_TONES[row.tat_state] ?? 'plain'}`} title={detail}>
             <div className='wt-tat-top'>
@@ -466,14 +469,14 @@ const WorkTray = () => {
                             <li>
                                 <button
                                     type='button' className={`wt-key bad${byTat.BEYOND ? '' : ' zero'}`}
-                                    aria-pressed={tat === 'BEYOND'} onClick={() => toggleTat('BEYOND')} title={tt('Beyond TAT')}>
+                                    aria-pressed={tat === 'BEYOND'} onClick={() => toggleTat('BEYOND')} title={lines(tt('Beyond TAT'), TAT_STATE_RULES.BEYOND, TAT_TARGETS_TEXT)}>
                                     <i />Beyond TAT <b>{byTat.BEYOND}</b>
                                 </button>
                             </li>
                             <li>
                                 <button
                                     type='button' className={`wt-key warn${byTat.NEAR ? '' : ' zero'}`}
-                                    aria-pressed={tat === 'NEAR'} onClick={() => toggleTat('NEAR')} title={tt('Near TAT')}>
+                                    aria-pressed={tat === 'NEAR'} onClick={() => toggleTat('NEAR')} title={lines(tt('Near TAT'), TAT_STATE_RULES.NEAR, TAT_TARGETS_TEXT)}>
                                     <i />Near TAT <b>{byTat.NEAR}</b>
                                 </button>
                             </li>
@@ -578,7 +581,8 @@ const WorkTray = () => {
                     </div>
                     <FilterSelect
                         label='TAT filter' value={tat} onChange={setTat} active={tat !== 'ALL'}
-                        title={tt('TAT filter')} options={TAT_FILTERS.map((o) => ({ ...o, title: tt(o.label) }))} />
+                        title={lines(tt('TAT filter'), TAT_RULE, TAT_TARGETS_TEXT)}
+                        options={TAT_FILTERS.map((o) => ({ ...o, title: lines(tt(o.label), TAT_STATE_RULES[o.value] ?? TAT_RULE, TAT_TARGETS_TEXT) }))} />
                     <FilterSelect
                         label='Assignment filter' value={assignment} onChange={setAssignment}
                         active={assignment !== defaultAssignment} options={ASSIGNMENT_FILTERS} />

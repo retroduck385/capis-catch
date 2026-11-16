@@ -23,11 +23,28 @@ export const Citation = ({ c, preview }) => (
     </div>
 );
 
-export const Citations = ({ items, preview }) => (
-    <ul className="mrac-cites">
-        {items.map((c) => <li key={`${c.document}-${c.chunk_key}`}><Citation c={c} preview={preview} /></li>)}
-    </ul>
-);
+// limit: show only the first `limit` passages (the best matches come first), with "Show more" for the rest.
+// Left out (Ask policy / policy search), every passage shows.
+export const Citations = ({ items, preview, limit }) => {
+    const [all, setAll] = useState(false);
+    const hidden = limit ? Math.max(0, items.length - limit) : 0;
+    const shown = hidden && !all ? items.slice(0, limit) : items;
+    return (
+        <>
+            <ul className="mrac-cites">
+                {shown.map((c) => <li key={`${c.document}-${c.chunk_key}`}><Citation c={c} preview={preview} /></li>)}
+            </ul>
+            {hidden > 0 && (
+                <button type="button" className="mrac-more list" aria-expanded={all} onClick={() => setAll(!all)}>
+                    {all ? 'Show less' : `Show more (${hidden})`}
+                </button>
+            )}
+        </>
+    );
+};
+
+// Passages shown per rule or section in a policy check result before "Show more"
+const RESULT_PASSAGES = 2;
 
 const MracResult = ({ run, onAddException }) => {
     const [added, setAdded] = useState([]);
@@ -120,7 +137,7 @@ const MracResult = ({ run, onAddException }) => {
                         <div key={s.criterion} className="fp-sub">
                             <p>{s.policy}</p>
                             {s.citations?.length > 0
-                                ? <Citations items={s.citations} />
+                                ? <Citations items={s.citations} limit={RESULT_PASSAGES} />
                                 : <p className="fp-empty">No matching exception clause found.</p>}
                             {onAddException && (
                                 <button type="button" className="fp-add" disabled={added.includes(s.criterion)}
@@ -158,14 +175,14 @@ const MracResult = ({ run, onAddException }) => {
                 <div className="mrac-block">
                     <h3>Approval authority in the policy (newest first)</h3>
                     {reasoning.approval_path.note && <p className="fp-note">{reasoning.approval_path.note}</p>}
-                    <Citations items={approvalPassages} />
+                    <Citations items={approvalPassages} limit={RESULT_PASSAGES} />
                 </div>
             )}
 
             {policyContext.length > 0 && (
                 <div className="mrac-block">
                     <h3>Related policy</h3>
-                    <Citations items={policyContext} />
+                    <Citations items={policyContext} limit={RESULT_PASSAGES} />
                 </div>
             )}
 

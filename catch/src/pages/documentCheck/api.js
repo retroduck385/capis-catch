@@ -83,6 +83,10 @@ export const fetchDocumentProgress = async (documents) => {
 export const requestExtraction = async (documentId) =>
     check(await supabase.rpc('request_extraction', { p_document_id: documentId }));
 
+// When to use "Run AI again" (shown beside the button). OCR is queued when a file is uploaded (queue_ocr_run /
+// queue_ci_ocr_run) and the AI extraction when OCR finishes (queue_extraction_run); the button replaces the values.
+export const RERUN_HINT = 'The reading starts on its own when a file is uploaded. Use Run AI again only if it failed or the values look wrong. It replaces the current values.';
+
 // AO: confirm & lock. fields = [{ id, final_value, apply_to_record }] for every field of the run
 export const confirmExtraction = async (runId, fields) =>
     check(await supabase.rpc('confirm_extraction', { p_run_id: runId, p_fields: fields }));

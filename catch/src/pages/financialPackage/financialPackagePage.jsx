@@ -11,7 +11,7 @@ import { FinancialPackageSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScanText, ScrollText, ShieldCheck } from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one, toRow } from '../applicationForm/api';
 import { FormError } from '../applicationForm/fields';
@@ -242,6 +242,37 @@ const FinancialPackagePage = () => {
         }
         scrollToTabs.current = false;
     }, [page]);
+
+    // A link to a section (#fp-iv from the credit score note or the bell's "CI findings flagged"): once the page has
+    // loaded, show the tab that holds it and scroll there. Once per link, so later tab switches don't jump back.
+    // (Switching the tab rewrites the query string and drops the hash, so the section id is kept in a ref.)
+    const { hash } = useLocation();
+    const pendingId = useRef(null);
+    useEffect(() => {
+        if (hash) pendingId.current = decodeURIComponent(hash.slice(1));
+    }, [hash]);
+    const ready = Boolean(app && form && rules);
+    useEffect(() => {
+        const id = pendingId.current;
+        if (!ready || !id) return;
+        const target = document.getElementById(id);
+        if (!target) {
+            pendingId.current = null;
+            return;
+        }
+        const onPage = Number(target.closest('[data-fp-page]')?.dataset.fpPage ?? page);
+        if (onPage !== page) {
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                if (onPage === 1) next.delete('page'); else next.set('page', String(onPage));
+                return next;
+            }, { replace: true });
+            return; // runs again once the other tab shows
+        }
+        pendingId.current = null;
+        if (target instanceof HTMLDetailsElement) target.open = true;
+        target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    }, [hash, ready, page, setSearchParams]);
 
     if (loading) return <FinancialPackageSkeleton />;
     if (error && !form) return <p className="text-red-600">{error}</p>;

@@ -15,7 +15,7 @@ import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
 import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
-import { fetchDocumentChecks, fetchFieldDefs, requestCiExtraction, requestExtraction } from './api';
+import { fetchDocumentChecks, fetchFieldDefs, RERUN_HINT, requestCiExtraction, requestExtraction } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
@@ -218,7 +218,7 @@ const DocumentCheckPage = () => {
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
     const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
-        ? { to: `/ciRequestPage?id=${app.id}&step=ai`, label: '← Back to CI request (AI check list)' }
+        ? { to: `/ciRequestPage?id=${app.id}&step=ai`, label: '← Back to CI request (OCR extraction list)' }
         : { to: `/loanFolderPage?id=${app.id}`, label: '← Back to loan folder' };
 
     return (
@@ -330,6 +330,7 @@ const DocumentCheckPage = () => {
                                             {busy ? 'Queuing...' : 'Run AI again'}
                                         </button>
                                     )}
+                                    {canEdit && status.key === 'AI_FAILED' && <p className="text-xs text-gray-600">{RERUN_HINT}</p>}
                                 </div>
                             )}
                     </section>
