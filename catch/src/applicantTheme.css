@@ -1,4 +1,4 @@
-/* Applicant theme ("E": navy sidebar, flat white bordered cards, Inter, rectangular blue buttons).
+/* Applicant theme ("E": frosted white top bar on a soft blue/orange canvas, flat white bordered cards, Inter, rectangular blue buttons).
    Scoped to `.ct.ct-e`, which only the signed-in layout (components/appLayout.jsx) and the sign-in / sign-up
    screens (ApplicantShell bare) add. Every signed-in page and the auth screens get `ct-e`.
    Loaded after theme.css and written against its markup/classes, so it only overrides: it keeps the readability pass
@@ -28,50 +28,144 @@
   flex-direction: row;
   font-family: 'Inter', system-ui, 'Segoe UI', sans-serif;
 }
+/* Signed-in frame: top bar stacked above the page. Unlayered like the rule above, or the row direction would win
+   (unlayered beats any layered rule) and the bar would render as a full-height left column. */
+.ct.ct-e.ct-e-app {
+  flex-direction: column; --ct-head: 4.25rem; --ct-gap: 0.75rem; /* bar height, and the space above the floating bar */
+  /* Canvas for the glass: blue blobs (left, lower right, bottom) and one small orange glow top right, which
+     the frosted surfaces blur.
+     Glass only reads as glass over colour; over flat white it looks like plain white. Fixed so long pages don't
+     stretch it. */
+  background:
+    radial-gradient(48rem 40rem at -8rem 6rem, rgba(43, 82, 196, 0.26), transparent 62%),
+    radial-gradient(44rem 34rem at 90% 80%, rgba(96, 140, 235, 0.22), transparent 60%),
+    radial-gradient(34rem 24rem at 100% -4rem, rgba(242, 106, 51, 0.14), transparent 62%),
+    radial-gradient(40rem 28rem at 45% 115%, rgba(147, 197, 253, 0.28), transparent 60%),
+    linear-gradient(160deg, #e6eefb, #f1f5fd 55%, #eef3fc);
+  background-attachment: fixed;
+}
 
 @layer components {
-  /* ---------- frame: navy sidebar + content ---------- */
-  .ct.ct-e .ct-side {
-    flex: none; width: 15.5rem; height: 100svh; position: sticky; top: 0;
-    display: flex; flex-direction: column; gap: 0.25rem; padding: 1.75rem 1.1rem;
-    background: var(--navy); color: #fff;
+  /* ---------- frame: blue top bar above the page ----------
+     Navy-to-blue bar, white text. Brand left; the nav as one translucent pill group (current page = white pill,
+     navy text); bell + profile picture in a light pill; sign out as a round door-icon button. Orange is only a
+     hint: the brand mark, the avatar and the bell's unread badge. Sticky, so navigation and the bell stay in reach
+     while the page scrolls; above page content and sticky table headers / save bars (z 30), below the messages
+     drawer (z 40). --ct-head is its height: sticky in-page navs and anchor jumps clear it (see the unlayered rules
+     at the end of this file). */
+  .ct.ct-e .ct-topnav {
+    position: sticky; top: var(--ct-gap); z-index: 30; min-height: var(--ct-head);
+    margin: var(--ct-gap) max(1.5rem, calc((100% - 110rem) / 2)) 0; border-radius: 999px; /* floating, rounded; lines up with the page panel */
+    display: flex; align-items: center; gap: 0.5rem 1.5rem; padding: 0 0.6rem 0 1.6rem;
+    background: linear-gradient(90deg, rgba(20, 41, 95, 0.97), rgba(30, 63, 151, 0.95) 60%, rgba(43, 82, 196, 0.94));
+    -webkit-backdrop-filter: saturate(1.4) blur(16px); backdrop-filter: saturate(1.4) blur(16px);
+    color: #fff; box-shadow: 0 12px 30px -20px rgba(20, 41, 95, 0.7);
   }
-  .ct.ct-e .ct-side-brand {
-    display: flex; align-items: center; gap: 0.65rem; padding: 0 0.5rem; margin-bottom: 1.75rem;
-    color: #fff; text-decoration: none; font-weight: 600; font-size: 1.05rem; letter-spacing: 0.08em;
+  .ct.ct-e .ct-topnav-brand {
+    display: flex; align-items: center; gap: 0.6rem; flex: none;
+    color: #fff; text-decoration: none; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.06em;
   }
-  .ct.ct-e .ct-side-mark { width: 0.8rem; height: 0.8rem; background: var(--amber); flex: none; }
-  .ct.ct-e .ct-side nav { display: flex; flex-direction: column; gap: 0.25rem; }
-  .ct.ct-e .ct-side nav a {
-    display: flex; align-items: center; gap: 0.7rem; min-height: 2.75rem; padding: 0.55rem 0.75rem;
-    border-radius: var(--radius); color: #c3cde8; text-decoration: none; font-weight: 500; font-size: 1rem;
+  .ct.ct-e .ct-topnav-mark {
+    width: 1.35rem; height: 1.35rem; border-radius: 6px; flex: none;
+    background: linear-gradient(135deg, #f58a4f, #c2410c); box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.35);
   }
-  .ct.ct-e .ct-side nav a:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
-  .ct.ct-e .ct-side nav a[aria-current='page'] { background: #223c80; color: #fff; font-weight: 600; }
-  .ct.ct-e .ct-side :is(a, button):focus-visible { outline: 3px solid rgba(255, 255, 255, 0.75); outline-offset: 2px; }
-  .ct.ct-e .ct-side-user { margin-top: auto; display: grid; gap: 0.75rem; padding: 0 0.5rem; }
-  .ct.ct-e .ct-side-user .who { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
-  .ct.ct-e .ct-side-user .who > div { min-width: 0; line-height: 1.3; }
-  .ct.ct-e .ct-side-user b { display: block; font-size: 0.85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ct.ct-e .ct-side-user .who span:not(.ct-avatar) { display: block; font-size: 0.8rem; color: #b7c2e0; }
-  .ct.ct-e .ct-side-user .ct-avatar { width: 2.1rem; height: 2.1rem; font-size: 0.8rem; background: rgba(255, 255, 255, 0.16); }
-  .ct.ct-e .ct-side button {
-    display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;
-    background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.35); font-weight: 500; font-size: 0.95rem;
+  .ct.ct-e .ct-topnav nav {
+    display: flex; align-items: center; gap: 0.2rem; flex: 0 1 auto; min-width: 0; padding: 0.3rem;
+    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px;
   }
-  .ct.ct-e .ct-side button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); color: #fff; }
+  .ct.ct-e .ct-topnav nav a {
+    display: flex; align-items: center; gap: 0.45rem; min-height: 2.5rem; padding: 0.4rem 1rem;
+    border-radius: 999px; color: #d6e0fa; text-decoration: none; font-weight: 600; font-size: 0.9rem; white-space: nowrap;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .ct.ct-e .ct-topnav nav a:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+  /* Current page: a white pill with navy text */
+  .ct.ct-e .ct-topnav nav a[aria-current='page'] {
+    color: var(--navy); background: #fff; box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.45);
+  }
+  .ct.ct-e .ct-topnav :is(a, button):focus-visible { outline: 3px solid rgba(255, 255, 255, 0.8); outline-offset: 2px; }
+
+  .ct.ct-e .ct-topnav-end { display: flex; align-items: center; gap: 0.75rem; flex: none; margin-left: auto; }
+  .ct.ct-e .ct-topnav-user {
+    display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem; border-radius: 999px; color: #fff;
+    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .ct.ct-e .ct-topnav-divider { width: 1px; height: 1.6rem; background: rgba(255, 255, 255, 0.25); }
+  /* Expanding controls (profile picture, sign out): a two-column grid whose text column grows from 0fr to 1fr on
+     hover / keyboard focus, so the label slides out beside the icon; the text fades and slides in a beat later */
+  .ct.ct-e .ct-expand {
+    display: inline-grid; grid-template-columns: auto 0fr; align-items: center; text-decoration: none;
+    transition: grid-template-columns 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .ct.ct-e .ct-expand:is(:hover, :focus-visible) { grid-template-columns: auto 1fr; }
+  .ct.ct-e .ct-expand-text { min-width: 0; overflow: hidden; }
+  .ct.ct-e .ct-expand-text > span {
+    display: block; white-space: nowrap; padding: 0 0.6rem 0 0.55rem; opacity: 0; transform: translateX(-6px);
+    transition: opacity 0.15s, transform 0.2s;
+  }
+  .ct.ct-e .ct-expand:is(:hover, :focus-visible) .ct-expand-text > span {
+    opacity: 1; transform: none; transition: opacity 0.2s 0.08s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) 0.06s;
+  }
+
+  /* Profile picture: opens to name (white) and role (light blue), linking to the profile page */
+  .ct.ct-e .ct-topnav-avatar { border-radius: 999px; color: #fff; }
+  .ct.ct-e .ct-topnav-avatar:is(:hover, :focus-visible) { background: rgba(255, 255, 255, 0.12); }
+  .ct.ct-e .ct-topnav-avatar b { display: block; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; font-weight: 600; line-height: 1.2; }
+  .ct.ct-e .ct-topnav-avatar small { display: block; font-size: 0.72rem; color: #c9d4f0; line-height: 1.2; }
+  .ct.ct-e .ct-topnav .ct-avatar {
+    width: 2.35rem; height: 2.35rem; font-size: 0.82rem; color: #fff; background: linear-gradient(135deg, #f58a4f, #c2410c);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55); transition: box-shadow 0.15s;
+  }
+  .ct.ct-e .ct-topnav-avatar:hover .ct-avatar { box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgba(255, 255, 255, 0.25); }
+
+  /* Sign out: a round translucent door button that opens to "Sign out", white with orange on hover */
+  .ct.ct-e .ct-topnav .ct-signout {
+    height: 2.75rem; min-height: 0; width: auto; padding: 0 0.75rem; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: none;
+    font-size: 0.88rem; font-weight: 600;
+  }
+  .ct.ct-e .ct-topnav .ct-signout .ct-expand-text > span { padding: 0 0.15rem 0 0.45rem; }
+  .ct.ct-e .ct-topnav .ct-signout:is(:hover, :focus-visible):not(:disabled) { background: #fff; color: #c2410c; border-color: #fff; }
+
+  /* Nav links, icon first: a round icon button whose label slides out on hover / focus (the current page too; its
+     white pill marks it). Touch screens (no hover) and the small-screen layout always show labels. */
+  /* inline-grid here (not just in .ct-expand): the plainer `.ct-topnav nav a { display: flex }` rule above is more
+     specific, and as flex the faded label would still take its full width */
+  .ct.ct-e .ct-topnav nav a.ct-expand {
+    display: inline-grid; gap: 0; padding: 0.4rem 0.68rem;
+    transition: grid-template-columns 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.15s, color 0.15s;
+  }
+  .ct.ct-e .ct-topnav nav a.ct-expand .ct-expand-text > span { padding: 0 0.25rem 0 0.5rem; }
+  /* Hovering (or tabbing into) the nav opens every label at once, each a beat after the one before */
+  .ct.ct-e .ct-topnav nav:is(:hover, :has(:focus-visible)) a.ct-expand { grid-template-columns: auto 1fr; }
+  .ct.ct-e .ct-topnav nav:is(:hover, :has(:focus-visible)) a.ct-expand .ct-expand-text > span {
+    opacity: 1; transform: none; transition: opacity 0.2s 0.08s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) 0.06s;
+  }
+  .ct.ct-e .ct-topnav nav:is(:hover, :has(:focus-visible)) a.ct-expand:nth-child(2) { transition-delay: 0.04s; }
+  .ct.ct-e .ct-topnav nav:is(:hover, :has(:focus-visible)) a.ct-expand:nth-child(3) { transition-delay: 0.08s; }
+  .ct.ct-e .ct-topnav nav:is(:hover, :has(:focus-visible)) a.ct-expand:nth-child(4) { transition-delay: 0.12s; }
+  @media (hover: none), (max-width: 960px) {
+    .ct.ct-e .ct-topnav nav a.ct-expand { grid-template-columns: auto 1fr; }
+    .ct.ct-e .ct-topnav nav a.ct-expand .ct-expand-text > span { opacity: 1; transform: none; }
+  }
+
+  /* The bell rings once on hover */
+  @keyframes ct-ring { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
+  .ct.ct-e .ct-topnav-user button[aria-controls='notification-panel'] svg { transform-origin: 50% 10%; }
+  .ct.ct-e .ct-topnav-user button[aria-controls='notification-panel']:hover svg { animation: ct-ring 0.6s ease-in-out; }
+  /* Nav links: the icon lifts a little on hover */
+  .ct.ct-e .ct-topnav nav a svg { transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ct.ct-e .ct-topnav nav a:hover svg { transform: translateY(-2px); }
+  @media (prefers-reduced-motion: reduce) {
+    .ct.ct-e .ct-expand, .ct.ct-e .ct-expand-text > span, .ct.ct-e .ct-topnav nav a svg, .ct.ct-e .ct-topnav nav a.ct-expand { transition: none; }
+    .ct.ct-e .ct-topnav-user button[aria-controls='notification-panel']:hover svg { animation: none; }
+  }
 
   .ct.ct-e .ct-e-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  /* Top bar (notification bell) stays at the top while the page scrolls. Page background so content scrolls under
-     it cleanly; above page content and sticky table headers / save bars, below the messages drawer (z 40). */
-  .ct.ct-e .ct-topbar {
-    display: flex; justify-content: flex-end; align-items: center; padding: 0.45rem 3rem; min-height: 3.25rem;
-    position: sticky; top: 0; z-index: 30; background: var(--bg);
-  }
   /* Sticky side navs clear the top bar (.lf-nav: unlayered rule at the end of this file) */
-  .ct.ct-e .ct-aside-inner { top: calc(3.25rem + 1.25rem); }
-  .ct.ct-e .ct-main > :not(.ct-shell) { padding: 0.5rem 2.5rem 1.5rem; max-width: 96rem; }
-  .ct.ct-e .ct-main > .ct-shell { width: 100%; max-width: 100rem; margin-inline: auto; padding: 0.5rem 1.75rem 1.5rem; }
+  .ct.ct-e .ct-aside-inner { top: calc(var(--ct-head, 0rem) + var(--ct-gap, 0rem) + 1.25rem); }
+  .ct.ct-e .ct-main > :not(.ct-shell) { padding: 1.5rem 2.5rem; max-width: 96rem; }
+  .ct.ct-e .ct-main > .ct-shell { width: 100%; max-width: 100rem; margin-inline: auto; padding: 1.5rem 1.75rem; }
 
   /* ---------- type ---------- */
   .ct.ct-e :is(h1, h2, h3, h4, .ct-section > legend, .ct-card-head h2, .ct-titleblock strong, .ct-profile h2, .ct-auth-panel form h2) {
@@ -269,19 +363,20 @@
 
 @media (max-width: 960px) {
   .ct.ct-e { flex-direction: column; }
-  .ct.ct-e .ct-side { position: static; width: auto; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0.75rem 1rem; }
-  .ct.ct-e .ct-side-brand { margin: 0; }
-  .ct.ct-e .ct-side nav { flex-direction: row; flex: 1 1 100%; order: 3; }
-  .ct.ct-e .ct-side-user { margin: 0 0 0 auto; padding: 0; border: 0; display: flex; align-items: center; gap: 0.5rem; }
-  .ct.ct-e .ct-side-user button { padding-inline: 0.75rem; }
+  /* Top bar wraps: brand and user/bell/sign out on the first row, the links on their own row below.
+     Not sticky here (it is two rows tall), so in-page offsets drop to zero. */
+  .ct.ct-e.ct-e-app { --ct-head: 0rem; --ct-gap: 0rem; }
+  .ct.ct-e .ct-topnav { position: static; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.6rem 1rem; margin: 0.5rem 0.75rem 0; border-radius: 22px; }
+  .ct.ct-e .ct-topnav nav { order: 3; flex: 1 1 100%; flex-wrap: wrap; border-radius: 22px; }
+  .ct.ct-e .ct-topnav nav a { padding-inline: 0.75rem; }
+  .ct.ct-e .ct-topnav-end { gap: 0.6rem; }
   .ct.ct-e .ct-e-body { min-width: 0; }
-  .ct.ct-e .ct-side-user .who > div { display: none; }
-  .ct.ct-e .ct-side button { width: auto; }
-  .ct.ct-e .ct-topbar { padding: 0.35rem 1rem; }
-  .ct.ct-e .ct-main > :not(.ct-shell), .ct.ct-e .ct-main > .ct-shell { padding: 0.5rem 1rem 2rem; }
+  .ct.ct-e .ct-main > :not(.ct-shell), .ct.ct-e .ct-main > .ct-shell { padding: 1rem 1rem 2rem; }
   .ct.ct-e .ct-e-grid, .ct.ct-e .ct-shell { grid-template-columns: minmax(0, 1fr); }
   .ct.ct-e .ct-split { grid-template-columns: minmax(0, 1fr); }
 }
+/* Mid widths: tighter spacing so the links keep room */
+@media (min-width: 961px) and (max-width: 1240px) { .ct.ct-e .ct-topnav { gap: 0.5rem 1.25rem; padding: 0 0.6rem 0 1.25rem; } }
 
 @media (max-width: 1100px) { .ct.ct-e .ct-sheet-profile .ct-section { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .ct.ct-e .ct-sheet-profile .ct-section { grid-template-columns: minmax(0, 1fr); } .ct.ct-e .ct-sheet-profile .ct-sheet-body { padding: 1.25rem; } }
@@ -299,5 +394,99 @@
 
 /* Unlayered on purpose: page stylesheets (loanFolder.css) are unlayered too. Sticky section navs and in-page jumps
    (scrollIntoView, #anchors) stop below the sticky top bar instead of under it. */
-.ct.ct-e .lf-nav { top: calc(3.25rem + 1rem); }
-html:has(.ct.ct-e .ct-topbar) { scroll-padding-top: 3.25rem; }
+.ct.ct-e .lf-nav { top: calc(var(--ct-head, 0rem) + var(--ct-gap, 0rem) + 1rem); }
+html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 5.75rem; }
+@media (max-width: 960px) { html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 0; } }
+
+/* 3D skyline (components/skylineBackdrop.jsx): big isometric glass towers spanning the viewport behind all
+   content. The frame isolates its own stacking context so the drawing (z -1) sits above the canvas gradient but
+   below everything else, without changing how the top bar, dropdowns and drawers layer. Dark navy edges; faces are
+   translucent (lit left, shaded right, bright top) so back towers show faintly through the front ones and the
+   coloured canvas still reaches the glass cards. Window grid lines are fainter than the edges. */
+.ct.ct-e.ct-e-app { isolation: isolate; }
+.ct.ct-e .ct-skyline {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: -1; width: 100%; height: 100vh; pointer-events: none;
+}
+.ct.ct-e .ct-skyline * { vector-effect: non-scaling-stroke; }
+.ct.ct-e .ct-skyline .edge { stroke: #14295f; stroke-opacity: 0.42; }
+.ct.ct-e .ct-skyline .grid { stroke: #14295f; stroke-opacity: 0.13; }
+.ct.ct-e .ct-skyline .face-l { fill: rgba(255, 255, 255, 0.42); }
+.ct.ct-e .ct-skyline .face-r { fill: rgba(196, 212, 245, 0.42); }
+.ct.ct-e .ct-skyline .face-t { fill: rgba(255, 255, 255, 0.6); }
+.ct.ct-e .ct-skyline .back .edge { stroke-opacity: 0.2; }
+.ct.ct-e .ct-skyline .back .grid { stroke-opacity: 0.07; }
+.ct.ct-e .ct-skyline .back :is(.face-l, .face-r, .face-t) { fill-opacity: 0.6; }
+@media (max-width: 960px) {
+  .ct.ct-e .ct-skyline .edge { stroke-opacity: 0.28; }
+  .ct.ct-e .ct-skyline .grid { stroke-opacity: 0.08; }
+}
+
+/* ---------- top bar collapses to the logo while scrolled (appLayout.jsx adds .compact past ~80px) ----------
+   It shrinks (left-aligned) into a round button holding the brand mark, so it doesn't cover the data. Hover,
+   keyboard focus inside it, or an open menu in it (the notifications panel) slides the full bar back out. The
+   hidden parts stay in the accessibility tree (only faded), so tabbing into them opens the bar. Only with a
+   real hover and the full-width layout; touch screens and the small-screen layout keep the full bar.
+   Unlayered so it wins over the mid-width padding rule above. */
+@media (hover: hover) and (min-width: 961px) {
+  .ct.ct-e .ct-topnav {
+    max-width: calc(100% - 2 * max(1.5rem, calc((100% - 110rem) / 2)));
+    transition: max-width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), padding 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), gap 0.45s, box-shadow 0.3s;
+  }
+  .ct.ct-e .ct-topnav-word {
+    display: inline-block; max-width: 6rem; overflow: hidden; white-space: nowrap;
+    transition: max-width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s;
+  }
+  .ct.ct-e .ct-topnav > nav, .ct.ct-e .ct-topnav > .ct-topnav-end { transition: opacity 0.25s 0.12s; }
+
+  .ct.ct-e .ct-topnav.compact:not(:hover, :has(:focus-visible), :has([aria-expanded='true'])) {
+    max-width: var(--ct-head); padding: 0 0 0 calc((var(--ct-head) - 1.35rem) / 2); gap: 0; overflow: hidden;
+    box-shadow: 0 12px 26px -12px rgba(20, 41, 95, 0.75);
+  }
+  .ct.ct-e .ct-topnav.compact:not(:hover, :has(:focus-visible), :has([aria-expanded='true'])) .ct-topnav-word { max-width: 0; opacity: 0; }
+  .ct.ct-e .ct-topnav.compact:not(:hover, :has(:focus-visible), :has([aria-expanded='true'])) > :is(nav, .ct-topnav-end) {
+    opacity: 0; pointer-events: none; transition: opacity 0.12s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ct.ct-e .ct-topnav, .ct.ct-e .ct-topnav-word, .ct.ct-e .ct-topnav > nav, .ct.ct-e .ct-topnav > .ct-topnav-end { transition: none; }
+}
+
+/* ---------- theme switch button (moon / sun) in the top bar, styled like sign out ---------- */
+.ct.ct-e .ct-topnav .ct-themebtn {
+  height: 2.75rem; min-height: 0; width: auto; padding: 0 0.75rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: none;
+  font-size: 0.88rem; font-weight: 600;
+}
+.ct.ct-e .ct-topnav .ct-themebtn .ct-expand-text > span { padding: 0 0.15rem 0 0.45rem; }
+.ct.ct-e .ct-topnav .ct-themebtn:is(:hover, :focus-visible):not(:disabled) { background: #fff; color: var(--navy); border-color: #fff; }
+
+/* ==========================================================================================================
+   Dark mode (opt-in from the top bar; light stays the default). Covers the frame: a deep navy canvas, a darker
+   glass top bar, and the skyline in light-blue lines. The work tray has its own dark rules (workTray.css).
+   Pages not yet adapted sit on a light sheet so their dark text stays readable on the dark canvas.
+   ========================================================================================================== */
+.ct.ct-e.ct-e-app[data-theme='dark'] {
+  color-scheme: dark;
+  background:
+    radial-gradient(48rem 40rem at -8rem 6rem, rgba(43, 82, 196, 0.34), transparent 62%),
+    radial-gradient(44rem 34rem at 90% 80%, rgba(60, 100, 220, 0.24), transparent 60%),
+    radial-gradient(34rem 24rem at 100% -4rem, rgba(242, 106, 51, 0.16), transparent 62%),
+    linear-gradient(160deg, #0a1124, #0d1730 55%, #0b1428);
+  background-attachment: fixed;
+}
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-topnav {
+  background: linear-gradient(90deg, rgba(9, 16, 36, 0.92), rgba(18, 32, 74, 0.9) 60%, rgba(30, 50, 110, 0.88));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 34px -20px rgba(0, 0, 0, 0.85);
+}
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .edge { stroke: #9db7f2; stroke-opacity: 0.32; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .grid { stroke: #9db7f2; stroke-opacity: 0.1; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-l { fill: rgba(40, 62, 125, 0.32); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-r { fill: rgba(22, 36, 82, 0.42); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-t { fill: rgba(70, 100, 180, 0.3); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .edge { stroke-opacity: 0.16; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .grid { stroke-opacity: 0.05; }
+/* not-yet-dark pages: a light sheet on the dark canvas */
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-main > :not(.wt-page) {
+  color-scheme: light; background: #f4f7fc; border-radius: 26px; margin-top: 1.25rem; margin-bottom: 2rem;
+  box-shadow: 0 40px 80px -50px rgba(0, 0, 0, 0.8);
+}
