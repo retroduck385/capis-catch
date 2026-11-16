@@ -54,6 +54,14 @@ export const fetchCiResults = async (borrowerIds) => {
     return { checks: check(checks) ?? [], documents: check(documents) ?? [] };
 };
 
+// How many times a Credit Investigator flagged CI findings on this file (ci_finding_flags, staff read by RLS)
+export const fetchCiFindingFlagCount = async (applicationId) => {
+    const { count, error } = await supabase.from('ci_finding_flags')
+        .select('id', { count: 'exact', head: true }).eq('application_id', applicationId);
+    if (error) throw error;
+    return count ?? 0;
+};
+
 // rows: [{ applicant_id, check_type, result, summary }]; unchanged rows aren't touched by the DB
 export const saveCiFindings = async (applicationId, rows, remarks) =>
     check(await supabase.rpc('save_ci_findings', {

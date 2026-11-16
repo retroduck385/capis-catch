@@ -34,7 +34,7 @@ const STEP_KEYS = ['request', 'upload', 'ai', 'results'];
 const STEP_INTRO = {
     request: 'What the Account Officer is asking you to check, built from the application.',
     upload: 'The NFIS, TransUnion and BRAS reports for each borrower.',
-    ai: "Compare the AI's reading of each NFIS and TU report with the report itself.",
+    ai: 'Compare the OCR extraction of each NFIS and TU report with the report itself.',
     results: 'Your result and summary for each check, then send the file to Credit Evaluation.',
 };
 
@@ -60,7 +60,7 @@ const ciSteps = ({ data, missing, dirty, onOpen }) => {
 
     let aiText = `${checked} of ${total} reports confirmed · optional`;
     if (uploaded === 0) aiText = 'Upload a NFIS or TU report first · optional';
-    else if (skipped) aiText = `${checked} of ${total} AI-checked · the rest entered by hand`;
+    else if (skipped) aiText = `${checked} of ${total} OCR-extracted · the rest entered by hand`;
     let resultsText = stillNeeded ? `${plural(stillNeeded, 'item')} still needed` : 'Ready: Mark CI Done';
     if (dirty) resultsText = 'Unsaved changes';
 
@@ -71,11 +71,11 @@ const ciSteps = ({ data, missing, dirty, onOpen }) => {
             done: missing.length === 0 || uploaded > 0,
         },
         {
-            key: 'upload', title: 'Upload the reports', text: `${uploaded} of ${total} required reports uploaded`,
-            done: total > 0 && uploaded === total, meter: { value: uploaded, max: total },
+            key: 'upload', title: 'Upload the reports', text: 'NFIS and TU for every borrower',
+            done: total > 0 && uploaded === total,
         },
         {
-            key: 'ai', title: 'AI check NFIS & TU', text: aiText, skipped,
+            key: 'ai', title: 'OCR extraction NFIS & TU', text: aiText, skipped,
             done: total > 0 && checked === total, meter: { value: checked, max: total },
         },
         { key: 'results', title: 'Results and Mark CI Done', text: resultsText, done: false },

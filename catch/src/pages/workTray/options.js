@@ -38,6 +38,38 @@ export const STAGE_STATUS_LABELS = {
 
 export const TAT_LABELS = { ON_TRACK: 'On track', NEAR: 'Near TAT', BEYOND: 'Beyond TAT' };
 
+// How the TAT state is worked out, for the hovers. Mirrors work_tray() and stage_tat (20261005_work_tray.sql,
+// 20261020_ci_request.sql): calendar days since the file entered its current stage, against that stage's target;
+// Near once past near_ratio (0.75) of it, Beyond once past the target. The day values are placeholders until the
+// bank's SLA is known (Q-09). If stage_tat changes in the database, change TAT_TARGET_DAYS here too.
+export const TAT_NEAR_RATIO = 0.75;
+export const TAT_TARGET_DAYS = { INTAKE: 1, CREDIT_INVESTIGATION: 3, CREDIT_EVALUATION: 3, REVIEW: 2, APPROVAL: 2 };
+const pctText = (ratio) => `${Math.round(ratio * 100)}%`;
+const dayText = (n) => `${n} day${Number(n) === 1 ? '' : 's'}`;
+export const TAT_RULE = "TAT counts calendar days since the file entered its current stage, against that stage's target. "
+    + `On track: up to ${pctText(TAT_NEAR_RATIO)} of the target. Near TAT: past ${pctText(TAT_NEAR_RATIO)}. Beyond TAT: past 100%.`;
+export const TAT_TARGETS_TEXT = `Targets (placeholders until the bank's SLA is known): ${STAGES
+    .filter((s) => TAT_TARGET_DAYS[s.value] != null)
+    .map((s) => `${s.label} ${dayText(TAT_TARGET_DAYS[s.value])}`).join(', ')}.`;
+// One state's rule, for the Near / Beyond filter choices
+export const TAT_STATE_RULES = {
+    ON_TRACK: `On track: up to ${pctText(TAT_NEAR_RATIO)} of the stage's target used.`,
+    NEAR: `Near TAT: past ${pctText(TAT_NEAR_RATIO)} of the stage's target, not yet past it.`,
+    BEYOND: "Beyond TAT: past 100% of the stage's target.",
+};
+// The TAT cell's hover: days used against this stage's target, then the rule
+export const tatDetail = (days, limit) => {
+    const d = Number(days);
+    const t = Number(limit);
+    const over = d - t;
+    const used = t > 0 ? ` (${pctText(d / t)})` : '';
+    return [
+        `${d}d of the ${t}d target${used}${over > 0 ? `, ${over.toFixed(1)}d over` : ''}.`,
+        TAT_RULE,
+        "This target is a placeholder until the bank's SLA is known.",
+    ].join('\n');
+};
+
 // Colour tones for the tray (ok = green, warn = orange, bad = red, info = blue, plain = grey)
 export const TAT_TONES = { ON_TRACK: 'ok', NEAR: 'warn', BEYOND: 'bad' };
 export const STATUS_TONES = { PENDING: 'plain', IN_PROGRESS: 'info', REQUESTED: 'info', RETURNED: 'warn', DONE: 'ok' };

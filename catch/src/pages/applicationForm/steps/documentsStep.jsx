@@ -5,6 +5,12 @@ import { deleteDocument, getDocumentUrl, getParties, uploadDocument } from '../a
 import { FormError, Section, StepButtons } from '../fields';
 import { BORROWER_ROLES, minFilesFor, partyLabel, REQUIREMENT_LABELS } from '../options';
 
+// Shown under the Valid ID / Passport upload: the ID kinds the document reading recognizes (DOCUMENT_KINDS
+// in ocr-service/extract.py, without "Other ID"). TO CONFIRM with the bank's accepted ID list.
+const ACCEPTED_IDS = [
+    'Passport', "Driver's License", 'UMID', 'PhilSys ID (National ID)', 'PRC ID', 'Postal ID', "Voter's ID", 'SSS ID', 'TIN ID',
+];
+
 const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
     const [busy, setBusy] = useState(null); // requirement id or doc id being worked on
     const [error, setError] = useState(null);
@@ -95,6 +101,9 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                                         if (files.length) handleUpload(party, req, files);
                                     }} />
                                 {busy === req.id && <span> Uploading...</span>}
+                                {req.requirement_type === 'VALID_ID_PASSPORT' && (
+                                    <p className="text-sm text-gray-600 pt-1">Accepted IDs: {ACCEPTED_IDS.join(', ')}.</p>
+                                )}
                             </div>
                         );
                     })}

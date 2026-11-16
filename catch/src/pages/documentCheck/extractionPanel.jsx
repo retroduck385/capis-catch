@@ -5,7 +5,7 @@
 // summary, and confirms (confirm_ci_extraction); that saves the CI result. Nothing is copied to the application.
 import { useEffect, useMemo, useState } from 'react';
 import { CI_RESULTS } from '../ciRequest/options';
-import { confirmCiExtraction, confirmExtraction } from './api';
+import { confirmCiExtraction, confirmExtraction, RERUN_HINT } from './api';
 import {
     FORMAT_HINTS, LOW_CONFIDENCE, applicationValue, bankSummary, compareStatus, displayValue, isExpired, isValid,
     lowestConfidence, needsChoice, payslipSummary, percentOff, toNumber, tuSummary,
@@ -269,15 +269,16 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                             <button type="button" className="border rounded px-3 py-1.5 text-sm" onClick={onRerun} disabled={saving}>Run AI again</button>
                             <button type="button" className="rounded px-4 py-1.5 bg-blue-700 text-white disabled:opacity-50"
                                 disabled={saving} onClick={() => { setError(null); setReviewing(true); }}>
-                                Confirm & lock
+                                Confirm
                             </button>
                         </>
                     )}
                 </div>
+                {editable && !reviewing && <p className="mt-1 text-xs text-gray-600">{RERUN_HINT}</p>}
 
                 {confirmed && (
                     <p className="mt-2 rounded bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-sm">
-                        Confirmed and locked by {names[run.confirmed_by] ?? (ci ? 'Credit Investigator' : 'Account Officer')} on {new Date(run.confirmed_at).toLocaleString()}.
+                        Confirmed by {names[run.confirmed_by] ?? (ci ? 'Credit Investigator' : 'Account Officer')} on {new Date(run.confirmed_at).toLocaleString()}.
                         {' '}{ci ? <Terms text='The result and summary were saved to the CI results.' />
                             : `${fields.filter((f) => f.apply_to_record).length} value(s) copied to the application.`}
                     </p>
@@ -317,10 +318,10 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                 ) : toCopy.length > 0 ? (
                                     <p>These will be <strong>copied to the application</strong>: {toCopy.map((h) => `${h.def.label} → ${displayValue(h.value, h.def.data_type)}`).join('; ')}.</p>
                                 ) : <p>Nothing will be copied to the application.</p>}
-                                <p className="text-gray-700">After this the extraction is locked. Changes are recorded in the change history.</p>
+                                <p className="text-gray-700">After this the values can't be changed. Changes are recorded in the change history.</p>
                                 <div className="flex gap-2 mt-2">
                                     <button type="button" className="rounded px-4 py-1.5 bg-blue-700 text-white disabled:opacity-50" disabled={saving} onClick={handleConfirm}>
-                                        {saving ? 'Confirming...' : 'Yes, confirm & lock'}
+                                        {saving ? 'Confirming...' : 'Yes, confirm'}
                                     </button>
                                     <button type="button" className="border rounded px-3 py-1 bg-white" disabled={saving} onClick={() => setReviewing(false)}>Cancel</button>
                                 </div>
