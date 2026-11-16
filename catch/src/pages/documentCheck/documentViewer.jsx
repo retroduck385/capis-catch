@@ -1,8 +1,10 @@
 // Shows one uploaded document (image or PDF) with zoom, page buttons and highlight boxes over the OCR lines
 // the selected field was read from. Boxes come from ocr_lines.bbox, in pixels of the page image PaddleOCR
 // read (pageSizes), so they are drawn as percentages and line up at any zoom.
+// Styles: .dc-toolbar / .dc-stage in documentCheck.css (pill controls, a rounded stage, blue location boxes).
 import { ViewerSkeleton } from '../../components/skeleton';
 import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, ExternalLink, Minus, Plus, RotateCcw } from 'lucide-react';
 import { getDocumentUrl } from '../applicationForm/api';
 
 const ZOOM_STEP = 0.25;
@@ -98,7 +100,8 @@ const DocumentViewer = ({ doc, pageSizes, highlights, page, onPageChange }) => {
 
     // Bring the highlighted line into view when the selection changes
     useEffect(() => {
-        firstBoxRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+        const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        firstBoxRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: smooth ? 'smooth' : 'auto' });
     }, [highlights, page, zoom]);
 
     const pageCount = pdfFile ? pdf?.numPages ?? 1 : 1;
@@ -107,41 +110,54 @@ const DocumentViewer = ({ doc, pageSizes, highlights, page, onPageChange }) => {
     const canDrawBoxes = Boolean(size) && !size.angle;
     const setZoomClamped = (z) => setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)));
 
-    const button = 'border rounded px-3 py-1 bg-white hover:bg-gray-50 disabled:opacity-40';
-
     return (
-        <div className="flex flex-col h-full min-h-0">
-            <div className="flex flex-wrap items-center gap-2 pb-2">
-                <button type="button" className={button} onClick={() => setZoomClamped(zoom + ZOOM_STEP)} aria-label="Zoom in">+</button>
-                <button type="button" className={button} onClick={() => setZoomClamped(zoom - ZOOM_STEP)} aria-label="Zoom out">−</button>
-                <button type="button" className={button} onClick={() => setZoom(1)}>Reset</button>
-                <span className="text-sm text-gray-600">{Math.round(zoom * 100)}%</span>
+        <div className="dc-viewer">
+            <div className="dc-toolbar">
+                <div className="dc-group" role="group" aria-label="Zoom">
+                    <button type="button" className="dc-tool" onClick={() => setZoomClamped(zoom - ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} aria-label="Zoom out">
+                        <Minus size={16} aria-hidden="true" />
+                    </button>
+                    <span className="dc-zoom" aria-live="polite">{Math.round(zoom * 100)}%</span>
+                    <button type="button" className="dc-tool" onClick={() => setZoomClamped(zoom + ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in">
+                        <Plus size={16} aria-hidden="true" />
+                    </button>
+                    <button type="button" className="dc-tool" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label="Reset zoom" title="Reset zoom">
+                        <RotateCcw size={15} aria-hidden="true" />
+                    </button>
+                </div>
                 {pageCount > 1 && (
-                    <span className="flex items-center gap-2 ml-auto">
-                        <button type="button" className={button} disabled={page <= 1} onClick={() => onPageChange(page - 1)}>‹ Prev</button>
-                        <span className="text-sm">Page {page} of {pageCount}</span>
-                        <button type="button" className={button} disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}>Next ›</button>
-                    </span>
+                    <div className="dc-group" role="group" aria-label="Pages">
+                        <button type="button" className="dc-tool" disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Previous page">
+                            <ChevronLeft size={16} aria-hidden="true" />
+                        </button>
+                        <span className="dc-zoom">Page {page} of {pageCount}</span>
+                        <button type="button" className="dc-tool" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)} aria-label="Next page">
+                            <ChevronRight size={16} aria-hidden="true" />
+                        </button>
+                    </div>
                 )}
-                {url && <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm underline ml-auto">Open file</a>}
+                {url && (
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="lf-btn quiet dc-open">
+                        <ExternalLink size={15} aria-hidden="true" />Open file
+                    </a>
+                )}
             </div>
 
-            {error && <p className="text-red-600">{error}</p>}
+            {error && <p className="lf-err" role="alert">{error}</p>}
             {boxes.length > 0 && !canDrawBoxes && (
-                <p className="text-sm text-gray-600 pb-1">
-                    {size ? 'This page was rotated before reading, so the location can\'t be drawn.'
+                <p className="dc-muted">
+                    {size ? "This page was rotated before reading, so the location can't be drawn."
                         : 'Location not available for this file (read before page sizes were saved). Re-OCR it to see boxes.'}
                 </p>
             )}
 
-            <div className="flex-1 min-h-0 overflow-auto border rounded bg-gray-100 p-2">
-                <div className="relative mx-auto" style={{ width: `${zoom * 100}%` }}>
+            <div className="dc-stage">
+                <div className="dc-page" style={{ width: `${zoom * 100}%` }}>
                     {!url && !error && <ViewerSkeleton />}
-                    {url && !pdfFile && <img src={url} alt={doc.file_name} className="block w-full h-auto bg-white shadow" />}
-                    {pdfFile && <canvas ref={canvasRef} className="block w-full h-auto bg-white shadow" />}
+                    {url && !pdfFile && <img src={url} alt={doc.file_name} />}
+                    {pdfFile && <canvas ref={canvasRef} />}
                     {canDrawBoxes && boxes.map((h, i) => (
-                        <div key={h.id} ref={i === 0 ? firstBoxRef : undefined}
-                            className="absolute border-2 border-amber-500 bg-amber-300/30 rounded-sm pointer-events-none"
+                        <div key={h.id} ref={i === 0 ? firstBoxRef : undefined} className="dc-box"
                             style={box(h.bbox, size)} title={h.text} />
                     ))}
                 </div>

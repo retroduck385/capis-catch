@@ -1,0 +1,65 @@
+/* Form dropdown (selectMenu.jsx). The button is sized and bordered like the form's text inputs (applicantTheme.css:
+   1px --line-strong border, --radius corners, 3rem tall, 1rem text) so a row of fields lines up; the menu drops in like
+   the work tray's filters (blue highlight that shifts 3px, orange tick on the chosen option). Unlayered, so it wins over
+   the theme's component-layer button rules. All motion stops under prefers-reduced-motion. */
+.ct-select { position: relative; width: 100%; margin-top: 0.4rem; }
+.ct .ct-select-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; min-height: 3rem; margin: 0;
+  padding: 0.6rem 0.75rem 0.6rem 0.85rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: #fff;
+  box-shadow: none; color: var(--ink); font: inherit; font-size: 1rem; font-weight: 400; line-height: 1.4; text-align: left; cursor: pointer;
+}
+.ct .ct-select-btn:hover:not(:disabled) { background: #fff; color: var(--ink); border-color: #5b6880; }
+.ct .ct-select-btn:focus-visible, .ct .ct-select.open .ct-select-btn {
+  outline: 0; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(30, 63, 151, 0.25);
+}
+.ct .ct-select-btn[aria-invalid='true'] { border-color: var(--red, #c41c1c); }
+.ct .ct-select-btn:disabled { background: var(--muted-bg, #f1f4f8); color: var(--muted); opacity: 1; cursor: not-allowed; }
+.ct-select-btn .val { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-select-btn .val.ph { color: #66758a; }
+.ct-select .chev { flex: none; color: var(--muted); }
+.ct-select.open .chev { transform: rotate(180deg); }
+
+.ct-select ul[role='listbox'] {
+  position: absolute; z-index: 25; left: 0; right: 0; top: calc(100% + 0.35rem); max-height: 18rem; overflow-y: auto;
+  overscroll-behavior: contain; margin: 0; padding: 0.35rem; list-style: none; background: #fff;
+  border: 1px solid rgba(20, 41, 95, 0.14); border-radius: 14px; box-shadow: 0 20px 44px -18px rgba(20, 41, 95, 0.5);
+  transform-origin: top center; outline: none;
+}
+.ct-select.up ul[role='listbox'] { top: auto; bottom: calc(100% + 0.35rem); transform-origin: bottom center; }
+.ct-select li {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 2.75rem; margin: 0;
+  padding: 0.55rem 0.75rem; border-radius: 10px; color: var(--ink); font-size: 1rem; text-align: left; cursor: pointer;
+}
+.ct-select li > span { min-width: 0; overflow-wrap: anywhere; }
+.ct-select li.ph { color: #66758a; }
+.ct-select li.hi { background: #eaf0ff; color: #1e3f97; }
+.ct-select li[aria-selected='true'] { font-weight: 700; color: #1e3f97; }
+.ct-select li svg { flex: none; color: #c2410c; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ct-sel-pop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } }
+  @keyframes ct-sel-pop-up { from { opacity: 0; transform: translateY(6px) scale(0.97); } }
+  @keyframes ct-sel-item { from { opacity: 0; transform: translateY(-3px); } }
+  @keyframes ct-sel-val { from { opacity: 0; transform: translateY(3px); } }
+  .ct .ct-select-btn { transition: border-color 0.15s, box-shadow 0.15s; }
+  .ct-select .chev { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ct-select ul[role='listbox'] { animation: ct-sel-pop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ct-select.up ul[role='listbox'] { animation-name: ct-sel-pop-up; }
+  .ct-select li { transition: background-color 0.12s, color 0.12s; animation: ct-sel-item 0.2s ease-out both; animation-delay: calc(var(--i, 0) * 18ms + 30ms); }
+  .ct-select li > span { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ct-select li.hi > span { transform: translateX(3px); }
+  .ct-select-btn .val { animation: ct-sel-val 0.22s ease-out; }
+}
+
+/* On the staff pages (.lf-folder) the dropdown follows the page tokens, so it reads in dark mode; on light paper
+   (.lf-paper: the applicant's forms) the tokens are reset to light values, so it stays white there. */
+.ct .lf-folder .ct-select-btn { background: var(--lf-control-hover, #fff); }
+[data-theme='dark'] .lf-folder .ct-select ul[role='listbox'] { background: #172246; border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 20px 44px -18px rgba(0, 0, 0, 0.8); }
+[data-theme='dark'] .lf-folder .ct-select li { color: var(--ink); }
+[data-theme='dark'] .lf-folder .ct-select li.hi { background: rgba(126, 162, 255, 0.16); color: #dbe5ff; }
+[data-theme='dark'] .lf-folder .ct-select li[aria-selected='true'] { color: #b9ccff; }
+[data-theme='dark'] .lf-folder .ct-select li svg { color: #fdba74; }
+[data-theme='dark'] .lf-folder .lf-paper .ct-select ul[role='listbox'] { background: #fff; border-color: rgba(20, 41, 95, 0.14); }
+[data-theme='dark'] .lf-folder .lf-paper .ct-select li.hi { background: #eaf0ff; color: #1e3f97; }
+[data-theme='dark'] .lf-folder .lf-paper .ct-select li[aria-selected='true'] { color: #1e3f97; }
+[data-theme='dark'] .lf-folder .lf-paper .ct-select li svg { color: #c2410c; }

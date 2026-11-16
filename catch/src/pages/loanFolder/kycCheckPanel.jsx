@@ -1,18 +1,21 @@
 // AO's verification of one form section: Verified, or Needs clarification with remarks.
 // The choice starts on the section's latest recorded result, so the form matches the chip when you come back to it.
 // Recording a check calls onRecorded, which moves the loan folder on to the next section.
-import { useState } from 'react';
+// In the loan folder it sits in a sticky rail beside the section's form (wide screens) or above it.
+import { useId, useState } from 'react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { recordKycCheck } from './api';
-import { RESULT_LABELS, whenOf } from './options';
+import { RESULT_LABELS } from './options';
+import Byline from '../../components/byline';
 import CommentButton from '../messages/commentButton';
 import { Term } from '../../components/term';
 
 const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
 
-// Latest check of a section as text: "Verified" chip plus who / when / remarks
+// Latest check of a section: who / when (a byline: avatar, name, short time) and the remarks
 export const CheckSummary = ({ check, names }) => (check ? (
     <>
-        <p className="lf-kyc-meta">by {names[check.checked_by] ?? 'unknown'} · {whenOf(check.checked_at)}</p>
+        <Byline name={names[check.checked_by]} at={check.checked_at} className="lf-kyc-by" />
         {check.remarks && <p className="lf-kyc-remark">{check.remarks}</p>}
     </>
 ) : <p className="lf-kyc-meta">Not checked yet.</p>);
@@ -29,6 +32,8 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
     const [remarks, setRemarks] = useState('');
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
+    const remarksId = useId();
+    const needsRemark = result === 'NEEDS_CLARIFICATION';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -36,7 +41,7 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
             setError('Choose Verified or Needs clarification.');
             return;
         }
-        if (result === 'NEEDS_CLARIFICATION' && !remarks.trim()) {
+        if (needsRemark && !remarks.trim()) {
             setError('Say what needs clarification.');
             return;
         }
@@ -56,30 +61,44 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
     return (
         <form id={`kyc-${section}`} onSubmit={handleSubmit} className="lf-card lf-check">
             <div className="lf-cardhead">
-                <h3><Term k="KYC" /> verification<CommentButton topic={`kyc-${section}`} /></h3>
+                <h3>Record <Term k="KYC" /> check<CommentButton topic={`kyc-${section}`} className="lf-comment" /></h3>
                 <CheckChip check={latest} />
             </div>
-            <CheckSummary check={latest} names={names} />
-            {extra}
-            {!complete && <p className="lf-err">This section is incomplete, so it can't be marked Verified.</p>}
-
-            <div className="lf-choices" role="radiogroup" aria-label="KYC result">
-                <label className="lf-choice">
-                    <input type="radio" name="kyc_result" disabled={!complete}
-                        checked={result === 'VERIFIED'} onChange={() => setResult('VERIFIED')} /> Verified
-                </label>
-                <label className="lf-choice">
-                    <input type="radio" name="kyc_result"
-                        checked={result === 'NEEDS_CLARIFICATION'} onChange={() => setResult('NEEDS_CLARIFICATION')} /> Needs clarification
-                </label>
+            <div className="lf-check-latest">
+                <CheckSummary check={latest} names={names} />
+                {extra}
             </div>
-            <textarea rows={2}
-                aria-label="Remarks"
-                placeholder={result === 'NEEDS_CLARIFICATION' ? 'What needs clarification (required)' : 'Remarks (optional)'}
+            {!complete && (
+                <p className="lf-warnnote">
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <span>This section is incomplete, so it can't be marked Verified.</span>
+                </p>
+            )}
+
+            <fieldset className="lf-choices">
+                <legend className="sr-only"><Term k="KYC" /> result</legend>
+                <label className="lf-choice ok">
+                    <input type="radio" name="kyc_result" disabled={!complete}
+                        checked={result === 'VERIFIED'} onChange={() => setResult('VERIFIED')} />
+                    <CheckCircle2 size={20} className="mark" aria-hidden="true" />
+                    <span><b>Verified</b><small>Matches the documents</small></span>
+                </label>
+                <label className="lf-choice warn">
+                    <input type="radio" name="kyc_result"
+                        checked={needsRemark} onChange={() => setResult('NEEDS_CLARIFICATION')} />
+                    <AlertTriangle size={20} className="mark" aria-hidden="true" />
+                    <span><b>Needs clarification</b><small>Say what's unclear</small></span>
+                </label>
+            </fieldset>
+            <label className="lf-fieldlabel" htmlFor={remarksId}>
+                Remarks <small>{needsRemark ? '(required)' : '(optional)'}</small>
+            </label>
+            <textarea id={remarksId} rows={3} aria-required={needsRemark}
+                placeholder={needsRemark ? 'What needs clarification' : 'Anything the next person should know'}
                 value={remarks} onChange={(e) => setRemarks(e.target.value)} />
             <div className="lf-check-foot">
                 {error ? <p className="lf-err" role="alert">{error}</p> : <span />}
-                <button type="submit" disabled={saving}>
+                <button type="submit" className="lf-primary" disabled={saving}>
                     {saving ? 'Saving...' : 'Record check'}
                 </button>
             </div>

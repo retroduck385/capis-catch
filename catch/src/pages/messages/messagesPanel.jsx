@@ -7,8 +7,11 @@ import { stageLabel } from '../workTray/options';
 import { MAX_LENGTH, fetchMentionCandidates } from './api';
 import { jumpToTopic, registerPanel, topicLabel, topicTarget } from './topics';
 import { useMessages } from './useMessages';
+import { ArrowUpRight, Lock, MessageSquare, Send, X } from 'lucide-react';
 import { Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
+import { avatarStyle, formatWhen, fullWhen, initialsOf, personName } from '../../components/people';
+import './messages.css';
 
 // The "@na" being typed right before the caret, or null. Names have spaces, so the query runs from the last @
 // (at the start or after a space) to the caret, on one line.
@@ -24,18 +27,19 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // The message text with each mentioned "@Name" highlighted (a mention of me stands out more)
 const Body = ({ message, names, userId }) => {
-    const mentioned = (message.mentions ?? []).map((id) => ({ id, name: names[id] })).filter((p) => p.name);
-    if (mentioned.length === 0) return <p className='whitespace-pre-wrap break-words'>{message.body}</p>;
+    // Match the clean name (what the list inserts) and the stored one (older messages)
+    const mentioned = (message.mentions ?? []).flatMap((id) => [names[id], personName(names[id])].filter(Boolean).map((name) => ({ id, name })));
+    if (mentioned.length === 0) return <p className='msg-body'>{message.body}</p>;
     const byName = Object.fromEntries(mentioned.map((p) => [p.name, p.id]));
     const pattern = new RegExp(`(@(?:${Object.keys(byName).sort((a, b) => b.length - a.length).map(escapeRe).join('|')}))`, 'g');
     return (
-        <p className='whitespace-pre-wrap break-words'>
+        <p className='msg-body'>
             {message.body.split(pattern).map((part, i) => {
                 const id = part.startsWith('@') ? byName[part.slice(1)] : null;
                 if (!id) return part;
                 const me = id === userId;
                 return (
-                    <span key={i} className={`rounded px-1 font-semibold ${me ? 'bg-amber-200 text-amber-950' : 'bg-blue-100 text-blue-900'}`}>
+                    <span key={i} className={`msg-mention${me ? ' me' : ''}`}>
                         {part}{me && <span className='sr-only'> (you)</span>}
                     </span>
                 );
@@ -45,9 +49,9 @@ const Body = ({ message, names, userId }) => {
 };
 
 // Staff-only message thread for one loan file (F7), a drawer opened from a button beside the notification bell.
-// Rendered through a portal into <body>, so it never sits inside a page's <form> (the Financial Package page).
-// Light colours on purpose (no dark mode). The button is fixed top-right, left of the bell (bell: top-3 right-4, 40px
-// wide); below the sm breakpoint it shrinks to an icon so both fit a narrow screen.
+// Rendered through a portal into the app frame (.ct-e-app), so it never sits inside a page's <form> (the Financial
+// Package page) but still follows the theme and dark mode. Look (DESIGN.md, "Messages"): a floating glass sheet below
+// the top bar, chat bubbles (yours on the right), short times, an orange "New" divider. Styles: messages.css.
 // `inline` puts the button where the component is rendered (a page's action row) instead of fixed top-right; the
 // drawer is still portaled to <body>.
 // @mentions: typing @ lists the staff who can open this file; a mentioned name is highlighted in the thread.
@@ -149,7 +153,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
         if (!mention) return;
         const before = draft.slice(0, mention.at);
         const after = draft.slice(caret);
-        const inserted = `@${person.name} `;
+        const inserted = `@${personName(person.name) || person.name} `;
         const next = (before + inserted + after).slice(0, MAX_LENGTH);
         picked.current.add(person.user_id);
         setDraft(next);
@@ -161,9 +165,10 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
 
     // Everyone whose "@Name" is in the text; with two people of the same name, the one picked from the list
     const mentionsIn = (body) => {
-        const named = (candidates ?? []).filter((c) => body.includes(`@${c.name}`));
+        const short = (c) => personName(c.name) || c.name;
+        const named = (candidates ?? []).filter((c) => body.includes(`@${c.name}`) || body.includes(`@${short(c)}`));
         return named.filter((c) => picked.current.has(c.user_id)
-            || !named.some((o) => o.name === c.name && picked.current.has(o.user_id))).map((c) => c.user_id);
+            || !named.some((o) => short(o) === short(c) && picked.current.has(o.user_id))).map((c) => c.user_id);
     };
 
     const submit = async () => {
@@ -201,6 +206,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
     const firstNewId = items.find((m) => m.id > dividerId && m.sender_id !== userId)?.id;
     const label = unread ? `Messages, ${unread} unread` : 'Messages';
     const badge = unread > 99 ? '99+' : String(unread);
+    const closeDrawer = () => { setOpen(false); buttonRef.current?.focus(); };
 
     const button = (
         <button
@@ -213,10 +219,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
             className={inline
                 ? 'lf-btn'
                 : 'fixed top-3 right-16 z-50 flex items-center gap-2 rounded-full border border-gray-300 bg-white p-2 shadow-sm hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 sm:px-4'}>
-            <svg aria-hidden='true' viewBox='0 0 24 24' className={inline ? 'h-5 w-5 shrink-0' : 'h-6 w-6 shrink-0'} fill='none' stroke='currentColor' strokeWidth='2'>
-                <path strokeLinecap='round' strokeLinejoin='round'
-                    d='M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z' />
-            </svg>
+            <MessageSquare size={inline ? 18 : 22} aria-hidden='true' className='shrink-0' />
             <span className={inline ? '' : 'hidden sm:inline'}>Messages</span>
             {unread > 0 && (
                 <span aria-hidden='true'
@@ -229,98 +232,99 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
         </button>
     );
 
+    // Inside the app frame (so it follows the theme and dark mode), not in a page's <form>
+    const host = document.querySelector('.ct-e-app') ?? document.body;
     const drawer = createPortal(
-        <div className='text-base text-gray-900'>
+        <div className='msg-host'>
             {!inline && button}
 
             {/* Announces new messages to screen readers */}
             <p className='sr-only' aria-live='polite'>{latest ? 'New message on this application' : ''}</p>
 
             {open && (
-                <aside
-                    id='messages-panel'
-                    aria-label='Messages for this application'
-                    className='fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-gray-300 bg-white text-gray-900 shadow-lg'>
-                    <div className='flex items-center justify-between border-b border-gray-200 py-3 pl-4 pr-28 sm:pr-52'>
-                        <h2 className='text-lg font-semibold text-gray-900!'>Messages</h2>
-                        <button ref={closeRef} type='button' onClick={() => { setOpen(false); buttonRef.current?.focus(); }}
-                            className='rounded border border-gray-300 px-3 py-1 text-blue-800 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                            Close
+                <aside id='messages-panel' aria-label='Messages for this application' className='msg-drawer'>
+                    <header className='msg-head'>
+                        <span className='msg-ic' aria-hidden='true'><MessageSquare size={18} /></span>
+                        <div className='msg-title'>
+                            <h2>Messages</h2>
+                            <p>Staff only · this application</p>
+                        </div>
+                        <button ref={closeRef} type='button' className='msg-close' onClick={closeDrawer} aria-label='Close messages' title='Close (Esc)'>
+                            <X size={18} aria-hidden='true' />
                         </button>
-                    </div>
+                    </header>
 
-                    <div ref={listRef} className='min-h-0 flex-1 overflow-y-auto px-4 py-3' tabIndex={0} aria-label='Message history'>
+                    <div ref={listRef} className='msg-list' tabIndex={0} aria-label='Message history'>
                         {hasMore && (
-                            <p className='pb-2 text-center'>
-                                <button type='button' onClick={loadEarlier}
-                                    className='text-blue-800 underline hover:text-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                                    Load earlier
-                                </button>
+                            <p className='msg-more'>
+                                <button type='button' className='msg-pill' onClick={loadEarlier}>Load earlier</button>
                             </p>
                         )}
-                        {items.length === 0 && <p className='py-6 text-gray-700'>No messages yet.</p>}
-                        <ul>
-                            {items.map((m) => (
-                                <li key={m.id} className='pb-3'>
-                                    {m.id === firstNewId && (
-                                        <p className='mb-2 flex items-center gap-2 font-semibold text-red-800'>
-                                            <span aria-hidden='true' className='h-px flex-1 bg-red-300' />
-                                            New
-                                            <span aria-hidden='true' className='h-px flex-1 bg-red-300' />
-                                        </p>
-                                    )}
-                                    <div className={`rounded-lg border px-3 py-2 ${m.sender_id === userId ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
-                                        <p className='flex flex-wrap items-baseline gap-x-2'>
-                                            <span className='font-semibold'>{m.sender_id === userId ? 'You' : (names[m.sender_id] ?? 'Staff')}</span>
-                                            <span className='rounded border border-gray-400 px-1.5 text-sm text-gray-800'>{ROLE_LABELS[m.sender_role] ?? m.sender_role}</span>
-                                            {m.stage && <span className='text-sm text-gray-700'>{stageLabel(m.stage)}</span>}
-                                        </p>
-                                        {m.topic && topicLabel(m.topic) && (
-                                            <p className='py-1'>
-                                                <button type='button' onClick={() => goToTopic(m.topic)}
-                                                    title={['Go to this section', tt(topicLabel(m.topic))].filter(Boolean).join('\n')}
-                                                    className='max-w-full truncate rounded-full border border-blue-300 bg-white px-2.5 py-0.5 text-left text-sm font-semibold text-blue-900 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                                                    <span className='sr-only'>About </span>{topicLabel(m.topic)}<span aria-hidden='true'> ›</span>
-                                                </button>
-                                            </p>
-                                        )}
-                                        <Body message={m} names={names} userId={userId} />
-                                        <p className='text-sm text-gray-600'>{new Date(m.created_at).toLocaleString()}</p>
-                                    </div>
-                                </li>
-                            ))}
+                        {items.length === 0 && (
+                            <div className='msg-empty'>
+                                <span className='msg-ic' aria-hidden='true'><MessageSquare size={20} /></span>
+                                <p className='msg-empty-title'>No messages yet</p>
+                                {canPost && <p>Start the conversation below. Type @ to mention someone.</p>}
+                            </div>
+                        )}
+                        <ul className='msg-items'>
+                            {items.map((m) => {
+                                const mine = m.sender_id === userId;
+                                const who = mine ? 'You' : personName(names[m.sender_id]) || 'Staff';
+                                return (
+                                    <li key={m.id} className={`msg-item${mine ? ' mine' : ''}`}>
+                                        {m.id === firstNewId && <p className='msg-new'><span>New</span></p>}
+                                        <div className='msg-row'>
+                                            {!mine && <span className='msg-av' style={avatarStyle(who)} aria-hidden='true'>{initialsOf(who)}</span>}
+                                            <div className='msg-bubble'>
+                                                <p className='msg-meta'>
+                                                    <b>{who}</b>
+                                                    <span className='msg-role'>{ROLE_LABELS[m.sender_role] ?? m.sender_role}</span>
+                                                    {m.stage && <span className='msg-stage'>{stageLabel(m.stage)}</span>}
+                                                </p>
+                                                {m.topic && topicLabel(m.topic) && (
+                                                    <button type='button' className='msg-topic-link' onClick={() => goToTopic(m.topic)}
+                                                        title={['Go to this section', tt(topicLabel(m.topic))].filter(Boolean).join('\n')}>
+                                                        <span className='sr-only'>About </span>{topicLabel(m.topic)}
+                                                        <ArrowUpRight size={14} aria-hidden='true' />
+                                                    </button>
+                                                )}
+                                                <Body message={m} names={names} userId={userId} />
+                                                <time className='msg-time' dateTime={m.created_at} title={fullWhen(m.created_at)}>{formatWhen(m.created_at)}</time>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
 
-                    <div className='border-t border-gray-200 px-4 py-3'>
-                        {error && <p role='alert' className='pb-2 text-red-700'>{error}</p>}
+                    <div className='msg-compose'>
+                        {error && <p role='alert' className='msg-err'>{error}</p>}
                         {canPost ? (
                             <>
-                                <label htmlFor='message-text' className='block pb-1 font-semibold'>Write a message</label>
+                                <label htmlFor='message-text' className='msg-label'>Write a message</label>
                                 {topic && (
-                                    <p className='flex items-center gap-2 pb-1 text-sm'>
-                                        <span className='min-w-0 truncate rounded-full border border-blue-300 bg-blue-50 px-2.5 py-0.5 font-semibold text-blue-900'>
-                                            About: <Terms text={topicLabel(topic)} />
-                                        </span>
-                                        <button type='button' onClick={() => setTopic(null)}
-                                            className='shrink-0 text-blue-800 underline hover:text-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                                            Remove
+                                    <p className='msg-topic'>
+                                        <span className='msg-topic-chip'>About: <Terms text={topicLabel(topic)} /></span>
+                                        <button type='button' className='msg-x' onClick={() => setTopic(null)} aria-label='Remove the section from this message'>
+                                            <X size={14} aria-hidden='true' />
                                         </button>
                                     </p>
                                 )}
-                                <div className='relative'>
+                                <div className='msg-field'>
                                     {showList && (
-                                        <ul id='mention-list' role='listbox' aria-label='People you can mention'
-                                            className='absolute bottom-full left-0 z-10 mb-1 max-h-64 w-full overflow-y-auto rounded border border-gray-400 bg-white shadow-lg'>
+                                        <ul id='mention-list' role='listbox' aria-label='People you can mention' className='msg-mentions'>
                                             {matches.map((c, i) => (
                                                 <li key={c.user_id} id={`mention-${c.user_id}`} role='option' aria-selected={i === activeRow}
                                                     // mousedown, not click: keep the focus in the text box
                                                     onMouseDown={(e) => { e.preventDefault(); pick(c); }}
                                                     onMouseEnter={() => setActive(i)}
-                                                    className={`flex cursor-pointer flex-wrap items-baseline gap-x-2 px-3 py-1.5 ${i === activeRow ? 'bg-blue-100' : ''}`}>
-                                                    <span className='font-semibold'>{c.name}</span>
-                                                    <span className='text-sm text-gray-700'>{ROLE_LABELS[c.role] ?? c.role}</span>
-                                                    {c.on_file && <span className='rounded border border-green-700 px-1 text-xs text-green-800'>On this file</span>}
+                                                    className={i === activeRow ? 'hi' : undefined}>
+                                                    <span className='msg-av small' style={avatarStyle(personName(c.name))} aria-hidden='true'>{initialsOf(personName(c.name))}</span>
+                                                    <span className='msg-mention-name'>{personName(c.name) || c.name}</span>
+                                                    <span className='msg-role'>{ROLE_LABELS[c.role] ?? c.role}</span>
+                                                    {c.on_file && <span className='msg-onfile'>On this file</span>}
                                                 </li>
                                             ))}
                                         </ul>
@@ -328,6 +332,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
                                     <textarea
                                         id='message-text'
                                         ref={textRef}
+                                        className='msg-input'
                                         value={draft}
                                         onChange={onDraft}
                                         onKeyDown={onKeyDown}
@@ -335,32 +340,32 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
                                         onClick={onCaret}
                                         maxLength={MAX_LENGTH}
                                         rows={3}
+                                        placeholder='Message the team on this file'
                                         role='combobox'
                                         aria-expanded={showList}
                                         aria-controls='mention-list'
                                         aria-autocomplete='list'
                                         aria-activedescendant={showList ? `mention-${matches[activeRow].user_id}` : undefined}
-                                        aria-describedby='message-hint'
-                                        className='w-full rounded border border-gray-400 bg-white p-2 text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600' />
+                                        aria-describedby='message-hint' />
                                 </div>
-                                <div className='flex items-center justify-between gap-3 pt-1'>
-                                    <span id='message-hint' className='text-sm text-gray-700'>
-                                        {draft.length} / {MAX_LENGTH}. Type @ to mention someone. Ctrl+Enter sends. Messages can't be edited or deleted.
+                                <div className='msg-foot'>
+                                    <span id='message-hint' className='msg-hint'>
+                                        <span className='msg-countnum'>{draft.length} / {MAX_LENGTH}</span>
+                                        <span>@ to mention · Ctrl+Enter sends · can&apos;t be edited or deleted</span>
                                     </span>
-                                    <button type='button' onClick={submit} disabled={sending || !draft.trim()}
-                                        className='shrink-0 rounded bg-blue-800 px-4 py-1.5 text-white hover:bg-blue-900 disabled:bg-gray-300 disabled:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'>
-                                        {sending ? 'Sending...' : 'Send'}
+                                    <button type='button' className='msg-send' onClick={submit} disabled={sending || !draft.trim()}>
+                                        <Send size={16} aria-hidden='true' />{sending ? 'Sending...' : 'Send'}
                                     </button>
                                 </div>
                             </>
                         ) : (
-                            <p className='italic text-gray-700'>Read-only: only people working on this file can post.</p>
+                            <p className='msg-readonly'><Lock size={15} aria-hidden='true' />Read-only: only people working on this file can post.</p>
                         )}
                     </div>
                 </aside>
             )}
         </div>,
-        document.body,
+        host,
     );
 
     return inline ? <>{button}{drawer}</> : drawer;

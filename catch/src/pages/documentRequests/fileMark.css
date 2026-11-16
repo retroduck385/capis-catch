@@ -1,0 +1,85 @@
+/* Staff check of a file (fileMark.jsx): a compact disclosure in the shared staff look (DESIGN.md section 11). A
+   16px sub-panel; the summary row holds the title, the latest mark as a chip and who / when; the body opens on demand.
+   Colours are the --lf-* tokens with light fallbacks, so it follows dark mode on the Document check and stays light on
+   the loan folder's paper panels (.lf-paper resets the tokens there). Cleared = ok, Needs a new copy = amber. */
+.fm {
+  margin: 0; border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.09)); border-radius: 16px;
+  background: var(--lf-sub-bg, rgba(20, 41, 95, 0.035)); color: var(--ink, #0f1b33); text-align: left;
+}
+.ct .fm-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; width: 100%; min-height: 3rem; margin: 0;
+  padding: 0.6rem 0.75rem 0.6rem 1rem; border: 0; border-radius: 15px; background: transparent; box-shadow: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ct .fm-head:hover { background: var(--lf-wash, rgba(20, 41, 95, 0.05)); color: inherit; }
+.ct .fm-head:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.fm.open .fm-head { border-radius: 15px 15px 0 0; }
+.fm-title { color: var(--navy, #14295f); font-size: 0.92rem; font-weight: 700; }
+.fm-by { color: var(--muted, #475569); font-size: 0.82rem; }
+.fm-chev { flex: none; margin-left: auto; color: var(--muted, #475569); }
+.fm.open .fm-chev { transform: rotate(180deg); }
+
+/* chips: the loan folder's status tones */
+.fm-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.12rem 0.6rem; border-radius: 999px; border: 1px solid;
+  font-size: 0.76rem; font-weight: 700; white-space: nowrap;
+}
+.fm-chip svg { flex: none; }
+.fm-chip.ok { background: var(--lf-ok-bg, #e6f5ed); border-color: var(--lf-ok-line, #b6e0c8); color: var(--lf-ok, #15714a); }
+.fm-chip.warn { background: var(--lf-warn-bg, #fff1e2); border-color: var(--lf-warn-line, #f7cfa4); color: var(--lf-warn, #a8480b); }
+.fm-chip.none { background: var(--lf-none-bg, #eef1f6); border-color: var(--lf-none-line, #d5dbe6); color: var(--lf-none, #475569); }
+
+/* body */
+.fm-body { display: grid; gap: 0.75rem; padding: 0.75rem 1rem 1rem; border-top: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08)); }
+.fm-note { margin: 0; color: var(--muted, #475569); font-size: 0.82rem; }
+.fm-comment {
+  display: block; margin: 0; padding: 0.55rem 0.75rem; border-radius: 10px; background: var(--lf-control-hover, #fff);
+  border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08)); color: var(--ink, #0f1b33); font-size: 0.9rem;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.fm-body > .lf-ask-btn { justify-self: start; }
+.fm-form { display: grid; gap: 0.5rem; }
+.fm-label { margin: 0; color: var(--ink, #0f1b33); font-size: 0.88rem; font-weight: 600; }
+.fm-label small { color: var(--muted, #475569); font-size: 0.8rem; font-weight: 500; }
+.ct .fm-input {
+  width: 100%; min-height: 2.75rem; margin: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--line-strong, #8b97ab); border-radius: 12px;
+  background: var(--lf-control-hover, #fff); color: var(--ink, #0f1b33); font: inherit; font-size: 0.92rem;
+}
+.ct .fm-input:focus-visible { outline: none; border-color: var(--blue, #1e3f97); box-shadow: 0 0 0 3px rgba(30, 63, 151, 0.22); }
+.ct .fm-input[aria-invalid='true'] { border-color: var(--red, #c41c1c); }
+.fm-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+/* the two marks: outline pills in their tone, filled on hover */
+.ct .fm-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.5rem; margin: 0; padding: 0.35rem 1rem 0.35rem 0.85rem;
+  border: 1px solid var(--tone-line); border-radius: 999px; background: var(--lf-control-hover, #fff); box-shadow: none;
+  color: var(--tone); font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+}
+.ct .fm-btn.ok { --tone: var(--lf-ok, #15714a); --tone-bg: var(--lf-ok-bg, #e6f5ed); --tone-line: var(--lf-ok-line, #b6e0c8); }
+.ct .fm-btn.warn { --tone: var(--lf-warn, #a8480b); --tone-bg: var(--lf-warn-bg, #fff1e2); --tone-line: var(--lf-warn-line, #f7cfa4); }
+.ct .fm-btn:hover:not(:disabled) { background: var(--tone-bg); border-color: var(--tone); color: var(--tone); }
+.ct .fm-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.fm-err { margin: 0; color: #b42318; font-size: 0.88rem; font-weight: 600; }
+
+/* history: a small timeline, newest first */
+.fm-history > summary {
+  display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.25rem; padding: 0 0.25rem; border-radius: 8px;
+  color: var(--lf-accent, #1e3f97); font-size: 0.86rem; font-weight: 600; list-style: none; cursor: pointer;
+}
+.fm-history > summary::-webkit-details-marker { display: none; }
+.fm-history > summary:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.fm-count { padding: 0 0.45rem; border-radius: 999px; background: var(--lf-accent-bg, rgba(30, 63, 151, 0.1)); font-size: 0.75rem; font-weight: 800; line-height: 1.4rem; }
+.fm-history ol { display: grid; gap: 0.55rem; margin: 0.45rem 0 0; padding: 0 0 0 0.9rem; border-left: 2px solid var(--lf-hair, rgba(20, 41, 95, 0.1)); list-style: none; }
+.fm-history li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin: 0; }
+.fm-history li .fm-comment { flex-basis: 100%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fm-in { from { opacity: 0; transform: translateY(-4px); } }
+  .fm-body { animation: fm-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .fm-chev { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ct .fm-head, .ct .fm-btn { transition: background-color 0.18s, border-color 0.18s, color 0.18s; }
+}
+
+[data-theme='dark'] .lf-folder .fm-err { color: #fca5a5; }
+[data-theme='dark'] .lf-folder .lf-paper .fm-err { color: #b42318; }
+[data-theme='dark'] .lf-folder .fm-history > summary:focus-visible,
+[data-theme='dark'] .lf-folder .fm-head:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }

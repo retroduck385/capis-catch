@@ -3,16 +3,24 @@
 // used and records a KYC check per section. Everyone else with access gets a read-only view.
 // The assigned AO's header shows their work as numbered steps (aoSteps.jsx): document check, KYC, Request CI.
 // For any AO, Decision support and the Financial Package sit apart under "Optional view": they are read-only to an AO.
+//
+// Layout (DESIGN.md, "Loan folder"): one glass page panel (.lf-folder) holding the breadcrumb, a title header and
+// a dashboard row (the AO's steps, or a KYC ring with Credit investigation / Change history tiles), then the body.
+// Read-only: KYC board (filterable), application details, change history. Editing AO: a sticky section navigator
+// beside the open section, whose form sits next to a sticky "Record KYC check" rail on wide screens.
 import { LoanFolderSkeleton } from '../../components/skeleton';
-import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Circle, LayoutList, Lock, Scale, ScanText, Send } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, History, LayoutList, Lock,
+    PencilLine, Scale, ScanText, Send,
+} from 'lucide-react';
 import { DSS_ROLES } from '../../roles';
 import Breadcrumbs from '../../components/breadcrumbs';
 import OptionalView from '../../components/optionalView';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getDocumentUrl, getParties, refreshApplication } from '../applicationForm/api';
-import ApplicationSummary from '../applicationForm/applicationSummary';
+import ApplicationDetails from './applicationDetails';
 import { buildSteps } from '../applicationForm/steps';
 import { fetchCiRequests } from '../ciRequest/api';
 import { fetchDocumentProgress } from '../documentCheck/api';
@@ -20,10 +28,12 @@ import RequestCiPanel from '../ciRequest/requestCiPanel';
 import { fetchAuditLog, fetchCanEdit, fetchKycChecks, fetchStaffNames } from './api';
 import AoSteps from './aoSteps';
 import ChangeHistory from './changeHistory';
-import KycCheckPanel, { CheckChip, CheckSummary } from './kycCheckPanel';
-import { RESULT_LABELS, whenOf } from './options';
+import KycCheckPanel from './kycCheckPanel';
+import { KycBoard, KycProgress, StatusIcon } from './kycOverview';
+import { RESULT_LABELS, kycCounts, statusOf } from './options';
+import Byline from '../../components/byline';
+import { formatDay, formatWhen, fullWhen } from '../../components/people';
 import MessagesPanel from '../messages/messagesPanel';
-import CommentButton from '../messages/commentButton';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import AskApplicantButton from '../documentRequests/ask';
@@ -31,7 +41,6 @@ import './loanFolder.css';
 import { Term } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 
-const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
 const OVERVIEW = 'overview';
 const REQUEST_CI = 'request-ci';
 
@@ -39,6 +48,14 @@ const REQUEST_CI = 'request-ci';
 const sectionsFor = (app) => buildSteps(app).filter((s) => s.key !== 'review');
 // Every uploaded document of every party (step 1 counts the ones the AI reads)
 const documentsOf = (app) => getParties(app).flatMap((p) => (p.application_requirements ?? []).flatMap((r) => r.documents ?? []));
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+// Opens the change history card, scrolls its top into view (below the sticky top bar: html scroll-padding-top) and
+// puts keyboard focus on its heading
+const revealHistory = (el) => {
+    el.open = true;
+    el.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+    el.querySelector('summary')?.focus({ preventScroll: true });
+};
 
 const LoanFolderPage = () => {
     const { session, role } = UserAuth();
@@ -57,8 +74,11 @@ const LoanFolderPage = () => {
     const [currentKey, setCurrentKey] = useState(OVERVIEW);
     const [openedHash, setOpenedHash] = useState('');
     const [saved, setSaved] = useState(false);
+    const [kycFilter, setKycFilter] = useState('ALL'); // shared by the KYC ring's legend and the section board
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const historyRef = useRef(null);
+    const wantHistory = useRef(false);
 
     // Checks + history + latest CI request (+ the names of whoever made them)
     const loadTrail = useCallback(async () => {
@@ -99,6 +119,15 @@ const LoanFolderPage = () => {
         return () => { cancelled = true; };
     }, [applicationId, loadTrail]);
 
+    // History (header button / dashboard tile) asked while the history wasn't on screen (the editing AO was in a
+    // section): the page switched to the overview first, so finish once it has rendered
+    useEffect(() => {
+        if (wantHistory.current && historyRef.current) {
+            wantHistory.current = false;
+            revealHistory(historyRef.current);
+        }
+    });
+
     // A message's topic chip (#kyc-<section>) opens that section for the editing AO: once per link, when the file
     // has loaded (state adjusted while rendering, not in an effect)
     if (app && canEdit && hash !== openedHash) {
@@ -108,12 +137,19 @@ const LoanFolderPage = () => {
     }
 
     if (loading) return <LoanFolderSkeleton />;
-    if (error && !app) return <p className="text-red-600">{error}</p>;
+    if (error && !app) {
+        return (
+            <div className="lf lf-folder">
+                <p className="lf-err" role="alert">{error}</p>
+            </div>
+        );
+    }
     if (!app) return null;
 
     const sections = sectionsFor(app);
     const latestCheck = (key) => checks.findLast((c) => c.section === key) ?? null;
-    const verifiedCount = sections.filter((s) => latestCheck(s.key)?.result === 'VERIFIED').length;
+    const counts = kycCounts(sections, latestCheck);
+    const verifiedCount = counts.VERIFIED;
     const section = sections.find((s) => s.key === currentKey) ?? null;
 
     // "Ask the applicant" on a section marked Needs clarification: the AO's remark becomes the note and that
@@ -126,8 +162,8 @@ const LoanFolderPage = () => {
         return null;
     };
     const askFor = (s, check) => (check?.result === 'NEEDS_CLARIFICATION' ? (
-        <p className="lf-kyc-meta">
-            <AskApplicantButton applicationId={app.id}
+        <p className="lf-kyc-meta lf-ask">
+            <AskApplicantButton applicationId={app.id} plain className="lf-ask-btn"
                 ask={{ missingFor: borrowerOf(s.key), note: check.remarks ?? '', from: `the KYC check of "${s.title}" (Needs clarification)` }} />
         </p>
     ) : null);
@@ -169,10 +205,25 @@ const LoanFolderPage = () => {
         }
     };
 
-    const progressPct = sections.length ? Math.round((verifiedCount / sections.length) * 100) : 0;
+    const scrollTo = (el) => el?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest' });
+    // A ring legend key filters the section board just below it
+    const filterBoard = (key) => {
+        setKycFilter(key);
+        scrollTo(document.getElementById('lf-kyc-board'));
+    };
+    // History button / tile: the history lives in the overview, so the editing AO is taken there first
+    const openHistory = () => {
+        if (historyRef.current) {
+            revealHistory(historyRef.current);
+            return;
+        }
+        wantHistory.current = true;
+        open(OVERVIEW);
+    };
+
     const isAo = role === 'ACCOUNT_OFFICER';
     // Step 2 opens the first section that isn't verified yet
-    const openKyc = () => open((sections.find((s) => latestCheck(s.key)?.result !== 'VERIFIED') ?? sections[0])?.key ?? OVERVIEW);
+    const openKyc = () => open((sections.find((s) => statusOf(latestCheck(s.key)) !== 'VERIFIED') ?? sections[0])?.key ?? OVERVIEW);
 
     const decisionLink = DSS_ROLES.includes(role) && (
         <Link to={`/decisionSupportPage?id=${app.id}`} className={`lf-btn${isAo ? ' quiet' : ''}`}>
@@ -187,19 +238,45 @@ const LoanFolderPage = () => {
 
     const header = (
         <>
-        <Breadcrumbs current="folder" appId={app.id} appNo={app.application_no} />
-        <header className="lf-card">
-            <div className="lf-titlerow">
-                <div>
-                    <h1>Application {app.application_no}</h1>
+            <Breadcrumbs current="folder" appId={app.id} appNo={app.application_no} />
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <FolderOpen size={15} aria-hidden="true" />Loan folder
+                        <span className={`lf-mode ${canEdit ? 'edit' : 'read'}`}>
+                            {canEdit
+                                ? <><PencilLine size={13} aria-hidden="true" />You can edit</>
+                                : <><Lock size={13} aria-hidden="true" />Read-only</>}
+                        </span>
+                    </p>
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
                     <ul className="lf-meta">
-                        <li>Submitted {app.submitted_at ? whenOf(app.submitted_at) : '—'}</li>
+                        {/* facts: a quiet label, then the value (DESIGN.md 11.10) */}
+                        <li>
+                            <CalendarDays size={15} aria-hidden="true" /><span className="k">Submitted</span>
+                            {app.submitted_at
+                                ? <time className="v" dateTime={app.submitted_at} title={fullWhen(app.submitted_at)}>{formatDay(app.submitted_at)}</time>
+                                : <span className="v">—</span>}
+                        </li>
                         {ciRequest && (
-                            <li><Term k="CI" /> requested {whenOf(ciRequest.requested_at)} by {names[ciRequest.requested_by] ?? 'Account Officer'}</li>
+                            <li>
+                                <Send size={15} aria-hidden="true" />
+                                <span className="k"><Term k="CI" /> requested</span>
+                                <Byline layout="inline" name={names[ciRequest.requested_by]} fallback="Account Officer" at={ciRequest.requested_at} />
+                            </li>
                         )}
                     </ul>
                 </div>
                 <div className="lf-actions">
+                    <button type="button" className="lf-btn" onClick={openHistory}>
+                        <History size={16} aria-hidden="true" />History
+                        {audit.length > 0 && (
+                            <>
+                                <span className="lf-btn-n" aria-hidden="true">{audit.length}</span>
+                                <span className="sr-only"> ({audit.length} {audit.length === 1 ? 'change' : 'changes'})</span>
+                            </>
+                        )}
+                    </button>
                     <MessagesPanel applicationId={app.id} inline />
                     {/* The assigned AO reaches the document check from step 1 below */}
                     {!canEdit && (
@@ -210,112 +287,181 @@ const LoanFolderPage = () => {
                     {!isAo && decisionLink}
                     {!isAo && packageLink}
                 </div>
-            </div>
-
-            {canEdit ? (
-                <AoSteps
-                    appId={app.id}
-                    docProgress={docProgress}
-                    verifiedCount={verifiedCount}
-                    sectionCount={sections.length}
-                    ciRequest={ciRequest}
-                    openStep={currentKey === REQUEST_CI ? 'ci' : section ? 'kyc' : null}
-                    onOpenKyc={openKyc}
-                    onOpenCi={() => open(REQUEST_CI)} />
-            ) : (
-            <div className="lf-progress">
-                <div className="lf-progress-top">
-                    <span><Term k="KYC" /> verification</span>
-                    <span><b>{verifiedCount}</b> of {sections.length} sections verified</span>
-                </div>
-                <div className="lf-meter" role="img" aria-label={`${progressPct}% of sections verified`}>
-                    <span style={{ width: `${progressPct}%` }} />
-                </div>
-            </div>
+            </header>
+            {!canEdit && (
+                <p className="lf-note">
+                    <Lock size={16} aria-hidden="true" />
+                    <span>
+                        Read-only. Only the assigned Account Officer can edit, while the application is in Intake or Credit Investigation.
+                        {isAo && ' Assign yourself in the work tray to edit.'}
+                    </span>
+                </p>
             )}
+        </>
+    );
 
+    // Dashboard row: the AO's steps, or (read-only) the KYC ring and two tiles
+    const dashboard = canEdit ? (
+        <section className="lf-card lf-stepcard" aria-label="Your steps">
+            <AoSteps
+                appId={app.id}
+                docProgress={docProgress}
+                verifiedCount={verifiedCount}
+                sectionCount={sections.length}
+                ciRequest={ciRequest}
+                openStep={currentKey === REQUEST_CI ? 'ci' : section ? 'kyc' : null}
+                onOpenKyc={openKyc}
+                onOpenCi={() => open(REQUEST_CI)} />
             {isAo && (
                 <OptionalView who="Account Officers">
                     {decisionLink}
                     {packageLink}
                 </OptionalView>
             )}
-
-            {!canEdit && (
-                <p className="lf-note">
-                    <Lock size={16} aria-hidden="true" />
-                    <span>
-                        Read-only. Only the assigned Account Officer can edit, while the application is in Intake or Credit Investigation.
-                        {role === 'ACCOUNT_OFFICER' && ' Assign yourself in the work tray to edit.'}
+        </section>
+    ) : (
+        <>
+            <section className="lf-dash" aria-label="Overview">
+                <KycProgress counts={counts} filter={kycFilter} onFilter={filterBoard} />
+                <div className={`lf-tile${ciRequest ? ' done' : ''}`}>
+                    <span className="ic"><Send size={18} aria-hidden="true" /></span>
+                    <span className="lbl">Credit investigation</span>
+                    <span className="val">{ciRequest ? 'Requested' : 'Not requested'}</span>
+                    <span className="sub">
+                        {ciRequest
+                            ? <time dateTime={ciRequest.requested_at} title={fullWhen(ciRequest.requested_at)}>{formatWhen(ciRequest.requested_at)}</time>
+                            : 'Sent by the Account Officer after KYC'}
                     </span>
-                </p>
+                </div>
+                <button type="button" className="lf-tile action" onClick={openHistory}>
+                    <span className="ic"><History size={18} aria-hidden="true" /></span>
+                    <span className="lbl">Change history</span>
+                    <span className="val">{audit.length}</span>
+                    <span className="sub">
+                        {audit.length === 1 ? 'change' : 'changes'} since submission
+                        <ArrowRight size={14} className="go" aria-hidden="true" />
+                    </span>
+                </button>
+            </section>
+            {isAo && (
+                <OptionalView who="Account Officers">
+                    {decisionLink}
+                    {packageLink}
+                </OptionalView>
             )}
-        </header>
         </>
     );
 
     const overview = (
         <>
-            <section className="lf-card" aria-label="KYC verification by section">
-                <div className="lf-cardhead">
-                    <h2><Term k="KYC" /> verification</h2>
-                    <span>{verifiedCount} of {sections.length} verified</span>
-                </div>
-                <ul className="lf-kyc">
-                    {sections.map((s) => {
-                        const check = latestCheck(s.key);
-                        return (
-                            <li key={s.key} id={canEdit ? undefined : `kyc-${s.key}`} className={`lf-kyc-item ${check ? TONES[check.result] : 'none'}`}>
-                                <div className="lf-kyc-top">
-                                    <b>{s.title}<CommentButton topic={`kyc-${s.key}`} /></b>
-                                    <CheckChip check={check} />
-                                </div>
-                                <CheckSummary check={check} names={names} />
-                                {askFor(s, check)}
-                            </li>
-                        );
-                    })}
-                </ul>
-            </section>
-            <ApplicationSummary app={app} onViewDocument={handleViewDocument} />
+            <KycBoard
+                sections={sections} latestCheck={latestCheck} names={names} counts={counts}
+                filter={kycFilter} onFilter={setKycFilter} canEdit={canEdit} onOpen={open} askFor={askFor} />
+            <ApplicationDetails app={app} onViewDocument={handleViewDocument} />
             {/* Collapsed until opened: the history gets long and pushes everything else down */}
-            <details className="lf-card lf-history">
+            <details ref={historyRef} id="lf-history" className="lf-card lf-history">
                 <summary>
+                    <span className="lf-history-ic"><History size={18} aria-hidden="true" /></span>
                     <h2>Change history</h2>
                     <span className="lf-history-count">{audit.length} {audit.length === 1 ? 'entry' : 'entries'}</span>
                     <ChevronDown size={18} className="lf-history-chevron" aria-hidden="true" />
                 </summary>
-                <ChangeHistory app={app} entries={audit} names={names} />
+                <div className="lf-history-body">
+                    <ChangeHistory app={app} entries={audit} names={names} tools />
+                </div>
             </details>
         </>
     );
 
+    // Notices and document requests, shown when they apply. Send notice is still Tailwind, so it sits on light paper;
+    // the document request panel (requestPanel.jsx) is in the staff look and follows dark mode
+    const panels = (reloadKey) => (
+        <div className="lf-panels">
+            <div className="lf-paper"><SendNoticePanel applicationId={app.id} /></div>
+            {/* New KYC checks change the suggestions */}
+            <RequestPanel applicationId={app.id} reloadKey={reloadKey} />
+        </div>
+    );
+
     if (!canEdit) {
         return (
-            <div className="lf">
+            <div className="lf lf-folder">
                 {header}
-                <SendNoticePanel applicationId={app.id} />
-                <RequestPanel applicationId={app.id} />
-                {error && <p className="lf-err">{error}</p>}
+                {dashboard}
+                {panels(undefined)}
+                {error && <p className="lf-err" role="alert">{error}</p>}
                 <div className="lf-body"><div className="lf-main">{overview}</div></div>
             </div>
         );
     }
 
     const Component = section?.Component;
+    const at = section ? sections.indexOf(section) : -1;
+    const prev = sections[at - 1];
+    const next = sections[at + 1];
 
-    const statusIcon = (check) => {
-        if (check?.result === 'VERIFIED') return <CheckCircle2 size={18} className="lf-ico ok" aria-hidden="true" />;
-        if (check) return <AlertTriangle size={18} className="lf-ico warn" aria-hidden="true" />;
-        return <Circle size={18} className="lf-ico none" aria-hidden="true" />;
-    };
+    const sectionView = section && (
+        <div className="lf-secview" key={section.key}>
+            <header className="lf-card lf-sechead">
+                <div className="lf-sechead-main">
+                    <p className="lf-eyebrow">
+                        <StatusIcon status={statusOf(latestCheck(section.key))} size={15} />
+                        Section {at + 1} of {sections.length}
+                        {!section.complete && <span className="lf-tag">Incomplete</span>}
+                    </p>
+                    <h2>{section.title}</h2>
+                </div>
+                <div className="lf-pager">
+                    <button type="button" className="lf-iconbtn prev" disabled={!prev} onClick={() => prev && open(prev.key)}
+                        aria-label={prev ? `Previous section: ${prev.title}` : 'Previous section'} title={prev?.title}>
+                        <ChevronLeft size={18} aria-hidden="true" />
+                    </button>
+                    <button type="button" className="lf-iconbtn next" onClick={() => open(next?.key ?? REQUEST_CI)}
+                        aria-label={next ? `Next section: ${next.title}` : 'Next: Request CI'} title={next?.title ?? tt('Request CI (NFIS & TU)')}>
+                        <span className="txt">{next ? 'Next' : 'Request CI'}</span>
+                        <ChevronRight size={18} aria-hidden="true" />
+                    </button>
+                </div>
+            </header>
+            <div className="lf-secgrid">
+                <aside className="lf-rail" aria-label="KYC check">
+                    <KycCheckPanel
+                        key={`check-${section.key}`}
+                        applicationId={app.id}
+                        section={section.key}
+                        complete={section.complete}
+                        latest={latestCheck(section.key)}
+                        names={names}
+                        extra={askFor(section, latestCheck(section.key))}
+                        onRecorded={handleRecorded} />
+                </aside>
+                <div className="lf-card lf-formcard lf-paper">
+                    <p className="lf-formcard-head">
+                        <PencilLine size={15} aria-hidden="true" />
+                        <span>The applicant&apos;s answers. Correct anything the documents show differently, then record the check.</span>
+                    </p>
+                    {saved && <p className="lf-ok-note" role="status">Changes saved.</p>}
+                    <Component
+                        key={section.key}
+                        {...section.props}
+                        app={app}
+                        session={session}
+                        profile={null}
+                        complete={section.complete}
+                        onSaved={handleSaved}
+                        onRefresh={refresh}
+                        onBack={null}
+                    />
+                </div>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="lf">
+        <div className="lf lf-folder">
             {header}
-            <SendNoticePanel applicationId={app.id} />
-            {/* New KYC checks change the suggestions */}
-            <RequestPanel applicationId={app.id} reloadKey={checks} />
+            {dashboard}
+            {panels(checks)}
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav" aria-label="Loan folder sections">
                     <ol>
@@ -325,25 +471,30 @@ const LoanFolderPage = () => {
                                 <span className="label">Overview & history</span>
                             </button>
                         </li>
-                        <li className="lf-nav-grp">1 · Documents</li>
+                        <li className="lf-nav-grp"><span className="n" aria-hidden="true">1</span>Documents</li>
                         <li>
                             <Link to={`/documentCheckPage?id=${app.id}`}>
                                 <ScanText size={18} aria-hidden="true" />
                                 <span className="label">Document check (AI)</span>
                                 {docProgress?.total > 0 && (
-                                    <span className={`lf-chip ${docProgress.confirmed === docProgress.total ? 'ok' : 'none'}`}>
-                                        {docProgress.confirmed}/{docProgress.total}
+                                    <span className={`lf-nav-cnt${docProgress.confirmed === docProgress.total ? ' all' : ''}`}>
+                                        {docProgress.confirmed}/{docProgress.total}<span className="sr-only"> confirmed</span>
                                     </span>
                                 )}
                             </Link>
                         </li>
-                        <li className="lf-nav-grp">2 · <Term k="KYC" /> verification</li>
+                        <li className="lf-nav-grp">
+                            <span className="n" aria-hidden="true">2</span><Term k="KYC" /> verification
+                            <span className={`lf-nav-cnt${verifiedCount === sections.length ? ' all' : ''}`}>
+                                {verifiedCount}/{sections.length}<span className="sr-only"> verified</span>
+                            </span>
+                        </li>
                         {sections.map((s) => {
                             const check = latestCheck(s.key);
                             return (
                                 <li key={s.key}>
                                     <button type="button" onClick={() => open(s.key)} aria-current={s.key === section?.key}>
-                                        {statusIcon(check)}
+                                        <StatusIcon status={statusOf(check)} />
                                         <span className="label">
                                             {s.title}
                                             <span className="sr-only">: {check ? RESULT_LABELS[check.result] : 'not checked'}</span>
@@ -353,7 +504,7 @@ const LoanFolderPage = () => {
                                 </li>
                             );
                         })}
-                        <li className="lf-nav-grp">3 · Credit investigation</li>
+                        <li className="lf-nav-grp"><span className="n" aria-hidden="true">3</span>Credit investigation</li>
                         <li>
                             <button type="button" title={tt('Request CI (NFIS & TU)')} onClick={() => open(REQUEST_CI)} aria-current={currentKey === REQUEST_CI}>
                                 <Send size={18} aria-hidden="true" />
@@ -365,40 +516,19 @@ const LoanFolderPage = () => {
                 </nav>
 
                 <main className="lf-main">
-                    {error && <p className="lf-err">{error}</p>}
+                    {error && <p className="lf-err" role="alert">{error}</p>}
                     {currentKey === REQUEST_CI ? (
-                        <RequestCiPanel
-                            app={app}
-                            ciRequest={ciRequest}
-                            requesterName={names[ciRequest?.requested_by]}
-                            verifiedCount={verifiedCount}
-                            sectionCount={sections.length}
-                            onRequested={handleCiRequested} />
-                    ) : !section ? overview : (
-                        <>
-                            <h2>{section.title}</h2>
-                            <KycCheckPanel
-                                key={`check-${section.key}`}
-                                applicationId={app.id}
-                                section={section.key}
-                                complete={section.complete}
-                                latest={latestCheck(section.key)}
-                                names={names}
-                                extra={askFor(section, latestCheck(section.key))}
-                                onRecorded={handleRecorded} />
-                            {saved && <p className="lf-ok-note" role="status">Changes saved.</p>}
-                            <Component
-                                key={section.key}
-                                {...section.props}
+                        <div className="lf-secview lf-ciview" key="ci">
+                            <RequestCiPanel
                                 app={app}
-                                session={session}
-                                profile={null}
-                                complete={section.complete}
-                                onSaved={handleSaved}
-                                onRefresh={refresh}
-                                onBack={null}
-                            />
-                        </>
+                                ciRequest={ciRequest}
+                                requesterName={names[ciRequest?.requested_by]}
+                                verifiedCount={verifiedCount}
+                                sectionCount={sections.length}
+                                onRequested={handleCiRequested} />
+                        </div>
+                    ) : section ? sectionView : (
+                        <div className="lf-secview" key="overview">{overview}</div>
                     )}
                 </main>
             </div>

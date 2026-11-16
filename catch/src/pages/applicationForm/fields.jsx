@@ -1,5 +1,8 @@
-// Inputs for the application form. Look and feel come from the .ct rules in applicant.css.
+// Inputs for the application form (the applicant's wizard and the staff loan folder). Look and feel come from the .ct
+// rules in theme.css / applicantTheme.css. Dropdowns are SelectMenu (components/selectMenu.jsx), an animated listbox, not
+// a native <select>. Every Section uses the same four-column field grid, so all the steps look alike.
 import { useState } from 'react';
+import SelectMenu from '../../components/selectMenu';
 import {
     ADDRESS_FIELDS, EMPLOYMENT_FIELDS, EMPLOYMENT_KEYS, EMPLOYMENT_TYPES, formatMoney, HOME_OWNERSHIP, PARTY_FIELDS,
     parseMoney, PERSON_FIELDS,
@@ -33,20 +36,20 @@ export const Field = ({ name, label, value, onChange, error, required, type = 't
         );
     }
 
+    // Ids can't hold spaces (RowList names fields after its title): aria-labelledby takes a space-separated list
+    const id = String(name).replace(/s+/g, '_');
     // Ties the error text to its input so screen readers announce it with the field
-    const describedBy = [hint && `${name}-hint`, error && `${name}-error`].filter(Boolean).join(' ');
+    const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ');
     const aria = { ...(error ? { 'aria-invalid': true } : {}), ...(describedBy ? { 'aria-describedby': describedBy } : {}) };
     return (
         <div className="ct-field">
-            <label htmlFor={name} title={title}>
-                {label}{required && <span className="text-red-600"> *</span>}
+            <label htmlFor={options ? id : name} id={`${id}-label`} title={title}>
+                {/* a no-break space keeps the * on the label's last line */}
+                {label}{required && <span className="text-red-600">{' '}*</span>}
             </label>
             {options ? (
-                <select id={name} value={value ?? ''} disabled={disabled} {...aria}
-                    onChange={(e) => onChange(name, e.target.value)}>
-                    <option value="">Select one</option>
-                    {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <SelectMenu id={id} labelId={`${id}-label`} value={value} options={options} disabled={disabled} {...aria}
+                    onChange={(v) => onChange(name, v)} />
             ) : type === 'money' ? (
                 <MoneyInput id={name} value={value} placeholder={placeholder} disabled={disabled} {...aria}
                     onChange={(v) => onChange(name, v)} />
@@ -55,8 +58,8 @@ export const Field = ({ name, label, value, onChange, error, required, type = 't
                     placeholder={placeholder} disabled={disabled} step={type === 'number' ? 'any' : undefined} {...aria}
                     onChange={(e) => onChange(name, e.target.value)} />
             )}
-            {hint && <p id={`${name}-hint`} className="ct-hint">{hint}</p>}
-            {error && <p id={`${name}-error`} className="ct-fielderr">{error}</p>}
+            {hint && <p id={`${id}-hint`} className="ct-hint">{hint}</p>}
+            {error && <p id={`${id}-error`} className="ct-fielderr">{error}</p>}
         </div>
     );
 };
@@ -72,8 +75,9 @@ export const FieldGroup = ({ config, fields, values, errors = {}, required = [],
     </>
 );
 
+// Every section is the same panel with the same four-column field grid (ct-cols-4), whatever the step
 export const Section = ({ title, children, className = '', id }) => (
-    <fieldset id={id} className={`ct-section ${className}`.trim()}>
+    <fieldset id={id} className={`ct-section ct-cols-4 ${className.replace('ct-cols-4', '')}`.trim()}>
         {/* Terms: acronym hovers, staff only (plain text for applicants). */}
         {/* CommentButton renders nothing unless a staff member is on a loan-file page with a Messages drawer */}
         <legend><Terms text={title} /><CommentButton topic={id} /></legend>
@@ -167,17 +171,17 @@ export const RowList = ({ title, config, rows, errors = [], onChange, emptyRow }
     const update = (i, field, value) => onChange(rows.map((r, j) => (j === i ? { ...r, [field]: value } : r)));
     return (
         <Section title={title}>
-            {rows.length === 0 && <p className="italic">Nothing added yet.</p>}
+            {rows.length === 0 && <p className="ct-none">Nothing added yet.</p>}
             {rows.map((row, i) => (
                 <div key={i} className="ct-row">
                     <FieldGroup config={config} fields={Object.keys(config)} required={Object.keys(config).filter((f) => config[f].type !== 'checkbox')}
                         values={row} errors={errors[i]} onChange={(f, v) => update(i, f, v)} prefix={`${title}-${i}-`} />
-                    <button type="button" style={{ marginTop: '0.75rem' }} onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+                    <button type="button" className="ct-row-remove" onClick={() => onChange(rows.filter((_, j) => j !== i))}>
                         Remove
                     </button>
                 </div>
             ))}
-            <button type="button" style={{ marginTop: '0.75rem' }} onClick={() => onChange([...rows, { ...emptyRow }])}>
+            <button type="button" className="ct-row-add" onClick={() => onChange([...rows, { ...emptyRow }])}>
                 + Add
             </button>
         </Section>
@@ -195,13 +199,13 @@ export const StepButtons = ({ onBack, saving, nextLabel = 'Save and continue', d
 
 export const FormError = ({ error }) => (error ? <p className="ct-error" role="alert">{error}</p> : null);
 
-// value: true | false | null (not answered yet)
+// value: true | false | null (not answered yet). Two choice pills (native radios inside, so arrows and Space work)
 export const YesNo = ({ name, value, onChange }) => (
-    <div className="py-2">
-        <label className="pr-4">
+    <div className="ct-yesno">
+        <label className="ct-yesno-opt">
             <input type="radio" name={name} checked={value === true} onChange={() => onChange(true)} /> Yes
         </label>
-        <label>
+        <label className="ct-yesno-opt">
             <input type="radio" name={name} checked={value === false} onChange={() => onChange(false)} /> No
         </label>
     </div>

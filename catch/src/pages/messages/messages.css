@@ -1,0 +1,144 @@
+/* Messages drawer (messagesPanel.jsx), DESIGN.md "Messages". A floating glass sheet on the right, below the top bar,
+   so the bell stays reachable. Chat bubbles: yours on the right in blue, others on the left with an avatar. Unread is
+   an orange "New" divider (it waits on you); a mention of you is orange, of someone else blue. Own tokens, light and
+   dark, because the drawer sits over every staff page, converted or not. Unlayered, so it wins over the theme's
+   component-layer button / textarea rules. */
+.msg-drawer {
+  --m-bg: rgba(250, 252, 255, 0.97); --m-rim: rgba(255, 255, 255, 0.9); --m-line: rgba(20, 41, 95, 0.08);
+  --m-ink: #0f1b33; --m-muted: #475569; --m-navy: #14295f; --m-accent: #1e3f97; --m-accent-bg: rgba(30, 63, 151, 0.1);
+  --m-bubble: #fff; --m-bubble-line: rgba(20, 41, 95, 0.1); --m-mine: #e8eefc; --m-mine-line: rgba(30, 63, 151, 0.2);
+  --m-control: #fff; --m-control-line: #8b97ab; --m-wash: rgba(20, 41, 95, 0.05);
+  --m-orange: #c2410c; --m-orange-bg: #fff1e6; --m-ok: #15714a; --m-ok-bg: #e6f5ed;
+  --m-shadow: 0 30px 60px -24px rgba(20, 41, 95, 0.5), 0 2px 6px rgba(20, 41, 95, 0.08);
+
+  position: fixed; z-index: 40; right: 0.75rem; bottom: 0.75rem;
+  top: calc(var(--ct-head, 0rem) + var(--ct-gap, 0rem) + 0.75rem);
+  display: flex; flex-direction: column; width: min(28rem, calc(100vw - 1.5rem));
+  border: 1px solid var(--m-rim); border-radius: 22px; background: var(--m-bg); box-shadow: var(--m-shadow);
+  -webkit-backdrop-filter: saturate(1.4) blur(18px); backdrop-filter: saturate(1.4) blur(18px);
+  color: var(--m-ink); font-size: 1rem; text-align: left; overflow: hidden;
+}
+@media (max-width: 960px) { .msg-drawer { top: 0.75rem; } }
+
+/* header */
+.msg-head { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 0.9rem 0.9rem 1.15rem; border-bottom: 1px solid var(--m-line); }
+.msg-ic { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: 12px; background: var(--m-accent-bg); color: var(--m-accent); }
+.msg-title { flex: 1; min-width: 0; }
+.msg-title h2 { margin: 0; color: var(--m-navy); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; }
+.msg-title p { margin: 0; color: var(--m-muted); font-size: 0.8rem; }
+.ct .msg-close, .ct .msg-x {
+  display: inline-grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; min-height: 0; margin: 0; padding: 0;
+  border: 1px solid var(--m-bubble-line); border-radius: 999px; background: var(--m-control); box-shadow: none; color: var(--m-navy); cursor: pointer;
+}
+.ct .msg-close:hover, .ct .msg-x:hover { background: var(--m-wash); color: var(--m-navy); }
+
+/* the thread */
+.msg-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1rem 1rem 0.5rem; }
+.msg-list:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.3); outline-offset: -3px; }
+.msg-more { margin: 0 0 0.75rem; text-align: center; }
+.ct .msg-pill {
+  min-height: 2.25rem; margin: 0; padding: 0.25rem 1rem; border: 1px solid var(--m-bubble-line); border-radius: 999px;
+  background: var(--m-control); box-shadow: none; color: var(--m-accent); font: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer;
+}
+.ct .msg-pill:hover { background: var(--m-accent-bg); color: var(--m-accent); }
+.msg-empty { display: grid; justify-items: center; gap: 0.35rem; padding: 2.5rem 1rem; color: var(--m-muted); font-size: 0.9rem; text-align: center; }
+.msg-empty p { margin: 0; }
+.msg-empty-title { color: var(--m-navy); font-weight: 700; }
+.msg-items { display: grid; gap: 0.85rem; margin: 0; padding: 0; list-style: none; }
+.msg-item { margin: 0; }
+.msg-row { display: flex; align-items: flex-end; gap: 0.5rem; }
+.msg-item.mine .msg-row { justify-content: flex-end; }
+.msg-av {
+  display: inline-grid; place-items: center; flex: none; width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.02em;
+}
+.msg-av.small { width: 1.6rem; height: 1.6rem; font-size: 0.58rem; }
+.msg-bubble {
+  display: grid; gap: 0.3rem; max-width: min(21rem, 85%); padding: 0.6rem 0.8rem 0.5rem; border: 1px solid var(--m-bubble-line);
+  border-radius: 16px 16px 16px 6px; background: var(--m-bubble); box-shadow: 0 4px 12px -10px rgba(20, 41, 95, 0.5);
+}
+.msg-item.mine .msg-bubble { border-color: var(--m-mine-line); border-radius: 16px 16px 6px 16px; background: var(--m-mine); }
+.msg-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.45rem; margin: 0; font-size: 0.78rem; }
+.msg-meta b { color: var(--m-ink); font-size: 0.86rem; font-weight: 700; }
+.msg-role, .msg-stage { color: var(--m-muted); white-space: nowrap; }
+.msg-stage::before { content: '·'; margin-right: 0.45rem; }
+.msg-body { margin: 0; color: var(--m-ink); font-size: 0.92rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-mention { padding: 0 0.25rem; border-radius: 5px; background: var(--m-accent-bg); color: var(--m-accent); font-weight: 700; }
+.msg-mention.me { background: var(--m-orange-bg); color: var(--m-orange); }
+.msg-time { justify-self: end; color: var(--m-muted); font-size: 0.74rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ct .msg-topic-link {
+  display: inline-flex; align-items: center; justify-self: start; gap: 0.3rem; max-width: 100%; min-height: 0; margin: 0.1rem 0; padding: 0.15rem 0.6rem;
+  border: 1px solid var(--m-mine-line); border-radius: 999px; background: var(--m-control); box-shadow: none;
+  color: var(--m-accent); font: inherit; font-size: 0.78rem; font-weight: 700; text-align: left; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ct .msg-topic-link:hover { background: var(--m-accent-bg); color: var(--m-accent); }
+/* unread starts here */
+.msg-new { display: flex; align-items: center; gap: 0.6rem; margin: 0.25rem 0 0.75rem; color: var(--m-orange); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.msg-new::before, .msg-new::after { content: ''; flex: 1; height: 1px; background: currentColor; opacity: 0.35; }
+.msg-new span { padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--m-orange-bg); }
+
+/* composer */
+.msg-compose { display: grid; gap: 0.45rem; padding: 0.85rem 1rem 1rem; border-top: 1px solid var(--m-line); background: var(--m-wash); }
+.msg-label { margin: 0; color: var(--m-ink); font-size: 0.86rem; font-weight: 700; }
+.msg-err { margin: 0; color: #b42318; font-size: 0.88rem; font-weight: 600; }
+.msg-topic { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
+.msg-topic-chip {
+  min-width: 0; padding: 0.2rem 0.7rem; border-radius: 999px; background: var(--m-accent-bg); color: var(--m-accent);
+  font-size: 0.8rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ct .msg-x { width: 2rem; height: 2rem; }
+.msg-field { position: relative; }
+.ct .msg-input {
+  display: block; width: 100%; min-height: 5.25rem; margin: 0; padding: 0.6rem 0.8rem; border: 1px solid var(--m-control-line); border-radius: 14px;
+  background: var(--m-control); color: var(--m-ink); font: inherit; font-size: 0.95rem; resize: vertical;
+}
+.ct .msg-input::placeholder { color: var(--m-muted); opacity: 0.8; }
+.ct .msg-input:focus-visible { outline: none; border-color: var(--m-accent); box-shadow: 0 0 0 3px rgba(30, 63, 151, 0.22); }
+.msg-mentions {
+  position: absolute; z-index: 10; left: 0; right: 0; bottom: calc(100% + 0.35rem); max-height: 16rem; overflow-y: auto; margin: 0; padding: 0.35rem;
+  border: 1px solid var(--m-bubble-line); border-radius: 14px; background: var(--m-control); list-style: none;
+  box-shadow: 0 20px 44px -18px rgba(20, 41, 95, 0.5); transform-origin: bottom center;
+}
+.msg-mentions li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.5rem; margin: 0; padding: 0.45rem 0.6rem; border-radius: 10px; font-size: 0.9rem; cursor: pointer; }
+.msg-mentions li.hi { background: var(--m-accent-bg); }
+.msg-mention-name { color: var(--m-ink); font-weight: 700; }
+.msg-onfile { padding: 0 0.45rem; border-radius: 999px; background: var(--m-ok-bg); color: var(--m-ok); font-size: 0.72rem; font-weight: 700; }
+.msg-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.msg-hint { display: grid; gap: 0.05rem; min-width: 0; color: var(--m-muted); font-size: 0.74rem; line-height: 1.35; }
+.msg-countnum { font-variant-numeric: tabular-nums; font-weight: 600; }
+.ct .msg-send {
+  display: inline-flex; align-items: center; gap: 0.45rem; flex: none; min-height: 2.75rem; margin: 0; padding: 0.45rem 1.2rem; border: 0; border-radius: 999px;
+  background: linear-gradient(135deg, #14295f 0%, #1e3f97 62%, #2b52c4 100%); box-shadow: 0 10px 20px -12px rgba(20, 41, 95, 0.8);
+  color: #fff; font: inherit; font-size: 0.92rem; font-weight: 700; cursor: pointer;
+}
+.ct .msg-send:hover:not(:disabled) { color: #fff; filter: brightness(1.12); }
+.ct .msg-send:disabled { opacity: 0.5; cursor: not-allowed; }
+.ct .msg-send::after { content: none; display: none; }
+.msg-readonly { display: flex; align-items: center; gap: 0.45rem; margin: 0; color: var(--m-muted); font-size: 0.88rem; }
+.ct :is(.msg-close, .msg-x, .msg-pill, .msg-topic-link, .msg-send):focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+
+/* motion: the sheet slides in; new messages fade up; the @ list pops */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes msg-in { from { opacity: 0; transform: translateX(24px); } }
+  @keyframes msg-up { from { opacity: 0; transform: translateY(6px); } }
+  @keyframes msg-pop { from { opacity: 0; transform: translateY(6px) scale(0.97); } }
+  .msg-drawer { animation: msg-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .msg-item { animation: msg-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .msg-mentions { animation: msg-pop 0.16s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ct :is(.msg-close, .msg-x, .msg-pill, .msg-topic-link, .msg-send), .msg-mentions li { transition: background-color 0.15s, color 0.15s, filter 0.15s; }
+}
+
+/* dark mode (the frame sets data-theme on .ct-e-app, which now hosts the drawer) */
+[data-theme='dark'] .msg-drawer {
+  --m-bg: rgba(16, 26, 56, 0.96); --m-rim: rgba(255, 255, 255, 0.1); --m-line: rgba(255, 255, 255, 0.08);
+  --m-ink: #e6ecff; --m-muted: #a3b0cc; --m-navy: #dbe5ff; --m-accent: #a9c0ff; --m-accent-bg: rgba(126, 162, 255, 0.16);
+  --m-bubble: rgba(255, 255, 255, 0.05); --m-bubble-line: rgba(255, 255, 255, 0.1); --m-mine: rgba(126, 162, 255, 0.18); --m-mine-line: rgba(126, 162, 255, 0.3);
+  --m-control: rgba(255, 255, 255, 0.06); --m-control-line: rgba(255, 255, 255, 0.2); --m-wash: rgba(255, 255, 255, 0.04);
+  --m-orange: #fdba74; --m-orange-bg: rgba(251, 146, 60, 0.16); --m-ok: #4ade80; --m-ok-bg: rgba(74, 222, 128, 0.12);
+  --m-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.85);
+  color-scheme: dark;
+}
+[data-theme='dark'] .msg-drawer .msg-mentions { background: #172246; }
+[data-theme='dark'] .msg-drawer .msg-err { color: #fca5a5; }
+[data-theme='dark'] .msg-drawer :is(.msg-close, .msg-x, .msg-pill, .msg-topic-link, .msg-send, .msg-list):focus-visible { outline-color: rgba(169, 192, 255, 0.7); }

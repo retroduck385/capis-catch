@@ -1,0 +1,223 @@
+/* Document check (documentCheckPage.jsx, documentViewer.jsx, extractionPanel.jsx). An .lf-folder page: the panel,
+   cards, pills, header, tabs, tokens and dark mode come from loanFolder.css (DESIGN.md sections 7 and 11); this file adds the
+   workspace (two panes that stick and fill the screen on desktop), the document list, the viewer, the extraction
+   panel, and two chip tones (info, err). Every colour is a --lf-* token, so dark mode follows. */
+.lf-doccheck { --dc-pane-h: calc(100vh - var(--ct-head, 0rem) - var(--ct-gap, 0rem) - 2rem); }
+
+/* chip tones the loan folder doesn't have: info (work in progress, Corrected) and err (a failed read, a wrong format:
+   errors use the form red, never a TAT colour) */
+.lf-doccheck .info { --tone: var(--lf-accent); --tone-bg: var(--lf-accent-bg); --tone-line: rgba(30, 63, 151, 0.28); }
+.lf-doccheck .err { --tone: #b42318; --tone-bg: #fdecea; --tone-line: #f5c2bd; }
+.lf-folder .dc-chip { gap: 0.3rem; }
+.lf-folder .dc-chip svg { flex: none; }
+
+/* header: the progress chip turns green once everything is confirmed */
+.lf-doccheck .lf-meta li b { color: var(--lf-accent); font-weight: 800; }
+.lf-folder .lf-meta li.dc-meta-done { background: var(--lf-ok-bg); border-color: var(--lf-ok-line); color: var(--lf-ok); }
+.lf-folder .lf-meta li.dc-meta-done svg, .lf-folder .lf-meta li.dc-meta-done b { color: var(--lf-ok); }
+
+/* next step: a green strip with an orange "go on" pill */
+.dc-next {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; margin: 0; padding: 0.85rem 1rem 0.85rem 1.1rem;
+  border-radius: 16px; background: var(--lf-ok-bg); border: 1px solid var(--lf-ok-line); color: var(--ink);
+}
+.dc-next > svg { flex: none; color: var(--lf-ok); }
+.dc-next p { flex: 1; min-width: 16rem; margin: 0; }
+.lf-folder .dc-next-go {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.75rem; padding: 0.45rem 1.2rem; border-radius: 999px;
+  background: var(--lf-orange); color: #fff; font-weight: 700; text-decoration: none; box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75);
+}
+.lf-folder .dc-next-go:hover { background: #9a3412; color: #fff; }
+
+/* borrowers: the loan folder's tabs, each with "confirmed / total" */
+.lf-folder .dc-people { gap: 0.35rem; margin: 0; flex-wrap: nowrap; overflow-x: auto; }
+.lf-folder .dc-people button { gap: 0.6rem; min-height: 3.25rem; padding: 0.5rem 1.1rem 0.55rem 0.8rem; white-space: nowrap; }
+/* a small person disc before each name; it fills blue on the open borrower */
+.dc-person { display: inline-grid; place-items: center; flex: none; width: 1.85rem; height: 1.85rem; border-radius: 50%; background: var(--lf-accent-bg); color: var(--lf-accent); }
+.lf-folder .dc-people button[aria-current='true'] .dc-person { background: var(--lf-blue-grad); color: #fff; box-shadow: 0 6px 12px -6px rgba(20, 41, 95, 0.6); }
+.dc-people .who { display: inline-flex; align-items: baseline; gap: 0.35rem; }
+.lf-folder .dc-people button[aria-current='true'] { color: var(--navy); }
+.lf-folder .dc-people button[aria-current='true']::after { transform: scaleX(1); }
+.dc-people .role { color: var(--muted); font-size: 0.86rem; font-weight: 500; }
+.lf-folder .dc-people b.all { background: var(--lf-ok-bg); color: var(--lf-ok); }
+
+/* ---------- workspace: document + viewer | extracted values ---------- */
+.dc-work { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; align-items: start; }
+.lf-folder .dc-pane { display: flex; flex-direction: column; gap: 1rem; min-width: 0; padding: 1.25rem 1.4rem 1.4rem; }
+.lf-folder .dc-pane > .lf-cardhead { margin: 0; }
+@media (min-width: 1101px) {
+  .lf-folder .dc-pane {
+    position: sticky; top: calc(var(--ct-head, 0rem) + var(--ct-gap, 0rem) + 1rem); height: var(--dc-pane-h); min-height: 34rem;
+  }
+  .lf-folder .dc-docs { overflow-y: auto; }  /* a long staff check can't push the viewer out of the card */
+}
+
+/* the document list: inset cards with a left stripe in the status tone; the open one is outlined blue */
+.dc-doclist { flex: none; display: grid; gap: 0.5rem; max-height: 15rem; margin: 0; padding: 0 0.2rem 0 0; overflow-y: auto; list-style: none; }
+.dc-doclist li { margin: 0; }
+.lf-folder .dc-doc {
+  display: grid; grid-template-columns: 1.25rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; width: 100%; min-height: 3.4rem;
+  margin: 0; padding: 0.7rem 0.85rem 0.7rem 1rem; border: 1px solid var(--lf-inset-rim); border-radius: 14px;
+  background: var(--lf-inset); box-shadow: inset 3px 0 0 var(--tone); color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.lf-folder .dc-doc:hover { background: var(--lf-inset-hover); color: var(--ink); }
+.lf-folder .dc-doc[aria-current='true'] { background: var(--lf-selected); border-color: var(--lf-accent); box-shadow: inset 3px 0 0 var(--tone), 0 0 0 1px var(--lf-accent); }
+.dc-doc .ic { color: var(--lf-accent); }
+.dc-doc .txt { display: grid; gap: 0.1rem; min-width: 0; line-height: 1.3; }
+.dc-doc .txt b { font-size: 0.92rem; font-weight: 700; }
+.dc-doc .file { overflow: hidden; color: var(--muted); font-size: 0.82rem; text-overflow: ellipsis; white-space: nowrap; }
+
+/* staff check of the file (fileMark.jsx, its own fileMark.css): a compact disclosure under the list */
+.dc-filemark { flex: none; }
+.dc-filemark:empty { display: none; }
+
+/* ---------- viewer ---------- */
+.dc-viewer-wrap { display: flex; flex: 1; min-height: 0; }
+.dc-viewer { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; min-height: 22rem; }
+.dc-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.dc-group { display: inline-flex; align-items: center; gap: 0.1rem; padding: 0.2rem; border-radius: 999px; background: var(--lf-wash); }
+.lf-folder .dc-tool {
+  display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; min-height: 0; padding: 0; border: 0; border-radius: 999px;
+  background: transparent; box-shadow: none; color: var(--navy);
+}
+.lf-folder .dc-tool:hover:not(:disabled) { background: var(--lf-control-hover); color: var(--navy); }
+.lf-folder .dc-tool:disabled { opacity: 0.4; }
+@media (pointer: coarse) { .lf-folder .dc-tool { width: 2.75rem; height: 2.75rem; } }
+.dc-zoom { min-width: 3.25rem; padding: 0 0.35rem; color: var(--lf-text-2); font-size: 0.85rem; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lf-folder .dc-open { margin-left: auto; min-height: 2.5rem; }
+.dc-stage { flex: 1; min-height: 18rem; overflow: auto; padding: 1rem; border: 1px solid var(--lf-hair); border-radius: 14px; background: var(--lf-wash); }
+.dc-page { position: relative; margin: 0 auto; }
+.dc-page :is(img, canvas) { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; box-shadow: 0 10px 24px -14px rgba(20, 41, 95, 0.45); }
+/* where the selected value was read: blue, like the ring on its field (a highlight, not a status) */
+.dc-box { position: absolute; border: 2px solid #2b52c4; border-radius: 4px; background: rgba(43, 82, 196, 0.16); pointer-events: none; }
+
+/* ---------- extracted information ---------- */
+.dc-fields-body { display: flex; flex: 1; min-height: 0; }
+.dc-x { display: flex; flex-direction: column; gap: 1rem; width: 100%; min-height: 0; }
+.dc-actionbar { flex: none; display: grid; gap: 0.7rem; padding-bottom: 1rem; border-bottom: 1px solid var(--lf-hair); }
+.dc-actionbar-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; }
+.dc-kind { flex: 1; min-width: 12rem; }
+.dc-kind-name { margin: 0 0 0.15rem; color: var(--navy); font-size: 1.05rem; font-weight: 700; }
+.dc-muted { margin: 0; color: var(--muted); font-size: 0.84rem; line-height: 1.45; }
+.dc-kind .dc-muted { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.4rem; }
+/* an extra after a byline is a small chip, not "· 5 values": a chip can wrap to the next line without a stray dot */
+.dc-count { padding: 0 0.5rem; border-radius: 999px; background: var(--lf-wash); color: var(--lf-text-2); font-size: 0.76rem; font-weight: 600; line-height: 1.4rem; white-space: nowrap; }
+.dc-strip-by { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-right: 0.3rem; }
+.dc-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.dc-strip { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0; padding: 0.6rem 0.85rem; border-radius: 12px; font-size: 0.9rem; }
+.dc-strip svg { flex: none; margin-top: 0.1rem; }
+.dc-strip.ok { background: var(--lf-ok-bg); border: 1px solid var(--lf-ok-line); color: var(--ink); }
+.dc-strip.ok svg { color: var(--lf-ok); }
+.dc-review { display: grid; gap: 0.45rem; padding: 0.85rem 1rem; border: 1px solid rgba(30, 63, 151, 0.2); border-radius: 14px; background: var(--lf-accent-bg); font-size: 0.92rem; }
+.dc-review p { margin: 0; }
+.dc-review ul { display: grid; gap: 0.2rem; margin: 0; padding-left: 1.15rem; list-style: disc; }  /* Tailwind removes list bullets */
+.dc-review-title { display: flex; align-items: center; gap: 0.4rem; color: var(--navy); font-weight: 700; }
+.dc-scroll { flex: 1; min-height: 0; display: grid; align-content: start; gap: 1.5rem; overflow-y: auto; overscroll-behavior: contain; padding-right: 0.25rem; }
+.dc-issues > div { min-width: 0; }
+.dc-issues p { margin: 0; font-weight: 700; }
+.dc-issues ul { margin: 0.25rem 0 0; padding-left: 1.1rem; font-weight: 500; list-style: disc; }
+.dc-h { margin: 0 0 0.75rem; color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.dc-sub { display: grid; gap: 0.7rem; padding: 1rem 1.1rem 1.1rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg); }
+.dc-sub .dc-h { margin: 0; }
+.dc-summary p { margin: 0; color: var(--ink); font-size: 0.9rem; }
+.dc-good { color: var(--lf-ok); }
+.dc-flag { color: var(--lf-warn); font-weight: 600; }
+.dc-small { margin: 0; font-size: 0.82rem; }
+.dc-legend { margin-top: -0.9rem; }
+
+/* one field: an inset card; the one shown on the document gets a blue ring */
+.dc-fieldlist { display: grid; gap: 0.75rem; }
+.dc-field { display: grid; gap: 0.5rem; padding: 0.9rem 1rem 1rem; border: 1px solid var(--lf-inset-rim); border-radius: 14px; background: var(--lf-inset); cursor: pointer; }
+.dc-field:hover { background: var(--lf-inset-hover); }
+.dc-field.on { border-color: var(--lf-accent); box-shadow: 0 0 0 1px var(--lf-accent); }
+.dc-field-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.45rem; }
+.dc-field-label { margin-right: 0.15rem; color: var(--ink); font-size: 0.92rem; font-weight: 700; }
+.dc-app { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; color: var(--ink); font-size: 0.9rem; }
+.dc-app span { color: var(--muted); font-weight: 500; }
+.dc-app span::after { content: ':'; }
+
+/* Keep / Update: two choice pills with drawn radios */
+.dc-pick { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.lf-folder .dc-pick label {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.5rem; margin: 0; padding: 0.3rem 1rem 0.3rem 0.75rem;
+  border: 1px solid rgba(20, 41, 95, 0.18); border-radius: 999px; background: var(--lf-control-hover); color: var(--ink);
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+.lf-folder .dc-pick input {
+  appearance: none; display: grid; place-items: center; flex: none; width: 1.1rem; height: 1.1rem; margin: 0;
+  border: 2px solid var(--lf-hollow); border-radius: 50%; background: transparent; cursor: pointer;
+}
+.lf-folder .dc-pick input:checked { border-color: var(--lf-accent); }
+.lf-folder .dc-pick input:checked::after { content: ''; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--lf-accent); }
+.lf-folder .dc-pick label:has(input:checked) { border-color: var(--lf-accent); background: var(--lf-accent-bg); color: var(--lf-accent); box-shadow: 0 0 0 1px var(--lf-accent); }
+.lf-folder .dc-pick label:has(input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+
+/* inputs: the folder's rounded boxes */
+.lf-folder .dc-input {
+  width: 100%; min-height: 2.75rem; margin: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--line-strong); border-radius: 12px;
+  background: var(--lf-control-hover); color: var(--ink); font: inherit; font-size: 0.95rem;
+}
+.lf-folder .dc-input:focus-visible { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(30, 63, 151, 0.22); }
+.lf-folder .dc-input[readonly] { background: var(--lf-wash); color: var(--lf-text-2); }
+.lf-folder .dc-input.compact { min-height: 2.25rem; padding: 0.3rem 0.5rem; border-radius: 8px; font-size: 0.88rem; }
+.lf-folder textarea.dc-input { min-height: 6rem; resize: vertical; }
+.lf-folder .dc-select .ct-select { margin-top: 0; }
+.lf-folder .dc-select .ct-select-btn { min-height: 2.75rem; border-radius: 12px; background: var(--lf-control-hover); color: var(--ink); }
+
+/* row tables (pay periods, months, accounts…): the folder's table frame */
+.dc-tablewrap { overflow-x: auto; border: 1px solid var(--lf-block-line); border-radius: 14px; background: var(--lf-block-bg); }
+.lf-folder .dc-tablewrap table { display: table; width: 100%; margin: 0; border: 0; border-collapse: collapse; background: transparent; font-size: 0.88rem; }
+.lf-folder .dc-tablewrap th {
+  padding: 0.6rem 0.6rem; border: 0; border-bottom: 1px solid var(--lf-block-line); background: var(--lf-block-head);
+  color: var(--lf-text-2); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-align: left; text-transform: uppercase; white-space: nowrap;
+}
+.lf-folder .dc-tablewrap td { min-width: 7rem; padding: 0.35rem 0.45rem; border: 0; border-top: 1px solid var(--lf-hair); background: transparent; color: var(--ink); vertical-align: middle; }
+.lf-folder .dc-tablewrap tbody tr:first-child td { border-top: 0; }
+.lf-folder .dc-tablewrap td.num { width: 2.5rem; min-width: 0; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.lf-folder .dc-tablewrap td.none { color: var(--muted); }
+.lf-folder .dc-tablewrap td.flag { background: var(--lf-warn-bg); }
+.lf-folder .dc-tablewrap td.on { background: var(--lf-accent-bg); }
+
+/* OCR / AI still working, or failed */
+.dc-wait { display: grid; justify-items: start; gap: 0.6rem; padding: 0.5rem 0; }
+.dc-wait-ic { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 14px; background: var(--tone-bg); color: var(--tone); }
+.dc-wait-title { margin: 0; color: var(--navy); font-size: 1.05rem; font-weight: 700; }
+.lf-folder .dc-empty { display: flex; align-items: center; gap: 0.75rem; }
+.lf-folder .dc-empty svg { flex: none; color: var(--lf-accent); }
+.lf-folder .dc-empty p { margin: 0; color: var(--lf-text-2); }
+
+/* ---------- smaller screens: panes stack, nothing sticks ---------- */
+@media (max-width: 1100px) {
+  .dc-work { grid-template-columns: minmax(0, 1fr); }
+  .dc-viewer-wrap { height: 75vh; flex: none; }
+  .dc-scroll { overflow: visible; }
+}
+
+/* ---------- motion (DESIGN.md 11.6) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes dc-spin { to { transform: rotate(360deg); } }
+  @keyframes dc-in { from { opacity: 0; transform: translateY(4px); } }
+  @keyframes dc-found { from { box-shadow: 0 0 0 0 rgba(43, 82, 196, 0.5); } to { box-shadow: 0 0 0 10px rgba(43, 82, 196, 0); } }
+  .dc-spin { animation: dc-spin 0.9s linear infinite; }
+  .dc-x, .dc-viewer, .dc-wait { animation: dc-in 0.3s var(--lf-ease) both; }
+  .dc-box { animation: dc-found 0.9s var(--lf-ease) 1; }
+  .lf-folder .dc-doc, .dc-field, .lf-folder .dc-pick label, .lf-folder .dc-tool, .lf-folder .dc-next-go {
+    transition: background-color 0.18s, border-color 0.18s, box-shadow 0.18s, transform 0.2s var(--lf-ease);
+  }
+  .lf-folder .dc-doc:hover { transform: translateX(2px); }
+  .lf-folder .dc-next-go:hover { transform: translateY(-1px); }
+}
+
+/* ---------- dark mode: tokens do most of it; these are the fixed values above ---------- */
+[data-theme='dark'] .lf-doccheck .info { --tone-line: rgba(126, 162, 255, 0.4); }
+[data-theme='dark'] .lf-doccheck .err { --tone: #fca5a5; --tone-bg: rgba(248, 113, 113, 0.14); --tone-line: rgba(248, 113, 113, 0.4); }
+[data-theme='dark'] .lf-doccheck .dc-box { border-color: #7ea2ff; background: rgba(126, 162, 255, 0.2); }
+[data-theme='dark'] .lf-doccheck .dc-review { border-color: rgba(126, 162, 255, 0.3); }
+[data-theme='dark'] .lf-doccheck .dc-pick label { border-color: rgba(255, 255, 255, 0.18); }
+[data-theme='dark'] .lf-doccheck .dc-input:focus-visible { box-shadow: 0 0 0 3px rgba(126, 162, 255, 0.3); }
+[data-theme='dark'] .lf-doccheck .dc-select .ct-select-btn { border-color: var(--line-strong); }
+[data-theme='dark'] .lf-doccheck .dc-select .ct-select ul[role='listbox'] { background: #172246; border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 20px 44px -18px rgba(0, 0, 0, 0.8); }
+[data-theme='dark'] .lf-doccheck .dc-select .ct-select li { color: var(--ink); }
+[data-theme='dark'] .lf-doccheck .dc-select .ct-select li.hi { background: rgba(126, 162, 255, 0.16); color: #dbe5ff; }
+[data-theme='dark'] .lf-doccheck .dc-select .ct-select li[aria-selected='true'] { color: #b9ccff; }
+[data-theme='dark'] .lf-doccheck .dc-select .ct-select li svg { color: #fdba74; }

@@ -6,9 +6,14 @@
 // checks the values and the AI's proposed result + summary, and confirms them into the CI results.
 // Once every document here is confirmed, a banner points at the next step: the loan folder's KYC verification (AO)
 // or the CI request's results + Mark CI Done (CI).
+// Look (DESIGN.md, "Document check"): an .lf-folder page (panel, glass cards, tokens, dark mode) with a header, the
+// borrowers as tabs, and a two-pane workspace (document + viewer | extracted values) that fills the screen on desktop.
+// Styles: documentCheck.css.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import {
+    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, Eye, FileText, Loader2, Lock, ScanText, ShieldCheck, UserRound,
+} from 'lucide-react';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
 import { joinAddress, presentAddressOf } from '../applicationForm/derived';
@@ -19,10 +24,13 @@ import { fetchDocumentChecks, fetchFieldDefs, RERUN_HINT, requestCiExtraction, r
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
+import Breadcrumbs from '../../components/breadcrumbs';
 import FileMark from '../documentRequests/fileMark';
 import { useFileMarks } from '../documentRequests/useFileMarks';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
+import '../loanFolder/loanFolder.css';
+import './documentCheck.css';
 
 const POLL_MS = 5000;
 const TYPE_ORDER = ['VALID_ID_PASSPORT', 'COE_ITR', 'PAYSLIPS_REMITTANCES', 'FS_BANK_STATEMENTS', 'CI_NFIS', 'CI_TU'];
@@ -30,18 +38,26 @@ const CI_LABELS = { CI_NFIS: 'NFIS result', CI_TU: 'TU credit report' };
 const docLabel = (type) => CI_LABELS[type] ?? REQUIREMENT_LABELS[type] ?? type;
 const BUSY = ['PENDING', 'RUNNING'];
 
-// Where a document is in OCR -> AI -> AO confirmation
+// Where a document is in OCR -> AI -> AO confirmation. tone: an .lf-chip tone (documentCheck.css adds info / err);
+// a failed read is an error (form red), "Ready to check" waits on the AO (amber), never a TAT colour
 const docStatus = (c) => {
     const run = c?.run;
-    if (run?.confirmed_at) return { key: 'CONFIRMED', label: 'Confirmed', tone: 'bg-green-100 text-green-800' };
-    if (run?.status === 'DONE') return { key: 'READY', label: 'Ready to check', tone: 'bg-amber-100 text-amber-800' };
-    if (run && BUSY.includes(run.status)) return { key: 'AI', label: 'AI extracting...', tone: 'bg-blue-100 text-blue-800' };
-    if (run?.status === 'FAILED') return { key: 'AI_FAILED', label: 'AI extraction failed', tone: 'bg-red-100 text-red-800' };
-    if (!c?.ocr || BUSY.includes(c.ocr.status)) return { key: 'OCR', label: 'Reading document...', tone: 'bg-blue-100 text-blue-800' };
-    if (c.ocr.status === 'FAILED') return { key: 'OCR_FAILED', label: 'Could not read file', tone: 'bg-red-100 text-red-800' };
-    return { key: 'WAITING', label: 'Waiting for AI', tone: 'bg-gray-100 text-gray-700' };
+    if (run?.confirmed_at) return { key: 'CONFIRMED', label: 'Confirmed', tone: 'ok', Icon: CheckCircle2 };
+    if (run?.status === 'DONE') return { key: 'READY', label: 'Ready to check', tone: 'warn', Icon: Eye };
+    if (run && BUSY.includes(run.status)) return { key: 'AI', label: 'AI extracting...', tone: 'info', Icon: Loader2, spin: true };
+    if (run?.status === 'FAILED') return { key: 'AI_FAILED', label: 'AI extraction failed', tone: 'err', Icon: AlertTriangle };
+    if (!c?.ocr || BUSY.includes(c.ocr.status)) return { key: 'OCR', label: 'Reading document...', tone: 'info', Icon: Loader2, spin: true };
+    if (c.ocr.status === 'FAILED') return { key: 'OCR_FAILED', label: 'Could not read file', tone: 'err', Icon: AlertTriangle };
+    return { key: 'WAITING', label: 'Waiting for AI', tone: 'none', Icon: Clock };
 };
 const stillWorking = (c) => ['OCR', 'AI', 'WAITING'].includes(docStatus(c).key);
+
+const StatusChip = ({ status }) => (
+    <span className={`lf-chip dc-chip ${status.tone}`}>
+        <status.Icon size={13} className={status.spin ? 'dc-spin' : undefined} aria-hidden="true" />
+        {status.label}
+    </span>
+);
 
 const nameOf = (party) => [party.first_name, party.last_name].filter(Boolean).join(' ') || partyLabel(party);
 
@@ -152,7 +168,13 @@ const DocumentCheckPage = () => {
     }, []);
 
     if (loading) return <DocumentCheckSkeleton />;
-    if (!app) return <p className="p-4 text-red-600">{error ?? 'Application not found.'}</p>;
+    if (!app) {
+        return (
+            <div className="lf lf-folder lf-doccheck">
+                <p className="lf-err" role="alert">{error ?? 'Application not found.'}</p>
+            </div>
+        );
+    }
 
     const selectedParty = parties.find((p) => p.docs.some((d) => d.id === docId))
         ?? parties.find((p) => p.party.id === partyId) ?? parties[0] ?? null;
@@ -172,8 +194,11 @@ const DocumentCheckPage = () => {
         label: `${ciCheckType} for ${nameOf(selectedParty.party)}`,
     } : null;
 
-    const allConfirmed = docIds.length > 0 && docIds.every((id) => checks[id]?.run?.confirmed_at);
-    const leaveEdits = () =>!dirtyRef.current || window.confirm('Discard your unsaved changes on this document?');
+    const isConfirmed = (id) => Boolean(checks[id]?.run?.confirmed_at);
+    const confirmedCount = docIds.filter(isConfirmed).length;
+    const allConfirmed = docIds.length > 0 && confirmedCount === docIds.length;
+    const leaveEdits = () => !dirtyRef.current || window.confirm('Discard your unsaved changes on this document?');
+    const guardLink = (e) => { if (!leaveEdits()) e.preventDefault(); };
     const openDoc = (id) => {
         if (id === doc?.id || !leaveEdits()) return;
         setDocId(id);
@@ -218,53 +243,60 @@ const DocumentCheckPage = () => {
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
     const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
-        ? { to: `/ciRequestPage?id=${app.id}&step=ai`, label: '← Back to CI request (OCR extraction list)' }
-        : { to: `/loanFolderPage?id=${app.id}`, label: '← Back to loan folder' };
+        ? { to: `/ciRequestPage?id=${app.id}&step=ai`, label: 'CI request' }
+        : { to: `/loanFolderPage?id=${app.id}`, label: 'Loan folder' };
 
     return (
-        <div className="min-h-screen lg:h-screen flex flex-col text-left">
-            <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b bg-white">
-                <Link to={backTo.to} className="border rounded px-3 py-1.5 text-sm"
-                    onClick={(e) => { if (!leaveEdits()) e.preventDefault(); }}>
-                    {backTo.label}
-                </Link>
-                <h2 className="text-xl font-semibold">{ciMode ? <><Term k="CI" /> report check</> : 'Document check'}</h2>
-                <span className="text-gray-600">Application {app.application_no}</span>
-                <span className="lg:ml-auto text-xs text-gray-600 max-w-md">
-                    <Terms text={ciMode
-                        ? 'The AI only proposes values and a draft result. Nothing is saved to the CI results until a Credit Investigator confirms. The application record is never changed here.'
-                        : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} />
-                </span>
+        <div className="lf lf-folder lf-doccheck">
+            <Breadcrumbs current={ciMode ? 'cidocs' : 'docs'} appId={app.id} appNo={app.application_no} onNavigate={guardLink} />
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <ScanText size={15} aria-hidden="true" />
+                        {ciMode ? <><Term k="CI" />&nbsp;report check</> : 'Document check (AI)'}
+                        <span className={`lf-mode ${canEdit ? 'edit' : 'read'}`}>
+                            {canEdit
+                                ? <><ShieldCheck size={13} aria-hidden="true" />You confirm</>
+                                : <><Lock size={13} aria-hidden="true" />Read-only</>}
+                        </span>
+                    </p>
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    {docIds.length > 0 && (
+                        <ul className="lf-meta">
+                            <li className={allConfirmed ? 'dc-meta-done' : undefined}>
+                                <CheckCircle2 size={15} aria-hidden="true" />
+                                <span><b>{confirmedCount}</b> of {docIds.length} {ciMode ? 'reports' : 'documents'} confirmed</span>
+                            </li>
+                        </ul>
+                    )}
+                </div>
+                <div className="lf-actions">
+                    <Link to={backTo.to} className="lf-btn" onClick={guardLink}>
+                        <ArrowLeft size={16} aria-hidden="true" />{backTo.label}
+                    </Link>
+                </div>
             </header>
+            <p className="lf-note">
+                <ShieldCheck size={16} aria-hidden="true" />
+                <span><Terms text={ciMode
+                    ? 'The AI only proposes values and a draft result. Nothing is saved to the CI results until a Credit Investigator confirms. The application record is never changed here.'
+                    : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} /></span>
+            </p>
 
-            {parties.length > 0 && (
-                <nav className="flex gap-1 px-4 border-b bg-white overflow-x-auto">
-                    {parties.map(({ party }) => (
-                        <button key={party.id} type="button" onClick={() => openParty(party.id)}
-                            className={`px-3 py-2 text-sm whitespace-nowrap border-b-2 ${party.id === selectedParty?.party.id
-                                ? 'border-blue-700 text-blue-800 font-semibold' : 'border-transparent text-gray-600'}`}>
-                            {nameOf(party).toUpperCase()} <span className="font-normal">· {partyLabel(party)}</span>
-                        </button>
-                    ))}
-                </nav>
-            )}
-
-            {error && <p className="px-4 pt-2 text-red-600">{error}</p>}
+            {error && <p className="lf-err" role="alert">{error}</p>}
 
             {/* Everything here is confirmed: point at the next step (CI: results + Mark CI Done; AO: KYC verification) */}
             {canEdit && allConfirmed && (
-                <div role="status" className="mx-4 mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-gray-900">
-                    <CheckCircle2 size={20} aria-hidden="true" className="shrink-0 text-green-800" />
-                    <p className="flex-1 min-w-[16rem]">
-                        <span className="font-semibold"><Terms text={ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'} /></span>{' '}
+                <div role="status" className="dc-next">
+                    <CheckCircle2 size={20} aria-hidden="true" />
+                    <p>
+                        <b><Terms text={ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'} /></b>{' '}
                         <Terms text={ciMode
                             ? 'Next: review the results, add BRAS if you have it, save, then Mark CI Done.'
                             : 'Next: KYC verification of each section in the loan folder.'} />
                     </p>
                     <Link to={ciMode ? `/ciRequestPage?id=${app.id}&step=results` : `/loanFolderPage?id=${app.id}`}
-                        title={tt(ciMode ? 'Mark CI Done' : 'KYC verification')}
-                        onClick={(e) => { if (!leaveEdits()) e.preventDefault(); }}
-                        className="inline-flex min-h-11 items-center gap-2 rounded bg-green-800 px-4 py-2 font-semibold text-white hover:bg-green-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2">
+                        title={tt(ciMode ? 'Mark CI Done' : 'KYC verification')} onClick={guardLink} className="dc-next-go">
                         {ciMode ? 'Go to step 4: Results' : 'Go to step 2: KYC verification'}
                         <ArrowRight size={16} aria-hidden="true" />
                     </Link>
@@ -272,69 +304,106 @@ const DocumentCheckPage = () => {
             )}
 
             {parties.length === 0 ? (
-                <p className="p-4"><Terms text={ciMode
-                    ? 'No NFIS or TU reports have been uploaded for this application yet. Upload them on the CI request page.'
-                    : 'No IDs, COE / ITR, payslips or bank statements have been uploaded for this application.'} /></p>
+                <section className="lf-card dc-empty">
+                    <FileText size={22} aria-hidden="true" />
+                    <p><Terms text={ciMode
+                        ? 'No NFIS or TU reports have been uploaded for this application yet. Upload them on the CI request page.'
+                        : 'No IDs, COE / ITR, payslips or bank statements have been uploaded for this application.'} /></p>
+                </section>
             ) : (
-                <div className="flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-gray-50">
-                    <section className="bg-white rounded-lg border p-3 flex flex-col h-[80vh] lg:h-auto lg:min-h-0">
-                        <h3 className="font-semibold pb-2">{ciMode ? <><Term k="CI" /> reports</> : 'Documents'} for {nameOf(selectedParty.party)}</h3>
-                        <ul className="space-y-1 pb-3 max-h-48 overflow-auto">
-                            {selectedParty.docs.map((d) => {
-                                const s = docStatus(checks[d.id]);
-                                const active = d.id === doc?.id;
-                                return (
-                                    <li key={d.id}>
-                                        <button type="button" onClick={() => openDoc(d.id)}
-                                            className={`w-full flex items-center gap-2 rounded px-3 py-2 text-left text-sm ${active
-                                                ? 'bg-green-700 text-white' : 'bg-gray-50 hover:bg-gray-100 border'}`}>
-                                            <span className="font-semibold">{docLabel(d.document_type)}</span>
-                                            <span className={`truncate flex-1 ${active ? 'text-green-50' : 'text-gray-600'}`}>{d.file_name}</span>
-                                            <span className={`text-xs rounded-full px-2 py-0.5 whitespace-nowrap ${s.tone}`}>{s.label}</span>
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                        {doc && !ciMode && (
-                            <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks} className="mb-3"
-                                unreadable={status.key === 'OCR_FAILED'} confirmLeave={leaveEdits}
-                                file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
-                        )}
-                        {doc && (
-                            <div className="flex-1 min-h-0">
-                                <DocumentViewer key={doc.id} doc={doc} pageSizes={check?.pages} highlights={highlights}
-                                    page={page} onPageChange={setPage} />
-                            </div>
-                        )}
-                    </section>
+                <>
+                    {/* the borrowers, each with how many of their files are confirmed */}
+                    <nav className="lf-tabs dc-people" aria-label="Borrowers">
+                        {parties.map(({ party, docs }) => {
+                            const done = docs.filter((d) => isConfirmed(d.id)).length;
+                            return (
+                                <button key={party.id} type="button" onClick={() => openParty(party.id)}
+                                    aria-current={party.id === selectedParty?.party.id ? 'true' : undefined}>
+                                    <span className="dc-person" aria-hidden="true"><UserRound size={15} /></span>
+                                    <span className="who">{nameOf(party)} <span className="role">· {partyLabel(party)}</span></span>
+                                    <b className={done === docs.length ? 'all' : undefined}>
+                                        {done}/{docs.length}<span className="sr-only"> confirmed</span>
+                                    </b>
+                                </button>
+                            );
+                        })}
+                    </nav>
 
-                    <section className="bg-white rounded-lg border p-3 flex flex-col h-[80vh] lg:h-auto lg:min-h-0">
-                        <h3 className="font-semibold pb-2">Extracted information</h3>
-                        {!doc ? <p>Pick a document on the left.</p>
-                            : status.key === 'READY' || status.key === 'CONFIRMED' ? (
-                                <div className="flex-1 min-h-0">
-                                    <ExtractionPanel key={`${check.run.id}-${check.run.confirmed_at ?? ''}`}
-                                        doc={doc} defs={docDefs} check={check} ctx={ctx} canEdit={canEdit} names={names}
-                                        focusedId={focused?.id} onFocusField={focusField} onConfirmed={refreshAll}
-                                        onRerun={rerun} onDirtyChange={setDirty} ci={ci} />
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    <p><span className={`text-xs rounded-full px-2 py-0.5 ${status.tone}`}>{status.label}</span></p>
-                                    {['OCR', 'AI', 'WAITING'].includes(status.key) && <p className="text-sm text-gray-600"><Terms text={workerHint} /></p>}
-                                    {status.key === 'OCR_FAILED' && <p className="text-sm text-red-700">{check.ocr.error}</p>}
-                                    {status.key === 'AI_FAILED' && <p className="text-sm text-red-700">{check.run.error}</p>}
-                                    {canEdit && status.key === 'AI_FAILED' && (
-                                        <button type="button" className="border rounded px-3 py-1.5 text-sm" disabled={busy} onClick={rerun}>
-                                            {busy ? 'Queuing...' : 'Run AI again'}
-                                        </button>
-                                    )}
-                                    {canEdit && status.key === 'AI_FAILED' && <p className="text-xs text-gray-600">{RERUN_HINT}</p>}
+                    <div className="dc-work">
+                        <section className="lf-card dc-pane dc-docs" aria-labelledby="dc-docs-title">
+                            <div className="lf-cardhead">
+                                <h2 id="dc-docs-title">{ciMode ? <><Term k="CI" /> reports</> : 'Documents'} for {nameOf(selectedParty.party)}</h2>
+                                <span>{selectedParty.docs.length} {selectedParty.docs.length === 1 ? 'file' : 'files'}</span>
+                            </div>
+                            <ul className="dc-doclist">
+                                {selectedParty.docs.map((d) => {
+                                    const s = docStatus(checks[d.id]);
+                                    const active = d.id === doc?.id;
+                                    return (
+                                        <li key={d.id}>
+                                            <button type="button" onClick={() => openDoc(d.id)} aria-current={active ? 'true' : undefined}
+                                                className={`dc-doc ${s.tone}`}>
+                                                <FileText size={18} className="ic" aria-hidden="true" />
+                                                <span className="txt">
+                                                    <b>{docLabel(d.document_type)}</b>
+                                                    <span className="file">{d.file_name}</span>
+                                                </span>
+                                                <StatusChip status={s} />
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            {doc && !ciMode && (
+                                <div className="dc-filemark">
+                                    <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks}
+                                        unreadable={status.key === 'OCR_FAILED'} confirmLeave={leaveEdits}
+                                        file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
                                 </div>
                             )}
-                    </section>
-                </div>
+                            {doc && (
+                                <div className="dc-viewer-wrap">
+                                    <DocumentViewer key={doc.id} doc={doc} pageSizes={check?.pages} highlights={highlights}
+                                        page={page} onPageChange={setPage} />
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="lf-card dc-pane dc-fields" aria-labelledby="dc-fields-title">
+                            <div className="lf-cardhead">
+                                <h2 id="dc-fields-title">Extracted information</h2>
+                                {doc && <StatusChip status={status} />}
+                            </div>
+                            {!doc ? <p className="lf-empty">Pick a document on the left.</p>
+                                : status.key === 'READY' || status.key === 'CONFIRMED' ? (
+                                    <div className="dc-fields-body">
+                                        <ExtractionPanel key={`${check.run.id}-${check.run.confirmed_at ?? ''}`}
+                                            doc={doc} defs={docDefs} check={check} ctx={ctx} canEdit={canEdit} names={names}
+                                            focusedId={focused?.id} onFocusField={focusField} onConfirmed={refreshAll}
+                                            onRerun={rerun} onDirtyChange={setDirty} ci={ci} />
+                                    </div>
+                                ) : (
+                                    <div className="dc-wait">
+                                        <span className={`dc-wait-ic ${status.tone}`}>
+                                            <status.Icon size={22} className={status.spin ? 'dc-spin' : undefined} aria-hidden="true" />
+                                        </span>
+                                        <p className="dc-wait-title">{status.label}</p>
+                                        {['OCR', 'AI', 'WAITING'].includes(status.key) && <p className="dc-muted"><Terms text={workerHint} /></p>}
+                                        {status.key === 'OCR_FAILED' && <p className="lf-err">{check.ocr.error}</p>}
+                                        {status.key === 'AI_FAILED' && <p className="lf-err">{check.run.error}</p>}
+                                        {canEdit && status.key === 'AI_FAILED' && (
+                                            <>
+                                                <button type="button" className="lf-btn" disabled={busy} onClick={rerun}>
+                                                    {busy ? 'Queuing...' : 'Run AI again'}
+                                                </button>
+                                                <p className="dc-muted">{RERUN_HINT}</p>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                        </section>
+                    </div>
+                </>
             )}
         </div>
     );

@@ -22,6 +22,8 @@ const PAGES = {
     review: { label: () => 'Review summary', to: (id) => `/reviewSummaryPage?id=${id}` },
     request: { label: (no) => `CI request ${no}`, to: (id) => `/ciRequestPage?id=${id}` },
     decision: { label: () => 'Decision support', to: (id) => `/decisionSupportPage?id=${id}` },
+    docs: { label: () => 'Document check', to: (id) => `/documentCheckPage?id=${id}` },
+    cidocs: { label: () => 'CI report check', to: (id) => `/documentCheckPage?id=${id}&ci=1` },
 };
 
 const Breadcrumbs = ({ current, appId, appNo, onNavigate }) => {

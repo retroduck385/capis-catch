@@ -149,28 +149,54 @@ const KYC_TITLES = ['Loan Details', 'Principal Borrower', 'Address', 'Employment
 /* ---------- staff pages ---------- */
 
 export const LoanFolderSkeleton = () => (
-    <Status label="Loading loan folder" className="lf">
+    <Status label="Loading loan folder" className="lf lf-folder">
         <Crumbs items={['Work tray', `Application ${APP_NO}`]} />
-        <Header title={`Application ${APP_NO}`} progress
-            meta={['Submitted Sep 29, 2026, 2:05 PM', 'CI requested Oct 20, 2026, 4:48 PM by Josh Denzel Account Officer']}
-            actions={['Messages', `Financial package${GAP}`]} />
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>Loan folder</T><span className="lf-mode read sk-btn">Read-only</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta"><li><T>Submitted Sep 29, 2026, 2:05 PM</T></li><li><T>CI requested Oct 20, 2026, 4:48 PM by Account Officer</T></li></ul>
+            </div>
+            <div className="lf-actions">{['Messages', `Financial package${GAP}`].map((a) => <span key={a} className="lf-btn sk-btn">{a}</span>)}</div>
+        </header>
+        <div className="lf-dash" aria-hidden="true">
+            <article className="lf-card lf-progresscard">
+                <h2 className="lf-wtitle"><T>KYC verification</T></h2>
+                <div className="lf-ringrow">
+                    <div className="lf-ring"><Box className="circle" h="100%" /></div>
+                    <ul className="lf-keys">
+                        {['Verified', 'Needs clarification', 'Not checked'].map((k) => <li key={k}><span className="lf-key sk-btn">{k}<b>0</b></span></li>)}
+                    </ul>
+                </div>
+            </article>
+            {['Credit investigation', 'Change history'].map((t) => (
+                <div key={t} className="lf-tile">
+                    <span className="ic sk-btn" />
+                    <span className="lbl"><T>{t}</T></span>
+                    <span className="val"><T>Requested</T></span>
+                    <span className="sub"><T>Oct 20, 2026, 4:48 PM</T></span>
+                </div>
+            ))}
+        </div>
         <div className="lf-body">
             <div className="lf-main">
-                <Card title="KYC verification" aside="0 of 11 verified">
+                <Card title="KYC verification by section" aside="0 of 11 verified">
                     <ul className="lf-kyc">
                         {KYC_TITLES.map((t) => (
                             <li key={t} className="lf-kyc-item none">
-                                <div className="lf-kyc-top"><b><T>{t}</T></b><span className="lf-chip none sk-btn">Not checked</span></div>
-                                <p className="lf-kyc-meta"><T>Not checked yet.</T></p>
+                                <span className="lf-kyc-ic"><span className="sk-btn" style={{ display: 'block', width: 18, height: 18, borderRadius: '50%' }} /></span>
+                                <div className="lf-kyc-head"><b className="lf-kyc-name"><T>{t}</T></b></div>
+                                <span className="lf-chip none sk-btn">Not checked</span>
+                                <div className="lf-kyc-body"><p className="lf-kyc-meta"><T>Not checked yet.</T></p></div>
                             </li>
                         ))}
                     </ul>
                 </Card>
-                <Card title="Application summary">
+                <Card title="Application details">
                     <Info rows={[['Loan type', 'Housing loan'], ['Loan amount', '₱1,000,000.00'], ['Term', '2 years'],
                         ['Principal borrower', BORROWERS], ['Civil status', 'Single'], ['Present address', '123 Sample Street, Quezon City']]} />
                 </Card>
-                <Card title="Change history"><Bars n={3} h="3rem" /></Card>
+                <Card title="Change history"><Bars n={2} h="2.5rem" /></Card>
             </div>
         </div>
     </Status>
@@ -528,25 +554,28 @@ export const ListSkeleton = ({ label = 'Loading', rows = 5 }) => (
 
 // Document check (Tailwind layout: header, party tabs, document list + viewer on the left, extracted fields on the right)
 export const DocumentCheckSkeleton = () => (
-    <Status label="Loading documents" className="min-h-screen lg:h-screen flex flex-col text-left">
-        <div aria-hidden="true" className="contents">
-            <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b bg-white">
-                <span className="border rounded px-3 py-1.5 text-sm sk-btn">← Back to loan folder</span>
-                <h2 className="text-xl font-semibold"><T>Document check</T></h2>
-                <span className="text-gray-600"><T>Application {APP_NO}</T></span>
-            </header>
-            <nav className="flex gap-1 px-4 border-b bg-white"><span className="px-3 py-2 text-sm"><T>{BORROWERS.toUpperCase()} · Principal Borrower</T></span></nav>
-            <div className="flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-gray-50">
-                <section className="bg-white rounded-lg border p-3 flex flex-col h-[80vh] lg:h-auto lg:min-h-0">
-                    <h3 className="font-semibold pb-2"><T>Documents for {BORROWERS}</T></h3>
-                    <ul className="space-y-1 pb-3">{stack(3, (i) => <li key={i}><Box h="2.5rem" /></li>)}</ul>
-                    <div className="flex-1 min-h-0"><Box h="100%" style={{ minHeight: '16rem' }} /></div>
-                </section>
-                <section className="bg-white rounded-lg border p-3 flex flex-col h-[80vh] lg:h-auto lg:min-h-0">
-                    <h3 className="font-semibold pb-2"><T>Extracted information</T></h3>
-                    <div className="space-y-3">{stack(6, (i) => <div key={i} className="space-y-1"><T>Field name</T><Box h="2.4rem" /></div>)}</div>
-                </section>
+    <Status label="Loading documents" className="lf lf-folder lf-doccheck">
+        <Crumbs items={['Work tray', `Application ${APP_NO}`, 'Document check']} />
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>Document check (AI)</T><span className="lf-mode read sk-btn">Read-only</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta"><li><T>0 of 6 documents confirmed</T></li></ul>
             </div>
+            <div className="lf-actions"><span className="lf-btn sk-btn">Loan folder</span></div>
+        </header>
+        <p className="lf-note" aria-hidden="true"><T>The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.</T></p>
+        <nav className="lf-tabs dc-people" aria-hidden="true"><span className="sk-btn" style={{ padding: '0.6rem 1rem', borderRadius: 10 }}>{BORROWERS} · Principal Borrower</span></nav>
+        <div className="dc-work" aria-hidden="true">
+            <section className="lf-card dc-pane">
+                <div className="lf-cardhead"><h2><T>Documents for {BORROWERS}</T></h2></div>
+                <ul className="dc-doclist">{stack(3, (i) => <li key={i}><Box h="3rem" style={{ borderRadius: 14 }} /></li>)}</ul>
+                <div className="dc-viewer-wrap"><Box h="100%" style={{ minHeight: '16rem', borderRadius: 14 }} /></div>
+            </section>
+            <section className="lf-card dc-pane">
+                <div className="lf-cardhead"><h2><T>Extracted information</T></h2></div>
+                <div className="dc-fieldlist">{stack(5, (i) => <Box key={i} h="5.5rem" style={{ borderRadius: 14 }} />)}</div>
+            </section>
         </div>
     </Status>
 );

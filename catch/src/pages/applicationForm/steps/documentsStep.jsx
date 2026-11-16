@@ -67,7 +67,7 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
 
     return (
         <form onSubmit={handleSubmit} noValidate>
-            <p className="text-left py-2">Accepted: JPG, PNG or PDF, up to 10 MB each. Use clear, readable scans.
+            <p className="ct-intro">Accepted: JPG, PNG or PDF, up to 10 MB each. Use clear, readable scans.
                 Files are renamed automatically when uploaded.</p>
             {borrowers.map((party) => (
                 <Section key={party.id} title={`${partyLabel(party)}: ${party.first_name ?? ''} ${party.last_name ?? ''}`}>

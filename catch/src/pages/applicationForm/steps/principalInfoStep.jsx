@@ -70,7 +70,7 @@ const PrincipalInfoStep = ({ app, session, profile, onSaved, onBack }) => {
     return (
         <form onSubmit={handleSubmit} noValidate>
             {!principal && (
-                <p className="text-left text-sm py-2">Pre-filled from your profile. Please check each field before continuing.</p>
+                <p className="ct-intro">Pre-filled from your profile. Please check each field before continuing.</p>
             )}
             {GROUPS.map(([title, fields]) => (
                 <Section key={title} title={title} className="ct-cols-4">

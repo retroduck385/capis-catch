@@ -13,7 +13,8 @@ import { useCanAsk } from './askStore';
 //   missingFor  no items: tick that borrower's still-missing checklist documents (omitted = everyone's)
 //   note        prefilled into "What we need" (cut to the limit); from: where it came from, shown above the box
 // confirmLeave: optional, returns false to stay (a page with unsaved edits asks before it is left)
-const AskApplicantButton = ({ applicationId, ask, confirmLeave, children = 'Ask the applicant', className = '' }) => {
+// plain: drop the built-in Tailwind look and use only className (the loan folder styles it as .lf-ask-btn)
+const AskApplicantButton = ({ applicationId, ask, confirmLeave, children = 'Ask the applicant', className = '', plain = false }) => {
     const navigate = useNavigate();
     const can = useCanAsk(applicationId);
     if (!can) return null;
@@ -23,7 +24,7 @@ const AskApplicantButton = ({ applicationId, ask, confirmLeave, children = 'Ask 
                 if (confirmLeave && !confirmLeave()) return;
                 navigate(`/loanFolderPage?id=${applicationId}`, { state: { ask: { ...ask, at: Date.now() } } });
             }}
-            className={`inline-flex min-h-0! items-center gap-1.5 rounded border border-blue-800! bg-white! px-2.5! py-1! text-sm font-semibold text-blue-900! hover:bg-blue-50! focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${className}`}>
+            className={plain ? className : `inline-flex min-h-0! items-center gap-1.5 rounded border border-blue-800! bg-white! px-2.5! py-1! text-sm font-semibold text-blue-900! hover:bg-blue-50! focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${className}`}>
             <MailQuestion size={15} aria-hidden='true' />{children}
         </button>
     );

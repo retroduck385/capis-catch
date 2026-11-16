@@ -3,7 +3,12 @@
 // its value or takes the document's, then confirms & locks (confirm_extraction). Everyone else sees it read-only.
 // CI reports (NFIS / TU, `ci` set): a Credit Investigator checks the values, edits the AI's proposed result and
 // summary, and confirms (confirm_ci_extraction); that saves the CI result. Nothing is copied to the application.
-import { useEffect, useMemo, useState } from 'react';
+// Look: .dc-* in documentCheck.css (inset field cards, Keep / Update pills, the table frame). Status chips use the
+// page's tones: a difference or an expired ID is amber (it needs a look), a wrong format is the form red.
+import { useEffect, useId, useMemo, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Lock, RefreshCw } from 'lucide-react';
+import SelectMenu from '../../components/selectMenu';
+import Byline from '../../components/byline';
 import { CI_RESULTS } from '../ciRequest/options';
 import { confirmCiExtraction, confirmExtraction, RERUN_HINT } from './api';
 import {
@@ -32,30 +37,31 @@ const resultLabel = (value) => CI_RESULTS.find((r) => r.value === value)?.label 
 const UNEXPECTED_KINDS = new Set(['NOT_AN_ID', 'OTHER']);
 
 const STATUS_CHIPS = {
-    MATCH: ['Matches application', 'bg-green-100 text-green-800'],
-    DIFFERS: ['Differs from application', 'bg-red-100 text-red-800'],
-    NOT_IN_APPLICATION: ['Not in application', 'bg-gray-100 text-gray-700'],
-    NOT_ON_DOCUMENT: ['Not found on document', 'bg-gray-100 text-gray-700'],
+    MATCH: ['Matches application', 'ok'],
+    DIFFERS: ['Differs from application', 'warn'],
+    NOT_IN_APPLICATION: ['Not in application', 'none'],
+    NOT_ON_DOCUMENT: ['Not found on document', 'none'],
 };
 
-const Chip = ({ className, children }) => (
-    <span className={`text-xs rounded-full px-2 py-0.5 whitespace-nowrap ${className}`}>{children}</span>
-);
+// tone: ok | warn | none | info | err (.lf-chip tones; info and err come from documentCheck.css)
+const Chip = ({ tone, children }) => <span className={`lf-chip dc-chip ${tone}`}>{children}</span>;
 
 const peso = (n) => displayValue(n, 'AMOUNT');
 const monthLabel = (m) => new Date(`${m}-01T00:00:00`).toLocaleString('en-PH', { month: 'short', year: 'numeric' });
 
+const SEX_OPTIONS = [{ value: 'MALE', label: 'Male' }, { value: 'FEMALE', label: 'Female' }];
+
 const ValueInput = ({ def, value, onChange, onFocus, readOnly, compact }) => {
     const [focused, setFocused] = useState(false);
-    const cls = `border rounded w-full ${compact ? 'px-1 py-0.5 text-sm' : 'px-2 py-1'} ${readOnly ? 'bg-gray-50' : 'bg-white'}`;
+    const id = useId();
+    const cls = `dc-input${compact ? ' compact' : ''}`;
     if (def.data_type === 'SEX') {
+        // the animated dropdown (components/selectMenu.jsx); focus bubbles up to highlight the field on the document
         return (
-            <select className={cls} value={String(value ?? '').toUpperCase()} disabled={readOnly}
-                onChange={(e) => onChange(e.target.value)} onFocus={onFocus}>
-                <option value="">—</option>
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-            </select>
+            <div className="dc-select" onFocus={onFocus}>
+                <SelectMenu id={`dc-sex${id.replace(/:/g, '')}`} value={String(value ?? '').toUpperCase()} options={SEX_OPTIONS}
+                    placeholder="—" disabled={readOnly} aria-label={def.label} onChange={onChange} />
+            </div>
         );
     }
     // Amounts, like the form's money boxes: typed as they are, shown with commas and cents once you leave the box.
@@ -188,10 +194,10 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                 <p><strong>Average monthly gross: {peso(s.average)}</strong> over {s.months.length} month{s.months.length === 1 ? '' : 's'}
                     {' '}({s.months.map(monthLabel).join(', ')})</p>
                 <p>Declared gross monthly income: {declared === null ? 'not given' : peso(declared)}
-                    {off !== null && <> — documents show <strong className={Math.abs(off) > 10 ? 'text-red-700' : ''}>
+                    {off !== null && <> — documents show <strong className={Math.abs(off) > 10 ? 'dc-flag' : ''}>
                         {Math.abs(off).toFixed(1)}% {off >= 0 ? 'more' : 'less'}</strong></>}</p>
-                {s.missing.length > 0 && <p className="text-red-700">No payslip for {s.missing.map(monthLabel).join(', ')}.</p>}
-                {s.months.length < 3 && <p className="text-amber-700">The checklist asks for 3 months; these cover {s.months.length}.</p>}
+                {s.missing.length > 0 && <p className="dc-flag">No payslip for {s.missing.map(monthLabel).join(', ')}.</p>}
+                {s.months.length < 3 && <p className="dc-flag">The checklist asks for 3 months; these cover {s.months.length}.</p>}
             </>
         ) : <p>Add the period dates and gross pay to see the monthly average.</p>;
     } else if (doc.document_type === 'FS_BANK_STATEMENTS') {
@@ -200,7 +206,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
             <>
                 <p><strong>Average monthly deposits (<Term k="AMD" />): {peso(s.average)}</strong> over {s.months.length} month{s.months.length === 1 ? '' : 's'}
                     {' '}({monthLabel(s.months[0])} – {monthLabel(s.months.at(-1))})</p>
-                {s.missing.length > 0 && <p className="text-red-700">No statement for {s.missing.map(monthLabel).join(', ')}.</p>}
+                {s.missing.length > 0 && <p className="dc-flag">No statement for {s.missing.map(monthLabel).join(', ')}.</p>}
             </>
         ) : <p>Add each month and its deposits to see the average monthly deposits.</p>;
     } else if (doc.document_type === 'CI_TU') {
@@ -213,25 +219,25 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                     {' '}{t.declaredCards.length} card{t.declaredCards.length === 1 ? '' : 's'}, {t.declaredLoans.length} loan{t.declaredLoans.length === 1 ? '' : 's'}.</p>
                 <p>Monthly installments on open loans: {peso(t.reportInstallments)} on the report vs {peso(t.declaredInstallments)} declared.</p>
                 {t.undeclaredLoans.map((r, i) => (
-                    <p key={`u${i}`} className="text-red-700">Not declared in the application: {accountName(r)}
+                    <p key={`u${i}`} className="dc-flag">Not declared in the application: {accountName(r)}
                         {r.acct_installment ? `, ${peso(r.acct_installment)}/mo` : ''}{r.acct_balance ? `, balance ${peso(r.acct_balance)}` : ''}.</p>
                 ))}
                 {t.openCards.length > t.declaredCards.length && (
-                    <p className="text-red-700">The report shows {t.openCards.length} open card(s); the application lists {t.declaredCards.length}.</p>
+                    <p className="dc-flag">The report shows {t.openCards.length} open card(s); the application lists {t.declaredCards.length}.</p>
                 )}
                 {t.adverse.map(({ row, flags }, i) => (
-                    <p key={`a${i}`} className="text-red-700">{accountName(row)}{row.acct_section ? ` (${String(row.acct_section).toLowerCase()})` : ''}: {flags.join('; ')}.</p>
+                    <p key={`a${i}`} className="dc-flag">{accountName(row)}{row.acct_section ? ` (${String(row.acct_section).toLowerCase()})` : ''}: {flags.join('; ')}.</p>
                 ))}
-                {t.flags.map((f) => <p key={f} className="text-red-700">{f}.</p>)}
-                {t.recentInquiries > 0 && <p className="text-amber-700">{t.recentInquiries} new credit application(s) in the last 6 months.</p>}
+                {t.flags.map((f) => <p key={f} className="dc-flag">{f}.</p>)}
+                {t.recentInquiries > 0 && <p className="dc-flag">{t.recentInquiries} new credit application(s) in the last 6 months.</p>}
                 {t.idChecks.map((c, i) => (
-                    <p key={`i${i}`} className={c.status === 'DIFFERS' ? 'text-red-700' : ''}>
+                    <p key={`i${i}`} className={c.status === 'DIFFERS' ? 'dc-flag' : ''}>
                         {c.type} on the report {c.number}: {c.status === 'MATCH' ? 'matches the application'
                             : c.status === 'DIFFERS' ? `differs from the application (${c.appValue})` : 'not in the application'}.
                     </p>
                 ))}
                 {t.adverse.length === 0 && t.flags.length === 0 && t.undeclaredLoans.length === 0 && (
-                    <p className="text-green-700">No past dues, late payments or undeclared loans found in the values above.</p>
+                    <p className="dc-good">No past dues, late payments or undeclared loans found in the values above.</p>
                 )}
             </>
         );
@@ -240,132 +246,149 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
     const chipsFor = (def, field, value, status) => {
         const chips = [];
         if (status) {
-            const [text, cls] = STATUS_CHIPS[status];
-            chips.push(<Chip key="s" className={cls}>{def.compare_with === 'PRESENT_ADDRESS' && status === 'MATCH' ? 'Looks like application' : text}</Chip>);
+            const [text, tone] = STATUS_CHIPS[status];
+            chips.push(<Chip key="s" tone={tone}>{def.compare_with === 'PRESENT_ADDRESS' && status === 'MATCH' ? 'Looks like application' : text}</Chip>);
         }
         const conf = lowestConfidence(field.lines);
         if (conf !== null && conf < LOW_CONFIDENCE) {
-            chips.push(<Chip key="c" className="bg-amber-100 text-amber-800">Hard to read (<Term k="OCR" /> {Math.round(conf * 100)}%)</Chip>);
+            chips.push(<Chip key="c" tone="warn">Hard to read (<Term k="OCR" /> {Math.round(conf * 100)}%)</Chip>);
         }
-        if (def.field_key === 'expiry_date' && isExpired(value)) chips.push(<Chip key="e" className="bg-red-100 text-red-800">Expired</Chip>);
-        if ((value ?? '') !== (field.extracted_value ?? '')) chips.push(<Chip key="k" className="bg-blue-100 text-blue-800">Corrected</Chip>);
-        if (!isValid(value, def.data_type)) chips.push(<Chip key="v" className="bg-red-100 text-red-800">Use {FORMAT_HINTS[def.data_type] ?? 'a valid value'}</Chip>);
+        if (def.field_key === 'expiry_date' && isExpired(value)) chips.push(<Chip key="e" tone="warn">Expired</Chip>);
+        if ((value ?? '') !== (field.extracted_value ?? '')) chips.push(<Chip key="k" tone="info">Corrected</Chip>);
+        if (!isValid(value, def.data_type)) chips.push(<Chip key="v" tone="err">Use {FORMAT_HINTS[def.data_type] ?? 'a valid value'}</Chip>);
         return chips;
     };
 
+    // Keep / Update: what each choice does, shown under the pills once one is picked (not only in a tooltip)
+    const explainChoice = (key, status, def, value, appValue) => (key === 'KEEP'
+        ? (status === 'NOT_IN_APPLICATION' ? 'Leave this blank in the application.'
+            : `Keep what the applicant entered (${displayValue(appValue, def.data_type)}). The application is not changed.`)
+        : (status === 'NOT_IN_APPLICATION' ? `Add ${displayValue(value, def.data_type)} to the application.`
+            : `Change the application to what the document says (${displayValue(value, def.data_type)}).`));
+
     return (
-        <div className="flex flex-col h-full min-h-0">
+        <div className="dc-x">
             {/* Action bar (stays at the top while the fields scroll) */}
-            <div className="border-b pb-3 mb-3">
-                <div className="flex items-start gap-2 flex-wrap">
-                    <div className="flex-1 min-w-0">
-                        <p className="font-semibold"><Terms text={kind ? KIND_LABELS[kind] ?? kind : 'Document'} /></p>
-                        <p className="text-xs text-gray-600">
-                            Read by AI ({run.model}) on {new Date(run.finished_at ?? run.created_at).toLocaleString()} · {fields.length} values
+            <div className="dc-actionbar">
+                <div className="dc-actionbar-top">
+                    <div className="dc-kind">
+                        <p className="dc-kind-name"><Terms text={kind ? KIND_LABELS[kind] ?? kind : 'Document'} /></p>
+                        <p className="dc-muted">
+                            <Byline layout="inline" ai role={run.model} at={run.finished_at ?? run.created_at} /> <span className="dc-count">{fields.length} values</span>
                         </p>
                     </div>
                     {editable && !reviewing && (
-                        <>
-                            <button type="button" className="border rounded px-3 py-1.5 text-sm" onClick={onRerun} disabled={saving}>Run AI again</button>
-                            <button type="button" className="rounded px-4 py-1.5 bg-blue-700 text-white disabled:opacity-50"
-                                disabled={saving} onClick={() => { setError(null); setReviewing(true); }}>
+                        <div className="dc-acts">
+                            <button type="button" className="lf-btn quiet" onClick={onRerun} disabled={saving}>
+                                <RefreshCw size={15} aria-hidden="true" />Run AI again
+                            </button>
+                            <button type="button" className="lf-primary" disabled={saving} onClick={() => { setError(null); setReviewing(true); }}>
                                 Confirm
                             </button>
-                        </>
+                        </div>
                     )}
                 </div>
-                {editable && !reviewing && <p className="mt-1 text-xs text-gray-600">{RERUN_HINT}</p>}
+                {editable && !reviewing && <p className="dc-muted">{RERUN_HINT}</p>}
 
                 {confirmed && (
-                    <p className="mt-2 rounded bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-sm">
-                        Confirmed by {names[run.confirmed_by] ?? (ci ? 'Credit Investigator' : 'Account Officer')} on {new Date(run.confirmed_at).toLocaleString()}.
-                        {' '}{ci ? <Terms text='The result and summary were saved to the CI results.' />
-                            : `${fields.filter((f) => f.apply_to_record).length} value(s) copied to the application.`}
+                    <p className="dc-strip ok">
+                        <CheckCircle2 size={16} aria-hidden="true" />
+                        <span>
+                            <span className="dc-strip-by">Confirmed by <Byline layout="inline" name={names[run.confirmed_by]} fallback={ci ? 'Credit Investigator' : 'Account Officer'} at={run.confirmed_at} /></span>
+                            {' '}{ci ? <Terms text='The result and summary were saved to the CI results.' />
+                                : `${fields.filter((f) => f.apply_to_record).length} value(s) copied to the application.`}
+                        </span>
                     </p>
                 )}
                 {!canEdit && !confirmed && (
-                    <p className="mt-2 text-sm italic text-gray-600">
-                        {ci ? 'View only. A Credit Investigator confirms this, while the application is in Credit Investigation.'
-                            : 'View only. The assigned Account Officer confirms this, while the application is in Intake or Credit Investigation.'}
+                    <p className="lf-note">
+                        <Lock size={16} aria-hidden="true" />
+                        <span>{ci ? 'View only. A Credit Investigator confirms this, while the application is in Credit Investigation.'
+                            : 'View only. The assigned Account Officer confirms this, while the application is in Intake or Credit Investigation.'}</span>
                     </p>
                 )}
 
                 {editable && reviewing && (
-                    <div className="mt-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
+                    <div className="dc-review" role="region" aria-label="Confirm the values">
                         {invalid.length > 0 || unpicked.length > 0 || ciProblems.length > 0 ? (
                             <>
-                                <p className="font-semibold">Before confirming:</p>
-                                <ul className="list-disc pl-5">
+                                <p className="dc-review-title"><AlertTriangle size={16} aria-hidden="true" />Before confirming</p>
+                                <ul>
                                     {invalid.map((f) => <li key={f.id}>{defOf[f.field_key].label}{f.item_no ? ` (row ${f.item_no})` : ''}: fix the format ({FORMAT_HINTS[defOf[f.field_key].data_type]})</li>)}
                                     {unpicked.map((h) => <li key={h.field.id}>{h.def.label}: choose whether to keep the application value or update it</li>)}
                                     {ciProblems.map((m) => <li key={m}>{m}</li>)}
                                 </ul>
-                                <button type="button" className="mt-2 border rounded px-3 py-1 bg-white" onClick={() => setReviewing(false)}>Back</button>
+                                <div className="dc-acts"><button type="button" className="lf-btn quiet" onClick={() => setReviewing(false)}>Back</button></div>
                             </>
                         ) : (
                             <>
-                                <p>You checked {fields.length} values against the document. {corrected.length} corrected.</p>
+                                <p className="dc-review-title">You checked {fields.length} values against the document. {corrected.length} corrected.</p>
                                 {ci ? (
                                     <>
                                         <p>Saved to the <Term k="CI" /> results (<Terms text={ci.label} />): <strong>{resultLabel(ciResult)}</strong>
                                             {ciSummary.trim() ? ` — "${ciSummary.trim()}"` : ''}.</p>
                                         {(ci.check?.result || ci.check?.summary)
                                             && (ci.check.result !== ciResult || (ci.check.summary ?? '') !== ciSummary.trim()) && (
-                                            <p className="text-amber-800">This replaces the saved result ({resultLabel(ci.check.result)}{ci.check.summary ? `: "${ci.check.summary}"` : ''}).</p>
+                                            <p className="dc-flag">This replaces the saved result ({resultLabel(ci.check.result)}{ci.check.summary ? `: "${ci.check.summary}"` : ''}).</p>
                                         )}
                                         <p>Nothing is copied to the application.</p>
                                     </>
                                 ) : toCopy.length > 0 ? (
                                     <p>These will be <strong>copied to the application</strong>: {toCopy.map((h) => `${h.def.label} → ${displayValue(h.value, h.def.data_type)}`).join('; ')}.</p>
                                 ) : <p>Nothing will be copied to the application.</p>}
-                                <p className="text-gray-700">After this the values can't be changed. Changes are recorded in the change history.</p>
-                                <div className="flex gap-2 mt-2">
-                                    <button type="button" className="rounded px-4 py-1.5 bg-blue-700 text-white disabled:opacity-50" disabled={saving} onClick={handleConfirm}>
+                                <p className="dc-muted">After this the values can&apos;t be changed. Changes are recorded in the change history.</p>
+                                <div className="dc-acts">
+                                    <button type="button" className="lf-primary" disabled={saving} onClick={handleConfirm}>
                                         {saving ? 'Confirming...' : 'Yes, confirm'}
                                     </button>
-                                    <button type="button" className="border rounded px-3 py-1 bg-white" disabled={saving} onClick={() => setReviewing(false)}>Cancel</button>
+                                    <button type="button" className="lf-btn quiet" disabled={saving} onClick={() => setReviewing(false)}>Cancel</button>
                                 </div>
                             </>
                         )}
                     </div>
                 )}
-                {error && <p className="mt-2 text-red-600 text-sm">{error}</p>}
+                {error && <p className="lf-err" role="alert">{error}</p>}
             </div>
 
-            <div className="flex-1 min-h-0 overflow-auto pr-1 space-y-4">
+            <div className="dc-scroll">
                 {(issues.length > 0 || UNEXPECTED_KINDS.has(kind) || lowLines > 0) && (
-                    <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
-                        <p className="font-semibold">Check on the document</p>
-                        <ul className="list-disc pl-5">
-                            {UNEXPECTED_KINDS.has(kind) && <li>The AI isn't sure this is the right kind of document (<Terms text={KIND_LABELS[kind]} />).</li>}
-                            {lowLines > 0 && <li>{lowLines} value(s) came from text the <Term k="OCR" /> found hard to read.</li>}
-                            {issues.map((issue) => <li key={issue}>{issue}</li>)}
-                        </ul>
+                    <div className="lf-warnnote dc-issues">
+                        <AlertTriangle size={16} aria-hidden="true" />
+                        <div>
+                            <p>Check on the document</p>
+                            <ul>
+                                {UNEXPECTED_KINDS.has(kind) && <li>The AI isn&apos;t sure this is the right kind of document (<Terms text={KIND_LABELS[kind]} />).</li>}
+                                {lowLines > 0 && <li>{lowLines} value(s) came from text the <Term k="OCR" /> found hard to read.</li>}
+                                {issues.map((issue) => <li key={issue}>{issue}</li>)}
+                            </ul>
+                        </div>
                     </div>
                 )}
 
                 {ci && (
-                    <section className="rounded border border-blue-200 bg-blue-50/50 p-2">
-                        <h4 className="font-semibold"><Terms text={confirmed ? 'CI result (saved now)' : 'Proposed CI result'} /></h4>
-                        {!confirmed && <p className="text-xs text-gray-600 pb-1"><Terms>Drafted by the AI from the values below. Check it against the report and edit it; it is saved to the CI results only when you confirm.</Terms></p>}
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 py-1 text-sm" role="radiogroup" aria-label="CI result">
+                    <section className="dc-sub">
+                        <h3 className="dc-h"><Terms text={confirmed ? 'CI result (saved now)' : 'Proposed CI result'} /></h3>
+                        {!confirmed && <p className="dc-muted"><Terms>Drafted by the AI from the values below. Check it against the report and edit it; it is saved to the CI results only when you confirm.</Terms></p>}
+                        <fieldset className="lf-choices">
+                            <legend className="sr-only"><Term k="CI" /> result</legend>
                             {CI_RESULTS.map((r) => (
-                                <label key={r.value} className={r.value === 'WITH_FINDINGS' ? 'text-red-700' : 'text-green-700'}>
+                                <label key={r.value} className={`lf-choice ${r.value === 'WITH_FINDINGS' ? 'warn' : 'ok'}`}>
                                     <input type="radio" name={`ci-result-${run.id}`} checked={ciResult === r.value} disabled={!editable}
-                                        onChange={() => { setCiResult(r.value); setReviewing(false); }} /> {r.label}
+                                        onChange={() => { setCiResult(r.value); setReviewing(false); }} />
+                                    {r.value === 'WITH_FINDINGS'
+                                        ? <AlertTriangle size={20} className="mark" aria-hidden="true" />
+                                        : <CheckCircle2 size={20} className="mark" aria-hidden="true" />}
+                                    <span><b>{r.label}</b></span>
                                 </label>
                             ))}
-                        </div>
-                        <label className="block text-sm">
-                            <span>Summary of findings</span>
-                            <textarea rows={4} maxLength={4000} readOnly={!editable} value={ciSummary}
-                                className={`border rounded block w-full px-2 py-1 ${editable ? 'bg-white' : 'bg-gray-50'}`}
-                                onChange={(e) => { setCiSummary(e.target.value); setReviewing(false); }} />
-                        </label>
+                        </fieldset>
+                        <label className="lf-fieldlabel" htmlFor={`ci-summary-${run.id}`}>Summary of findings</label>
+                        <textarea id={`ci-summary-${run.id}`} rows={4} maxLength={4000} readOnly={!editable} value={ciSummary}
+                            className="dc-input" onChange={(e) => { setCiSummary(e.target.value); setReviewing(false); }} />
                         {editable && (ciResult !== proposedResult || ciSummary.trim() !== proposedSummary.trim()) && (
-                            <p className="text-xs text-gray-600 pt-0.5">
+                            <p className="dc-muted">
                                 AI proposed: {resultLabel(proposedResult)}{proposedSummary ? ` — "${proposedSummary}"` : ''}
-                                <button type="button" className="underline ml-2" onClick={() => { setCiResult(proposedResult); setCiSummary(proposedSummary); }}>Undo</button>
+                                {' '}<button type="button" className="lf-linkbtn" onClick={() => { setCiResult(proposedResult); setCiSummary(proposedSummary); }}>Undo</button>
                             </p>
                         )}
                     </section>
@@ -373,53 +396,51 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
 
                 {header.length > 0 && (
                     <section>
-                        <h4 className="font-semibold pb-1">Details</h4>
-                        <div className="space-y-2">
+                        <h3 className="dc-h">Details</h3>
+                        <div className="dc-fieldlist">
                             {header.map(({ def, field, value, appValue, status, needs }) => (
                                 <div key={field.id} onClick={() => onFocusField(field)}
-                                    className={`rounded border p-2 ${focusedId === field.id ? 'ring-2 ring-amber-400 border-amber-400' : ''}`}>
-                                    <div className="flex items-center gap-2 flex-wrap pb-1">
-                                        <span className="text-sm font-semibold">{def.label}</span>
+                                    className={`dc-field${focusedId === field.id ? ' on' : ''}`}>
+                                    <div className="dc-field-top">
+                                        <span className="dc-field-label">{def.label}</span>
                                         {chipsFor(def, field, value, status)}
                                     </div>
                                     <ValueInput def={def} value={value} readOnly={!editable}
                                         onChange={(v) => setValue(field.id, v)} onFocus={() => onFocusField(field)} />
                                     {(value ?? '') !== (field.extracted_value ?? '') && (
-                                        <p className="text-xs text-gray-600 pt-0.5">
+                                        <p className="dc-muted">
                                             AI read: {displayValue(field.extracted_value, def.data_type)}
-                                            {editable && <button type="button" className="underline ml-2" onClick={() => setValue(field.id, field.extracted_value ?? '')}>Undo</button>}
+                                            {editable && <>{' '}<button type="button" className="lf-linkbtn" onClick={() => setValue(field.id, field.extracted_value ?? '')}>Undo</button></>}
                                         </p>
                                     )}
                                     {appValue !== undefined && (
-                                        <p className="text-sm pt-1"><span className="text-gray-600">Application:</span> {displayValue(appValue, def.data_type)}</p>
+                                        <p className="dc-app"><span>Application</span>{displayValue(appValue, def.data_type)}</p>
                                     )}
                                     {needs && editable && (
-                                        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm">
-                                            {/* Two short choices; hovering one explains exactly what it will do with these values */}
-                                            {[
-                                                ['KEEP', 'Keep', status === 'NOT_IN_APPLICATION'
-                                                    ? 'Leave this blank in the application.'
-                                                    : `Keep what the applicant entered (${displayValue(appValue, def.data_type)}). The application is not changed.`],
-                                                ['UPDATE', 'Update', status === 'NOT_IN_APPLICATION'
-                                                    ? `Add ${displayValue(value, def.data_type)} to the application.`
-                                                    : `Change the application to what the document says (${displayValue(value, def.data_type)}).`],
-                                            ].map(([key, label, explain]) => (
-                                                <label key={key} title={explain} className="cursor-help">
-                                                    <input type="radio" name={`choice-${field.id}`} checked={choices[field.id] === key}
-                                                        onChange={() => setChoice(field.id, key)} />
-                                                    {' '}<span className="underline decoration-dotted underline-offset-2">{label}</span>
-                                                    <span className="sr-only">: {explain}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <>
+                                            <div className="dc-pick" role="radiogroup" aria-label={`${def.label}: keep the application value or update it`}>
+                                                {[['KEEP', 'Keep'], ['UPDATE', 'Update']].map(([key, label]) => (
+                                                    <label key={key} title={explainChoice(key, status, def, value, appValue)}>
+                                                        <input type="radio" name={`choice-${field.id}`} checked={choices[field.id] === key}
+                                                            onChange={() => setChoice(field.id, key)} />
+                                                        {label}
+                                                        <span className="sr-only">: {explainChoice(key, status, def, value, appValue)}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <p className="dc-muted" aria-hidden="true">
+                                                {choices[field.id] ? explainChoice(choices[field.id], status, def, value, appValue)
+                                                    : 'Choose Keep or Update before confirming.'}
+                                            </p>
+                                        </>
                                     )}
                                     {status === 'DIFFERS' && !def.target_column && editable && (
-                                        <p className="text-xs text-gray-600 pt-0.5">
+                                        <p className="dc-muted">
                                             {ci ? 'Mention it in the summary if it matters. The Account Officer corrects the application.'
                                                 : 'Fix this in the application form section if the application is wrong.'}
                                         </p>
                                     )}
-                                    {confirmed && field.apply_to_record && <p className="text-xs text-green-700 pt-0.5">Copied to the application</p>}
+                                    {confirmed && field.apply_to_record && <p className="dc-good dc-small">Copied to the application</p>}
                                 </div>
                             ))}
                         </div>
@@ -428,30 +449,30 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
 
                 {rowGroups.map(({ group, itemNos, rows, shownDefs }) => (
                     <section key={group}>
-                        <h4 className="font-semibold pb-1">
+                        <h3 className="dc-h">
                             {ROW_GROUP_LABELS[group] ?? (doc.document_type === 'FS_BANK_STATEMENTS' ? 'Months' : 'Pay periods / transfers')}
-                        </h4>
-                        <div className="overflow-x-auto">
-                            <table className="text-sm border-collapse min-w-full">
+                        </h3>
+                        <div className="dc-tablewrap">
+                            <table>
                                 <thead>
-                                    <tr className="bg-gray-50">
-                                        <th className="border px-1 py-1 text-left">#</th>
-                                        {shownDefs.map((d) => <th key={d.field_key} className="border px-1 py-1 text-left whitespace-nowrap">{d.label}</th>)}
+                                    <tr>
+                                        <th>#</th>
+                                        {shownDefs.map((d) => <th key={d.field_key}>{d.label}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {rows.map((r, i) => (
                                         <tr key={itemNos[i]}>
-                                            <td className="border px-1">{itemNos[i]}</td>
+                                            <td className="num">{itemNos[i]}</td>
                                             {shownDefs.map((d) => {
                                                 const f = r[d.field_key];
-                                                if (!f) return <td key={d.field_key} className="border px-1 text-gray-400">—</td>;
+                                                if (!f) return <td key={d.field_key} className="none">—</td>;
                                                 const v = values[f.id];
                                                 const conf = lowestConfidence(f.lines);
                                                 const flagged = !isValid(v, d.data_type) || (conf !== null && conf < LOW_CONFIDENCE);
                                                 return (
                                                     <td key={d.field_key} onClick={() => onFocusField(f)}
-                                                        className={`border px-1 py-0.5 min-w-28 ${focusedId === f.id ? 'bg-amber-100' : ''} ${flagged ? 'bg-red-50' : ''}`}
+                                                        className={[focusedId === f.id ? 'on' : '', flagged ? 'flag' : ''].filter(Boolean).join(' ') || undefined}
                                                         title={(v ?? '') !== (f.extracted_value ?? '') ? `AI read: ${f.extracted_value ?? '—'}` : undefined}>
                                                         <ValueInput def={d} value={v} compact readOnly={!editable}
                                                             onChange={(nv) => setValue(f.id, nv)} onFocus={() => onFocusField(f)} />
@@ -466,12 +487,12 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                     </section>
                 ))}
                 {rowGroups.length > 0 && (
-                    <p className="text-xs text-gray-600 -mt-3">Red cells: wrong format or hard-to-read text. Hover a corrected cell to see what the AI read.</p>
+                    <p className="dc-muted dc-legend">Amber cells: wrong format or hard-to-read text. Hover a corrected cell to see what the AI read.</p>
                 )}
 
                 {summary && (
-                    <section className="rounded border bg-gray-50 px-3 py-2 text-sm space-y-0.5">
-                        <h4 className="font-semibold">{ci ? 'Checks against the application (computed from the values above)' : 'Summary (computed from the values above)'}</h4>
+                    <section className="dc-sub dc-summary">
+                        <h3 className="dc-h">{ci ? 'Checks against the application (computed from the values above)' : 'Summary (computed from the values above)'}</h3>
                         {summary}
                     </section>
                 )}

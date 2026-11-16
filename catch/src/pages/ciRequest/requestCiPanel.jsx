@@ -3,7 +3,7 @@
 // Once sent, it shows the request; the forms stay live, so the AO's later KYC edits reach the CI too.
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { whenOf } from '../loanFolder/options';
+import Byline from '../../components/byline';
 import { requestCi } from './api';
 import { buildCiRequest, missingFields } from './buildRequest';
 import CiRequestForms from './ciRequestForms';
@@ -47,7 +47,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                         <span className="lf-chip ok">Sent</span>
                     </div>
                     <p className="ci-note">
-                        Sent {whenOf(ciRequest.requested_at)} by {requesterName ?? 'Account Officer'}.
+                        <span className="ci-sent">Sent by <Byline layout="inline" name={requesterName} fallback="Account Officer" at={ciRequest.requested_at} /></span>
                         You can still edit the <Term k="KYC" /> sections; the Credit Investigator sees the current values below.
                     </p>
                 </section>
@@ -72,7 +72,13 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                         </div>
                     </div>
                 </section>
-                <CiResultsView app={app} title="CI results (from the Credit Investigator)" />
+                <section className="lf-card lf-ciresults" aria-labelledby="lf-ciresults-title">
+                    <div className="lf-cardhead">
+                        <h2 id="lf-ciresults-title"><Term k="CI" /> results</h2>
+                        <span>From the Credit Investigator</span>
+                    </div>
+                    <CiResultsView app={app} title={null} />
+                </section>
             </>
         );
     }

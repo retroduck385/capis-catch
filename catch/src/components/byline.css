@@ -1,0 +1,27 @@
+/* Who + when (byline.jsx, DESIGN.md 11.10). The name is the strong part; role and time are quiet; a time never breaks
+   across lines; the separators are drawn by CSS so they disappear when an item is missing. Uses the shared tokens
+   with light fallbacks, so it works on glass, on paper and on pages that aren't converted yet. */
+.byline { color: var(--muted, #475569); font-size: 0.82rem; line-height: 1.35; text-align: left; }
+.byline-av {
+  display: inline-grid; place-items: center; flex: none; border-radius: 50%;
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.02em; line-height: 1;
+}
+.byline-av.ai { background: var(--lf-accent-bg, rgba(30, 63, 151, 0.1)); color: var(--lf-accent, #1e3f97); }
+.byline-name { min-width: 0; overflow: hidden; color: var(--ink, #0f1b33); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.byline-role, .byline-time { white-space: nowrap; }
+.byline-time { font-variant-numeric: tabular-nums; }
+
+/* stacked: [av] Name
+                 Role · Today, 2:07 PM */
+.byline.stacked { display: inline-grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 0.55rem; max-width: 100%; }
+.byline.stacked .byline-av { grid-row: span 2; width: 1.9rem; height: 1.9rem; font-size: 0.66rem; }
+.byline.stacked .byline-name { font-size: 0.88rem; }
+.byline.stacked .byline-meta { display: flex; flex-wrap: wrap; column-gap: 0.4rem; min-width: 0; }
+.byline.stacked .byline-meta > * + *::before { content: '·'; margin-right: 0.4rem; color: var(--lf-hollow, #8b97ab); }
+.byline.stacked:not(:has(.byline-meta)) .byline-av { grid-row: auto; }
+
+/* inline: [av] Name · Role · Today, 2:07 PM (wraps only between items, never inside one) */
+.byline.inline { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.1rem 0.4rem; max-width: 100%; vertical-align: middle; }
+.byline.inline .byline-av { width: 1.35rem; height: 1.35rem; margin-right: 0.05rem; }
+.byline.inline > :is(.byline-role, .byline-time)::before { content: '·'; margin-right: 0.4rem; color: var(--lf-hollow, #8b97ab); }
+

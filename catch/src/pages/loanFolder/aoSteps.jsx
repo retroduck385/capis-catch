@@ -2,7 +2,7 @@
 // 1. Document check (AI), 2. KYC verification per section, 3. Request CI. Documents come first because confirming
 // them can change the record the KYC check is about, and the CI request takes the ID details from them.
 import StepStrip from '../../components/stepStrip';
-import { whenOf } from './options';
+import { formatWhen } from '../../components/people';
 
 const docsText = (progress) => {
     if (!progress) return 'Open to check the documents';
@@ -27,7 +27,7 @@ const AoSteps = ({ appId, docProgress, verifiedCount, sectionCount, ciRequest, o
             onClick: onOpenKyc,
         },
         {
-            key: 'ci', title: 'Request CI (NFIS & TU)', text: ciRequest ? `Sent ${whenOf(ciRequest.requested_at)}` : 'Not sent yet',
+            key: 'ci', title: 'Request CI (NFIS & TU)', text: ciRequest ? `Sent ${formatWhen(ciRequest.requested_at)}` : 'Not sent yet',
             done: !!ciRequest,
             onClick: onOpenCi,
         },
