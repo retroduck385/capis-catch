@@ -31,6 +31,7 @@ import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
 import '../review/review.css';
 import { Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const humanize = (key) => key.replaceAll('_', ' ');
@@ -49,6 +50,7 @@ const changedFacts = (runFacts, nowFacts) => {
 
 const DecisionSupportPage = () => {
     const { session } = UserAuth();
+    const tt = useTermTitle();
     const [searchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
 
@@ -181,7 +183,7 @@ const DecisionSupportPage = () => {
                     <ul>
                         {visible.map((s) => (
                             <li key={s.id}>
-                                <a href={`#${s.id}`} onClick={goTo(s.id)} aria-current={activeId === s.id ? 'true' : undefined}>
+                                <a href={`#${s.id}`} onClick={goTo(s.id)} title={tt(s.labelFor ? s.labelFor(ctx) : s.label)} aria-current={activeId === s.id ? 'true' : undefined}>
                                     {s.labelFor ? s.labelFor(ctx) : s.label}
                                 </a>
                             </li>

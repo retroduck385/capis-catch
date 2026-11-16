@@ -455,7 +455,7 @@ const ApprovalRoutingPage = () => {
                                 {saved && <span className="fp-chip ok" role="status">{saved}</span>}
                                 <FormError error={error} />
                                 {blockers.length > 0 && (
-                                    <ul className="rv-blockers">{blockers.map((b) => <li key={b}>{b}</li>)}</ul>
+                                    <ul className="rv-blockers">{blockers.map((b) => <li key={b}><Terms text={b} /></li>)}</ul>
                                 )}
                             </div>
                             <button type="submit" disabled={saving || !ready}>

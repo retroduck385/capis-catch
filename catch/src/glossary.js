@@ -68,19 +68,24 @@ export const explain = (key) => {
     return entry ? entry.filter(Boolean).join('. ').replace(/\.\.$/, '.') : null;
 };
 
-// Splits a text into plain parts and terms, marking only the FIRST time each term appears:
+// Splits a text into plain parts and terms, marking EVERY mention of a known term:
 // [{ text }, { term: 'DBR' }, { text }, ...]
 export const splitTerms = (text) => {
     const parts = [];
-    const seen = new Set();
     let last = 0;
-    for (const m of String(text).matchAll(TERM_RE)) {
-        if (seen.has(m[1])) continue;
-        seen.add(m[1]);
+    text = String(text ?? '');
+    for (const m of text.matchAll(TERM_RE)) {
         if (m.index > last) parts.push({ text: text.slice(last, m.index) });
         parts.push({ term: m[1] });
         last = m.index + m[1].length;
     }
     if (last < text.length) parts.push({ text: text.slice(last) });
     return parts;
+};
+
+// For a button, link or form label (where a hover can't be nested): a plain title attribute explaining each known
+// term in the text once, one per line ("TAT: Turnaround Time. The target time ..."), or undefined when there is none
+export const termsTitle = (text) => {
+    const keys = [...new Set([...String(text ?? '').matchAll(TERM_RE)].map((m) => m[1]))];
+    return keys.length ? keys.map((k) => `${k}: ${explain(k)}`).join('\n') : undefined;
 };

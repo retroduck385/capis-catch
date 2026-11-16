@@ -3,7 +3,7 @@
 // Blank mandatory fields show as "Missing" (the sheet: "request will not be accommodated if with lacking").
 import { ID_ROWS, TU_ROWS, buildCiRequest, isBlank, peso } from './buildRequest';
 import './ciRequest.css';
-import { Term } from '../../components/term';
+import { Term, Terms } from '../../components/term';
 
 const Missing = () => <span className="ci-missing">Missing</span>;
 const Value = ({ children, optional }) => (isBlank(children) ? (optional ? '—' : <Missing />) : children);
@@ -109,7 +109,7 @@ const TuForm = ({ request }) => (
                             {request.people.map((p) => (
                                 p.idStatus === 'LOADING' || p.idStatus === 'UNCONFIRMED' ? (
                                     <Cell key={p.key} className="ci-pending">
-                                        {p.idStatus === 'LOADING' ? 'Loading…' : 'Awaiting AO confirmation of the uploaded ID'}
+                                        <Terms text={p.idStatus === 'LOADING' ? 'Loading…' : 'Awaiting AO confirmation of the uploaded ID'} />
                                     </Cell>
                                 ) : (
                                     <Cell key={p.key}><Value optional={optional}>{get(p)}</Value></Cell>

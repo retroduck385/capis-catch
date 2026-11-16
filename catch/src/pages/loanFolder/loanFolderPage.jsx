@@ -29,6 +29,7 @@ import RequestPanel from '../documentRequests/requestPanel';
 import AskApplicantButton from '../documentRequests/ask';
 import './loanFolder.css';
 import { Term } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const TONES = { VERIFIED: 'ok', NEEDS_CLARIFICATION: 'warn' };
 const OVERVIEW = 'overview';
@@ -41,6 +42,7 @@ const documentsOf = (app) => getParties(app).flatMap((p) => (p.application_requi
 
 const LoanFolderPage = () => {
     const { session, role } = UserAuth();
+    const tt = useTermTitle();
     const [searchParams] = useSearchParams();
     const { hash } = useLocation();
     const applicationId = Number(searchParams.get('id'));
@@ -193,7 +195,7 @@ const LoanFolderPage = () => {
                     <ul className="lf-meta">
                         <li>Submitted {app.submitted_at ? whenOf(app.submitted_at) : '—'}</li>
                         {ciRequest && (
-                            <li>CI requested {whenOf(ciRequest.requested_at)} by {names[ciRequest.requested_by] ?? 'Account Officer'}</li>
+                            <li><Term k="CI" /> requested {whenOf(ciRequest.requested_at)} by {names[ciRequest.requested_by] ?? 'Account Officer'}</li>
                         )}
                     </ul>
                 </div>
@@ -335,7 +337,7 @@ const LoanFolderPage = () => {
                                 )}
                             </Link>
                         </li>
-                        <li className="lf-nav-grp">2 · KYC verification</li>
+                        <li className="lf-nav-grp">2 · <Term k="KYC" /> verification</li>
                         {sections.map((s) => {
                             const check = latestCheck(s.key);
                             return (
@@ -353,7 +355,7 @@ const LoanFolderPage = () => {
                         })}
                         <li className="lf-nav-grp">3 · Credit investigation</li>
                         <li>
-                            <button type="button" onClick={() => open(REQUEST_CI)} aria-current={currentKey === REQUEST_CI}>
+                            <button type="button" title={tt('Request CI (NFIS & TU)')} onClick={() => open(REQUEST_CI)} aria-current={currentKey === REQUEST_CI}>
                                 <Send size={18} aria-hidden="true" />
                                 <span className="label">Request CI (NFIS & TU)</span>
                                 {ciRequest && <span className="lf-chip ok">Sent</span>}

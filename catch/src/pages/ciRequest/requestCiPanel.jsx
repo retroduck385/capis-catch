@@ -10,9 +10,11 @@ import CiRequestForms from './ciRequestForms';
 import useIdDetails from './useIdDetails';
 import { CiResultsView } from './ciResults';
 import './ciRequest.css';
-import { Term } from '../../components/term';
+import { Term, Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionCount, onRequested }) => {
+    const tt = useTermTitle();
     const [nfisRemarks, setNfisRemarks] = useState('');
     const [tuRemarks, setTuRemarks] = useState('');
     const [saving, setSaving] = useState(false);
@@ -46,14 +48,14 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                     </div>
                     <p className="ci-note">
                         Sent {whenOf(ciRequest.requested_at)} by {requesterName ?? 'Account Officer'}.
-                        You can still edit the KYC sections; the Credit Investigator sees the current values below.
+                        You can still edit the <Term k="KYC" /> sections; the Credit Investigator sees the current values below.
                     </p>
                 </section>
                 {missing.length > 0 && (
                     <p className="ci-warn" role="note">
                         <AlertTriangle size={16} aria-hidden="true" />
                         <span><b>{missing.length} required {missing.length === 1 ? 'value is' : 'values are'} still missing.</b>{' '}
-                            Fix {missing.length === 1 ? 'it' : 'them'} in the KYC sections so the request can be accommodated.</span>
+                            Fix {missing.length === 1 ? 'it' : 'them'} in the <Term k="KYC" /> sections so the request can be accommodated.</span>
                     </p>
                 )}
                 <CiRequestForms app={app} idDetails={idDetails} />
@@ -93,7 +95,7 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                     <AlertTriangle size={16} aria-hidden="true" />
                     <span>
                         {missing.length > 0 && <><b>{missing.length} required {missing.length === 1 ? 'value is' : 'values are'} missing.</b>{' '}</>}
-                        {verifiedCount < sectionCount && `${verifiedCount} of ${sectionCount} KYC sections are verified. `}
+                        {verifiedCount < sectionCount && <Terms text={`${verifiedCount} of ${sectionCount} KYC sections are verified. `} />}
                         You can still send the request.
                     </span>
                 </p>
@@ -106,17 +108,17 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
 
             <form onSubmit={handleSubmit} className="lf-card ci-send" aria-label="Send the CI request">
                 <div className="lf-cardhead"><h2>Send to the Credit Investigator</h2></div>
-                <label>
+                <label title={tt('NFIS')}>
                     <span>NFIS remarks <small>optional</small></span>
                     <textarea value={nfisRemarks} onChange={(e) => setNfisRemarks(e.target.value)} rows={3} />
                 </label>
-                <label>
+                <label title={tt('TU')}>
                     <span>TU remarks <small>optional</small></span>
                     <textarea value={tuRemarks} onChange={(e) => setTuRemarks(e.target.value)} rows={3} />
                 </label>
                 <div className="ci-send-foot">
                     {error ? <p className="ci-err" role="alert">{error}</p> : <span />}
-                    <button type="submit" disabled={saving}>{saving ? 'Sending...' : 'Send CI request'}</button>
+                    <button type="submit" title={tt('CI')} disabled={saving}>{saving ? 'Sending...' : 'Send CI request'}</button>
                 </div>
             </form>
         </>

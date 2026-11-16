@@ -9,6 +9,7 @@ import { fetchLatestMracCheck, requestMracCheck, waitForMracRun } from './api';
 import { buildMracFacts } from './facts';
 import MracResult from './mracResult';
 import './mrac.css';
+import { Term } from '../../components/term';
 
 // Kept for older imports; the components now live in mracResult.jsx
 export { Citation, Citations } from './mracResult';
@@ -45,7 +46,7 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
     return (
         <Section id="fp-mrac" title="Policy check (MRAC)" className="mrac fp-key">
             <p className="fp-note">
-                Checks the figures on this page against the enabled MRAC criteria and finds the policy clauses that apply.
+                Checks the figures on this page against the enabled <Term k="MRAC" /> criteria and finds the policy clauses that apply.
                 These are suggestions: nothing is saved to the Financial Package until you add it and save.
             </p>
             <div className="mrac-actions">

@@ -11,6 +11,7 @@ import {
     lowestConfidence, needsChoice, payslipSummary, percentOff, toNumber, tuSummary,
 } from './compare';
 import { formatMoney } from '../applicationForm/options';
+import { Term, Terms } from '../../components/term';
 
 const KIND_LABELS = {
     PASSPORT: 'Passport', DRIVERS_LICENSE: "Driver's License", UMID: 'UMID', PHILSYS_ID: 'PhilSys ID',
@@ -197,7 +198,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
         const s = bankSummary(rowValues);
         summary = s ? (
             <>
-                <p><strong>Average monthly deposits (AMD): {peso(s.average)}</strong> over {s.months.length} month{s.months.length === 1 ? '' : 's'}
+                <p><strong>Average monthly deposits (<Term k="AMD" />): {peso(s.average)}</strong> over {s.months.length} month{s.months.length === 1 ? '' : 's'}
                     {' '}({monthLabel(s.months[0])} – {monthLabel(s.months.at(-1))})</p>
                 {s.missing.length > 0 && <p className="text-red-700">No statement for {s.missing.map(monthLabel).join(', ')}.</p>}
             </>
@@ -244,7 +245,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
         }
         const conf = lowestConfidence(field.lines);
         if (conf !== null && conf < LOW_CONFIDENCE) {
-            chips.push(<Chip key="c" className="bg-amber-100 text-amber-800">Hard to read (OCR {Math.round(conf * 100)}%)</Chip>);
+            chips.push(<Chip key="c" className="bg-amber-100 text-amber-800">Hard to read (<Term k="OCR" /> {Math.round(conf * 100)}%)</Chip>);
         }
         if (def.field_key === 'expiry_date' && isExpired(value)) chips.push(<Chip key="e" className="bg-red-100 text-red-800">Expired</Chip>);
         if ((value ?? '') !== (field.extracted_value ?? '')) chips.push(<Chip key="k" className="bg-blue-100 text-blue-800">Corrected</Chip>);
@@ -258,7 +259,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
             <div className="border-b pb-3 mb-3">
                 <div className="flex items-start gap-2 flex-wrap">
                     <div className="flex-1 min-w-0">
-                        <p className="font-semibold">{kind ? KIND_LABELS[kind] ?? kind : 'Document'}</p>
+                        <p className="font-semibold"><Terms text={kind ? KIND_LABELS[kind] ?? kind : 'Document'} /></p>
                         <p className="text-xs text-gray-600">
                             Read by AI ({run.model}) on {new Date(run.finished_at ?? run.created_at).toLocaleString()} · {fields.length} values
                         </p>
@@ -277,7 +278,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                 {confirmed && (
                     <p className="mt-2 rounded bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-sm">
                         Confirmed and locked by {names[run.confirmed_by] ?? (ci ? 'Credit Investigator' : 'Account Officer')} on {new Date(run.confirmed_at).toLocaleString()}.
-                        {' '}{ci ? 'The result and summary were saved to the CI results.'
+                        {' '}{ci ? <Terms text='The result and summary were saved to the CI results.' />
                             : `${fields.filter((f) => f.apply_to_record).length} value(s) copied to the application.`}
                     </p>
                 )}
@@ -305,7 +306,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                 <p>You checked {fields.length} values against the document. {corrected.length} corrected.</p>
                                 {ci ? (
                                     <>
-                                        <p>Saved to the CI results ({ci.label}): <strong>{resultLabel(ciResult)}</strong>
+                                        <p>Saved to the <Term k="CI" /> results (<Terms text={ci.label} />): <strong>{resultLabel(ciResult)}</strong>
                                             {ciSummary.trim() ? ` — "${ciSummary.trim()}"` : ''}.</p>
                                         {(ci.check?.result || ci.check?.summary)
                                             && (ci.check.result !== ciResult || (ci.check.summary ?? '') !== ciSummary.trim()) && (
@@ -335,8 +336,8 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                     <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
                         <p className="font-semibold">Check on the document</p>
                         <ul className="list-disc pl-5">
-                            {UNEXPECTED_KINDS.has(kind) && <li>The AI isn't sure this is the right kind of document ({KIND_LABELS[kind]}).</li>}
-                            {lowLines > 0 && <li>{lowLines} value(s) came from text the OCR found hard to read.</li>}
+                            {UNEXPECTED_KINDS.has(kind) && <li>The AI isn't sure this is the right kind of document (<Terms text={KIND_LABELS[kind]} />).</li>}
+                            {lowLines > 0 && <li>{lowLines} value(s) came from text the <Term k="OCR" /> found hard to read.</li>}
                             {issues.map((issue) => <li key={issue}>{issue}</li>)}
                         </ul>
                     </div>
@@ -344,8 +345,8 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
 
                 {ci && (
                     <section className="rounded border border-blue-200 bg-blue-50/50 p-2">
-                        <h4 className="font-semibold">{confirmed ? 'CI result (saved now)' : 'Proposed CI result'}</h4>
-                        {!confirmed && <p className="text-xs text-gray-600 pb-1">Drafted by the AI from the values below. Check it against the report and edit it; it is saved to the CI results only when you confirm.</p>}
+                        <h4 className="font-semibold"><Terms text={confirmed ? 'CI result (saved now)' : 'Proposed CI result'} /></h4>
+                        {!confirmed && <p className="text-xs text-gray-600 pb-1"><Terms>Drafted by the AI from the values below. Check it against the report and edit it; it is saved to the CI results only when you confirm.</Terms></p>}
                         <div className="flex flex-wrap gap-x-4 gap-y-1 py-1 text-sm" role="radiogroup" aria-label="CI result">
                             {CI_RESULTS.map((r) => (
                                 <label key={r.value} className={r.value === 'WITH_FINDINGS' ? 'text-red-700' : 'text-green-700'}>

@@ -463,7 +463,7 @@ const ReviewSummaryPage = () => {
                         {pageLinks}
                     </OptionalView>
                 )}
-                {done && <p className="lf-ok-note rv-done" role="status">{done}</p>}
+                {done && <p className="lf-ok-note rv-done" role="status"><Terms text={done} /></p>}
             </header>
 
             <div className="lf-body edit">

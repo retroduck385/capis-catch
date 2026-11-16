@@ -13,7 +13,8 @@ import {
 import { folderPath } from './paths';
 import { clearTrails } from '../../components/trailStore';
 import './workTray.css';
-import { Term } from '../../components/term';
+import { Term, Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const employmentLabel = (type) => EMPLOYMENT_TYPES.find((t) => t.value === type)?.label ?? '';
 
@@ -51,7 +52,7 @@ const AssigneeLine = ({ row, slotRole, myId, myRole, isHead, busy, onAssign, onU
 
     return (
         <div className='wt-slot'>
-            <span className='wt-slotlabel'>{SLOT_LABELS[slotRole]}</span>
+            <span className='wt-slotlabel'><Term k={SLOT_LABELS[slotRole]} /></span>
             {assigneeId
                 ? <span className='wt-person' title={name}>{name}</span>
                 : <span className='wt-unassigned'>Unassigned</span>}
@@ -155,7 +156,7 @@ const TatCell = ({ row }) => {
     return (
         <div className={`wt-tat ${TAT_TONES[row.tat_state] ?? 'plain'}`} title={detail}>
             <div className='wt-tat-top'>
-                <span className='wt-chip'>{TAT_LABELS[row.tat_state]}</span>
+                <span className='wt-chip'><Terms text={TAT_LABELS[row.tat_state]} /></span>
                 <span>{days}d / {limit}d</span>
             </div>
             <div className='wt-bar' role='img' aria-label={`${pct}% of the turnaround time used`}>
@@ -179,6 +180,7 @@ const DONUT_C = 2 * Math.PI * DONUT_R;
 // Every submitted application, FIFO by submission. AOs and COs can open all of them (view only until
 // they're assigned).
 const WorkTray = () => {
+    const tt = useTermTitle();
     useEffect(() => { clearTrails(); }, []); // a row opened from here starts a fresh breadcrumb trail
     const { session, role } = UserAuth();
     const myId = session?.user?.id;
@@ -340,14 +342,14 @@ const WorkTray = () => {
                             <li>
                                 <button
                                     type='button' className={`wt-key bad${byTat.BEYOND ? '' : ' zero'}`}
-                                    aria-pressed={tat === 'BEYOND'} onClick={() => toggleTat('BEYOND')}>
+                                    aria-pressed={tat === 'BEYOND'} onClick={() => toggleTat('BEYOND')} title={tt('Beyond TAT')}>
                                     <i />Beyond TAT <b>{byTat.BEYOND}</b>
                                 </button>
                             </li>
                             <li>
                                 <button
                                     type='button' className={`wt-key warn${byTat.NEAR ? '' : ' zero'}`}
-                                    aria-pressed={tat === 'NEAR'} onClick={() => toggleTat('NEAR')}>
+                                    aria-pressed={tat === 'NEAR'} onClick={() => toggleTat('NEAR')} title={tt('Near TAT')}>
                                     <i />Near TAT <b>{byTat.NEAR}</b>
                                 </button>
                             </li>
@@ -407,7 +409,7 @@ const WorkTray = () => {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)} />
                     </div>
-                    <select aria-label='TAT filter' value={tat} onChange={(e) => setTat(e.target.value)}>
+                    <select aria-label='TAT filter' title={tt('TAT filter')} value={tat} onChange={(e) => setTat(e.target.value)}>
                         <option value='ALL'>All TAT</option>
                         <option value='NEAR'>Near TAT</option>
                         <option value='BEYOND'>Beyond TAT</option>

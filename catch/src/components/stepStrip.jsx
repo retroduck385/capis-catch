@@ -8,12 +8,14 @@
 // openStep: key of the step the page is showing (aria-current). Styles: .lf-steps in loanFolder.css
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTermTitle } from './useTermTitle';
 
 const Meter = ({ value, max }) => (max > 0 ? (
     <span className="lf-step-meter" aria-hidden="true"><span style={{ width: `${Math.round((value / max) * 100)}%` }} /></span>
 ) : null);
 
 const StepStrip = ({ steps, openStep = null, guard, label = 'Your steps' }) => {
+    const tt = useTermTitle();   // staff only: the step is a link or button, so a title, not a hover
     const nextKey = steps.find((s) => !s.done && !s.skipped)?.key;
 
     return (
@@ -42,13 +44,13 @@ const StepStrip = ({ steps, openStep = null, guard, label = 'Your steps' }) => {
                         <li key={s.key} className={className}>
                             {s.to
                                 ? (
-                                    <Link to={s.to} aria-current={openStep === s.key ? 'step' : undefined}
+                                    <Link to={s.to} title={tt(`${s.title} ${s.text}`)} aria-current={openStep === s.key ? 'step' : undefined}
                                         onClick={(e) => { if (guard && !guard()) e.preventDefault(); }}>
                                         {body}
                                     </Link>
                                 )
                                 : (
-                                    <button type="button" onClick={s.onClick}
+                                    <button type="button" title={tt(`${s.title} ${s.text}`)} onClick={s.onClick}
                                         aria-current={openStep === s.key ? 'step' : undefined}>
                                         {body}
                                     </button>

@@ -8,6 +8,7 @@ import { MAX_LENGTH, fetchMentionCandidates } from './api';
 import { jumpToTopic, registerPanel, topicLabel, topicTarget } from './topics';
 import { useMessages } from './useMessages';
 import { Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 // The "@na" being typed right before the caret, or null. Names have spaces, so the query runs from the last @
 // (at the start or after a space) to the caret, on one line.
@@ -58,6 +59,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [open, setOpen] = useState(false);
+    const tt = useTermTitle();
     const [draft, setDraft] = useState('');
     const [topic, setTopic] = useState(null);            // section this draft is about
     const [candidates, setCandidates] = useState(null);  // null = not loaded yet
@@ -276,7 +278,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
                                         {m.topic && topicLabel(m.topic) && (
                                             <p className='py-1'>
                                                 <button type='button' onClick={() => goToTopic(m.topic)}
-                                                    title='Go to this section'
+                                                    title={['Go to this section', tt(topicLabel(m.topic))].filter(Boolean).join('\n')}
                                                     className='max-w-full truncate rounded-full border border-blue-300 bg-white px-2.5 py-0.5 text-left text-sm font-semibold text-blue-900 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
                                                     <span className='sr-only'>About </span>{topicLabel(m.topic)}<span aria-hidden='true'> ›</span>
                                                 </button>

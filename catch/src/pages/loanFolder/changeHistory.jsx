@@ -1,6 +1,7 @@
 // Changes made to the application after submission (audit_log), newest first.
 // The first "from" value of a field is what the applicant originally submitted.
 import { formatPeso, partyLabel } from '../applicationForm/options';
+import { Terms } from '../../components/term';
 
 const TABLE_LABELS = {
     loan_applications: 'Loan details',
@@ -75,7 +76,7 @@ const ChangeHistory = ({ app, entries, names }) => {
                     <li key={e.id} className="border-b py-2">
                         <p>
                             <strong>{ACTION_LABELS[e.action]}</strong>{' '}
-                            {[ownerLabel(e, app), TABLE_LABELS[e.table_name] ?? e.table_name].filter(Boolean).join(' · ')}
+                            <Terms text={[ownerLabel(e, app), TABLE_LABELS[e.table_name] ?? e.table_name].filter(Boolean).join(' · ')} />
                             {' '}by {names[e.changed_by] ?? 'unknown'} on {new Date(e.changed_at).toLocaleString()}
                         </p>
                         <ul className="pl-4 text-sm">

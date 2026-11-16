@@ -208,6 +208,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
             className='group my-3 scroll-mt-20 rounded-lg border border-gray-300 bg-white text-left text-gray-900'>
             <summary className='flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-lg px-4 py-3 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 [&::-webkit-details-marker]:hidden'>
                 <h3 className='text-lg font-semibold text-gray-900'>Ask the applicant for documents</h3>
+                {cur && ' '}
                 {cur && (
                     <span className={`whitespace-nowrap rounded-full border px-2.5 py-0.5 text-sm font-semibold ${cur.status === 'SENT'
                         ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-gray-300 bg-gray-50 text-gray-800'}`}>
@@ -215,7 +216,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                     </span>
                 )}
                 {ctx.history.length > 0 && (
-                    <span className='hidden text-sm text-gray-700 sm:inline'>{ctx.history.length} earlier</span>
+                    <>{' '}<span className='hidden text-sm text-gray-700 sm:inline'><span aria-hidden='true'>· </span>{ctx.history.length} earlier</span></>
                 )}
                 <ChevronDown size={20} aria-hidden='true' className='ml-auto shrink-0 text-gray-700 transition-transform group-open:rotate-180 motion-reduce:transition-none' />
             </summary>

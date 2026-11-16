@@ -28,6 +28,7 @@ import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
 import './ciRequest.css';
 import { Term, Terms } from '../../components/term';
+import { useTermTitle } from '../../components/useTermTitle';
 
 const STEP_KEYS = ['request', 'upload', 'ai', 'results'];
 const STEP_INTRO = {
@@ -82,6 +83,7 @@ const ciSteps = ({ data, missing, dirty, onOpen }) => {
 };
 
 const CiRequestPage = () => {
+    const tt = useTermTitle();
     const [searchParams, setSearchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
     const stepParam = STEP_KEYS.includes(searchParams.get('step')) ? searchParams.get('step') : null;
@@ -207,7 +209,7 @@ const CiRequestPage = () => {
                     <div>
                         <h1><Term k="CI" /> request {app.application_no}</h1>
                         <ul className="lf-meta">
-                            <li>NFIS and TransUnion inquiry details</li>
+                            <li><Terms>NFIS and TransUnion inquiry details</Terms></li>
                             {request && <li>Requested by {requesterName ?? 'Account Officer'}</li>}
                         </ul>
                     </div>
@@ -231,19 +233,19 @@ const CiRequestPage = () => {
                 {!request && (
                     <p className="lf-note">
                         <Info size={16} aria-hidden="true" />
-                        <span>No CI request has been sent for this application yet.</span>
+                        <span><Terms>No CI request has been sent for this application yet.</Terms></span>
                     </p>
                 )}
             </header>
 
-            {working && !ready && <p className="ci-note" role="status">Loading the CI results...</p>}
+            {working && !ready && <p className="ci-note" role="status"><Terms>Loading the CI results...</Terms></p>}
 
             {ready && step && (
                 <section className="lf-card ci-panel" aria-labelledby="ci-panel-h">
                     <div className="ci-panel-head">
                         <p className="ci-panel-kicker">Step {at + 1} of {STEP_KEYS.length}</p>
-                        <h2 id="ci-panel-h" tabIndex={-1}>{step.title}</h2>
-                        <p className="ci-panel-intro">{STEP_INTRO[current]}</p>
+                        <h2 id="ci-panel-h" tabIndex={-1}><Terms text={step.title} /></h2>
+                        <p className="ci-panel-intro"><Terms text={STEP_INTRO[current]} /></p>
                     </div>
 
                     {current === 'request' && (
@@ -259,12 +261,12 @@ const CiRequestPage = () => {
 
                     <nav className="ci-panel-nav" aria-label="Step navigation">
                         {prev ? (
-                            <button type="button" className="lf-btn quiet" onClick={() => openStep(prev.key)}>
+                            <button type="button" className="lf-btn quiet" title={tt(prev.title)} onClick={() => openStep(prev.key)}>
                                 <ArrowLeft size={16} aria-hidden="true" />Back: {prev.title}
                             </button>
                         ) : <span />}
                         {next && (
-                            <button type="button" className="lf-btn" onClick={() => openStep(next.key)}>
+                            <button type="button" className="lf-btn" title={tt(next.title)} onClick={() => openStep(next.key)}>
                                 Next: {next.title}<ArrowRight size={16} aria-hidden="true" />
                             </button>
                         )}

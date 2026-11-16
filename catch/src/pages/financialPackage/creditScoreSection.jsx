@@ -21,13 +21,13 @@ const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks,
 
     return (
         <tr>
-            <td><b>{criterion.label}</b></td>
+            <td><b><Terms text={criterion.label} /></b></td>
             <td>{suggestion.input ?? '—'}</td>
             <td>
                 {suggested
                     ? <b>{bandLabel(suggested)}</b>
                     : <span className="fp-pending">No suggestion</span>}
-                <p className="fp-note cs-source">{suggestion.source}</p>
+                <p className="fp-note cs-source"><Terms text={suggestion.source} /></p>
                 {!disabled && suggested && entry?.band !== suggested && (
                     <button type="button" className="rv-link" onClick={() => onScore(criterion.code, suggested)}>
                         Use suggestion

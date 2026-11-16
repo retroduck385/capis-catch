@@ -11,6 +11,8 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { UserAuth } from '../context/authContext';
 import { nextTrail, readTrail, trailKey, writeTrail } from './trailStore';
+import { Terms } from './term';
+import { useTermTitle } from './useTermTitle';
 
 const PAGES = {
     folder: { label: (no) => `Application ${no}`, to: (id) => `/loanFolderPage?id=${id}` },
@@ -23,6 +25,7 @@ const PAGES = {
 };
 
 const Breadcrumbs = ({ current, appId, appNo, onNavigate }) => {
+    const tt = useTermTitle();
     const { session } = UserAuth();
     const key = trailKey(session?.user?.id, appId);
     const state = useMemo(() => nextTrail(readTrail(key), current), [key, current]);
@@ -42,8 +45,8 @@ const Breadcrumbs = ({ current, appId, appNo, onNavigate }) => {
                 {trail.map((t, i) => (
                     <li key={`${i}-${t.label}`} className={t.kind === 'ahead' ? 'ahead' : undefined}>
                         {t.kind === 'here'
-                            ? <span aria-current="page">{t.label}</span>
-                            : <Link to={t.to} onClick={onNavigate}>{t.label}</Link>}
+                            ? <span aria-current="page"><Terms text={t.label} /></span>
+                            : <Link to={t.to} onClick={onNavigate} title={tt(t.label)}>{t.label}</Link>}
                         {i < trail.length - 1 && <ChevronRight size={14} className="crumb-sep" aria-hidden="true" />}
                     </li>
                 ))}
