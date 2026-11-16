@@ -1,4 +1,4 @@
-/* Work tray: overview card (key numbers, stage pipeline, most overdue) and a colour-coded table.
+/* Work tray: overview card (TAT donut, stage chart, focus KPIs) and a colour-coded table.
    Scoped to .wt; unlayered so it wins over the theme's component-layer table/button/select rules. */
 .wt {
   --wt-ok: #15714a;   --wt-ok-bg: #e6f5ed;   --wt-ok-line: #b6e0c8;
@@ -28,8 +28,8 @@
 .wt-chip::before { content: ''; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: currentColor; flex: none; }
 .wt-chip.nodot::before { display: none; }
 
-/* ---------- dashboard: TAT donut, stage columns, focus KPIs ---------- */
-.wt-dash { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.9fr) minmax(10rem, 0.7fr); gap: 1.1rem; align-items: stretch; }
+/* ---------- dashboard: TAT donut, stage chart, focus KPIs ---------- */
+.wt-dash { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(9.5rem, 0.5fr); gap: 1.1rem; align-items: stretch; }
 .wt-widget { padding: 1.15rem 1.35rem 1.3rem; display: flex; flex-direction: column; gap: 1rem; }
 .wt-wtitle { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0; }
 
@@ -62,44 +62,59 @@
 .wt button.wt-key:hover:not(:disabled) { background: var(--wt-plain-bg); }
 .wt button.wt-key[aria-pressed='true'] { background: var(--tone-bg); border-color: var(--tone-line); color: var(--tone); }
 
-/* pipeline columns */
-.wt-cols { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.4rem; flex: 1; }
-.wt .wt-col {
-  display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 0.5rem; min-height: 0; padding: 0.6rem 0.2rem 0.55rem;
-  border-radius: 14px; border: 1px solid transparent; background: transparent; color: var(--ink); box-shadow: none; cursor: pointer;
+/* stage chart: one horizontal bar per open stage, in process order. Bars scale to the busiest open stage;
+   the red end of a bar is the part beyond TAT. Decided is a plain count in the footer. */
+.wt-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; flex: 1; align-content: center; }
+.wt-bars li { margin: 0; }
+.wt .wt-bars button {
+  display: grid; grid-template-columns: minmax(6.5rem, 10.5rem) minmax(0, 1fr) 2rem; align-items: center; gap: 0.8rem;
+  width: 100%; min-height: 2.2rem; padding: 0.15rem 0.6rem; border: 1px solid transparent; border-radius: 10px;
+  background: transparent; color: var(--ink); box-shadow: none; text-align: left; cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s;
 }
-.wt .wt-col .num { font-size: 1.35rem; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
-.wt .wt-col .well {
-  width: 1.9rem; min-height: 5.5rem; border-radius: 999px; background: var(--wt-plain-bg); overflow: hidden;
-  display: flex; align-items: flex-end;
-}
-.wt .wt-col .fill {
-  display: block; width: 100%; height: 100%; border-radius: 999px; transform-origin: bottom;
-  background: linear-gradient(180deg, #4a63c4, var(--blue)); transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.wt .wt-col.done .fill { background: #9aa5b8; }
-.wt .wt-col .name { font-size: 0.76rem; font-weight: 600; color: var(--muted); text-align: center; line-height: 1.25; overflow-wrap: anywhere; }
-.wt .wt-col:hover:not(:disabled) { background: var(--wt-plain-bg); }
-.wt .wt-col[aria-pressed='true'] { background: var(--wt-info-bg); border-color: var(--wt-info-line); }
-.wt .wt-col[aria-pressed='true'] .name { color: var(--wt-info); }
+.wt .wt-bars button:hover:not(:disabled) { background: var(--wt-plain-bg); }
+.wt .wt-bars button[aria-pressed='true'] { background: var(--wt-info-bg); border-color: var(--wt-info-line); }
+.wt .wt-bars button:focus-visible, .wt .wt-decided:focus-visible { outline: 2px solid var(--wt-info); outline-offset: 2px; }
+.wt-bars .name { font-size: 0.85rem; font-weight: 600; line-height: 1.2; }
+.wt-bars .track { height: 0.7rem; border-radius: 999px; background: var(--wt-plain-bg); overflow: hidden; }
+.wt-bars .bar { display: flex; gap: 2px; height: 100%; min-width: 0.7rem; transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.wt-bars .seg { flex-basis: 0; background: var(--blue); border-radius: 999px; }
+.wt-bars .seg.late { background: var(--wt-bad); }
+.wt-bars .num { font-size: 1rem; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+.wt-bars .zero .name, .wt-bars .zero .num { color: var(--muted); font-weight: 500; }
+.wt .wt-bars button[aria-pressed='true'] .name { color: var(--wt-info); font-weight: 700; }
 
-/* focus KPIs */
-.wt-kpis { display: grid; gap: 1.1rem; grid-template-rows: 1fr 1fr; }
+.wt-barfoot {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.6rem 0.6rem 0; border-top: 1px solid rgba(12, 25, 41, 0.08); font-size: 0.8rem; color: var(--muted);
+}
+.wt-legend { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; }
+.wt-legend i { width: 0.75rem; height: 0.5rem; border-radius: 999px; background: var(--wt-bad); }
+.wt-legend.zero i { opacity: 0.4; }
+.wt .wt-decided {
+  min-height: 2rem; padding: 0.15rem 0.7rem; border-radius: 999px; border: 1px solid var(--wt-plain-line);
+  background: #fff; color: var(--wt-plain); font-size: 0.8rem; font-weight: 600; box-shadow: none; cursor: pointer;
+}
+.wt .wt-decided b { margin-left: 0.25rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.wt .wt-decided:hover { background: var(--wt-plain-bg); }
+.wt .wt-decided[aria-pressed='true'] { background: var(--wt-info-bg); border-color: var(--wt-info-line); color: var(--wt-info); }
+
+/* focus KPIs: compact tiles (icon left, number over label) so the stage chart gets the width */
+.wt-kpis { display: grid; gap: 0.75rem; grid-template-rows: 1fr 1fr; }
 .wt .wt-tile {
-  display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'ic val' 'lbl lbl'; align-items: center; justify-items: start;
-  column-gap: 0.75rem; row-gap: 0.35rem; text-align: left; min-height: 0; padding: 1rem 1.2rem; border-radius: 20px; cursor: pointer; color: var(--ink);
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'ic val' 'ic lbl'; align-items: center; align-content: center; justify-items: start;
+  column-gap: 0.7rem; row-gap: 0.15rem; text-align: left; min-height: 0; padding: 0.75rem 0.9rem; border-radius: 16px; cursor: pointer; color: var(--ink);
   background: #fff; border: 1px solid rgba(12, 25, 41, 0.08);
   box-shadow: 0 1px 2px rgba(15, 45, 94, 0.05), 0 14px 30px -22px rgba(15, 45, 94, 0.3);
   transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
 }
 .wt .wt-tile:hover:not(:disabled) { border-color: var(--tone-line); }
 .wt .wt-tile[aria-pressed='true'] { background: var(--tone-bg); border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone); }
-.wt-tile .ic { grid-area: ic; width: 2.4rem; height: 2.4rem; border-radius: 12px; display: grid; place-items: center; background: var(--tone-bg); color: var(--tone); }
+.wt-tile .ic { grid-area: ic; width: 2.1rem; height: 2.1rem; border-radius: 10px; display: grid; place-items: center; background: var(--tone-bg); color: var(--tone); }
 .wt .wt-tile[aria-pressed='true'] .ic { background: #fff; }
-.wt-tile .ic svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.wt-tile .val { grid-area: val; font-size: 2.1rem; line-height: 1; font-weight: 800; color: var(--tone); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.wt-tile .lbl { grid-area: lbl; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.wt-tile .ic svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.wt-tile .val { grid-area: val; font-size: 1.6rem; line-height: 1; font-weight: 800; color: var(--tone); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.wt-tile .lbl { grid-area: lbl; font-size: 0.8rem; font-weight: 600; color: var(--muted); line-height: 1.25; }
 .wt-tile.ok .val, .wt-tile.ok .ic { color: var(--muted); }
 .wt-tile.ok .ic { background: var(--wt-plain-bg); }
 
@@ -201,9 +216,706 @@
 }
 @media (max-width: 720px) {
   .wt-dash { grid-template-columns: minmax(0, 1fr); }
-  .wt-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .wt-kpis { grid-template-columns: 1fr; }
+  /* Stage tracker turns into a vertical list: circle, name, then the beyond-TAT chip on the right */
+  .wt .wt-bars button { grid-template-columns: 7.5rem minmax(0, 1fr) 1.75rem; gap: 0.6rem; padding: 0.15rem 0.4rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .wt .wt-tile, .wt .wt-col, .wt .wt-col .fill, .wt-donut .seg { transition: none; }
+  .wt .wt-tile, .wt .wt-bars button, .wt-bars .bar, .wt-donut .seg { transition: none; }
 }
+
+/* ======================================================================================================
+   Look (blue / white / orange): frosted white cards on the soft app canvas, sentence-case card titles,
+   lighter big numbers, pill bars and controls, and one gradient hero tile (the viewer's own work).
+   Layout and behaviour above are unchanged; this block only restyles. Status colours (green / amber / red
+   for TAT) stay as they are, so orange the accent never reads as "late".
+   ====================================================================================================== */
+.wt {
+  --wt-blue-grad: linear-gradient(135deg, #14295f 0%, #1e3f97 62%, #2b52c4 100%);
+  --wt-bar-grad: linear-gradient(90deg, #1e3f97, #3a63d6);
+  --wt-orange: #c2410c;          /* white text on it: 5.2:1 */
+  --wt-orange-hover: #9a3412;
+  --wt-glass-line: rgba(20, 41, 95, 0.07);
+  /* glass: translucent white, blurred and saturated canvas behind, a bright 1px rim and a top highlight */
+  --wt-glass: rgba(255, 255, 255, 0.55);
+  --wt-glass-blur: saturate(1.5) blur(20px);
+  --wt-glass-rim: rgba(255, 255, 255, 0.8);
+  --wt-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 41, 95, 0.04), 0 24px 48px -30px rgba(20, 41, 95, 0.45);
+  --wt-track: rgba(20, 41, 95, 0.08);
+}
+
+/* The page itself is one large glass panel (like an app window) holding the title, dashboard and table.
+   No backdrop-filter on the panel on purpose: a blurring parent would stop the cards inside from blurring
+   the canvas (it becomes their backdrop root), so the panel is a light tint with a rim instead. */
+.ct-main > .wt-page {
+  width: auto; max-width: 110rem; margin: 1.25rem max(1.5rem, calc((100% - 110rem) / 2)) 2rem;
+  padding: 1.75rem 2rem 2rem; border-radius: 30px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.22));
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 40px 80px -50px rgba(20, 41, 95, 0.55);
+}
+@media (max-width: 960px) {
+  .ct-main > .wt-page { margin: 0.75rem; padding: 1rem; border-radius: 22px; }
+}
+
+/* page title: big and light, like a dashboard heading */
+/* page header: greeting, big title, role tag; today's date on the right */
+.wt-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin-bottom: 1.4rem; }
+.wt-head-main { display: grid; justify-items: start; gap: 0.35rem; }
+.wt-greet { margin: 0; font-size: 0.95rem; font-weight: 600; color: #4c5a73; }
+.wt-head h1 { margin: 0; font-size: 2.1rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; color: var(--navy); }
+.wt-roletag {
+  display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem; padding: 0.25rem 0.6rem; border-radius: 8px;
+  background: rgba(30, 63, 151, 0.1); color: #1e3f97; font-size: 0.82rem; font-weight: 700;
+}
+.wt-date {
+  padding: 0.5rem 0.9rem; border-radius: 12px; font-size: 0.88rem; font-weight: 600; color: #2b3a5c;
+  background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255, 255, 255, 0.85); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* glass cards */
+.wt-card {
+  background: var(--wt-glass); -webkit-backdrop-filter: var(--wt-glass-blur); backdrop-filter: var(--wt-glass-blur);
+  border: 1px solid var(--wt-glass-rim); border-radius: 22px; box-shadow: var(--wt-glass-shadow);
+}
+.wt-widget { padding: 1.2rem 1.4rem 1.3rem; }
+.wt-wtitle { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; text-transform: none; color: var(--ink); }
+
+/* donut: round-ended segments, lighter centre number */
+.wt-donut .ring { stroke: var(--wt-track); }
+.wt-donut .seg { stroke-linecap: round; }
+.wt-donut .mid b { font-weight: 600; letter-spacing: -0.04em; font-size: 2.6rem; }
+.wt .wt-key { border-radius: 999px; }
+
+/* stage chart: thicker pill bars with a blue gradient; the late end stays red */
+.wt-bars .track { height: 0.85rem; background: var(--wt-track); }
+.wt .wt-bars button:hover:not(:disabled), .wt button.wt-key:hover:not(:disabled) { background: rgba(255, 255, 255, 0.6); }
+.wt-bars .bar { min-width: 0.85rem; }
+.wt-bars .seg { background: var(--wt-bar-grad); }
+.wt-bars .seg.late { background: linear-gradient(90deg, #d9483f, #b3261e); }
+.wt .wt-bars button { border-radius: 14px; }
+.wt-bars .num { font-weight: 700; }
+.wt-barfoot { border-top-color: var(--wt-glass-line); }
+
+/* tiles: glass like the cards; numbers lighter and larger */
+.wt .wt-tile {
+  border-radius: 20px; background: var(--wt-glass); border-color: var(--wt-glass-rim);
+  -webkit-backdrop-filter: var(--wt-glass-blur); backdrop-filter: var(--wt-glass-blur); box-shadow: var(--wt-glass-shadow);
+}
+.wt .wt-tile:not(.hero):hover:not(:disabled) { background: rgba(255, 255, 255, 0.72); }
+.wt-tile .val { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.03em; }
+.wt-tile .ic { border-radius: 12px; }
+
+/* hero tile: navy-to-blue gradient, white text, a soft orange glow in the corner */
+.wt .wt-tile.hero {
+  position: relative; overflow: hidden; isolation: isolate; color: #fff;
+  background: var(--wt-blue-grad); border-color: transparent;
+  box-shadow: 0 20px 36px -20px rgba(20, 41, 95, 0.75);
+}
+.wt .wt-tile.hero::after {
+  content: ''; position: absolute; z-index: -1; right: -2.5rem; top: -3rem; width: 8rem; height: 8rem; border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 106, 51, 0.55), transparent 70%); pointer-events: none;
+}
+.wt-tile.hero .val { color: #fff; }
+.wt-tile.hero .lbl { color: rgba(255, 255, 255, 0.85); }
+.wt-tile.hero .ic { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.wt .wt-tile.hero:hover:not(:disabled) { border-color: transparent; box-shadow: 0 24px 40px -20px rgba(20, 41, 95, 0.85); }
+.wt .wt-tile.hero[aria-pressed='true'] {
+  background: var(--wt-blue-grad); border-color: transparent;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #e0631f, 0 20px 36px -20px rgba(20, 41, 95, 0.75);
+}
+.wt .wt-tile.hero[aria-pressed='true'] .ic { background: rgba(255, 255, 255, 0.22); }
+
+/* toolbar: pill search, filters and buttons */
+.wt-toolbar { border-bottom-color: var(--wt-glass-line); padding: 1rem 1.25rem; }
+.wt .wt-toolbar input, .wt .wt-toolbar select {
+  border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.72); padding-inline: 1rem;
+  box-shadow: inset 0 1px 2px rgba(20, 41, 95, 0.06);
+}
+.wt .wt-toolbar .wt-search input { padding-left: 2.5rem; background-position: 0.95rem center; background-color: rgba(255, 255, 255, 0.72); }
+.wt .wt-toolbar :is(input, select):focus { background-color: #fff; border-color: var(--blue-200); }
+.wt .wt-toolbar button {
+  border-radius: 999px; background: rgba(255, 255, 255, 0.72); color: var(--navy); border: 1px solid rgba(255, 255, 255, 0.95);
+  font-weight: 600; box-shadow: 0 6px 14px -10px rgba(20, 41, 95, 0.4);
+}
+.wt .wt-toolbar button:hover:not(:disabled) { background: #fff; color: var(--navy); border-color: #fff; }
+.wt-count { border-bottom-color: var(--wt-glass-line); }
+
+/* table: rows sit on the glass (no white fills); a translucent header band and a brighter hover */
+.wt td { background: transparent; }
+.wt thead th { background: rgba(255, 255, 255, 0.45); color: #4c5a73; font-weight: 700; letter-spacing: 0.04em; }
+.wt tbody tr + tr td { border-top: 1px solid var(--wt-glass-line); }
+.wt .wt-row.clickable:hover td { background: rgba(255, 255, 255, 0.6); }
+.wt .wt-bar { background: var(--wt-track); }
+.wt-scroll { border-radius: 0 0 22px 22px; }
+
+/* the one orange call to action in a row: "Assign me" */
+.wt .wt-mini.take { background: var(--wt-orange); border-color: var(--wt-orange); color: #fff; }
+.wt .wt-mini.take:hover:not(:disabled) { background: var(--wt-orange-hover); border-color: var(--wt-orange-hover); color: #fff; }
+.wt .wt-mini.drop, .wt .wt-mini.manage { border-radius: 999px; }
+
+/* dialog matches the cards */
+.wt-dialog { border-radius: 22px; }
+.wt .wt-dialog-actions button { border-radius: 999px; }
+
+/* No blur support: solid surfaces, so text never sits on a busy, unblurred canvas */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .wt-card, .wt .wt-tile:not(.hero) { background: rgba(255, 255, 255, 0.95); }
+}
+
+/* ======================================================================================================
+   Table: readable controls on the glass, no pill badges, compact people.
+   ====================================================================================================== */
+/* toolbar: solid white controls with a visible border (glass-on-glass was too faint); Refresh is the one
+   filled button, Clear filters is orange text */
+.wt-toolbar { background: rgba(255, 255, 255, 0.5); border-radius: 22px 22px 0 0; }
+.wt .wt-toolbar input, .wt .wt-toolbar select, .wt .wt-toolbar .wt-search input {
+  min-height: 2.6rem; background-color: #fff; border: 1px solid rgba(20, 41, 95, 0.2); color: var(--ink); font-weight: 500;
+  box-shadow: 0 1px 2px rgba(20, 41, 95, 0.06);
+}
+.wt .wt-toolbar input::placeholder { color: #5b6880; opacity: 1; }
+.wt .wt-toolbar :is(input, select):hover { border-color: rgba(20, 41, 95, 0.36); }
+.wt .wt-toolbar :is(input, select):focus-visible { outline: 3px solid rgba(30, 63, 151, 0.25); outline-offset: 1px; border-color: var(--blue); }
+.wt .wt-toolbar button {
+  display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.6rem;
+  background: #fff; color: var(--navy); border: 1px solid rgba(20, 41, 95, 0.2); box-shadow: 0 1px 2px rgba(20, 41, 95, 0.06);
+}
+.wt .wt-toolbar button:hover:not(:disabled) { background: var(--blue-50); color: var(--navy); border-color: var(--blue-200); }
+.wt .wt-toolbar .wt-refresh, .wt .wt-toolbar .wt-refresh:hover:not(:disabled) { background: var(--wt-blue-grad); color: #fff; border-color: transparent; }
+.wt .wt-toolbar .wt-refresh:hover:not(:disabled) { filter: brightness(1.12); }
+.wt .wt-toolbar .wt-clear { color: var(--wt-orange); border-color: rgba(194, 65, 12, 0.35); }
+.wt .wt-toolbar .wt-clear:hover:not(:disabled) { background: #fff3ec; color: var(--wt-orange-hover); border-color: rgba(194, 65, 12, 0.55); }
+.wt-toolbar small, .wt-count { color: #4c5a73; }
+
+/* header and rows: a little tighter, clearer header */
+.wt thead th {
+  font-size: 0.74rem; color: #3f4c66; text-transform: uppercase; letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.5); border-bottom: 1px solid rgba(20, 41, 95, 0.1);
+}
+.wt td { padding: 0.95rem 1.1rem; }
+
+/* flags next to the reference: icon + word; only "Your turn to review" is a (square-cornered) tag */
+.wt-flag { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #5b6880; white-space: nowrap; }
+.wt-flag.info { color: var(--wt-info); }
+.wt-flag.turn { padding: 0.1rem 0.45rem; border-radius: 6px; background: var(--wt-orange); color: #fff; }
+
+/* stage: name, then the status as a coloured icon + word (replaces the pill) */
+.wt-stage { font-weight: 600; color: var(--ink); line-height: 1.3; }
+.wt-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 600; color: var(--tone); }
+
+/* TAT: the state as coloured text, no chip */
+.wt-tatlabel { color: var(--tone); font-weight: 700; font-size: 0.82rem; }
+
+/* assigned to: label column, avatar + name; reviewers / approvers as avatar stacks on one line each */
+.wt-slots { width: 16rem; gap: 0.4rem; }
+.wt-slot { grid-template-columns: 3.9rem minmax(0, 1fr) auto; gap: 0.5rem; min-height: 1.9rem; }
+.wt-slotlabel { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6880; }
+.wt-person { display: flex; align-items: center; gap: 0.45rem; min-width: 0; font-weight: 600; }
+.wt-person .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt-person.none .nm { color: var(--wt-warn); }
+.wt-av {
+  position: relative; display: inline-grid; place-items: center; flex: none; width: 1.7rem; height: 1.7rem; border-radius: 50%;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.02em; color: var(--navy); background: #dfe6f6; box-shadow: 0 0 0 2px #fff;
+}
+.wt-av.you { background: var(--wt-blue-grad); color: #fff; }
+.wt-av.empty { background: transparent; border: 1.5px dashed rgba(168, 72, 11, 0.6); box-shadow: none; }
+.wt-av.more { background: #fff; color: #4c5a73; border: 1px solid rgba(20, 41, 95, 0.16); font-size: 0.6rem; }
+.wt-av .tick {
+  position: absolute; right: -3px; bottom: -3px; width: 0.8rem; height: 0.8rem; padding: 1px; border-radius: 50%;
+  background: var(--wt-ok); color: #fff; box-shadow: 0 0 0 1.5px #fff;
+}
+.wt-stack { display: flex; align-items: center; min-width: 0; }
+.wt-stack .wt-av + .wt-av { margin-left: -0.45rem; }
+.wt-review { margin-top: 0.1rem; padding-top: 0.4rem; border-top: 1px solid rgba(20, 41, 95, 0.08); gap: 0.35rem; }
+.wt-review .wt-dim { font-size: 0.75rem; color: #5b6880; white-space: nowrap; }
+
+/* row buttons: small rounded rectangles rather than pills */
+.wt .wt-mini, .wt .wt-mini.drop, .wt .wt-mini.manage { border-radius: 8px; padding: 0.2rem 0.6rem; }
+
+/* ======================================================================================================
+   Colour: blue and white carry the page; orange is a hint (brand mark, Unassigned, "Assign me", "Your turn",
+   Clear filters, the hero's corner glow). Stages use a blue scale (STAGE_COLORS in options.js, passed in as --st);
+   avatars are mostly blue (set inline). Green / amber / red stay for TAT.
+   ====================================================================================================== */
+/* stage chart: each bar in its stage's colour, fading lighter toward the end */
+.wt-bars .seg { background: var(--st, #1e3f97); background: linear-gradient(90deg, var(--st, #1e3f97), color-mix(in srgb, var(--st, #1e3f97) 62%, #fff)); }
+.wt-bars .name { display: inline-flex; align-items: center; gap: 0.45rem; }
+.wt-bars .name::before { content: ''; flex: none; width: 0.55rem; height: 0.55rem; border-radius: 3px; background: var(--st); }
+.wt-bars .zero .name::before { opacity: 0.35; }
+
+/* table: a small square in the stage's colour before its name */
+.wt-stage { display: inline-flex; align-items: center; gap: 0.45rem; }
+.wt-stage::before { content: ''; flex: none; width: 0.6rem; height: 0.6rem; border-radius: 3px; background: var(--st, #64748b); }
+
+/* avatars: colour comes inline per person; keep the white ring */
+.wt-av { box-shadow: 0 0 0 2px #fff; }
+
+/* Unassigned work waiting: the glass tile keeps white, with an orange number and icon as the hint */
+.wt-tile.warn:not(.hero) .val { color: #c2410c; }
+.wt-tile.warn:not(.hero) .ic { background: #fff1e6; color: #c2410c; }
+.wt .wt-tile.warn:not(.hero):hover:not(:disabled) { border-color: rgba(194, 65, 12, 0.35); }
+.wt .wt-tile.warn:not(.hero)[aria-pressed='true'] { background: #fff7f1; border-color: #c2410c; box-shadow: 0 0 0 1px #c2410c; }
+
+/* ======================================================================================================
+   Table top, kept calm: one row (title + count left; search, filters, Refresh right) on the card's own glass,
+   a single hairline under it, and a quiet column header. A filter that's on is tinted blue.
+   ====================================================================================================== */
+.wt-toolbar {
+  border-radius: 0; background: transparent; padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(30, 63, 151, 0.12);
+}
+.wt-toolbar .spacer { flex: 1; }
+.wt-tabletitle { display: flex; align-items: baseline; gap: 0.6rem; }
+.wt-tabletitle h2 { margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; color: var(--navy); }
+.wt-tablecard .wt-count { padding: 0; border: 0; font-size: 0.88rem; color: #5b6880; }
+.wt-tablecard .wt-count b { color: #1e3f97; font-weight: 800; }
+/* search: blue magnifier */
+.wt .wt-toolbar .wt-search input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231e3f97' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+}
+/* a filter that's on */
+.wt .wt-toolbar select.on { background-color: #eaf0ff; border-color: #1e3f97; color: #1e3f97; font-weight: 700; }
+
+/* column headers: quiet, navy text on a faint blue */
+.wt thead th { background: rgba(234, 240, 255, 0.7); color: #2b3a5c; border-bottom: 1px solid rgba(30, 63, 151, 0.12); }
+
+/* ======================================================================================================
+   Row buttons: Assign me (orange, the call to action) and Release (quiet outline that warms to orange on
+   hover; the first click turns it into an orange "Confirm?", the second releases).
+   ====================================================================================================== */
+.wt .wt-mini { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 1.85rem; font-size: 0.78rem; }
+.wt .wt-mini.drop {
+  background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(20, 41, 95, 0.18); color: #4c5a73;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.wt .wt-mini.drop:hover:not(:disabled) { background: #fff1e6; border-color: rgba(194, 65, 12, 0.45); color: #c2410c; }
+.wt .wt-mini.drop.confirm, .wt .wt-mini.drop.confirm:hover:not(:disabled) { background: #c2410c; border-color: #c2410c; color: #fff; }
+.wt .wt-mini:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 1px; }
+
+/* ======================================================================================================
+   Motion. Everything here is skipped when the viewer asks for reduced motion.
+   Load: header and cards rise in turn, the donut draws, stage bars grow one after another, rows fade in.
+   Ongoing: tiles lift on hover, the hero glow drifts, Unassigned's icon pulses while work waits,
+   Refresh spins while loading, "Confirm?" gives a small nudge.
+   ====================================================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wt-rise { from { opacity: 0; transform: translateY(12px); } }
+  @keyframes wt-draw { from { stroke-dasharray: 0 264; } }
+  @keyframes wt-grow { from { transform: scaleX(0); } }
+  @keyframes wt-fade { from { opacity: 0; transform: translateY(4px); } }
+  @keyframes wt-glow { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-14px, 10px) scale(1.15); } }
+  @keyframes wt-ping { 0% { box-shadow: 0 0 0 0 rgba(194, 65, 12, 0.35); } 70%, 100% { box-shadow: 0 0 0 9px rgba(194, 65, 12, 0); } }
+  @keyframes wt-spin { to { transform: rotate(360deg); } }
+  @keyframes wt-nudge { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-2px); } 70% { transform: translateX(2px); } }
+
+  /* page entrance, staggered */
+  .wt-head, .wt-dash > *, .wt-tablecard { animation: wt-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .wt-dash > :nth-child(1) { animation-delay: 0.06s; }
+  .wt-dash > :nth-child(2) { animation-delay: 0.12s; }
+  .wt-dash > :nth-child(3) { animation-delay: 0.18s; }
+  .wt-tablecard { animation-delay: 0.26s; }
+
+  /* donut segments draw around the ring */
+  .wt-donut .seg { animation: wt-draw 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both; }
+
+  /* stage bars grow from the left, one after another */
+  .wt-bars .bar { transform-origin: left center; animation: wt-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .wt-bars li:nth-child(1) .bar { animation-delay: 0.35s; }
+  .wt-bars li:nth-child(2) .bar { animation-delay: 0.42s; }
+  .wt-bars li:nth-child(3) .bar { animation-delay: 0.49s; }
+  .wt-bars li:nth-child(4) .bar { animation-delay: 0.56s; }
+  .wt-bars li:nth-child(5) .bar { animation-delay: 0.63s; }
+
+  /* rows fade in (first dozen staggered; rows added later by filtering fade in on their own) */
+  .wt tbody tr.wt-row { animation: wt-fade 0.4s ease-out 0.45s both; }
+  .wt tbody tr.wt-row:nth-child(1) { animation-delay: 0.36s; }
+  .wt tbody tr.wt-row:nth-child(2) { animation-delay: 0.39s; }
+  .wt tbody tr.wt-row:nth-child(3) { animation-delay: 0.42s; }
+  .wt tbody tr.wt-row:nth-child(4) { animation-delay: 0.45s; }
+  .wt tbody tr.wt-row:nth-child(5) { animation-delay: 0.48s; }
+  .wt tbody tr.wt-row:nth-child(6) { animation-delay: 0.51s; }
+  .wt tbody tr.wt-row:nth-child(7) { animation-delay: 0.54s; }
+  .wt tbody tr.wt-row:nth-child(8) { animation-delay: 0.57s; }
+  .wt tbody tr.wt-row:nth-child(9) { animation-delay: 0.6s; }
+  .wt tbody tr.wt-row:nth-child(10) { animation-delay: 0.63s; }
+  .wt tbody tr.wt-row:nth-child(11) { animation-delay: 0.66s; }
+  .wt tbody tr.wt-row:nth-child(12) { animation-delay: 0.69s; }
+
+  /* tiles lift on hover; the hero's glow drifts; Unassigned pulses while there is work */
+  .wt .wt-tile { transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s, background-color 0.15s, border-color 0.15s; }
+  .wt .wt-tile:hover:not(:disabled) { transform: translateY(-3px); }
+  .wt .wt-tile:active:not(:disabled) { transform: translateY(-1px) scale(0.99); }
+  .wt .wt-tile.hero::after { animation: wt-glow 7s ease-in-out infinite; }
+  .wt-tile.warn:not(.hero) .ic { animation: wt-ping 2.4s ease-out infinite; }
+
+  /* stage rows nudge right on hover */
+  .wt .wt-bars button .name { transition: transform 0.2s; }
+  .wt .wt-bars button:hover:not(:disabled) .name { transform: translateX(2px); }
+
+  /* Refresh spins while loading; Confirm? nudges once */
+  .wt-refresh.spinning svg { animation: wt-spin 0.8s linear infinite; }
+  .wt .wt-mini.drop.confirm { animation: wt-nudge 0.3s ease-in-out; }
+}
+
+/* ======================================================================================================
+   Filter dropdowns (filterSelect.jsx): a pill button with a turning chevron, and a glass menu with a sliding
+   highlight and an orange tick on the chosen option. A filter that's on is tinted blue.
+   ====================================================================================================== */
+.wt-fsel { position: relative; }
+.wt .wt-toolbar .wt-fsel > button { justify-content: space-between; gap: 0.6rem; min-width: 9.5rem; padding: 0.3rem 0.85rem 0.3rem 1rem; font-weight: 500; color: var(--ink); }
+.wt-fsel .chev { flex: none; color: #4c5a73; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.wt-fsel.open .chev { transform: rotate(180deg); }
+.wt .wt-toolbar .wt-fsel.on > button { background: #eaf0ff; border-color: #1e3f97; color: #1e3f97; font-weight: 700; }
+.wt-fsel.on .chev { color: #1e3f97; }
+.wt .wt-toolbar .wt-fsel.open > button { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(30, 63, 151, 0.15); }
+.wt-fsel ul[role='listbox'] {
+  position: absolute; z-index: 25; top: calc(100% + 0.4rem); left: 0; min-width: 100%; margin: 0; padding: 0.35rem; list-style: none;
+  background: rgba(255, 255, 255, 0.97); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid rgba(20, 41, 95, 0.12); border-radius: 16px; box-shadow: 0 20px 44px -18px rgba(20, 41, 95, 0.5);
+  transform-origin: top center; outline: none;
+}
+.wt-fsel li {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.9rem; margin: 0; padding: 0.55rem 0.75rem;
+  border-radius: 10px; font-size: 0.9rem; color: var(--ink); white-space: nowrap; cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+.wt-fsel li > span { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.wt-fsel li.hi { background: #eaf0ff; color: #1e3f97; }
+.wt-fsel li.hi > span { transform: translateX(3px); }
+.wt-fsel li[aria-selected='true'] { font-weight: 700; color: #1e3f97; }
+.wt-fsel li svg { flex: none; color: #c2410c; }
+
+/* table hover: the TAT stripe widens, a small arrow shows the row opens, avatar stacks fan out */
+.wt td { transition: background-color 0.15s; }
+.wt-row td:first-child { transition: box-shadow 0.2s, background-color 0.15s; }
+.wt .wt-row.clickable:hover td:first-child { box-shadow: inset 8px 0 0 var(--stripe, #9db7f2); }
+.wt-row.clickable .wt-ref::after {
+  content: '→'; display: inline-block; margin-left: 0.3rem; opacity: 0; transform: translateX(-4px);
+  transition: opacity 0.18s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wt-row.clickable:hover .wt-ref::after, .wt-row.clickable:focus-visible .wt-ref::after { opacity: 1; transform: translateX(0); }
+.wt-stack .wt-av + .wt-av { transition: margin-left 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.wt-row:hover .wt-stack .wt-av + .wt-av { margin-left: 0.15rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wt-pop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } }
+  @keyframes wt-item { from { opacity: 0; transform: translateY(-3px); } }
+  .wt-fsel ul[role='listbox'] { animation: wt-pop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .wt-fsel li { animation: wt-item 0.2s ease-out both; animation-delay: calc(var(--i, 0) * 22ms + 40ms); }
+  /* TAT bars in the table fill from the left on load */
+  .wt-bar > span { transform-origin: left center; animation: wt-grow 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.55s both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-fsel .chev, .wt-fsel li > span, .wt-stack .wt-av + .wt-av, .wt-row.clickable .wt-ref::after { transition: none; }
+}
+
+/* ======================================================================================================
+   Toolbar breathing room: filters keep their size and their label on one line; the search box is what gives
+   way (down to 13rem); when the row is still too full, the controls wrap below the title as a group.
+   ====================================================================================================== */
+.wt-toolbar { gap: 0.75rem 0.75rem; }
+.wt-tabletitle { flex: none; margin-right: 0.5rem; }
+.wt-toolbar .spacer { flex: 1 1 0; min-width: 0; }
+.wt .wt-toolbar .wt-search { flex: 1 1 15rem; min-width: 13rem; max-width: 24rem; }
+.wt-fsel, .wt .wt-toolbar .wt-refresh, .wt .wt-toolbar .wt-clear { flex: none; }
+.wt-fsel .lbl { white-space: nowrap; }
+.wt .wt-toolbar .wt-fsel > button { min-width: 10rem; padding-inline: 1.05rem 0.9rem; }
+.wt .wt-toolbar :is(.wt-refresh, .wt-clear) { white-space: nowrap; padding-inline: 1.05rem; }
+
+/* ======================================================================================================
+   Toolbar in two rows (title + count | Refresh, then search | filters | Clear) and a slimmer table:
+   reviewers / approvers have their own column, the heads' Manage is a small icon beside AO / CO.
+   ====================================================================================================== */
+.wt-toolbar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 0.85rem; padding: 1.1rem 1.25rem 1rem; }
+.wt-toolbar-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.wt-toolbar-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; }
+.wt .wt-toolbar .wt-toolbar-filters .wt-search { flex: 1 1 16rem; min-width: 13rem; max-width: none; }
+.wt-tabletitle { margin-right: 0; }
+
+.wt table { min-width: 68rem; }
+.wt-slots { grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.5rem; align-items: center; width: 17rem; }
+.wt-slots > .wt-slot { grid-column: 1; }
+.wt .wt-slots > .wt-mini.manage {
+  grid-column: 2; grid-row: 1 / span 2; justify-self: end; display: grid; place-items: center;
+  width: 2rem; height: 2rem; min-height: 0; padding: 0; border-radius: 10px;
+}
+.wt-review { width: 14rem; margin: 0; padding: 0; border: 0; gap: 0.4rem; }
+.wt-notrouted { font-size: 0.8rem; }
+
+/* ======================================================================================================
+   More air in the table: search left (capped), filters grouped on the right with wider gaps, Clear as
+   plain orange text, a softer "on" tint, roomier toolbar and cells. Review lines are avatars only.
+   ====================================================================================================== */
+.wt-toolbar { gap: 1rem; padding: 1.25rem 1.5rem 1.15rem; }
+.wt-toolbar-filters { gap: 0.75rem 0.9rem; }
+.wt .wt-toolbar .wt-toolbar-filters .wt-search { flex: 0 1 24rem; min-width: 13rem; }
+.wt-toolbar-filters .wt-search + .wt-fsel { margin-left: auto; }
+.wt .wt-toolbar .wt-fsel > button { border-color: rgba(20, 41, 95, 0.14); box-shadow: none; }
+.wt .wt-toolbar .wt-fsel.on > button { background: #eef3ff; border-color: rgba(30, 63, 151, 0.4); color: #1e3f97; font-weight: 600; }
+.wt .wt-toolbar .wt-clear, .wt .wt-toolbar .wt-clear:hover:not(:disabled) {
+  min-height: 2.6rem; padding: 0.3rem 0.5rem; border: 0; background: transparent; box-shadow: none;
+  color: #c2410c; font-weight: 600;
+}
+.wt .wt-toolbar .wt-clear:hover:not(:disabled) { color: #9a3412; text-decoration: underline; text-underline-offset: 3px; }
+
+.wt td { padding: 1.1rem 1.15rem; }
+.wt thead th { padding-block: 0.8rem; }
+.wt-review { width: 11rem; gap: 0.55rem; }
+.wt-review .wt-slot { grid-template-columns: 3.9rem minmax(0, 1fr); }
+.wt-slots { row-gap: 0.55rem; }
+
+/* ======================================================================================================
+   Dark mode (the frame sets data-theme='dark' on .ct-e-app). Tokens first (text, blues, TAT tones, glass), then
+   the colours that were written as fixed light-theme values above. Status colours get lighter tints so they keep
+   4.5:1 on the dark glass.
+   ====================================================================================================== */
+[data-theme='dark'] .wt-page {
+  --ink: #e6ecff; --muted: #a3b0cc; --navy: #dbe5ff; --blue: #7ea2ff; --blue-700: #a9c0ff;
+  --blue-50: rgba(126, 162, 255, 0.14); --blue-200: rgba(126, 162, 255, 0.35);
+  --line: rgba(255, 255, 255, 0.1); --line-strong: rgba(255, 255, 255, 0.25);
+  color: var(--ink); color-scheme: dark;
+}
+[data-theme='dark'] .wt {
+  --wt-ok: #4ade80;   --wt-ok-bg: rgba(74, 222, 128, 0.12);   --wt-ok-line: rgba(74, 222, 128, 0.35);
+  --wt-warn: #fdba74; --wt-warn-bg: rgba(251, 146, 60, 0.14); --wt-warn-line: rgba(251, 146, 60, 0.4);
+  --wt-bad: #fca5a5;  --wt-bad-bg: rgba(248, 113, 113, 0.14); --wt-bad-line: rgba(248, 113, 113, 0.4);
+  --wt-info: #a9c0ff; --wt-info-bg: rgba(126, 162, 255, 0.14); --wt-info-line: rgba(126, 162, 255, 0.4);
+  --wt-plain: #a3b0cc; --wt-plain-bg: rgba(255, 255, 255, 0.06); --wt-plain-line: rgba(255, 255, 255, 0.14);
+  --wt-glass: rgba(22, 34, 68, 0.62); --wt-glass-rim: rgba(255, 255, 255, 0.08); --wt-glass-line: rgba(255, 255, 255, 0.07);
+  --wt-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -30px rgba(0, 0, 0, 0.8);
+  --wt-track: rgba(255, 255, 255, 0.08);
+}
+
+/* page panel and header */
+[data-theme='dark'] .ct-main > .wt-page {
+  background: linear-gradient(160deg, rgba(20, 32, 66, 0.55), rgba(12, 20, 44, 0.4)); border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 40px 80px -50px rgba(0, 0, 0, 0.8);
+}
+[data-theme='dark'] .wt-greet { color: #a3b0cc; }
+[data-theme='dark'] .wt-head h1 { color: #f1f5ff; }
+[data-theme='dark'] .wt-roletag { background: rgba(126, 162, 255, 0.16); color: #b9ccff; }
+[data-theme='dark'] .wt-date { color: #dbe5ff; background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.1); box-shadow: none; }
+
+/* tiles and charts */
+[data-theme='dark'] .wt .wt-tile:not(.hero):hover:not(:disabled) { background: rgba(30, 46, 90, 0.75); }
+[data-theme='dark'] .wt .wt-tile[aria-pressed='true'] .ic { background: rgba(255, 255, 255, 0.1); }
+[data-theme='dark'] .wt-tile.warn:not(.hero) .val { color: #fdba74; }
+[data-theme='dark'] .wt-tile.warn:not(.hero) .ic { background: rgba(251, 146, 60, 0.16); color: #fdba74; }
+[data-theme='dark'] .wt .wt-tile.warn:not(.hero)[aria-pressed='true'] { background: rgba(251, 146, 60, 0.12); border-color: #fb923c; box-shadow: 0 0 0 1px #fb923c; }
+[data-theme='dark'] .wt .wt-bars button:hover:not(:disabled), [data-theme='dark'] .wt button.wt-key:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+[data-theme='dark'] .wt-bars .seg:not(.late), [data-theme='dark'] .wt-bars .name::before, [data-theme='dark'] .wt-stage::before { filter: brightness(1.7) saturate(1.1); }
+[data-theme='dark'] .wt .wt-decided { background: rgba(255, 255, 255, 0.06); }
+
+/* toolbar, filters and their menus */
+[data-theme='dark'] .wt-toolbar { border-bottom-color: rgba(255, 255, 255, 0.08); }
+[data-theme='dark'] .wt-tablecard .wt-count { color: #a3b0cc; }
+[data-theme='dark'] .wt-tablecard .wt-count b { color: #a9c0ff; }
+[data-theme='dark'] .wt .wt-toolbar input, [data-theme='dark'] .wt .wt-toolbar .wt-search input,
+[data-theme='dark'] .wt .wt-toolbar button:not(.wt-refresh):not(.wt-clear) {
+  background-color: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); color: #e6ecff; box-shadow: none;
+}
+[data-theme='dark'] .wt .wt-toolbar button:not(.wt-refresh):not(.wt-clear):hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.12); color: #fff; }
+[data-theme='dark'] .wt .wt-toolbar input::placeholder { color: #8f9cba; }
+[data-theme='dark'] .wt .wt-toolbar .wt-search input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a9c0ff' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+}
+[data-theme='dark'] .wt .wt-toolbar .wt-clear, [data-theme='dark'] .wt .wt-toolbar .wt-clear:hover:not(:disabled) { color: #fdba74; }
+[data-theme='dark'] .wt-fsel .chev { color: #a3b0cc; }
+[data-theme='dark'] .wt .wt-toolbar .wt-fsel.on > button { background-color: rgba(126, 162, 255, 0.16); border-color: rgba(126, 162, 255, 0.5); color: #b9ccff; }
+[data-theme='dark'] .wt-fsel.on .chev { color: #b9ccff; }
+[data-theme='dark'] .wt-fsel ul[role='listbox'] { background: #172246; border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 20px 44px -18px rgba(0, 0, 0, 0.8); }
+[data-theme='dark'] .wt-fsel li.hi { background: rgba(126, 162, 255, 0.16); color: #dbe5ff; }
+[data-theme='dark'] .wt-fsel li[aria-selected='true'] { color: #b9ccff; }
+[data-theme='dark'] .wt-fsel li svg { color: #fdba74; }
+
+/* table */
+[data-theme='dark'] .wt thead th { background: rgba(255, 255, 255, 0.04); color: #b9c6e4; border-bottom-color: rgba(255, 255, 255, 0.08); }
+[data-theme='dark'] .wt .wt-row.clickable:hover td { background: rgba(255, 255, 255, 0.05); }
+[data-theme='dark'] .wt-row.locked td, [data-theme='dark'] .wt-row.locked .wt-ref { color: #7c89a6; }
+[data-theme='dark'] .wt-flag { color: #a3b0cc; }
+[data-theme='dark'] .wt-slotlabel, [data-theme='dark'] .wt-dim { color: #8f9cba; }
+[data-theme='dark'] .wt-av { box-shadow: 0 0 0 2px #18244a; }
+[data-theme='dark'] .wt-av .tick { box-shadow: 0 0 0 1.5px #18244a; }
+[data-theme='dark'] .wt-av.more { background: rgba(255, 255, 255, 0.1); color: #dbe5ff; border-color: rgba(255, 255, 255, 0.16); }
+[data-theme='dark'] .wt .wt-mini.drop, [data-theme='dark'] .wt .wt-mini.manage {
+  background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.16); color: #dbe5ff;
+}
+[data-theme='dark'] .wt .wt-mini.drop:hover:not(:disabled) { background: rgba(251, 146, 60, 0.14); border-color: rgba(251, 146, 60, 0.45); color: #fdba74; }
+[data-theme='dark'] .wt .wt-mini.manage:hover:not(:disabled) { background: rgba(126, 162, 255, 0.16); color: #dbe5ff; }
+
+/* manage dialog */
+[data-theme='dark'] .wt-dialog { background: #16213f; color: var(--ink); }
+[data-theme='dark'] .wt .wt-dialog select { background-color: #0f1834; color: var(--ink); border-color: rgba(255, 255, 255, 0.18); }
+[data-theme='dark'] .wt .wt-dialog .wt-field-row button { background: rgba(255, 255, 255, 0.08); color: var(--ink); border-color: rgba(255, 255, 255, 0.18); }
+
+/* ======================================================================================================
+   Applications by stage as process arrows (replaces the bars). Five equal chevrons that interlock; the shape is a
+   clipped ::before layer so the button itself keeps a normal focus ring. Fill = stage colour mixed with white at
+   --mix (12-40%, set per stage from its share). The selected stage turns solid navy. Narrow widths stack them.
+   ====================================================================================================== */
+.wt-flow { --notch: 0.85rem; list-style: none; margin: 0; padding: 0; display: flex; flex: 1; align-items: stretch; }
+.wt-flow li { flex: 1 1 0; min-width: 0; margin: 0; }
+.wt-flow li + li { margin-left: calc(var(--notch) * -0.55); }
+.wt .wt-flow button {
+  position: relative; isolation: isolate; width: 100%; height: 100%; min-height: 6.6rem;
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 0.3rem;
+  padding: 0.75rem calc(var(--notch) + 0.55rem) 0.75rem calc(var(--notch) + 0.75rem);
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #14295f; text-align: left; cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wt-flow li:first-child button { padding-left: 1rem; }
+.wt .wt-flow button::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: color-mix(in srgb, var(--st) var(--mix, 12%), #fff);
+  clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%, var(--notch) 50%);
+  transition: background-color 0.2s, filter 0.2s;
+}
+.wt-flow li:first-child button::before {
+  clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%);
+  border-radius: 14px 0 0 14px;
+}
+.wt-flow li:last-child button::before { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, var(--notch) 50%); }
+.wt-flow .name { font-size: 0.78rem; font-weight: 600; line-height: 1.2; color: #2b3a5c; }
+.wt-flow .num { font-size: 1.75rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.wt-flow .late {
+  padding: 0.1rem 0.4rem; border-radius: 6px; background: #fff; color: var(--wt-bad);
+  font-size: 0.7rem; font-weight: 700; line-height: 1.4; box-shadow: 0 1px 2px rgba(20, 41, 95, 0.12);
+}
+.wt-flow .zero button { color: #5b6880; }
+.wt-flow .zero .name { color: #6b768a; }
+.wt .wt-flow button:hover:not(:disabled)::before { filter: brightness(0.95) saturate(1.15); }
+.wt .wt-flow button[aria-pressed='true'] { color: #fff; }
+.wt .wt-flow button[aria-pressed='true'] .name { color: #dbe5ff; }
+.wt .wt-flow button[aria-pressed='true']::before { background: linear-gradient(135deg, #14295f, #1e3f97 65%, #2b52c4); }
+.wt .wt-flow button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; z-index: 1; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wt-chev { from { opacity: 0; transform: translateX(-12px); } }
+  .wt-flow li { animation: wt-chev 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(0.3s + var(--i, 0) * 0.08s); }
+  .wt .wt-flow button:hover:not(:disabled) { transform: translateY(-2px); }
+}
+
+/* narrow: a vertical stack of downward-pointing steps, name and count on one line */
+@media (max-width: 720px) {
+  .wt-flow { flex-direction: column; }
+  .wt-flow li + li { margin-left: 0; margin-top: calc(var(--notch) * -0.4); }
+  .wt .wt-flow button {
+    min-height: 3.6rem; flex-direction: row; align-items: center; justify-content: flex-start; gap: 0.75rem;
+    padding: calc(var(--notch) + 0.3rem) 1rem;
+  }
+  .wt-flow li:first-child button { padding-left: 1rem; padding-top: 0.6rem; }
+  .wt .wt-flow button::before, .wt-flow li:first-child button::before, .wt-flow li:last-child button::before {
+    border-radius: 0;
+    clip-path: polygon(0 0, 50% var(--notch), 100% 0, 100% calc(100% - var(--notch)), 50% 100%, 0 calc(100% - var(--notch)));
+  }
+  .wt-flow li:first-child button::before { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--notch)), 50% 100%, 0 calc(100% - var(--notch))); border-radius: 14px 14px 0 0; }
+  .wt-flow .name { flex: 1; }
+  .wt-flow .num { font-size: 1.35rem; }
+}
+
+/* dark mode: mix the stage colour into dark glass instead of white, light text */
+[data-theme='dark'] .wt .wt-flow button { color: #e6ecff; }
+[data-theme='dark'] .wt-flow .name { color: #b9c6e4; }
+[data-theme='dark'] .wt .wt-flow button::before { background: color-mix(in srgb, var(--st) calc(var(--mix, 12%) + 15%), #121c38); filter: brightness(1.35); }
+[data-theme='dark'] .wt-flow .zero button, [data-theme='dark'] .wt-flow .zero .name { color: #8f9cba; }
+[data-theme='dark'] .wt-flow .late { background: rgba(248, 113, 113, 0.18); color: #fecaca; box-shadow: none; }
+
+/* ======================================================================================================
+   Process arrows: motion. The chevron outline lives in --shape so a second layer (::after, the sheen) can share
+   it. A light band sweeps across the arrows in order every few seconds (the flow reads left to right), late tags
+   pulse, a chevron dips when pressed and pops as it becomes the selected stage. Skipped with reduced motion.
+   ====================================================================================================== */
+.wt .wt-flow button { --shape: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%, var(--notch) 50%); }
+.wt .wt-flow li:first-child button { --shape: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%); }
+.wt .wt-flow li:last-child button { --shape: polygon(0 0, 100% 0, 100% 100%, 0 100%, var(--notch) 50%); }
+@media (max-width: 720px) {
+  .wt .wt-flow button { --shape: polygon(0 0, 50% var(--notch), 100% 0, 100% calc(100% - var(--notch)), 50% 100%, 0 calc(100% - var(--notch))); }
+  .wt .wt-flow li:first-child button { --shape: polygon(0 0, 100% 0, 100% calc(100% - var(--notch)), 50% 100%, 0 calc(100% - var(--notch))); }
+  .wt .wt-flow li:last-child button { --shape: polygon(0 0, 50% var(--notch), 100% 0, 100% 100%, 0 100%); }
+}
+.wt .wt-flow button::before { clip-path: var(--shape); }
+.wt .wt-flow button::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; clip-path: var(--shape);
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.65) 50%, transparent 100%) no-repeat;
+  background-size: 40% 100%; background-position: -100% 0; opacity: 0;
+}
+[data-theme='dark'] .wt .wt-flow button::after { background-image: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* sheen: each chevron's pass starts a beat after the previous one, so the light travels along the flow */
+  @keyframes wt-sheen {
+    0% { background-position: -100% 0; opacity: 1; }
+    16% { background-position: 200% 0; opacity: 1; }
+    17%, 100% { background-position: 200% 0; opacity: 0; }
+  }
+  .wt .wt-flow button::after { animation: wt-sheen 6.5s ease-in-out infinite; animation-delay: calc(1.4s + var(--i, 0) * 0.16s); }
+
+  /* late tags pulse */
+  @keyframes wt-late { 0% { box-shadow: 0 0 0 0 rgba(179, 38, 30, 0.38); } 70%, 100% { box-shadow: 0 0 0 6px rgba(179, 38, 30, 0); } }
+  .wt-flow .late { animation: wt-late 2.4s ease-out infinite; }
+
+  /* press, and pop on becoming the selected stage */
+  @keyframes wt-select { from { transform: scale(0.93); } }
+  .wt .wt-flow button { transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .wt .wt-flow button:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+  .wt .wt-flow button[aria-pressed='true']::before { animation: wt-select 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .wt .wt-flow button[aria-pressed='true'] .num { animation: wt-select 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+}
+
+/* ======================================================================================================
+   Decided: the finish line of the stage flow. A rounded-rectangle button (not a pill): navy double-tick tile,
+   the count, "decided", and an arrow that slides on hover (it filters the table). Selected = solid navy, like a
+   selected stage arrow. Slate / navy, not green: green is kept for turnaround time.
+   ====================================================================================================== */
+.wt .wt-decided {
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.3rem 0.6rem 0.3rem 0.35rem;
+  border-radius: 12px; border: 1px solid rgba(20, 41, 95, 0.14); background: rgba(255, 255, 255, 0.72);
+  color: #2b3a5c; font-size: 0.85rem; font-weight: 600; box-shadow: 0 6px 16px -12px rgba(20, 41, 95, 0.5); cursor: pointer;
+  transition: background-color 0.18s, border-color 0.18s, color 0.18s, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wt-decided .ic {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 9px;
+  background: linear-gradient(135deg, #14295f, #2b52c4); color: #fff;
+}
+.wt .wt-decided b { margin: 0; font-size: 1.1rem; font-weight: 700; color: #14295f; font-variant-numeric: tabular-nums; }
+.wt-decided .lbl { color: #5b6880; font-weight: 600; }
+.wt-decided .go { color: #8591a5; transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.18s; }
+.wt .wt-decided:hover:not(:disabled) { background: #fff; border-color: rgba(30, 63, 151, 0.35); }
+.wt .wt-decided:hover:not(:disabled) .go { transform: translateX(3px); color: #1e3f97; }
+.wt .wt-decided:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.wt .wt-decided[aria-pressed='true'] {
+  background: linear-gradient(135deg, #14295f, #1e3f97 65%, #2b52c4); border-color: transparent; color: #fff;
+}
+.wt .wt-decided[aria-pressed='true'] .ic { background: rgba(255, 255, 255, 0.16); }
+.wt .wt-decided[aria-pressed='true'] b, .wt .wt-decided[aria-pressed='true'] .go { color: #fff; }
+.wt .wt-decided[aria-pressed='true'] .lbl { color: #dbe5ff; }
+@media (prefers-reduced-motion: no-preference) {
+  .wt .wt-decided:active:not(:disabled) { transform: scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce) { .wt .wt-decided, .wt-decided .go { transition: none; } }
+
+[data-theme='dark'] .wt .wt-decided { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); color: #dbe5ff; box-shadow: none; }
+[data-theme='dark'] .wt .wt-decided b { color: #f1f5ff; }
+[data-theme='dark'] .wt-decided .lbl { color: #a3b0cc; }
+[data-theme='dark'] .wt-decided .go { color: #8f9cba; }
+[data-theme='dark'] .wt .wt-decided:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-color: rgba(126, 162, 255, 0.4); }
+[data-theme='dark'] .wt .wt-decided:hover:not(:disabled) .go { color: #a9c0ff; }
+
+/* ======================================================================================================
+   Hero tile ("Assigned to me" / "For my review"), recoloured: all blue and white. The orange glow over the blue
+   turned muddy where they mixed, so the corner light is now soft white (it still drifts), with a faint white ring
+   as decoration, and the selected outline is white + blue instead of orange. White text stays 5:1+ on the
+   lightest end of the gradient.
+   ====================================================================================================== */
+.wt .wt-tile.hero { background: linear-gradient(135deg, #1a3683 0%, #2348b0 55%, #3463d8 100%); }
+.wt .wt-tile.hero::after { background: radial-gradient(circle, rgba(255, 255, 255, 0.26), transparent 68%); }
+.wt .wt-tile.hero::before {
+  content: ''; position: absolute; z-index: -1; right: -2rem; bottom: -2.8rem; width: 7rem; height: 7rem; border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.16); box-shadow: 0 0 0 14px rgba(255, 255, 255, 0.05); pointer-events: none;
+}
+.wt .wt-tile.hero:hover:not(:disabled) { box-shadow: 0 24px 40px -20px rgba(26, 54, 131, 0.8); }
+.wt .wt-tile.hero[aria-pressed='true'] {
+  background: linear-gradient(135deg, #1a3683 0%, #2348b0 55%, #3463d8 100%);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #3463d8, 0 20px 36px -20px rgba(26, 54, 131, 0.75);
+}
+[data-theme='dark'] .wt .wt-tile.hero[aria-pressed='true'] { box-shadow: 0 0 0 3px #0d1730, 0 0 0 5px #7ea2ff, 0 20px 36px -20px rgba(0, 0, 0, 0.8); }
