@@ -3,12 +3,16 @@
 // assigned) get a bell alert that opens IV. Credit Checking. Every flag is kept and shown here: who, when, the note.
 // Shown under the CI results wherever they appear; only a Credit Investigator gets the form.
 // (ci_finding_flags / flag_ci_findings() in 20261116_findings_and_file_marks.sql)
-import { useEffect, useState } from 'react';
+// Look: .ci-flags in ciRequest.css, on --lf-* tokens with light fallbacks: an amber box on every page, and it follows
+// dark mode on the converted ones (the CI request). Who flagged it is a Byline.
+import { useEffect, useId, useState } from 'react';
 import { Flag } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { UserAuth } from '../../context/authContext';
 import { fetchStaffNames } from '../loanFolder/api';
 import { Term } from '../../components/term';
+import Byline from '../../components/byline';
+import './ciRequest.css';
 
 const MAX = 500;
 
@@ -32,6 +36,7 @@ const CiFindingFlags = ({ applicationId, hasFindings, unsaved = false }) => {
     const [error, setError] = useState(null);
     const [done, setDone] = useState(false);
     const [version, setVersion] = useState(0);          // bump to load the flags again
+    const uid = useId().replace(/:/g, '');
 
     useEffect(() => {
         let cancelled = false;
@@ -65,48 +70,49 @@ const CiFindingFlags = ({ applicationId, hasFindings, unsaved = false }) => {
     };
 
     return (
-        <div className='my-3 rounded border border-amber-500 bg-amber-50 p-3 text-left text-gray-900'>
-            <p className='flex items-center gap-2 font-semibold text-gray-900'>
-                <Flag size={16} aria-hidden='true' />
-                <span><Term k="CI" /> {flags.length > 0 ? `findings flagged (${flags.length})` : 'findings not flagged yet'}</span>
-            </p>
+        <section className="ci-flags" aria-labelledby={`ci-flags-h${uid}`}>
+            <div className="ci-flags-head">
+                <span className="ci-flags-ic" aria-hidden="true"><Flag size={15} /></span>
+                <h3 id={`ci-flags-h${uid}`}>
+                    <Term k="CI" /> {flags.length > 0 ? 'findings flagged' : 'findings not flagged yet'}
+                </h3>
+                {flags.length > 0 && <span className="ci-flags-n">{flags.length}</span>}
+            </div>
             {flags.length > 0 && (
-                <ul className='pt-1'>
+                <ul className="ci-flags-list">
                     {flags.map((f) => (
-                        <li key={f.id} className='border-t border-amber-300 py-1.5 first:border-t-0'>
-                            <span className='text-sm text-gray-800'>
-                                Flagged by {names[f.flagged_by] ?? 'Credit Investigator'} · {new Date(f.flagged_at).toLocaleString()}
+                        <li key={f.id}>
+                            <span className="ci-flags-by">
+                                Flagged by <Byline layout="inline" name={names[f.flagged_by]} fallback="Credit Investigator" at={f.flagged_at} />
                             </span>
-                            <span className='block whitespace-pre-wrap break-words text-gray-900'>{f.note}</span>
+                            <p className="ci-flags-note">{f.note}</p>
                         </li>
                     ))}
                 </ul>
             )}
 
             {canFlag && (
-                <div className='pt-2'>
-                    <label htmlFor='ci-flag-note' className='block text-sm font-semibold text-gray-900'>
+                <div className="ci-flags-form">
+                    <label htmlFor={`ci-flag-note${uid}`}>
                         {flags.length > 0 ? 'Flag again, with a short note' : 'Flag the findings, with a short note'}
                     </label>
-                    <textarea id='ci-flag-note' rows={2} value={note} maxLength={MAX} onChange={(e) => { setNote(e.target.value); setDone(false); }}
-                        aria-describedby='ci-flag-hint'
-                        className='mt-1 w-full rounded border border-gray-400 bg-white p-2 text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600' />
-                    <p id='ci-flag-hint' className='text-sm text-gray-800'>
+                    <textarea id={`ci-flag-note${uid}`} rows={2} value={note} maxLength={MAX}
+                        onChange={(e) => { setNote(e.target.value); setDone(false); }} aria-describedby={`ci-flag-hint${uid}`} />
+                    <p id={`ci-flag-hint${uid}`} className="ci-flags-hint">
                         {note.length} / {MAX}. Alerts the assigned Account Officer and Credit Officer (the Dispatch Admins if no
                         Credit Officer is assigned yet). The note is read here, not in the alert. A flag can't be edited or removed.
                     </p>
-                    <button type='button' disabled={busy} onClick={submit}
-                        className='mt-1 min-h-0! rounded border border-amber-800! bg-white! px-3! py-1.5! font-semibold text-amber-950! hover:bg-amber-100! disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                        {busy ? 'Flagging...' : 'Flag findings'}
+                    <button type="button" className="ci-flags-btn" disabled={busy} onClick={submit}>
+                        <Flag size={15} aria-hidden="true" />{busy ? 'Flagging...' : 'Flag findings'}
                     </button>
                 </div>
             )}
             {role === 'CREDIT_INVESTIGATOR' && !hasFindings && unsaved && (
-                <p className='pt-1 text-sm text-gray-900'>Save your findings first, then you can flag them.</p>
+                <p className="ci-flags-hint">Save your findings first, then you can flag them.</p>
             )}
-            {done && <p role='status' className='pt-1 font-semibold text-green-900'>Flag sent.</p>}
-            {error && <p role='alert' className='pt-1 text-red-800'>{error}</p>}
-        </div>
+            {done && <p role="status" className="ci-flags-sent">Flag sent.</p>}
+            {error && <p role="alert" className="ci-flags-err">{error}</p>}
+        </section>
     );
 };
 

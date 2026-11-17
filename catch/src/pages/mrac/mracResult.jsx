@@ -8,6 +8,7 @@ import Excerpt from './excerpt';
 import { OVERALL, showFact, showRequirement, STATUS } from './labels';
 import './mrac.css';
 import { Terms } from '../../components/term';
+import { formatWhen, fullWhen } from '../../components/people';
 
 const pages = (c) => (c.manual_pages?.length ? `p. ${c.manual_pages.join(', ')}` : null);
 
@@ -62,7 +63,7 @@ const MracResult = ({ run, onAddException }) => {
             <div className={`mrac-banner ${overallTone}`}>
                 <div className="top">
                     <b><Terms text={overallLabel} /></b>
-                    {run.finished_at && <time dateTime={run.finished_at}>{new Date(run.finished_at).toLocaleString()}</time>}
+                    {run.finished_at && <time dateTime={run.finished_at} title={fullWhen(run.finished_at)}>{formatWhen(run.finished_at)}</time>}
                 </div>
                 {reasoning?.headline && <p>{reasoning.headline}</p>}
                 {result.notes?.length > 0 && (

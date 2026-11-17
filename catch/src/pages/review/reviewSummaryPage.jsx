@@ -7,13 +7,18 @@
 // Approvers (in Approval) get a shorter version: the recommendations, figures, CI, score and exceptions, then
 // Approve / Disapprove (submit_approval(), 20261110_approver_decision.sql). Everyone else with access reads the
 // full page, including every reviewer's sign-off and every approver's decision.
-// Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
+// Look (DESIGN.md, "Review summary"): the Financial Package's .lf-fp look (root lf-rv): header with a mode tag and fact
+// chips, the figures as tiles, your part as a strip, glass section cards. Styles: review.css (.lf-rv block).
 // For a reviewer / approver: a progress bar of their own review / decision in the header (MyWorkProgress, fed by
 // the form), and the pages they can only read (FP, credit scoring, loan folder, Decision support) under "Optional view".
 import { ReviewSummarySkeleton } from '../../components/skeleton';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Scale, UserCheck } from 'lucide-react';
+import {
+    ArrowRight, CalendarClock, ClipboardCheck, Eye, Gauge, House, Lock, Percent, PenLine, Scale, Send, UserCheck, Users, Wallet,
+} from 'lucide-react';
+import Byline from '../../components/byline';
+import { formatWhen, personName } from '../../components/people';
 import Breadcrumbs from '../../components/breadcrumbs';
 import OptionalView from '../../components/optionalView';
 import { DSS_ROLES, REVIEW_ROLES } from '../../roles';
@@ -35,10 +40,9 @@ import {
     fetchReviewDecisions, fetchReviewerCanAct, fetchReviewStaff, submitApproval, submitReview,
 } from './api';
 import { approvalProgress, splitRouting, tierLabel } from './approval';
-import { ApprovalForm, ApprovalProgress } from './approvalParts';
+import { ApprovalForm, ApprovalProgress, RoutingPeople } from './approvalParts';
 import { isReviewedChange, reviewFlags, reviewState } from './reviewChecks';
 import { FlagList, IncomeEvidence, MyWorkProgress, ReviewForm, ReviewProgress } from './reviewParts';
-import RoutingSummary from './routingSummary';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
@@ -132,7 +136,13 @@ const ReviewSummaryPage = () => {
     }, [applicationId]);
 
     if (loading) return <ReviewSummarySkeleton />;
-    if (error) return <p className="ct-error">{error}</p>;
+    if (error) {
+        return (
+            <div className="lf lf-folder lf-fp lf-rv">
+                <p className="lf-err" role="alert">{error}</p>
+            </div>
+        );
+    }
     if (!data) return null;
 
     const { app, fp, rules, rows, stage, coId, checkItems, decisions, canAct, ciDone, log, names, approvals, canApprove, positions } = data;
@@ -209,7 +219,7 @@ const ReviewSummaryPage = () => {
         const pos = positions[myId] ? ` (${positions[myId].split('_').map((w) => w[0] + w.slice(1).toLowerCase()).join(' ')})` : '';
         if (myApproval) {
             const verb = myApproval.action === 'DISAPPROVED' ? 'disapproved' : myApproval.conditions ? 'approved with conditions' : 'approved';
-            return `You are an approver${pos}. You ${verb} on ${new Date(myApproval.decided_at).toLocaleString()}.`
+            return `You are an approver${pos}. You ${verb} ${formatWhen(myApproval.decided_at)}.`
                 + (stage?.stage === 'APPROVAL' && stillNeeded.length ? ` Still needed: ${stillNeeded.join('; ')}.` : '');
         }
         if (canApprove) return `You are an approver${pos}. Your decision is needed: read the summary, then decide at the bottom.`;
@@ -218,33 +228,35 @@ const ReviewSummaryPage = () => {
     };
 
     const yourPart = myReview
-        ? (mySignoff ? `You are reviewer ${myReview.seq} of ${reviewers.length}. You signed off (${mySignoff.action === 'ENDORSED' ? 'endorsed' : 'not endorsed'}) on ${new Date(mySignoff.decided_at).toLocaleString()}.`
+        ? (mySignoff ? `You are reviewer ${myReview.seq} of ${reviewers.length}. You signed off (${mySignoff.action === 'ENDORSED' ? 'endorsed' : 'not endorsed'}) ${formatWhen(mySignoff.decided_at)}.`
             : canAct ? `You are reviewer ${myReview.seq} of ${reviewers.length}. It's your turn.`
                 : state.openReturn ? `You are reviewer ${myReview.seq} of ${reviewers.length}. It's back with the Credit Officer for revision.`
-                    : stage?.stage === 'REVIEW' && current ? `You are reviewer ${myReview.seq} of ${reviewers.length}. Waiting for reviewer ${current.seq} (${names[current.user_id] ?? 'Reviewer'}).`
+                    : stage?.stage === 'REVIEW' && current ? `You are reviewer ${myReview.seq} of ${reviewers.length}. Waiting for reviewer ${current.seq} (${personName(names[current.user_id]) || 'Reviewer'}).`
                         : `You are reviewer ${myReview.seq} of ${reviewers.length}.`)
         : isApprover ? approverPart()
             : 'This application isn\'t assigned to you (view only).';
 
+    const myTurn = canAct || canApprove;
     const stageText = stage ? `${stageLabel(stage.stage)} · ${STAGE_STATUS_LABELS[stage.status] ?? '—'}` : '—';
     const stageFor = stage?.enteredAt && ['REVIEW', 'APPROVAL'].includes(stage.stage) ? ` (for ${days(stage.enteredAt)})` : '';
     const returned = state.returns.length > 0
         ? ` · returned ${state.returns.length} time${state.returns.length === 1 ? '' : 's'}` : '';
 
+    // The figures as tiles (tone 'warn': still missing; 'done': set)
     const metrics = [
-        { key: 'result', label: 'Credit result', value: resultLabel ?? 'Not set', sub: 'CO recommendation', tone: resultLabel ? 'info' : 'warn' },
+        { key: 'result', Icon: ClipboardCheck, label: 'Credit result', value: resultLabel ?? 'Not set', sub: 'CO recommendation', tone: resultLabel ? 'done' : 'warn' },
         {
-            key: 'risk', label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
+            key: 'risk', Icon: Gauge, label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
             sub: score.riskRating ? `${score.total} / 100` : `${score.scored} of ${score.count} scored`,
-            tone: score.riskRating ? 'info' : 'warn',
+            tone: score.riskRating ? 'done' : 'warn',
         },
         {
-            key: 'loan', label: 'Loan amount', value: money(app.loan_amount),
-            sub: app.loan_term_years ? `${app.loan_term_years} years` : 'Term not set', tone: 'plain',
+            key: 'loan', Icon: Wallet, label: 'Loan amount', value: money(app.loan_amount),
+            sub: app.loan_term_years ? `${app.loan_term_years} years` : 'Term not set', tone: '',
         },
-        { key: 'dbr', label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: 'plain' },
-        { key: 'lcr', label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: 'plain' },
-        { key: 'amort', label: 'Monthly amortization', value: money(computed.amortization), sub: 'New loan', tone: 'plain' },
+        { key: 'dbr', Icon: Percent, label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: computed.dbr === null ? 'warn' : '' },
+        { key: 'lcr', Icon: House, label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: '' },
+        { key: 'amort', Icon: CalendarClock, label: 'Monthly amortization', value: money(computed.amortization), sub: 'New loan', tone: computed.amortization === null ? 'warn' : '' },
     ];
 
     const nav = approverView
@@ -269,7 +281,7 @@ const ReviewSummaryPage = () => {
             </Section>
         ),
         'rv-recommendation': (
-            <Section id="rv-recommendation" title={`Credit Officer's recommendation${coId ? ` (${names[coId] ?? 'Credit Officer'})` : ''}`}>
+            <Section id="rv-recommendation" title={`Credit Officer's recommendation${coId ? ` (${personName(names[coId]) || 'Credit Officer'})` : ''}`}>
                 <dl className="fp-info">
                     <Info label="Credit result">
                         {resultLabel ?? <span className="fp-pending">Not set</span>}
@@ -310,7 +322,7 @@ const ReviewSummaryPage = () => {
             </Section>
         ),
         'rv-ci': (
-            <Section id="rv-ci" title="IV. Credit Checking (CI results)">
+            <Section id="rv-ci" title="IV. Credit Checking (CI results)" className="lf-ciresults">
                 <CiResultsView app={app} title={null} />
             </Section>
         ),
@@ -372,7 +384,7 @@ const ReviewSummaryPage = () => {
                 {showApprovals ? (
                     <ApprovalProgress tier={pkg.approval_tier} approvers={approvers} decisions={approvals}
                         names={names} positions={positions} myId={myId} stage={stage?.stage} />
-                ) : <RoutingSummary tier={pkg.approval_tier} rows={rows} names={names} myId={myId} />}
+                ) : <RoutingPeople tier={pkg.approval_tier} rows={rows} names={names} positions={positions} myId={myId} />}
             </Section>
         ),
         'rv-review': canAct && (
@@ -409,62 +421,81 @@ const ReviewSummaryPage = () => {
     );
 
     return (
-        <div className="lf fp rv">
+        <div className="lf lf-folder lf-fp lf-rv fp rv">
             <Breadcrumbs current="review" appId={app.id} appNo={app.application_no} />
-            <header className="lf-card">
-                <div className="lf-titlerow">
-                    <div>
-                        <h1>{approverView ? 'Approval summary' : 'Review summary'} {app.application_no}</h1>
-                        <ul className="lf-meta">
-                            <li>Borrower/s: {borrowers || '—'}</li>
-                            <li>Stage: {stageText}{stageFor}{returned}</li>
-                            {sentRow && (
-                                <li>Sent for review by {names[sentRow.assigned_by] ?? 'unknown'} on {new Date(sentRow.assigned_at).toLocaleString()}</li>
-                            )}
-                        </ul>
-                    </div>
-                    <div className="lf-actions">
-                        <MessagesPanel applicationId={app.id} inline />
-                        {!reviewRole && pageLinks}
-                    </div>
-                </div>
-
-                <div className="fp-metrics">
-                    {metrics.map((m) => (
-                        <div key={m.key} className={`fp-metric ${m.tone}`}>
-                            <span className="lbl">{m.label}</span>
-                            <span className="val">{m.value}</span>
-                            <span className="sub"><Terms text={m.sub} /></span>
-                        </div>
-                    ))}
-                </div>
-
-                {(canAct || canApprove) && (
-                    <MyWorkProgress kind={canAct ? 'review' : 'approval'} progress={myWork} total={checkItems.length}
-                        onJump={() => {
-                            const id = canAct ? 'rv-review' : 'rv-decision';
-                            pickSection(id);
-                            scrollToSection(id);
-                        }} />
-                )}
-
-                <p className="lf-note">
-                    <UserCheck size={16} aria-hidden="true" />
-                    <span>{yourPart}</span>
-                </p>
-
-                {reviewRole && (
-                    <OptionalView who={isApprover ? 'Approvers' : 'Reviewers'}>
-                        {DSS_ROLES.includes(role) && (
-                            <Link to={`/decisionSupportPage?id=${app.id}`} className="lf-btn quiet">
-                                <Scale size={16} aria-hidden="true" />Decision support
-                            </Link>
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <ClipboardCheck size={15} aria-hidden="true" />
+                        <span>{approverView ? 'Approval summary' : 'Review summary'}</span>
+                        <span className={`lf-mode ${myTurn ? 'edit' : 'read'}`}>
+                            {myTurn
+                                ? <><PenLine size={13} aria-hidden="true" />Your turn</>
+                                : <>{myReview || isApprover ? <Eye size={13} aria-hidden="true" /> : <Lock size={13} aria-hidden="true" />}{myReview || isApprover ? 'Not your turn' : 'View only'}</>}
+                        </span>
+                    </p>
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    <ul className="lf-meta">
+                        <li>
+                            <Users size={15} aria-hidden="true" />
+                            <span className="k">Borrower/s</span>
+                            <span className="v cs-names">{borrowers || '—'}</span>
+                        </li>
+                        <li>
+                            <span className="k">Stage</span>
+                            <span className="v">{stageText}{stageFor}{returned}</span>
+                        </li>
+                        {sentRow && (
+                            <li>
+                                <Send size={15} aria-hidden="true" />
+                                <span className="k">Sent for review</span>
+                                <Byline layout="inline" name={names[sentRow.assigned_by]} fallback="Credit Officer" at={sentRow.assigned_at} />
+                            </li>
                         )}
-                        {pageLinks}
-                    </OptionalView>
-                )}
-                {done && <p className="lf-ok-note rv-done" role="status"><Terms text={done} /></p>}
+                    </ul>
+                </div>
+                <div className="lf-actions">
+                    <MessagesPanel applicationId={app.id} inline />
+                    {!reviewRole && pageLinks}
+                </div>
             </header>
+
+            <p className={`lf-note${myTurn ? ' rv-yours' : ''}`}>
+                <UserCheck size={16} aria-hidden="true" />
+                <span>{yourPart}</span>
+            </p>
+            {done && <p className="lf-ok-note rv-done" role="status"><Terms text={done} /></p>}
+
+            {myTurn && (
+                <MyWorkProgress kind={canAct ? 'review' : 'approval'} progress={myWork} total={checkItems.length}
+                    onJump={() => {
+                        const id = canAct ? 'rv-review' : 'rv-decision';
+                        pickSection(id);
+                        scrollToSection(id);
+                    }} />
+            )}
+
+            {reviewRole && (
+                <OptionalView who={isApprover ? 'Approvers' : 'Reviewers'}>
+                    {DSS_ROLES.includes(role) && (
+                        <Link to={`/decisionSupportPage?id=${app.id}`} className="lf-btn quiet">
+                            <Scale size={16} aria-hidden="true" />Decision support
+                        </Link>
+                    )}
+                    {pageLinks}
+                </OptionalView>
+            )}
+
+            <section className="fp-tiles six" aria-label="Key figures">
+                {metrics.map(({ key, Icon, label, value, sub, tone }) => (
+                    <div key={key} className={`lf-tile fp-tile ${tone}`}>
+                        <span className="ic" aria-hidden="true"><Icon size={18} /></span>
+                        <span className="lbl">{label}</span>
+                        <span className="val">{value}</span>
+                        <span className="sub"><Terms text={sub} /></span>
+                    </div>
+                ))}
+            </section>
 
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav fp-nav" aria-label="Review summary sections">
@@ -479,7 +510,7 @@ const ReviewSummaryPage = () => {
 
                 <div className="lf-main fp-main">
                     {nav.map(([id]) => <Fragment key={id}>{sections[id]}</Fragment>)}
-                    {!canAct && !canApprove && submitError && <p className="ct-error">{submitError}</p>}
+                    {!canAct && !canApprove && submitError && <p className="lf-err" role="alert">{submitError}</p>}
                 </div>
             </div>
         </div>

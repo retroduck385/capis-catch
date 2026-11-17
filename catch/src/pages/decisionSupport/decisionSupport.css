@@ -1,32 +1,92 @@
-/* Decision Support: readiness checklist (DSS-10) and exception highlights (DSS-11). Builds on the .mrac tone
-   variables (mrac.css), so these sections are rendered with className="mrac ds". */
+/* Decision Support (decisionSupportPage.jsx, sections.jsx). An .lf-folder page in the Credit Officer pages' look (root
+   lf lf-folder lf-fp lf-ds): the header, tiles, nav, glass section cards, policy-check tones and dark mode come from
+   loanFolder.css, financialPackage.css (.lf-fp) and mrac.css. This file adds the readiness checklist (DSS-10), the
+   exception highlights (DSS-11) and the score bars. The readiness and highlight sections use className="mrac ds", so
+   their ok / warn / bad tones are the policy check's (--tone, --tone-bg, --tone-line). Tokens carry light fallbacks. */
 
-/* the FP caps section children at the reading width; these lists should use the full card */
+/* the FP caps section children at the reading width; these lists use the full card */
 .fp .ds > :not(legend) { max-width: none; }
 
-.ds-ready, .ds-flags { margin: 1rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.6rem; }
-
-.ds-ready li {
-  display: grid; grid-template-columns: 5.2rem 1fr; align-items: start; gap: 0.2rem 0.9rem;
-  padding: 0.7rem 0.9rem; border: 1px solid var(--tone-line); border-left: 4px solid var(--tone);
-  border-radius: 8px; background: #fff;
+/* seven figure tiles in two rows on a 12-column grid: the decision inputs (readiness, policy check, credit result, risk
+   rating) on top, the figures (loan amount, DBR, LCR) below, so no value has to break mid-number */
+.lf-fp .fp-tiles.seven { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.lf-folder.lf-fp .fp-tiles.seven > .fp-tile { grid-column: span 3; }
+.lf-folder.lf-fp .fp-tiles.seven > .fp-tile:nth-child(n + 5) { grid-column: span 4; }
+@media (max-width: 760px) {
+  .lf-fp .fp-tiles.seven { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lf-folder.lf-fp .fp-tiles.seven > .fp-tile, .lf-folder.lf-fp .fp-tiles.seven > .fp-tile:nth-child(n + 5) { grid-column: auto; }
+  .lf-folder.lf-fp .fp-tiles.seven > .fp-tile:last-child { grid-column: 1 / -1; }
 }
-.ds-ready .mrac-chip { justify-self: start; }
-.ds-ready .body b { display: block; color: var(--ink); }
-.ds-ready .body p { margin: 0.15rem 0 0; color: var(--ink); line-height: 1.4; font-size: 0.92rem; }
-.ds-ready .body small { display: block; margin-top: 0.3rem; color: var(--muted); font-size: 0.82rem; }
-.ds-ready .body small a { display: inline-flex; align-items: center; gap: 0.15rem; font-weight: 600; }
 
+/* ---------- DSS-10 readiness: a meter in the banner, then one inset card per input ---------- */
+.ds-meter { height: 8px; margin-top: 0.75rem; background: var(--lf-track, #e3e8f5); }
+.ds-meter > span { background: var(--lf-bar-grad, var(--blue)); }
+.ds-ready, .ds-flags { display: grid; gap: 0.6rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.ds-ready li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.8rem; margin: 0;
+  padding: 0.85rem 1rem 0.85rem 1.15rem; border: 1px solid var(--lf-sub-line, #e3e7ee); border-radius: 16px;
+  background: var(--lf-sub-bg, #fafbfd); box-shadow: inset 4px 0 0 var(--tone);
+}
+/* the state's icon (tick / warning / eye) beside its word chip: never colour alone */
+.ds-ic {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%;
+  background: var(--tone-bg); color: var(--tone); box-shadow: 0 0 0 1px var(--tone-line);
+}
+.ds-ready .body { display: grid; gap: 0.3rem; min-width: 0; }
+.ds-ready-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 0.75rem; }
+.ds-ready-top b { color: var(--ink); font-size: 0.98rem; }
+.ds-ready .body p { margin: 0; color: var(--lf-text-2, var(--ink)); font-size: 0.92rem; line-height: 1.45; }
+/* who owns it (a byline with the role) and where to fix it (a small accent pill) */
+.ds-owner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; margin-top: 0.15rem; color: var(--muted); font-size: 0.84rem; }
+.ds-owner > b { color: var(--ink); font-weight: 600; }
+.ds-owner .byline { font-size: 0.86rem; }
+.ds-go {
+  display: inline-flex; align-items: center; gap: 0.3rem; margin-left: auto; min-height: 2.1rem; padding: 0.2rem 0.85rem;
+  border: 1px solid rgba(30, 63, 151, 0.3); border-radius: 999px; background: var(--lf-accent-bg, #e8edf9);
+  color: var(--lf-accent, #1e3f97); font-size: 0.82rem; font-weight: 700; text-decoration: none;
+}
+.ds-go:hover { background: var(--lf-control-hover, #fff); border-color: var(--lf-accent, #1e3f97); color: var(--lf-accent, #1e3f97); }
+.ds-go:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.ds-go svg { flex: none; }
+@media (pointer: coarse) { .ds-go { min-height: 2.75rem; } }
+
+/* ---------- DSS-11 exception highlights: a card per failing / needs-review criterion ---------- */
 .ds-flags li {
-  padding: 0.75rem 0.9rem; border: 1px solid var(--tone-line); border-left: 4px solid var(--tone);
-  border-radius: 8px; background: var(--tone-bg);
+  margin: 0; padding: 0.85rem 1rem 0.85rem 1.2rem; border: 1px solid var(--tone-line); border-radius: 16px;
+  background: var(--tone-bg); box-shadow: inset 4px 0 0 var(--tone);
 }
 .ds-flags .head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.7rem; }
 .ds-flags .head b { color: var(--ink); }
-.ds-flags .figs { margin: 0.35rem 0 0; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
-.ds-flags .why { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.86rem; line-height: 1.4; }
+.ds-flags .figs { margin: 0.4rem 0 0; color: var(--lf-text-2, var(--ink)); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.ds-flags .why { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
 .ds-flags .mrac-facts { margin-top: 0.5rem; }
 
+/* ---------- credit score: a bar per category ---------- */
+.ds-bars { display: grid; gap: 0.6rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+.ds-bars li { display: grid; grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr) 4.5rem; align-items: center; gap: 0.75rem; margin: 0; }
+.ds-bars .name { color: var(--lf-text-2, var(--ink)); font-size: 0.92rem; }
+.ds-bars .lf-meter { display: block; height: 8px; margin: 0; overflow: hidden; border-radius: 999px; background: var(--lf-track, #e3e8f5); }
+.ds-bars .lf-meter > span { display: block; height: 100%; border-radius: 999px; background: var(--lf-bar-grad, var(--blue)); }
+.ds-bars b { color: var(--navy); text-align: right; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 40rem) {
-  .ds-ready li { grid-template-columns: 1fr; }
+  .ds-bars li { grid-template-columns: minmax(0, 1fr) 4rem; }
+  .ds-bars .lf-meter { grid-column: 1 / -1; grid-row: 2; }
+  .ds-go { margin-left: 0; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lf-ds .ds-bars .lf-meter > span, .lf-ds .ds-meter > span { transform-origin: left; animation: lf-grow 0.8s var(--lf-ease) 0.3s both; }
+  .lf-ds .ds-ready li { animation: lf-fade 0.4s var(--lf-ease) both; }
+  .lf-ds .ds-ready li:nth-child(2) { animation-delay: 0.03s; }
+  .lf-ds .ds-ready li:nth-child(3) { animation-delay: 0.06s; }
+  .lf-ds .ds-ready li:nth-child(4) { animation-delay: 0.09s; }
+  .lf-ds .ds-ready li:nth-child(n + 5) { animation-delay: 0.12s; }
+  .ds-go { transition: background-color 0.18s, border-color 0.18s, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ds-go:hover { transform: translateY(-1px); }
+  .ds-go svg { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ds-go:hover svg { transform: translateX(2px); }
+}
+
+[data-theme='dark'] .lf-folder .ds-go { border-color: rgba(169, 192, 255, 0.4); }
+[data-theme='dark'] .lf-folder .ds-go:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }

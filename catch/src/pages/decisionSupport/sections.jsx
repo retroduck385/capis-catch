@@ -2,8 +2,11 @@
 // derived from it). SECTIONS decides the order, the navigator labels and when a section is shown, so Sprint 5 adds
 // a section by writing a component here and adding one entry in registry.js.
 // All of it is read only: the supporting information for a decision, not the decision itself.
+// Look: .lf-ds in decisionSupport.css (on the Credit Officer pages' .lf-fp look). Status is never colour alone: every
+// readiness line and flag has a word chip and an icon.
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Eye } from 'lucide-react';
+import Byline from '../../components/byline';
 import { Section } from '../applicationForm/fields';
 import { money } from './format';
 import { one } from '../applicationForm/api';
@@ -13,13 +16,13 @@ import { CATEGORIES } from '../financialPackage/creditScore';
 import { ROLE_LABELS } from '../../roles';
 import { showFact, showRequirement, STATUS } from '../mrac/labels';
 import MracResult, { Citation } from '../mrac/mracResult';
-import { ApprovalProgress } from '../review/approvalParts';
+import { ApprovalProgress, RoutingPeople } from '../review/approvalParts';
 import { ReviewProgress } from '../review/reviewParts';
-import RoutingSummary from '../review/routingSummary';
 import { READY } from './readiness';
 import AskApplicantButton from '../documentRequests/ask';
 import './decisionSupport.css';
 import { Terms } from '../../components/term';
+import { personName } from '../../components/people';
 
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
@@ -33,17 +36,15 @@ const Text = ({ label, value }) => (blank(value) ? null : <Info label={label} wr
 
 // ---- DSS-10: readiness for decision ----
 const READY_CHIP = {
-    [READY.DONE]: ['Done', 'ok'],
-    [READY.MISSING]: ['Missing', 'warn'],
-    [READY.CHECK]: ['Check', 'warn'],
+    [READY.DONE]: ['Done', 'ok', CheckCircle2],
+    [READY.MISSING]: ['Missing', 'warn', AlertTriangle],
+    [READY.CHECK]: ['Check', 'warn', Eye],
 };
 
 export const Readiness = ({ ctx }) => {
     const { readiness, names, aoId, coId } = ctx;
-    const ownerOf = (role) => {
-        const person = role === 'ACCOUNT_OFFICER' ? names[aoId] : role === 'CREDIT_OFFICER' ? names[coId] : null;
-        return `${ROLE_LABELS[role] ?? role}${person ? ` (${person})` : ''}`;
-    };
+    const personOf = (role) => (role === 'ACCOUNT_OFFICER' ? names[aoId] : role === 'CREDIT_OFFICER' ? names[coId] : null);
+    const pct = readiness.total > 0 ? Math.round((readiness.readyCount / readiness.total) * 100) : 0;
     return (
         <Section id="ds-readiness" title={`Readiness for decision (${readiness.readyCount} of ${readiness.total})`} className="mrac ds">
             <div className={`mrac-banner ${readiness.ready ? 'ok' : 'warn'}`}>
@@ -55,22 +56,33 @@ export const Readiness = ({ ctx }) => {
                         ? 'Each input below is present. The evaluator will not find a missing piece.'
                         : `${readiness.total - readiness.readyCount} of ${readiness.total} items still need attention; each shows what is missing and who owns it.`}
                 </p>
+                <div className="lf-meter ds-meter" role="progressbar" aria-label="Readiness" aria-valuemin={0} aria-valuemax={readiness.total}
+                    aria-valuenow={readiness.readyCount}>
+                    <span style={{ width: `${pct}%` }} />
+                </div>
             </div>
             <ul className="ds-ready">
                 {readiness.items.map((item) => {
-                    const [chip, tone] = READY_CHIP[item.state];
+                    const [chip, tone, Icon] = READY_CHIP[item.state];
+                    const person = personOf(item.owner);
                     return (
                         <li key={item.key} className={tone}>
-                            <span className={`mrac-chip ${tone}`}>{chip}</span>
+                            <span className="ds-ic" aria-hidden="true"><Icon size={17} /></span>
                             <div className="body">
-                                <b>{item.label}</b>
+                                <div className="ds-ready-top">
+                                    <b>{item.label}</b>
+                                    <span className={`mrac-chip ${tone}`}>{chip}</span>
+                                </div>
                                 <p>{item.detail}</p>
-                                <small>
-                                    {item.state === READY.DONE ? 'Owner' : 'Waiting on'}: {ownerOf(item.owner)}
+                                <div className="ds-owner">
+                                    <span>{item.state === READY.DONE ? 'Owner' : 'Waiting on'}</span>
+                                    {person
+                                        ? <Byline layout="inline" name={person} role={ROLE_LABELS[item.owner] ?? item.owner} />
+                                        : <b>{ROLE_LABELS[item.owner] ?? item.owner}</b>}
                                     {item.to && item.state !== READY.DONE && (
-                                        <> · <Link to={item.to}>{item.action}<ArrowRight size={12} aria-hidden="true" /></Link></>
+                                        <Link to={item.to} className="ds-go">{item.action}<ArrowRight size={14} aria-hidden="true" /></Link>
                                     )}
-                                </small>
+                                </div>
                                 {item.ask && item.state !== READY.DONE && (
                                     <p><AskApplicantButton applicationId={ctx.app.id} ask={item.ask} /></p>
                                 )}
@@ -213,7 +225,7 @@ export const PolicyCheck = ({ ctx }) => {
 export const Recommendation = ({ ctx }) => {
     const { pkg, resultLabel, coId, names } = ctx;
     return (
-        <Section id="ds-recommendation" title={`Credit Officer's recommendation${coId ? ` (${names[coId] ?? 'Credit Officer'})` : ''}`}>
+        <Section id="ds-recommendation" title={`Credit Officer's recommendation${coId ? ` (${personName(names[coId]) || 'Credit Officer'})` : ''}`}>
             <dl className="fp-info">
                 <Info label="Credit result">{resultLabel ?? <span className="fp-pending">Not set</span>}</Info>
                 <Text label="Justification and remarks" value={pkg.justification} />
@@ -233,7 +245,7 @@ export const Figures = ({ ctx }) => {
         <Section id="ds-figures" title="Key figures (from the Financial Package)">
             <dl className="fp-info">
                 <Info label="Loan amount">{money(app.loan_amount)}</Info>
-                <Info label="Loan purpose">{app.loan_purposes?.label ?? app.loan_purpose_other ?? '—'}</Info>
+                <Info label="Loan purpose">{one(app.loan_purposes)?.label ?? app.loan_purpose_other ?? '—'}</Info>
                 <Info label="Term / interest rate">
                     {app.loan_term_years ? `${app.loan_term_years} years` : '—'} ·{' '}
                     {app.interest_rate != null ? `${app.interest_rate}% p.a.` : 'rate not set'}
@@ -262,12 +274,20 @@ export const Score = ({ ctx }) => {
         <Section id="ds-score" title="Credit score">
             {score.scored === 0 ? <p className="fp-empty">Not scored yet.</p> : (
                 <>
+                    <ul className="ds-bars">
+                        {CATEGORIES.map((c) => {
+                            const { score: got, max } = score.byCategory[c.value];
+                            const pct = max > 0 ? Math.max(0, Math.min(100, (got / max) * 100)) : 0;
+                            return (
+                                <li key={c.value}>
+                                    <span className="name">{c.label}</span>
+                                    <span className="lf-meter" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
+                                    <b>{got} / {max}</b>
+                                </li>
+                            );
+                        })}
+                    </ul>
                     <dl className="fp-info">
-                        {CATEGORIES.map((c) => (
-                            <Info key={c.value} label={c.label}>
-                                {score.byCategory[c.value].score} / {score.byCategory[c.value].max}
-                            </Info>
-                        ))}
                         <Info label="Total">{score.total} / 100</Info>
                         <Info label="Risk rating">{score.riskRating ?? '—'}</Info>
                         <Info label="Recommendation">{score.recommendation ?? '—'}</Info>
@@ -283,7 +303,7 @@ export const Score = ({ ctx }) => {
 
 // ---- CI results ----
 export const CreditChecking = ({ ctx }) => (
-    <Section id="ds-ci" title="IV. Credit Checking (CI results)">
+    <Section id="ds-ci" title="IV. Credit Checking (CI results)" className="lf-ciresults">
         {!ctx.ciDone && <p className="lf-note warn">Credit investigation is not finished yet.</p>}
         <CiResultsView app={ctx.app} title={null} />
     </Section>
@@ -337,7 +357,10 @@ export const Decisions = ({ ctx }) => {
                         {showApprovals ? (
                             <ApprovalProgress tier={pkg.approval_tier} approvers={approvers} decisions={approvals}
                                 names={names} positions={positions} myId={myId} stage={stage?.stage} />
-                        ) : <RoutingSummary tier={pkg.approval_tier} rows={rows} names={names} myId={myId} />}
+                        ) : (
+                            <RoutingPeople tier={pkg.approval_tier} rows={rows} names={names} positions={positions} myId={myId}
+                                showReviewers={reviewers.length === 0} />
+                        )}
                     </>
                 )}
         </Section>

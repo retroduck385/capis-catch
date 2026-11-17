@@ -3,10 +3,14 @@
 // value, loan / deposit checks); the CO accepts, changes or leaves each one and saves with save_credit_score().
 // Same edit rule as the FP: only the assigned CO, any stage before Decided; everyone else with access reads.
 // The assigned CO's header shows step 2 of their three steps (coSteps.jsx): FP -> this score -> Approval routing.
+// Look (DESIGN.md, "Credit score and VII. Approval"): the Financial Package's .lf-fp look (root lf-cs): header with a
+// mode tag and fact chips, the steps card, the figures as tiles, criterion cards. Styles: creditScore.css (.lf-cs).
 import { CreditScoreSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Lock } from 'lucide-react';
+import {
+    AlertTriangle, ArrowRight, BadgeCheck, Gauge, Info, ListChecks, Lock, PenLine, Save, ShieldCheck, Users, Wallet,
+} from 'lucide-react';
 import { fetchCiFindingFlagCount, fetchCiResults } from '../ciRequest/api';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
@@ -121,7 +125,13 @@ const CreditScorePage = () => {
     const totals = useMemo(() => (rules && scores ? totalCreditScore(rules, scores) : null), [rules, scores]);
 
     if (loading) return <CreditScoreSkeleton />;
-    if (error && !scores) return <p className="ct-error">{error}</p>;
+    if (error && !scores) {
+        return (
+            <div className="lf lf-folder lf-fp lf-cs">
+                <p className="lf-err" role="alert">{error}</p>
+            </div>
+        );
+    }
     if (!app || !scores || !suggestions) return null;
 
     const change = (next) => {
@@ -161,21 +171,22 @@ const CreditScorePage = () => {
     const borrowers = getParties(app, BORROWER_ROLES).map(fullName).filter(Boolean).join(', ');
 
     const unconfirmed = rules.criteria.filter((c) => !scores[c.code]?.band && suggestions[c.code].band).length;
+    // The figures as tiles (tone 'warn': still waiting on the CO; 'done': complete)
     const metrics = [
         {
-            key: 'total', label: 'Total score', value: `${totals.total} / 100`,
+            key: 'total', Icon: Gauge, label: 'Total score', value: `${totals.total} / 100`,
             sub: totals.complete ? (totals.description ?? 'Scored') : `${totals.scored} of ${totals.count} criteria scored`,
-            tone: totals.complete ? 'info' : 'warn',
+            tone: totals.complete ? 'done' : 'warn',
         },
         {
-            key: 'risk', label: 'Credit risk rating', value: totals.riskRating ?? 'Not scored',
-            sub: totals.riskRating ? 'From the score' : 'When every criterion is scored', tone: totals.riskRating ? 'info' : 'warn',
+            key: 'risk', Icon: ShieldCheck, label: 'Credit risk rating', value: totals.riskRating ?? 'Not scored',
+            sub: totals.riskRating ? 'From the score' : 'When every criterion is scored', tone: totals.riskRating ? 'done' : 'warn',
         },
-        { key: 'rec', label: 'Recommendation', value: totals.recommendation ?? '—', sub: 'A guide, not the decision', tone: 'plain' },
-        { key: 'loan', label: 'Loan amount', value: money(app.loan_amount), sub: 'Requested', tone: 'plain' },
+        { key: 'rec', Icon: BadgeCheck, label: 'Recommendation', value: totals.recommendation ?? '—', sub: 'A guide, not the decision', tone: '' },
+        { key: 'loan', Icon: Wallet, label: 'Loan amount', value: money(app.loan_amount), sub: 'Requested', tone: '' },
         {
-            key: 'sugg', label: 'Suggestions to confirm', value: String(unconfirmed),
-            sub: unconfirmed === 0 ? 'Nothing waiting' : 'Not counted until picked', tone: unconfirmed === 0 ? 'plain' : 'warn',
+            key: 'sugg', Icon: ListChecks, label: 'Suggestions to confirm', value: String(unconfirmed),
+            sub: unconfirmed === 0 ? 'Nothing waiting' : 'Not counted until picked', tone: unconfirmed === 0 ? '' : 'warn',
         },
     ];
 
@@ -186,73 +197,94 @@ const CreditScorePage = () => {
     };
 
     return (
-        <form onSubmit={handleSave} className="lf fp rv">
+        <form onSubmit={handleSave} className="lf lf-folder lf-fp lf-cs fp rv">
             <Breadcrumbs current="score" appId={app.id} appNo={app.application_no} onNavigate={leave} />
-            <header className="lf-card">
-                <div className="lf-titlerow">
-                    <div>
-                        <h1>Credit Scoring {app.application_no}</h1>
-                        <ul className="lf-meta">
-                            <li>Borrower/s: {borrowers || '—'}</li>
-                            <li>Housing Loan Credit Scoring Sheet</li>
-                        </ul>
-                    </div>
-                    <div className="lf-actions">
-                        <MessagesPanel applicationId={app.id} inline />
-                        {/* The assigned CO gets these as steps / optional view below */}
-                        {!canEdit && (
-                            <>
-                                <Link to="/adminHomePage" onClick={leave} className="lf-btn">Work tray</Link>
-                                <Link to={`/loanFolderPage?id=${app.id}`} onClick={leave} className="lf-btn">
-                                    Loan folder<ArrowRight size={16} aria-hidden="true" />
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {ciFindings && (
-                    <p className="lf-note warn" role="note">
-                        <AlertTriangle size={16} aria-hidden="true" />
-                        <span>
-                            <Term k="CI" /> findings exist on this file and may lower the score. See{' '}
-                            <Link to={`/financialPackagePage?id=${app.id}#fp-iv`} onClick={leave}>IV. Credit Checking</Link>{' '}
-                            on the Financial Package.
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <Gauge size={15} aria-hidden="true" />
+                        <span>Housing Loan Credit Scoring</span>
+                        <span className={`lf-mode ${canEdit ? 'edit' : 'read'}`}>
+                            {canEdit
+                                ? <><PenLine size={13} aria-hidden="true" />You can edit</>
+                                : <><Lock size={13} aria-hidden="true" />Read-only</>}
                         </span>
                     </p>
-                )}
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    <ul className="lf-meta">
+                        <li>
+                            <Users size={15} aria-hidden="true" />
+                            <span className="k">Borrower/s</span>
+                            <span className="v cs-names">{borrowers || '—'}</span>
+                        </li>
+                        <li>
+                            <Wallet size={15} aria-hidden="true" />
+                            <span className="k">Loan amount</span>
+                            <span className="v">{money(app.loan_amount)}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div className="lf-actions">
+                    <MessagesPanel applicationId={app.id} inline />
+                    {/* The assigned CO gets these as steps / optional view below */}
+                    {!canEdit && (
+                        <>
+                            <Link to="/adminHomePage" onClick={leave} className="lf-btn">Work tray</Link>
+                            <Link to={`/loanFolderPage?id=${app.id}`} onClick={leave} className="lf-btn">
+                                Loan folder<ArrowRight size={16} aria-hidden="true" />
+                            </Link>
+                        </>
+                    )}
+                </div>
+            </header>
 
-                {canEdit && (
+            {!canEdit && (
+                <p className="lf-note">
+                    <Lock size={16} aria-hidden="true" />
+                    <span>
+                        Read-only. Only the assigned Credit Officer can edit the credit score.
+                        {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
+                    </span>
+                </p>
+            )}
+
+            {ciFindings && (
+                <p className="lf-note warn" role="note">
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <span>
+                        <Term k="CI" /> findings exist on this file and may lower the score. See{' '}
+                        <Link to={`/financialPackagePage?id=${app.id}#fp-iv`} onClick={leave}>IV. Credit Checking</Link>{' '}
+                        on the Financial Package.
+                    </span>
+                </p>
+            )}
+
+            {canEdit && (
+                <section className="lf-card lf-stepcard" aria-label="Your steps">
                     <CoSteps appId={app.id} current="score" pkg={fp.pkg ?? null} sent={sent} guard={leaveOk}
                         score={totalCreditScore(rules, Object.fromEntries(fp.creditScore.map((r) => [r.criterion, r])))} />
-                )}
+                    <CoOptionalView appId={app.id} guard={leaveOk} />
+                </section>
+            )}
 
-                <div className="fp-metrics">
-                    {metrics.map((m) => (
-                        <div key={m.key} className={`fp-metric ${m.tone}`}>
-                            <span className="lbl">{m.label}</span>
-                            <span className="val">{m.value}</span>
-                            <span className="sub"><Terms text={m.sub} /></span>
-                        </div>
-                    ))}
-                </div>
+            <section className="fp-tiles" aria-label="Score figures">
+                {metrics.map(({ key, Icon, label, value, sub, tone }) => (
+                    <div key={key} className={`lf-tile fp-tile ${tone}`}>
+                        <span className="ic" aria-hidden="true"><Icon size={18} /></span>
+                        <span className="lbl">{label}</span>
+                        <span className="val">{value}</span>
+                        <span className="sub"><Terms text={sub} /></span>
+                    </div>
+                ))}
+            </section>
 
-                {canEdit && <CoOptionalView appId={app.id} guard={leaveOk} />}
-
-                {!canEdit && (
-                    <p className="lf-note">
-                        <Lock size={16} aria-hidden="true" />
-                        <span>
-                            Read-only. Only the assigned Credit Officer can edit the credit score.
-                            {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
-                        </span>
-                    </p>
-                )}
-                <p className="fp-note cs-hint">
+            <p className="lf-note">
+                <Info size={16} aria-hidden="true" />
+                <span>
                     Suggestions use the saved Financial Package (income basis, interest rate, appraised value, loan and
                     deposit checks). Save the <Term k="FP" /> first if you changed any of those.
-                </p>
-            </header>
+                </span>
+            </p>
 
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav fp-nav" aria-label="Credit score sections">
@@ -277,12 +309,12 @@ const CreditScorePage = () => {
                     {canEdit && (
                         <div className="fp-savebar">
                             <div className="state">
-                                {dirty && <span className="fp-chip warn">Unsaved changes</span>}
-                                {saved && !dirty && <span className="fp-chip ok" role="status">Saved</span>}
+                                {dirty && <span className="lf-chip warn">Unsaved changes</span>}
+                                {saved && !dirty && <span className="lf-chip ok" role="status">Saved</span>}
                                 <FormError error={error} />
                             </div>
-                            <button type="submit" disabled={saving || !dirty}>
-                                {saving ? 'Saving...' : 'Save Credit Score'}
+                            <button type="submit" className="lf-primary" disabled={saving || !dirty}>
+                                <Save size={16} aria-hidden="true" />{saving ? 'Saving...' : 'Save Credit Score'}
                             </button>
                         </div>
                     )}

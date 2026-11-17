@@ -1,6 +1,7 @@
 // DSS-10: is everything a decision needs in place? One line per input, each with done / missing / check, what is
 // missing and who owns it. It informs; it never blocks (blocking stays in the stage rules).
 // Pure function over what fetchDecisionSupport() loaded plus what the page derived (score, mracChanges, ...).
+import { formatDay } from '../../components/people';
 import { buildSteps } from '../applicationForm/steps';
 import { REQUIREMENT_LABELS } from '../applicationForm/options';
 import { missingApprovers } from '../review/approval';
@@ -53,8 +54,8 @@ export const buildReadiness = (ctx) => {
         add({
             key: 'applicant', label: 'Waiting on the applicant', state: READY.CHECK,
             detail: sent
-                ? `The applicant sent the requested documents on ${new Date(docRequest.sent_at).toLocaleDateString()}. The Account Officer still has to check them and close the request.`
-                : `A document request has been open since ${new Date(docRequest.opened_at).toLocaleDateString()}. The applicant has not sent the documents yet.`,
+                ? `The applicant sent the requested documents on ${formatDay(docRequest.sent_at)}. The Account Officer still has to check them and close the request.`
+                : `A document request has been open since ${formatDay(docRequest.opened_at)}. The applicant has not sent the documents yet.`,
             owner: sent ? 'ACCOUNT_OFFICER' : 'APPLICANT', to: `/loanFolderPage?id=${id}`, action: 'Loan folder',
         });
     }
@@ -63,7 +64,7 @@ export const buildReadiness = (ctx) => {
     add({
         key: 'ci', label: 'Credit investigation finished',
         state: ciDone ? READY.DONE : READY.MISSING,
-        detail: ciDone ? `Marked done on ${new Date(ciDone.changed_at).toLocaleDateString()}.` : 'The Credit Investigator has not marked it done.',
+        detail: ciDone ? `Marked done on ${formatDay(ciDone.changed_at)}.` : 'The Credit Investigator has not marked it done.',
         owner: 'CREDIT_INVESTIGATOR',
     });
 
@@ -98,7 +99,7 @@ export const buildReadiness = (ctx) => {
         policyDetail = `Out of date: ${mracChanges.join(', ')} changed after the check.`;
     } else if (policyDone) {
         policyState = READY.DONE;
-        policyDetail = `Run on ${new Date(mrac.finished_at).toLocaleDateString()} with the current figures.`;
+        policyDetail = `Run on ${formatDay(mrac.finished_at)} with the current figures.`;
     }
     add({
         key: 'policy', label: 'Policy check run and current', state: policyState, detail: policyDetail,

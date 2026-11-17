@@ -35,44 +35,6 @@ const Crumbs = ({ items }) => (
     </nav>
 );
 
-// Header card of a staff page. metrics: [label, value, sub][]
-const Header = ({ title, meta = [], actions = [], metrics = [], progress = false, note, hint }) => (
-    <header className="lf-card" aria-hidden="true">
-        <div className="lf-titlerow">
-            <div>
-                <h1><T>{title}</T></h1>
-                <ul className="lf-meta">{meta.map((m) => <li key={m}><T>{m}</T></li>)}</ul>
-            </div>
-            <div className="lf-actions">{actions.map((a) => <span key={a} className="lf-btn sk-btn">{a}</span>)}</div>
-        </div>
-        {metrics.length > 0 && (
-            <div className="fp-metrics">
-                {metrics.map(([lbl, val, sub, more]) => (
-                    <div key={lbl} className="fp-metric plain">
-                        <span className="lbl"><T>{lbl}</T></span>
-                        <span className="val"><T>{val}</T></span>
-                        <span className="sub"><T>{sub}</T></span>
-                        {more && <span className="more"><T>{more}</T></span>}
-                    </div>
-                ))}
-            </div>
-        )}
-        {progress && (
-            <div className="lf-progress">
-                <div className="lf-progress-top"><span><T>KYC verification</T></span><span><T>0 of 11 sections verified</T></span></div>
-                <div className="lf-meter"><span /></div>
-            </div>
-        )}
-        {note && (
-            <p className="lf-note">
-                <span className="sk-btn" style={{ width: 16, height: 16, flex: 'none', borderRadius: 4 }} />
-                <span><T>{note}</T></span>
-            </p>
-        )}
-        {hint && <p className="fp-note cs-hint"><T>{hint}</T></p>}
-    </header>
-);
-
 // Section navigator. Pass `items` (a flat list) or `groups` ([{ group, items }])
 const Nav = ({ items, groups }) => (
     <nav className="lf-card lf-nav fp-nav" aria-hidden="true">
@@ -203,31 +165,43 @@ export const LoanFolderSkeleton = () => (
 );
 
 export const FinancialPackageSkeleton = () => (
-    <Status label="Loading financial package" className="lf fp">
+    <Status label="Loading financial package" className="lf lf-folder lf-fp fp">
         <Crumbs items={['Work tray', `Application ${APP_NO}`, 'Financial Package']} />
-        <Header title={`Financial Package ${APP_NO}`}
-            meta={['Financial Package and Credit Recommendation, Housing Loans', 'Handling Account Officer: Josh Denzel']}
-            actions={['Messages', `Loan folder${GAP}`]}
-            metrics={[['Credit risk rating', 'Not scored', '0 of 17 scored', 'Open scoring'], ['Debt burden ratio', '00.00%', 'DBR'],
-                ['Loan-to-collateral', '00.00%', 'LCR'], ['Monthly amortization', '₱00,000.00', 'New loan'],
-                ['Combined gross income', '₱000,000.00', 'Per month']]} />
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>Financial Package &amp; Credit Recommendation</T><span className="lf-mode read sk-btn">You can edit</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta">{['Housing loan ₱1,000,000.00', 'Handling Account Officer Josh Denzel'].map((m) => <li key={m}><T>{m}</T></li>)}</ul>
+            </div>
+            <div className="lf-actions"><span className="lf-btn sk-btn">Messages</span></div>
+        </header>
+        <section className="fp-tiles" aria-hidden="true">
+            {[['Credit risk rating', 'Not scored'], ['Debt burden ratio', '00.00%'], ['Loan-to-collateral', '00.00%'],
+                ['Monthly amortization', '₱00,000.00'], ['Combined gross income', '₱000,000.00']].map(([l, v]) => (
+                <div key={l} className="lf-tile fp-tile">
+                    <Box h="2.3rem" w="2.3rem" style={{ borderRadius: 12, gridArea: 'ic' }} />
+                    <span className="lbl"><T>{l}</T></span>
+                    <span className="val"><T>{v}</T></span>
+                    <span className="sub"><T>Per month</T></span>
+                </div>
+            ))}
+        </section>
+        <div className="fp-pagetabs" aria-hidden="true">
+            {['Recommendation', 'Application information'].map((t) => <Box key={t} h="4.25rem" style={{ flex: '1 1 0', borderRadius: 18 }} />)}
+        </div>
         <div className="lf-body edit">
             <Nav groups={[
-                { group: 'Page 1: Recommendation', items: ['General information', 'I. Borrower/s highlight', 'II. Facility', 'III. Collateral', 'IV. Credit checking', 'V. Exceptions', 'VI. Terms and conditions', 'VII. Approval'] },
-                { group: 'Page 2: Application information', items: ['VIII. Employment', 'IX. Cash flow', 'X. Deposit checking', 'XI. Loan verification', 'XII. Trade checking', 'XIII. Title', 'XIV. Customer information'] },
-                { group: 'Result', items: ['Credit result', 'Change history'] },
+                { group: 'Page 1: Recommendation', items: ['General information', 'I. Borrower/s highlight', 'II. Facility', 'III. Collateral', 'IV. Credit checking', 'V. Exceptions'] },
             ]} />
             <div className="lf-main fp-main">
-                <Sec title="General information">
-                    <Info rows={[['Application number', APP_NO], ['Date', 'Oct 24, 2026'], ['Borrower/s', BORROWERS],
-                        ['Account Officer', 'Josh Denzel'], ['Credit Officer', 'Josh Credit Officer'], ['Branch', 'Main Branch']]} />
+                <Sec title="General Information">
+                    <Info rows={[['Channel', 'Developer Referred'], ['Branch / Developer Name', 'Sample Homes Inc.'], ['Handling Account Officer', 'Josh Denzel']]} />
                 </Sec>
-                <Sec title="I. Borrower/s highlight">
-                    <Info rows={[['Principal borrower', BORROWERS], ['Employer', 'Sample Company Inc.'], ['Position', 'Senior Analyst'],
-                        ['Years in service', '5 years'], ['Monthly gross income', '₱000,000.00']]} />
+                <Sec title="I. Borrower/s Highlight">
+                    <Info rows={[['Principal borrower', BORROWERS], ['Employer', 'Sample Company Inc.'], ['Monthly gross income', '₱000,000.00']]} />
                 </Sec>
-                <Sec title="II. Facility">
-                    <Fields labels={['Loan amount', 'Term', 'Interest rate', 'Purpose', 'Repayment mode', 'Processing fee']} />
+                <Sec title="II. Facility Financial Package">
+                    <Fields labels={['Variant', 'Interest rate', 'Fixing period', 'Manner of repayment']} />
                 </Sec>
             </div>
         </div>
@@ -235,27 +209,35 @@ export const FinancialPackageSkeleton = () => (
 );
 
 export const CreditScoreSkeleton = () => (
-    <Status label="Loading credit scoring" className="lf fp rv">
+    <Status label="Loading credit scoring" className="lf lf-folder lf-fp lf-cs fp rv">
         <Crumbs items={['Work tray', `Application ${APP_NO}`, 'Financial Package', 'Credit score']} />
-        <Header title={`Credit Scoring ${APP_NO}`} meta={[`Borrower/s: ${BORROWERS}`, 'Housing Loan Credit Scoring Sheet']}
-            actions={['Work tray', `Loan folder${GAP}`]}
-            metrics={[['Total score', '0 / 100', '0 of 17 criteria scored'], ['Credit risk rating', 'Not scored', 'When every criterion is scored'],
-                ['Recommendation', '—', 'A guide, not the decision'], ['Loan amount', '₱1,000,000.00', 'Requested'],
-                ['Suggestions to confirm', '13', 'Not counted until picked']]}
-            hint="Suggestions use the saved Financial Package (income basis, interest rate, appraised value, loan and deposit checks). Save the FP first if you changed any of those." />
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>Housing Loan Credit Scoring</T><span className="lf-mode read sk-btn">You can edit</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta">{[`Borrower/s ${BORROWERS}`, 'Loan amount ₱1,000,000.00'].map((m) => <li key={m}><T>{m}</T></li>)}</ul>
+            </div>
+            <div className="lf-actions"><span className="lf-btn sk-btn">Messages</span></div>
+        </header>
+        <section className="fp-tiles" aria-hidden="true">
+            {[['Total score', '0 / 100'], ['Credit risk rating', 'Not scored'], ['Recommendation', '—'], ['Loan amount', '₱1,000,000.00'], ['Suggestions to confirm', '13']].map(([l, v]) => (
+                <div key={l} className="lf-tile fp-tile">
+                    <Box h="2.3rem" w="2.3rem" style={{ borderRadius: 12, gridArea: 'ic' }} />
+                    <span className="lbl"><T>{l}</T></span>
+                    <span className="val"><T>{v}</T></span>
+                    <span className="sub"><T>Requested</T></span>
+                </div>
+            ))}
+        </section>
         <div className="lf-body edit">
             <Nav items={['1. Capacity', '2. Character', '3. Collateral', '4. Condition', 'Total score', 'Change history']} />
             <div className="lf-main fp-main">
-                <div className="lf-card cs-intro" aria-hidden="true">
-                    <p><T>CATCH suggests a band wherever the record has the data. Suggestions don't count until you pick or accept them, and you can change any score. Character items mostly wait for the Credit Investigator's results.</T></p>
-                </div>
                 <Sec title="1. Capacity (Maximum Score: 30)">
                     <div className="cs-sub">
                         <div className="cs-sub-top"><span><T>Sub-total</T></span><b><T>0 / 30</T></b></div>
                         <div className="lf-meter"><span /></div>
                     </div>
-                    <Table className="cs-table" head={['Criterion', 'From the record', 'Suggestion', 'Score', 'Points']}
-                        cells={['Debt to Income Ratio / Debt Burden Ratio', '00.00%', 'No suggestion', '@inputs', '—']} rows={4} />
+                    <ul className="cs-crits">{stack(3, (i) => <li key={i}><Box h="8rem" style={{ borderRadius: 16 }} /></li>)}</ul>
                 </Sec>
             </div>
         </div>
@@ -263,21 +245,34 @@ export const CreditScoreSkeleton = () => (
 );
 
 export const ApprovalRoutingSkeleton = () => (
-    <Status label="Loading VII. Approval" className="lf fp rv">
+    <Status label="Loading VII. Approval" className="lf lf-folder lf-fp lf-ar fp rv">
         <Crumbs items={['Work tray', `Application ${APP_NO}`, 'Financial Package', 'Approval routing']} />
-        <Header title={`VII. Approval ${APP_NO}`} meta={[`Borrower/s: ${BORROWERS}`, 'Stage: Intake · In Progress']}
-            actions={['Messages', 'Work tray', `Loan folder${GAP}`]}
-            metrics={[['Credit result', 'Not set', 'CO recommendation'], ['Credit risk rating', 'Not scored', '0 of 17 scored'],
-                ['Loan amount', '₱1,000,000.00', '2 years'], ['Approval authority', 'Credit Committee', 'Based on loan amount']]} />
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>VII. Approval routing</T><span className="lf-mode read sk-btn">You can edit</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta">{[`Borrower/s ${BORROWERS}`, 'Stage Credit Evaluation · In Progress'].map((m) => <li key={m}><T>{m}</T></li>)}</ul>
+            </div>
+            <div className="lf-actions"><span className="lf-btn sk-btn">Messages</span></div>
+        </header>
+        <section className="fp-tiles four" aria-hidden="true">
+            {[['Credit result', 'Not set'], ['Credit risk rating', 'Not scored'], ['Loan amount', '₱1,000,000.00'], ['Approval authority', 'Credit Committee']].map(([l, v]) => (
+                <div key={l} className="lf-tile fp-tile">
+                    <Box h="2.3rem" w="2.3rem" style={{ borderRadius: 12, gridArea: 'ic' }} />
+                    <span className="lbl"><T>{l}</T></span>
+                    <span className="val"><T>{v}</T></span>
+                    <span className="sub"><T>Requested</T></span>
+                </div>
+            ))}
+        </section>
         <div className="lf-body edit">
             <Nav items={['Prepared by', 'Approval authority', 'Reviewers and approvers', 'Routing history']} />
             <div className="lf-main fp-main">
                 <Sec title="Prepared by">
-                    <Info rows={[['Account Officer', 'Josh Denzel Account Officer'], ['Credit Officer', 'Unassigned'], ['Credit result', 'Not set'],
-                        ['Credit risk rating', 'Not scored'], ['Loan amount', '₱1,000,000.00']]} />
+                    <Info rows={[['Account Officer', 'Josh Denzel'], ['Credit Officer', 'Unassigned'], ['Credit result', 'Not set'], ['Credit risk rating', 'Not scored']]} />
                 </Sec>
                 <Sec title="Approval authority">
-                    <Table head={['Loan amount', 'Approval authority', 'Reviewers']} cells={['Up to ₱5,000,000.00', 'Credit Department Head', '1 reviewer']} rows={4} />
+                    <Table head={['Loan amount', 'Without deviation', 'With deviation']} cells={['Up to ₱3,000,000.00', 'Credit Department Head', 'Credit Division Head']} rows={4} />
                 </Sec>
                 <Sec title="Reviewers and approvers"><Bars n={3} h="3.2rem" /></Sec>
             </div>
@@ -286,15 +281,28 @@ export const ApprovalRoutingSkeleton = () => (
 );
 
 export const ReviewSummarySkeleton = () => (
-    <Status label="Loading review summary" className="lf fp rv">
+    <Status label="Loading review summary" className="lf lf-folder lf-fp lf-rv fp rv">
         <Crumbs items={['Work tray', `Application ${APP_NO}`, 'Review summary']} />
-        <Header title={`Review summary ${APP_NO}`}
-            meta={[`Borrower/s: ${BORROWERS} (Principal Borrower)`, 'Stage: Review · Pending (for 15.9 days)', 'Sent for review by Josh Credit Officer on 10/24/2026, 6:18:46 PM']}
-            actions={['Messages', 'Financial Package', 'Credit scoring', `Loan folder${GAP}`]}
-            metrics={[['Credit result', 'Endorsed', 'CO recommendation'], ['Credit risk rating', 'Not scored', '0 of 17 scored'],
-                ['Loan amount', '₱1,000,000.00', '2 years'], ['Debt burden ratio', '00.00%', 'DBR'],
-                ['Loan-to-collateral', '50.00%', 'LCR'], ['Monthly amortization', '₱00,000.00', 'New loan']]}
-            note="You are reviewer 1 of 1. It's your turn." />
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>Review summary</T><span className="lf-mode read sk-btn">Your turn</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta">{[`Borrower/s ${BORROWERS}`, 'Stage Review · Pending', 'Sent for review Josh Denzel · Yesterday'].map((m) => <li key={m}><T>{m}</T></li>)}</ul>
+            </div>
+            <div className="lf-actions"><span className="lf-btn sk-btn">Messages</span></div>
+        </header>
+        <p className="lf-note" aria-hidden="true"><T>You are reviewer 1 of 1. It's your turn.</T></p>
+        <section className="fp-tiles six" aria-hidden="true">
+            {[['Credit result', 'Endorsed'], ['Credit risk rating', 'Not scored'], ['Loan amount', '₱1,000,000.00'], ['Debt burden ratio', '00.00%'],
+                ['Loan-to-collateral', '50.00%'], ['Monthly amortization', '₱00,000.00']].map(([l, v]) => (
+                <div key={l} className="lf-tile fp-tile">
+                    <Box h="2.3rem" w="2.3rem" style={{ borderRadius: 12, gridArea: 'ic' }} />
+                    <span className="lbl"><T>{l}</T></span>
+                    <span className="val"><T>{v}</T></span>
+                    <span className="sub"><T>New loan</T></span>
+                </div>
+            ))}
+        </section>
         <div className="lf-body edit">
             <Nav items={['Review progress', 'Flags to check (4)', "Credit Officer's recommendation", 'Income evidence', 'Key figures',
                 'IV. Credit checking', 'Credit score', 'V. Exceptions', 'Changes since', 'VII. Approval', 'Your review']} />
@@ -302,28 +310,80 @@ export const ReviewSummarySkeleton = () => (
                 <Sec title="Review progress"><Bars n={1} h="3.4rem" /></Sec>
                 <Sec title="Flags to check (4)"><Bars n={3} h="2.7rem" /></Sec>
                 <Sec title="Credit Officer's recommendation">
-                    <Info rows={[['Credit result', 'Endorsed'], ['Justification and remarks', 'Sample remarks from the credit officer'], ['Recommended by', 'Josh Credit Officer']]} />
+                    <Info rows={[['Credit result', 'Endorsed'], ['Justification and remarks', 'Sample remarks from the credit officer']]} />
                 </Sec>
             </div>
         </div>
     </Status>
 );
 
+export const DecisionSupportSkeleton = () => (
+    <Status label="Loading decision support" className="lf lf-folder lf-fp lf-ds fp rv">
+        <Crumbs items={['Work tray', `Application ${APP_NO}`, 'Decision support']} />
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>Decision support</T><span className="lf-mode read sk-btn">Read-only</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta">{[`Borrower/s ${BORROWERS}`, 'Stage Review · Pending'].map((m) => <li key={m}><T>{m}</T></li>)}</ul>
+            </div>
+            <div className="lf-actions"><span className="lf-btn sk-btn">Messages</span><span className="lf-btn sk-btn">Financial Package</span></div>
+        </header>
+        <p className="lf-note" aria-hidden="true"><T>Supporting information for the decision, read only.</T></p>
+        <section className="fp-tiles seven" aria-hidden="true">
+            {['Readiness', 'Policy check', 'Credit result', 'Credit risk rating', 'Loan amount', 'Debt burden ratio', 'Loan-to-collateral'].map((l) => (
+                <div key={l} className="lf-tile fp-tile">
+                    <Box h="2.3rem" w="2.3rem" style={{ borderRadius: 12, gridArea: 'ic' }} />
+                    <span className="lbl"><T>{l}</T></span>
+                    <span className="val"><T>00.00%</T></span>
+                    <span className="sub"><T>Requested</T></span>
+                </div>
+            ))}
+        </section>
+        <div className="lf-body edit">
+            <Nav items={['Readiness (5 of 7)', 'Exception highlights (2)', 'Policy check (RAG)', "Credit Officer's recommendation", 'Key figures',
+                'Credit score', 'IV. Credit checking', 'V. Exceptions', 'Sign-offs and decisions', 'Where to act']} />
+            <div className="lf-main fp-main">
+                <Sec title="Readiness for decision (5 of 7)"><Bars n={4} h="4rem" /></Sec>
+                <Sec title="Exception highlights (2)"><Bars n={2} h="3.4rem" /></Sec>
+            </div>
+        </div>
+    </Status>
+);
+
 export const CiRequestSkeleton = () => (
-    <Status label="Loading CI request" className="lf fp">
+    <Status label="Loading CI request" className="lf lf-folder lf-ci">
         <Crumbs items={['Work tray', `CI request ${APP_NO}`]} />
-        <Header title={`CI request ${APP_NO}`} meta={['NFIS and TransUnion inquiry details', 'Requested by Josh Denzel Account Officer']}
-            actions={['Messages']}
-            metrics={[['Application', APP_NO, 'Housing loan'], ['Borrowers', '1', 'Principal borrower'],
-                ['Requested', 'Oct 24, 2026', 'NFIS and TU'], ['Loan amount', '₱1,000,000.00', 'Housing loan']]} />
-        <Card title="NFIS Request Form">
-            <Info rows={[['Name of borrower', BORROWERS], ['Date of birth', 'Jan 01, 1990'], ['Place of birth', 'Quezon City'],
-                ['Address', '123 Sample Street, Quezon City'], ['Employer', 'Sample Company Inc.'], ['Valid ID', 'Passport 0000000']]} />
-        </Card>
-        <Card title="TransUnion (TU) Request Template">
-            <Info rows={[['Name of borrower', BORROWERS], ['Date of birth', 'Jan 01, 1990'], ['Address', '123 Sample Street, Quezon City'],
-                ['Contact number', '0900 000 0000']]} />
-        </Card>
+        <header className="lf-hero" aria-hidden="true">
+            <div className="lf-hero-main">
+                <p className="lf-eyebrow"><T>CI request</T><span className="lf-mode read sk-btn">You can edit</span></p>
+                <h1><T>{`Application ${APP_NO}`}</T></h1>
+                <ul className="lf-meta">
+                    {['Requested Josh Denzel · Yesterday, 3:33 PM', 'Borrowers 1', 'Housing loan ₱1,000,000.00'].map((m) => <li key={m}><T>{m}</T></li>)}
+                </ul>
+            </div>
+            <div className="lf-actions"><span className="lf-btn sk-btn">Messages</span></div>
+        </header>
+        <section className="lf-card lf-stepcard" aria-hidden="true">
+            <p className="lf-steps-label"><T>Your steps</T></p>
+            <ol className="lf-steps" style={{ '--lf-step-count': 3 }}>
+                {stack(3, (i) => <li key={i} className="lf-step"><Box h="4.75rem" style={{ borderRadius: 18 }} /></li>)}
+            </ol>
+        </section>
+        <section className="lf-card ci-panel" aria-hidden="true">
+            <div className="ci-panel-head">
+                <Box h="2.75rem" w="2.75rem" style={{ borderRadius: 14 }} />
+                <div className="ci-panel-title">
+                    <p className="ci-panel-kicker"><T>Step 1 of 3</T></p>
+                    <h2><T>Review the request</T></h2>
+                    <p className="ci-panel-intro"><T>What the Account Officer is asking you to check, built from the application.</T></p>
+                </div>
+            </div>
+            <div className="ci-step">
+                <Box h="3.25rem" style={{ borderRadius: 16 }} />
+                <Box h="9rem" style={{ borderRadius: 16 }} />
+                <Box h="14rem" style={{ borderRadius: 16 }} />
+            </div>
+        </section>
     </Status>
 );
 

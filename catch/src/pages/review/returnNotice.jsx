@@ -96,7 +96,7 @@ export const ResendPanel = ({ applicationId, canResend, onSent }) => {
                         Earlier reviewers' sign-offs stand. If you added an exception, the approval authority may go up.
                     </p>
                     <div>
-                        <button type="button" disabled={busy || !response.trim()} onClick={handleSend}>
+                        <button type="button" className="lf-primary" disabled={busy || !response.trim()} onClick={handleSend}>
                             {busy ? 'Sending...' : 'Send back to the reviewer'}
                         </button>
                     </div>

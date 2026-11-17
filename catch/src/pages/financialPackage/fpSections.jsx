@@ -14,6 +14,7 @@ import { percent } from './compute';
 import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS } from './options';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
+import { personName } from '../../components/people';
 
 const blank = (v) => v === null || v === undefined || v === '';
 const show = (v) => (blank(v) ? '—' : v);
@@ -65,7 +66,7 @@ export const HeaderSection = ({ app, aoName, form, onPkg, disabled }) => {
                     <Info rows={[
                         ['Channel', referral?.channel ? labelFor(REFERRAL_CHANNELS, referral.channel) : null],
                         ['Branch / Developer Name', referral?.developer_name || referral?.branch],
-                        ['Handling Account Officer', aoName],
+                        ['Handling Account Officer', personName(aoName) || aoName],
                     ]} />
                 </div>
             </div>
@@ -180,7 +181,7 @@ export const CollateralSection = ({ app, form, onPkg, disabled }) => {
 
 // ---------- IV. Credit checking (the Credit Investigator's results, read-only) ----------
 export const CreditCheckingSection = ({ app }) => (
-    <Section id="fp-iv" title="IV. Credit Checking">
+    <Section id="fp-iv" title="IV. Credit Checking" className="lf-ciresults">
         <CiResultsView app={app} title={null} />
     </Section>
 );

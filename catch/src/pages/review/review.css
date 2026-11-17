@@ -123,3 +123,68 @@
 .rv-mywork-parts li b { color: var(--ink); font-weight: 600; }
 .rv-mywork-parts li.is-done svg { color: var(--lf-ok); }
 .rv-mywork-note { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.85rem; }
+
+/* a return's header and the CO's answer (ReturnCard): bylines, a severity chip. Light fallbacks: also on Decision support */
+.rv-return-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; margin: 0; }
+.rv-return-by { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; color: var(--muted); font-size: 0.86rem; }
+.rv-return-answer { display: grid; gap: 0.3rem; margin-top: 0.35rem; padding: 0.6rem 0.85rem; border-radius: 12px; background: var(--lf-control-hover, #fff); }
+.rv-return-answer p { margin: 0; }
+.rv-who .byline { font-size: 0.95rem; }
+
+/* ==========================================================================================================
+   Review summary (reviewSummaryPage.jsx; root lf lf-folder lf-fp lf-rv fp rv). The CO pages' look (.lf-fp,
+   financialPackage.css) gives the header, tiles, nav, glass section cards, timelines and dark mode; this block adds what
+   only this page has. Decision support also uses the .rv-* classes and keeps its look: every rule here is scoped.
+   ========================================================================================================== */
+/* six figure tiles: 3 across below 1300px, 2 below 760px */
+.lf-fp .fp-tiles.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1300px) { .lf-fp .fp-tiles.six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .lf-fp .fp-tiles.six { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .lf-folder.lf-fp .fp-tiles.six > .fp-tile:first-child { grid-column: auto; } }
+
+/* your part: an orange edge while it's your turn (it waits on you) */
+.lf-folder.lf-rv .lf-note.rv-yours { border-color: rgba(194, 65, 12, 0.35); box-shadow: inset 4px 0 0 var(--lf-orange); padding-left: 1.2rem; }
+.lf-folder.lf-rv .lf-note.rv-yours svg { color: var(--lf-orange-text); }
+.lf-folder.lf-rv .lf-ok-note.rv-done { margin: 0; padding: 0.7rem 1rem; border: 1px solid var(--lf-ok-line); border-radius: 16px; background: var(--lf-ok-bg); }
+
+/* your review / decision progress: a glass card with an orange edge */
+.lf-folder.lf-rv .rv-mywork {
+  margin: 0; padding: 1.1rem 1.3rem 1rem 1.5rem; border: 1px solid var(--lf-glass-rim); border-radius: 22px; background: var(--lf-glass);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: inset 4px 0 0 var(--lf-orange), var(--lf-glass-shadow);
+}
+.lf-folder.lf-rv .rv-mywork-top .lf-steps-label { color: var(--navy); font-size: 1.05rem; }
+.lf-folder.lf-rv .rv-mywork .lf-meter { height: 8px; margin-top: 0.8rem; background: var(--lf-track); }
+.lf-folder.lf-rv .rv-mywork .lf-meter > span { background: var(--lf-bar-grad); }
+.lf-folder.lf-rv .rv-mywork-parts li { color: var(--muted); }
+.lf-folder.lf-rv .rv-mywork-parts li b { color: var(--ink); }
+
+/* flags: inset strips with a stripe in their tone */
+.lf-folder.lf-rv .rv-flag { padding: 0.65rem 0.95rem 0.65rem 1.2rem; border: 1px solid var(--tone-line); border-radius: 14px; box-shadow: inset 4px 0 0 var(--tone); }
+/* a missing basis or file in the income table is amber, not red */
+.lf-folder.lf-rv .fp-tablewrap .lf-err { color: var(--lf-warn); font-weight: 600; }
+.lf-folder.lf-rv .rv-doc-type { color: var(--lf-text-3); }
+.lf-folder.lf-fp :is(.rv-link, .ct .rv-link) { color: var(--lf-accent); }
+/* a reviewer's remark and an approver's conditions in the timelines */
+.lf-folder.lf-fp .rv-step .lf-kyc-remark { margin: 0; padding: 0.5rem 0.8rem; border-radius: 12px; background: var(--lf-control-hover); color: var(--ink); }
+.lf-folder.lf-fp .rv-who { gap: 0.5rem 0.65rem; flex-wrap: wrap; }
+
+/* the review checklist and the approver's choices: pill radios (OK / Needs revision; Approve / with conditions / Disapprove) */
+.lf-folder.lf-rv .rv-checklist textarea { min-height: 3.25rem; border-radius: 12px; }
+.lf-folder.lf-rv .rv-radio {
+  display: flex; align-items: center; gap: 0.55rem; min-height: 2.5rem; margin: 0; padding: 0.4rem 0.9rem;
+  border: 1.5px solid rgba(20, 41, 95, 0.14); border-radius: 999px; background: var(--lf-inset); color: var(--ink); font-weight: 600; cursor: pointer;
+}
+.lf-folder.lf-rv .rv-radio:hover { background: var(--lf-inset-hover); }
+.lf-folder.lf-rv .rv-radio input { accent-color: var(--lf-accent); }
+.lf-folder.lf-rv .rv-radio:has(input:checked) { background: var(--lf-accent-bg); border-color: var(--lf-accent); box-shadow: 0 0 0 1px var(--lf-accent); }
+.lf-folder.lf-rv .rv-radio.ok:has(input:checked) { background: var(--lf-ok-bg); border-color: var(--lf-ok); box-shadow: 0 0 0 1px var(--lf-ok); }
+.lf-folder.lf-rv .rv-radio.warn:has(input:checked) { background: var(--lf-warn-bg); border-color: var(--lf-warn); box-shadow: 0 0 0 1px var(--lf-warn); }
+.lf-folder.lf-rv .rv-radio:has(input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.lf-folder.lf-rv .rv-approve-choices .rv-radio { min-height: 3rem; padding: 0.6rem 1.3rem; }
+.lf-folder.lf-rv .rv-decision { gap: 0.75rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lf-folder.lf-rv .rv-radio { transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s; }
+}
+[data-theme='dark'] .lf-folder.lf-rv .rv-radio { border-color: rgba(255, 255, 255, 0.16); }
+[data-theme='dark'] .lf-folder.lf-rv .lf-note.rv-yours { border-color: rgba(251, 146, 60, 0.4); }

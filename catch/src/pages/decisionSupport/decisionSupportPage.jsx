@@ -4,11 +4,16 @@
 // key figures, credit score, CI results, exceptions, and the sign-offs / decisions so far.
 // No decisions are made here: reviewers and approvers act on the review summary. Sprint 5 (committee decision support,
 // CATCH Document 3.2.4.4.1) extends this page: add sections in sections.jsx and swap the loader in api.js for one RPC.
-// Laid out like the review summary: header card + metrics, section navigator, section cards.
-import { RouteSkeleton } from '../../components/skeleton';
+// Look (DESIGN.md, "Decision support"): the Credit Officer pages' .lf-fp look (root lf-ds): header with a Read-only tag
+// and fact chips, the figures as tiles (Readiness and Policy check jump to their section), glass section cards.
+// Styles: decisionSupport.css (.lf-ds block).
+import { DecisionSupportSkeleton } from '../../components/skeleton';
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Info as InfoIcon } from 'lucide-react';
+import {
+    ArrowRight, ClipboardCheck, Gauge, House, Info as InfoIcon, ListChecks, Lock, Percent, Scale, ShieldCheck, Stamp, Users, Wallet,
+} from 'lucide-react';
+import { formatDay } from '../../components/people';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { getParties } from '../applicationForm/api';
@@ -74,8 +79,14 @@ const DecisionSupportPage = () => {
         return () => { cancelled = true; };
     }, [applicationId]);
 
-    if (loading) return <RouteSkeleton label="Loading decision support" />;
-    if (error) return <p className="ct-error">{error}</p>;
+    if (loading) return <DecisionSupportSkeleton />;
+    if (error) {
+        return (
+            <div className="lf lf-folder lf-fp lf-ds">
+                <p className="lf-err" role="alert">{error}</p>
+            </div>
+        );
+    }
     if (!data) return null;
 
     const { app, fp, rules, mrac, stage, rows, reviews, approvals } = data;
@@ -106,28 +117,30 @@ const DecisionSupportPage = () => {
         ? (OVERALL[mrac.result?.overall] ?? [mrac.result?.overall ?? 'Done', 'plain'])
         : [mrac ? (mrac.status === 'FAILED' ? 'Check failed' : 'In progress') : 'Not run', 'warn'];
 
+    // The figures as tiles (tone 'warn': missing or needs a look; 'done': in place). `to`: the tile opens that section
     const metrics = [
         {
-            key: 'ready', label: 'Readiness', value: `${ctx.readiness.readyCount} of ${ctx.readiness.total}`,
-            sub: ctx.readiness.ready ? 'Ready for decision' : 'Items missing', tone: ctx.readiness.ready ? 'info' : 'warn',
+            key: 'ready', Icon: ListChecks, label: 'Readiness', value: `${ctx.readiness.readyCount} of ${ctx.readiness.total}`,
+            sub: ctx.readiness.ready ? 'Ready for decision' : 'Items missing', tone: ctx.readiness.ready ? 'done' : 'warn', to: 'ds-readiness',
         },
         {
-            key: 'policy', label: 'Policy check', value: policyLabel,
-            sub: mracDone ? (mracChanges.length ? 'Figures changed since' : new Date(mrac.finished_at).toLocaleDateString()) : 'MRAC / RAG',
-            tone: mracDone && mracChanges.length ? 'warn' : policyTone === 'ok' ? 'info' : policyTone === 'plain' ? 'plain' : 'warn',
+            key: 'policy', Icon: ShieldCheck, label: 'Policy check', value: policyLabel,
+            sub: mracDone ? (mracChanges.length ? 'Figures changed since' : formatDay(mrac.finished_at)) : 'MRAC / RAG',
+            tone: mracDone && mracChanges.length ? 'warn' : policyTone === 'ok' ? 'done' : policyTone === 'plain' ? '' : 'warn',
+            to: 'ds-highlights',
         },
-        { key: 'result', label: 'Credit result', value: resultLabel ?? 'Not set', sub: 'CO recommendation', tone: resultLabel ? 'info' : 'warn' },
+        { key: 'result', Icon: ClipboardCheck, label: 'Credit result', value: resultLabel ?? 'Not set', sub: 'CO recommendation', tone: resultLabel ? 'done' : 'warn' },
         {
-            key: 'risk', label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
+            key: 'risk', Icon: Gauge, label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
             sub: score.riskRating ? `${score.total} / 100` : `${score.scored} of ${score.count} scored`,
-            tone: score.riskRating ? 'info' : 'warn',
+            tone: score.riskRating ? 'done' : 'warn',
         },
         {
-            key: 'loan', label: 'Loan amount', value: money(app.loan_amount),
-            sub: app.loan_term_years ? `${app.loan_term_years} years` : 'Term not set', tone: 'plain',
+            key: 'loan', Icon: Wallet, label: 'Loan amount', value: money(app.loan_amount),
+            sub: app.loan_term_years ? `${app.loan_term_years} years` : 'Term not set', tone: '',
         },
-        { key: 'dbr', label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: 'plain' },
-        { key: 'lcr', label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: 'plain' },
+        { key: 'dbr', Icon: Percent, label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: computed.dbr === null ? 'warn' : '' },
+        { key: 'lcr', Icon: House, label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: '' },
     ];
 
     const goTo = (id) => (e) => {
@@ -137,46 +150,71 @@ const DecisionSupportPage = () => {
     };
 
     return (
-        <div className="lf fp rv">
+        <div className="lf lf-folder lf-fp lf-ds fp rv">
             <Breadcrumbs current="decision" appId={app.id} appNo={app.application_no} />
-            <header className="lf-card">
-                <div className="lf-titlerow">
-                    <div>
-                        <h1>Decision support {app.application_no}</h1>
-                        <ul className="lf-meta">
-                            <li>Borrower/s: {borrowers || '—'}</li>
-                            <li>Stage: {stageText}</li>
-                            {approvals.length > 0 && <li>Approver decisions so far: {approvals.length}</li>}
-                        </ul>
-                    </div>
-                    <div className="lf-actions">
-                        <MessagesPanel applicationId={app.id} inline />
-                        <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">Financial Package</Link>
-                        <Link to={`/reviewSummaryPage?id=${app.id}`} className="lf-btn">Review summary</Link>
-                        <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
-                            Loan folder<ArrowRight size={16} aria-hidden="true" />
-                        </Link>
-                    </div>
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <Scale size={15} aria-hidden="true" />
+                        <span>Decision support</span>
+                        <span className="lf-mode read"><Lock size={13} aria-hidden="true" />Read-only</span>
+                    </p>
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    <ul className="lf-meta">
+                        <li>
+                            <Users size={15} aria-hidden="true" />
+                            <span className="k">Borrower/s</span>
+                            <span className="v cs-names">{borrowers || '—'}</span>
+                        </li>
+                        <li>
+                            <span className="k">Stage</span>
+                            <span className="v">{stageText}</span>
+                        </li>
+                        {approvals.length > 0 && (
+                            <li>
+                                <Stamp size={15} aria-hidden="true" />
+                                <span className="k">Approver decisions</span>
+                                <span className="v">{approvals.length}</span>
+                            </li>
+                        )}
+                    </ul>
                 </div>
-
-                <div className="fp-metrics">
-                    {metrics.map((m) => (
-                        <div key={m.key} className={`fp-metric ${m.tone}`}>
-                            <span className="lbl">{m.label}</span>
-                            <span className="val">{m.value}</span>
-                            <span className="sub"><Terms text={m.sub} /></span>
-                        </div>
-                    ))}
+                <div className="lf-actions">
+                    <MessagesPanel applicationId={app.id} inline />
+                    <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">Financial Package</Link>
+                    <Link to={`/reviewSummaryPage?id=${app.id}`} className="lf-btn">Review summary</Link>
+                    <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
+                        Loan folder<ArrowRight size={16} aria-hidden="true" />
+                    </Link>
                 </div>
-
-                <p className="lf-note">
-                    <InfoIcon size={16} aria-hidden="true" />
-                    <span>
-                        Supporting information for the decision, read only. Policy-check results are AI suggestions with
-                        their source clause; people decide.
-                    </span>
-                </p>
             </header>
+
+            <p className="lf-note">
+                <InfoIcon size={16} aria-hidden="true" />
+                <span>
+                    Supporting information for the decision, read only. Policy-check results are AI suggestions with
+                    their source clause; people decide.
+                </span>
+            </p>
+
+            <section className="fp-tiles seven" aria-label="Key figures">
+                {metrics.map(({ key, Icon, label, value, sub, tone, to }) => {
+                    const body = (
+                        <>
+                            <span className="ic" aria-hidden="true"><Icon size={18} /></span>
+                            <span className="lbl">{label}</span>
+                            <span className="val"><Terms text={value} /></span>
+                            <span className="sub">
+                                <Terms text={sub} />
+                                {to && <span className="go">See<ArrowRight size={14} aria-hidden="true" /></span>}
+                            </span>
+                        </>
+                    );
+                    return to
+                        ? <a key={key} href={`#${to}`} onClick={goTo(to)} className={`lf-tile fp-tile ${tone}`}>{body}</a>
+                        : <div key={key} className={`lf-tile fp-tile ${tone}`}>{body}</div>;
+                })}
+            </section>
 
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav fp-nav" aria-label="Decision support sections">

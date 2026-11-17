@@ -1,84 +1,89 @@
 // One CI request, opened from the Credit Investigator's work tray: the NFIS and TU request forms and the AO's
 // remarks (view only), then the CI results: upload the reports, record results + summaries, Mark CI Done.
 // Any active CI can work it while the application is in Credit Investigation; afterwards it's read-only.
-// While the CI can edit, the work is four step subpages of this page (components/stepStrip.jsx as tabs), one shown
-// at a time, with Back / Next at the bottom. The step is in the URL (&step=request|upload|ai|results), so the
-// browser's Back button and links (e.g. the document check's "Go to step 4") work:
-//   1. Review the request (forms + AO remarks)   2. Upload the reports (borrower x check grid)
-//   3. AI check NFIS / TU (each report, opened on /documentCheckPage?ci=1; optional)   4. Results and Mark CI Done
-// The AI check comes before the results because confirming it writes the result + summary for that report.
+// While the CI can edit, the work is three step subpages of this page (components/stepStrip.jsx as tabs), one shown
+// at a time, with Back / Next at the bottom. The step is in the URL (&step=request|reports|send), so the browser's
+// Back button and links (e.g. the document check's "Go to step 3") work:
+//   1. Review the request (forms + AO remarks)
+//   2. Reports and results: per borrower x check, upload the report, open its OCR extraction on
+//      /documentCheckPage?ci=1 (optional; confirming there fills in the result + summary), choose the result, Save
+//   3. Check and send: a recap of the saved results, overall remarks, flag findings, Mark CI Done
 // Opened without &step, the page starts on the first step that isn't done.
+// Look (DESIGN.md, "CI request"): an .lf-folder page like the loan folder and document check: header with a mode tag
+// and fact chips, the steps as glass step cards, then one step panel with its own progress chip and Back / Next.
+// Styles: ciRequest.css (.lf-ci block).
 import { CiRequestSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Info } from 'lucide-react';
+import {
+    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, ClipboardList, FileText, Info, Lock, PenLine, SearchCheck,
+    Send, Users, Wallet,
+} from 'lucide-react';
 import Breadcrumbs from '../../components/breadcrumbs';
+import Byline from '../../components/byline';
 import StepStrip from '../../components/stepStrip';
 import { fetchApplication } from '../applicationForm/api';
 import { fetchStaffNames } from '../loanFolder/api';
-import { whenOf } from '../loanFolder/options';
 import { fetchCiCanEdit, fetchCiRequests } from './api';
 import { buildCiRequest, missingFields, peso } from './buildRequest';
 import CiRequestForms from './ciRequestForms';
 import useIdDetails from './useIdDetails';
 import { CiResultsEditor, CiResultsView } from './ciResults';
-import { REQUIRED_CHECKS, isAiChecked, keyOf, missingItems, useCiResults } from './ciResultsData';
+import { REQUIRED_CHECKS, keyOf, missingItems, useCiResults } from './ciResultsData';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
-import '../financialPackage/financialPackage.css';
 import './ciRequest.css';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 
-const STEP_KEYS = ['request', 'upload', 'ai', 'results'];
+const STEP_KEYS = ['request', 'reports', 'send'];
+const STEP_ICONS = { request: ClipboardList, reports: FileText, send: ClipboardCheck };
 const STEP_INTRO = {
     request: 'What the Account Officer is asking you to check, built from the application.',
-    upload: 'The NFIS, TransUnion and BRAS reports for each borrower.',
-    ai: 'Compare the OCR extraction of each NFIS and TU report with the report itself.',
-    results: 'Your result and summary for each check, then send the file to Credit Evaluation.',
+    reports: 'For each borrower and report: upload it, check its OCR extraction if you like, then record the result and summary.',
+    send: 'Check every result, add your overall remarks, flag any findings, then send the file to Credit Evaluation.',
 };
 
 const Remark = ({ title, text }) => (
-    <div>
-        <div className="ci-remark-label"><Terms text={title} /><small>from the Account Officer</small></div>
+    <div className="ci-remark-box">
+        <p className="ci-remark-label"><Terms text={title} /></p>
         <p className={`ci-remark${text ? '' : ' empty'}`}>{text || 'No remarks.'}</p>
     </div>
 );
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-// The CI's four steps, from the saved CI rows (data), the request's missing values and unsaved findings
+// The CI's three steps, from the saved CI rows (data), the request's missing values and unsaved edits.
+// chip: the step panel's progress chip (an .lf-chip tone: ok when complete, warn when it needs a look, none otherwise)
 const ciSteps = ({ data, missing, dirty, onOpen }) => {
     const slots = data.borrowers.flatMap((p) => REQUIRED_CHECKS.map((c) => data.byKey[keyOf(p.id, c.value)]));
     const total = slots.length;
     const uploaded = slots.filter((s) => s?.documents?.length).length;
-    const checked = slots.filter((s) => isAiChecked(s, data.confirmed)).length;
-    // Reports not AI-checked: skipping step 3 is fine once each has a result entered by hand
-    const unchecked = slots.filter((s) => !isAiChecked(s, data.confirmed));
-    const skipped = total > 0 && uploaded === total && checked < total && unchecked.every((s) => s?.result);
+    const complete = slots.filter((s) => s?.documents?.length && s?.result).length;
     const stillNeeded = missingItems(data.borrowers, data.byKey).length;
 
-    let aiText = `${checked} of ${total} reports confirmed · optional`;
-    if (uploaded === 0) aiText = 'Upload a NFIS or TU report first · optional';
-    else if (skipped) aiText = `${checked} of ${total} OCR-extracted · the rest entered by hand`;
-    let resultsText = stillNeeded ? `${plural(stillNeeded, 'item')} still needed` : 'Ready: Mark CI Done';
-    if (dirty) resultsText = 'Unsaved changes';
+    let reportsText = stillNeeded ? `${complete} of ${total} required reports done` : 'Every required report and result is in';
+    let reportsChip = stillNeeded ? { label: `${plural(stillNeeded, 'item')} still needed`, tone: 'warn' } : { label: 'All required in', tone: 'ok' };
+    if (dirty) {
+        reportsText = 'Unsaved changes';
+        reportsChip = { label: 'Unsaved changes', tone: 'warn' };
+    }
 
     return [
         {
             key: 'request', title: 'Review the request',
             text: missing.length ? `${plural(missing.length, 'missing value')}: ask the AO` : 'Forms and AO remarks · nothing missing',
             done: missing.length === 0 || uploaded > 0,
+            chip: missing.length ? { label: plural(missing.length, 'missing value'), tone: 'warn' } : { label: 'Nothing missing', tone: 'ok' },
         },
         {
-            key: 'upload', title: 'Upload the reports', text: 'NFIS and TU for every borrower',
-            done: total > 0 && uploaded === total,
+            key: 'reports', title: 'Reports and results', text: reportsText,
+            done: total > 0 && stillNeeded === 0, meter: { value: complete, max: total }, chip: reportsChip,
         },
         {
-            key: 'ai', title: 'OCR extraction NFIS & TU', text: aiText, skipped,
-            done: total > 0 && checked === total, meter: { value: checked, max: total },
+            key: 'send', title: 'Check and send', text: stillNeeded ? 'Mark CI Done once the reports are in' : 'Ready: Mark CI Done',
+            done: false, chip: stillNeeded ? { label: 'Not ready yet', tone: 'none' } : { label: 'Ready to send', tone: 'ok' },
         },
-        { key: 'results', title: 'Results and Mark CI Done', text: resultsText, done: false },
     ].map((s) => ({ ...s, onClick: () => onOpen(s.key) }));
 };
 
@@ -141,53 +146,59 @@ const CiRequestPage = () => {
     const working = Boolean(request && canEdit);
     const ready = !loading && working && !ciData.loading;
 
-    // Open a step: a new history entry, so the browser's Back goes to the previous step. Focus its heading.
-    const openStep = useCallback((key, { replace = false, focus = true } = {}) => {
+    // Open a step: a new history entry, so the browser's Back goes to the previous step. Focus its heading, or the
+    // card the recap's "Edit" points at (after the step has rendered).
+    const openStep = useCallback((key, { replace = false, focus = true, target = null } = {}) => {
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
             next.set('step', key);
             return next;
         }, { replace });
-        if (focus) requestAnimationFrame(() => document.getElementById('ci-panel-h')?.focus());
+        if (!focus) return;
+        setTimeout(() => {
+            const card = target && document.getElementById(target);
+            if (card) {
+                card.scrollIntoView({ block: 'start' });
+                card.focus({ preventScroll: true });
+            } else {
+                document.getElementById('ci-panel-h')?.focus();
+            }
+        }, 60);
     }, [setSearchParams]);
+    const goTo = useCallback((key, target) => openStep(key, { target }), [openStep]);
 
     // Opened without a step: start on the first one still to do (fixed in the URL, so it doesn't move on by itself)
     const steps = ready ? ciSteps({ data: ciData, missing, dirty, onOpen: openStep }) : [];
-    const firstOpen = steps.find((s) => !s.done && !s.skipped)?.key ?? 'results';
+    const firstOpen = steps.find((s) => !s.done)?.key ?? 'send';
     useEffect(() => {
         if (ready && !stepParam) openStep(firstOpen, { replace: true, focus: false });
     }, [ready, stepParam, firstOpen, openStep]);
 
     if (loading) return <CiRequestSkeleton />;
-    if (error) return <p className="ci-err">{error}</p>;
-    if (!app) return null;
+    if (error || !app) {
+        return (
+            <div className="lf lf-folder lf-ci">
+                <p className="lf-err" role="alert">{error ?? 'Application not found.'}</p>
+            </div>
+        );
+    }
 
-    const metrics = [
-        {
-            key: 'status', label: 'Request status', value: request ? 'Requested' : 'Not sent',
-            sub: request ? whenOf(request.requested_at) : 'The AO has not sent it yet', tone: request ? 'info' : 'warn',
-        },
-        { key: 'people', label: 'Borrowers to check', value: built.people.length, sub: 'Subject, spouse, co-borrowers', tone: 'plain' },
-        {
-            key: 'missing', label: 'Missing values', value: missing.length,
-            sub: missing.length ? 'Required for the request' : 'Nothing missing', tone: missing.length ? 'warn' : 'ok',
-        },
-        { key: 'amount', label: 'Loan amount', value: peso(built.loanAmount) ?? '—', sub: built.loanType ?? 'Loan type not set', tone: 'plain' },
-    ];
-
-    const missingNote = missing.length > 0 && (
+    const missingNote = missing.length > 0 ? (
         <p className="ci-warn" role="note">
-            <Info size={16} aria-hidden="true" />
+            <AlertTriangle size={16} aria-hidden="true" />
             <span>
                 <b>{missing.length} required {missing.length === 1 ? 'value is' : 'values are'} missing.</b>{' '}
                 The request can't be accommodated with missing values. The Account Officer corrects them in the loan folder;
                 ask them in Messages.
             </span>
         </p>
-    );
+    ) : null;
     const remarks = request && (
-        <section className="lf-card" aria-label="Remarks">
-            <div className="lf-cardhead"><h2>Remarks</h2></div>
+        <section className="lf-card ci-remarks" aria-labelledby="ci-remarks-h">
+            <div className="lf-cardhead">
+                <h2 id="ci-remarks-h">Remarks from the Account Officer</h2>
+                <span>Sent with the request</span>
+            </div>
             <div className="ci-cols">
                 <Remark title="NFIS remarks" text={request.nfis_remarks} />
                 <Remark title="TU remarks" text={request.tu_remarks} />
@@ -200,73 +211,106 @@ const CiRequestPage = () => {
     const step = steps[at];
     const prev = steps[at - 1];
     const next = steps[at + 1];
+    const StepIcon = STEP_ICONS[current];
 
     return (
-        <div className="lf fp">
+        <div className="lf lf-folder lf-ci">
             <Breadcrumbs current="request" appId={app.id} appNo={app.application_no} />
-            <header className="lf-card">
-                <div className="lf-titlerow">
-                    <div>
-                        <h1><Term k="CI" /> request {app.application_no}</h1>
-                        <ul className="lf-meta">
-                            <li><Terms>NFIS and TransUnion inquiry details</Terms></li>
-                            {request && <li>Requested by {requesterName ?? 'Account Officer'}</li>}
-                        </ul>
-                    </div>
-                    <div className="lf-actions">
-                        <MessagesPanel applicationId={app.id} inline />
-                    </div>
-                </div>
-
-                <div className="fp-metrics">
-                    {metrics.map((m) => (
-                        <div key={m.key} className={`fp-metric ${m.tone}`}>
-                            <span className="lbl">{m.label}</span>
-                            <span className="val">{m.value}</span>
-                            <span className="sub"><Terms text={m.sub} /></span>
-                        </div>
-                    ))}
-                </div>
-
-                {ready && <StepStrip steps={steps} openStep={current} />}
-
-                {!request && (
-                    <p className="lf-note">
-                        <Info size={16} aria-hidden="true" />
-                        <span><Terms>No CI request has been sent for this application yet.</Terms></span>
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <SearchCheck size={15} aria-hidden="true" />
+                        <span><Term k="CI" /> request</span>
+                        <span className={`lf-mode ${working ? 'edit' : 'read'}`}>
+                            {working
+                                ? <><PenLine size={13} aria-hidden="true" />You can edit</>
+                                : <><Lock size={13} aria-hidden="true" />Read-only</>}
+                        </span>
                     </p>
-                )}
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    <ul className="lf-meta">
+                        {request && (
+                            <li>
+                                <Send size={15} aria-hidden="true" />
+                                <span className="k">Requested</span>
+                                <Byline layout="inline" name={requesterName} fallback="Account Officer" at={request.requested_at} />
+                            </li>
+                        )}
+                        <li>
+                            <Users size={15} aria-hidden="true" />
+                            <span className="k">Borrowers</span>
+                            <span className="v">{built.people.length}</span>
+                        </li>
+                        <li>
+                            <Wallet size={15} aria-hidden="true" />
+                            <span className="k">{built.loanType ?? 'Loan amount'}</span>
+                            <span className="v">{peso(built.loanAmount) ?? '—'}</span>
+                        </li>
+                        {missing.length > 0 && (
+                            <li className="ci-meta-warn">
+                                <AlertTriangle size={15} aria-hidden="true" />
+                                <span className="v">{missing.length}</span>
+                                <span className="k">{missing.length === 1 ? 'missing value' : 'missing values'}</span>
+                            </li>
+                        )}
+                    </ul>
+                </div>
+                <div className="lf-actions">
+                    <MessagesPanel applicationId={app.id} inline />
+                </div>
             </header>
 
-            {working && !ready && <p className="ci-note" role="status"><Terms>Loading the CI results...</Terms></p>}
+            {!request && (
+                <p className="lf-note">
+                    <Info size={16} aria-hidden="true" />
+                    <span><Terms>No CI request has been sent for this application yet.</Terms></span>
+                </p>
+            )}
+
+            {working && !ready && <p className="lf-note" role="status"><Info size={16} aria-hidden="true" /><span><Terms>Loading the CI results...</Terms></span></p>}
+
+            {ready && (
+                <section className="lf-card lf-stepcard" aria-label="Your steps">
+                    <StepStrip steps={steps} openStep={current} />
+                </section>
+            )}
 
             {ready && step && (
                 <section className="lf-card ci-panel" aria-labelledby="ci-panel-h">
-                    <div className="ci-panel-head">
-                        <p className="ci-panel-kicker">Step {at + 1} of {STEP_KEYS.length}</p>
-                        <h2 id="ci-panel-h" tabIndex={-1}><Terms text={step.title} /></h2>
-                        <p className="ci-panel-intro"><Terms text={STEP_INTRO[current]} /></p>
-                    </div>
+                    <header className="ci-panel-head">
+                        <span className="ci-panel-ic" aria-hidden="true"><StepIcon size={20} /></span>
+                        <div className="ci-panel-title">
+                            <p className="ci-panel-kicker">Step {at + 1} of {STEP_KEYS.length}</p>
+                            <h2 id="ci-panel-h" tabIndex={-1}><Terms text={step.title} /></h2>
+                            <p className="ci-panel-intro"><Terms text={STEP_INTRO[current]} /></p>
+                        </div>
+                        {step.chip && <span className={`lf-chip ${step.chip.tone}`}>{step.chip.label}</span>}
+                    </header>
 
                     {current === 'request' && (
-                        <div className="ci-request-body">
-                            {missingNote}
-                            <CiRequestForms app={app} idDetails={idDetails} />
+                        <div className="ci-step ci-request-body">
+                            {missingNote ?? (
+                                <p className="lf-note">
+                                    <CheckCircle2 size={16} aria-hidden="true" />
+                                    <span>Everything the forms need is filled in.</span>
+                                </p>
+                            )}
                             {remarks}
+                            <CiRequestForms app={app} idDetails={idDetails} />
                         </div>
                     )}
                     {/* Always mounted while working, so unsaved findings in step 4 survive a step change */}
                     <CiResultsEditor app={app} ciRequest={request} data={ciData} show={current === 'request' ? null : current}
-                        onGoTo={openStep} onChanged={handleChanged} onDirtyChange={setDirty} />
+                        onGoTo={goTo} onChanged={handleChanged} onDirtyChange={setDirty} />
 
                     <nav className="ci-panel-nav" aria-label="Step navigation">
                         {prev ? (
-                            <button type="button" className="lf-btn quiet" title={tt(prev.title)} onClick={() => openStep(prev.key)}>
+                            <button type="button" className="lf-btn quiet ci-prev" title={tt(prev.title)} onClick={() => openStep(prev.key)}>
                                 <ArrowLeft size={16} aria-hidden="true" />Back: {prev.title}
                             </button>
                         ) : <span />}
                         {next && (
-                            <button type="button" className="lf-btn" title={tt(next.title)} onClick={() => openStep(next.key)}>
+                            <button type="button" className="ci-go" title={tt(next.title)} onClick={() => openStep(next.key)}>
                                 Next: {next.title}<ArrowRight size={16} aria-hidden="true" />
                             </button>
                         )}
@@ -277,9 +321,17 @@ const CiRequestPage = () => {
             {!working && (
                 <>
                     {missingNote}
-                    <CiRequestForms app={app} idDetails={idDetails} />
                     {remarks}
-                    {request && <CiResultsView app={app} />}
+                    <CiRequestForms app={app} idDetails={idDetails} />
+                    {request && (
+                        <section className="lf-card lf-ciresults" aria-labelledby="ci-results-h">
+                            <div className="lf-cardhead">
+                                <h2 id="ci-results-h"><Term k="CI" /> results</h2>
+                                <span>From the Credit Investigator</span>
+                            </div>
+                            <CiResultsView app={app} title={null} />
+                        </section>
+                    )}
                 </>
             )}
         </div>

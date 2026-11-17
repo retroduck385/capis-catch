@@ -243,7 +243,7 @@ const DocumentCheckPage = () => {
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
     const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
-        ? { to: `/ciRequestPage?id=${app.id}&step=ai`, label: 'CI request' }
+        ? { to: `/ciRequestPage?id=${app.id}&step=reports`, label: 'CI request' }
         : { to: `/loanFolderPage?id=${app.id}`, label: 'Loan folder' };
 
     return (
@@ -292,12 +292,12 @@ const DocumentCheckPage = () => {
                     <p>
                         <b><Terms text={ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'} /></b>{' '}
                         <Terms text={ciMode
-                            ? 'Next: review the results, add BRAS if you have it, save, then Mark CI Done.'
+                            ? 'Their results and summaries are saved. Next: add BRAS in step 2 if you have it, then check the results and Mark CI Done.'
                             : 'Next: KYC verification of each section in the loan folder.'} />
                     </p>
-                    <Link to={ciMode ? `/ciRequestPage?id=${app.id}&step=results` : `/loanFolderPage?id=${app.id}`}
+                    <Link to={ciMode ? `/ciRequestPage?id=${app.id}&step=send` : `/loanFolderPage?id=${app.id}`}
                         title={tt(ciMode ? 'Mark CI Done' : 'KYC verification')} onClick={guardLink} className="dc-next-go">
-                        {ciMode ? 'Go to step 4: Results' : 'Go to step 2: KYC verification'}
+                        {ciMode ? 'Go to step 3: Check and send' : 'Go to step 2: KYC verification'}
                         <ArrowRight size={16} aria-hidden="true" />
                     </Link>
                 </div>

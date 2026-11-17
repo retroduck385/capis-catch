@@ -7,9 +7,17 @@
 // keeps every edit, the policy check result and the single Save button; the page is kept in ?page=2.
 // The assigned CO's header shows their work as three steps across pages (coSteps.jsx): this FP -> Credit score ->
 // Approval routing, and the read-only pages (loan folder, Decision support) under "Optional view".
+// Look (DESIGN.md, "Financial Package"): an .lf-folder page (root lf-fp; the .fp classes stay for the structure the
+// credit score, approval routing, review and decision support pages share). Header with a mode tag and fact chips, the
+// CO's steps card, the key figures as glass tiles, the two pages as big tabs, glass section cards, a floating save bar.
+// Styles: financialPackage.css (.lf-fp block).
 import { FinancialPackageSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BadgeCheck, ChevronDown, Lock, ScanText, ScrollText, ShieldCheck } from 'lucide-react';
+import {
+    ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, ChevronDown, Gauge, House, Landmark, Lock, PenLine, Percent, Save, ScanText,
+    ScrollText, ShieldCheck, UserRound, Wallet,
+} from 'lucide-react';
+import Byline from '../../components/byline';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
@@ -275,7 +283,13 @@ const FinancialPackagePage = () => {
     }, [hash, ready, page, setSearchParams]);
 
     if (loading) return <FinancialPackageSkeleton />;
-    if (error && !form) return <p className="text-red-600">{error}</p>;
+    if (error && !form) {
+        return (
+            <div className="lf lf-folder lf-fp">
+                <p className="lf-err" role="alert">{error}</p>
+            </div>
+        );
+    }
     if (!app || !form || !rules) return null;
 
     const disabled = !canEdit || saving;
@@ -324,23 +338,25 @@ const FinancialPackagePage = () => {
     const kycLoans = computed.existingLoans;
 
     const pesoOf = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
+    // The key figures as tiles; the risk rating opens the scoring page. tone 'warn': something is still missing for it
     const metrics = [
         {
-            key: 'risk', label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
+            key: 'risk', Icon: Gauge, label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
             sub: score.riskRating ? `${score.total} / 100` : `${score.scored} of ${score.count} scored`,
-            tone: score.riskRating ? 'info' : 'warn', link: [`/creditScorePage?id=${app.id}`, 'Open scoring'],
+            tone: score.riskRating ? 'done' : 'warn', link: [`/creditScorePage?id=${app.id}`, 'Open scoring'],
         },
-        { key: 'dbr', label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: 'plain' },
-        { key: 'lcr', label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: 'plain' },
+        { key: 'dbr', Icon: Percent, label: 'Debt burden ratio', value: percent(computed.dbr) ?? '—', sub: 'DBR', tone: computed.dbr === null ? 'warn' : '' },
+        { key: 'lcr', Icon: House, label: 'Loan-to-collateral', value: percent(computed.lcr) ?? '—', sub: 'LCR', tone: '' },
         {
-            key: 'amort', label: 'Monthly amortization', value: pesoOf(computed.amortization),
-            sub: computed.amortization === null ? 'Needs the interest rate' : 'New loan', tone: 'plain',
+            key: 'amort', Icon: CalendarClock, label: 'Monthly amortization', value: pesoOf(computed.amortization),
+            sub: computed.amortization === null ? 'Needs the interest rate' : 'New loan', tone: computed.amortization === null ? 'warn' : '',
         },
         {
-            key: 'income', label: 'Combined gross income', value: pesoOf(computed.totalGross),
-            sub: computed.totalGross === null ? 'Pick every income basis' : 'Per month', tone: 'plain',
+            key: 'income', Icon: Wallet, label: 'Combined gross income', value: pesoOf(computed.totalGross),
+            sub: computed.totalGross === null ? 'Pick every income basis' : 'Per month', tone: computed.totalGross === null ? 'warn' : '',
         },
     ];
+    const guard = () => !dirty || window.confirm('The Financial Package has unsaved changes. Leave without saving?');
 
     const goTo = (id) => (e) => {
         e.preventDefault();
@@ -379,81 +395,108 @@ const FinancialPackagePage = () => {
     };
 
     return (
-        <form ref={formRef} onSubmit={handleSave} onInvalidCapture={onInvalid} className="lf fp">
+        <form ref={formRef} onSubmit={handleSave} onInvalidCapture={onInvalid} className="lf lf-folder lf-fp fp">
             <Breadcrumbs current="package" appId={app.id} appNo={app.application_no} />
-            <header className="lf-card">
-                <div className="lf-titlerow">
-                    <div>
-                        <h1>Financial Package {app.application_no}</h1>
-                        <ul className="lf-meta">
-                            <li>Financial Package and Credit Recommendation, Housing Loans</li>
-                            {aoName && <li>Handling Account Officer: {aoName}</li>}
-                        </ul>
-                    </div>
-                    <div className="lf-actions">
-                        <MessagesPanel applicationId={app.id} inline />
-                        {/* The assigned CO gets these as steps / optional view below */}
-                        {!canEdit && (
-                            <>
-                                {/* The same page as VII. Approval's button: it reads the saved FP, so warn about unsaved edits */}
-                                <Link to={`/approvalRoutingPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
-                                    <BadgeCheck size={16} aria-hidden="true" />Approval routing
-                                </Link>
-                                {/* The applicant's documents beside what the AI read (the Credit Investigator has a CI version) */}
-                                {role !== 'CREDIT_INVESTIGATOR' && (
-                                    <Link to={`/documentCheckPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
-                                        <ScanText size={16} aria-hidden="true" />Document check
-                                    </Link>
-                                )}
-                                <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
-                                    Loan folder<ArrowRight size={16} aria-hidden="true" />
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {canEdit && (
-                    <CoSteps appId={app.id} current="package" pkg={savedPkg} score={score}
-                        sent={splitRouting(routing.rows).reviewers.length > 0}
-                        guard={() => !dirty || window.confirm('The Financial Package has unsaved changes. Leave without saving?')} />
-                )}
-
-                <div className="fp-metrics">
-                    {metrics.map((m) => (
-                        <div key={m.key} className={`fp-metric ${m.tone}`}>
-                            <span className="lbl">{m.label}</span>
-                            <span className="val">{m.value}</span>
-                            <span className="sub"><Terms text={m.sub} /></span>
-                            {m.link && <Link to={m.link[0]} onClick={confirmLeave} className="more">{m.link[1]}</Link>}
-                        </div>
-                    ))}
-                </div>
-
-                {canEdit && (
-                    <CoOptionalView appId={app.id} documentCheck
-                        guard={() => !dirty || window.confirm('The Financial Package has unsaved changes. Leave without saving?')} />
-                )}
-
-                {!canEdit && (
-                    <p className="lf-note">
-                        <Lock size={16} aria-hidden="true" />
-                        <span>
-                            Read-only. Only the assigned Credit Officer can edit the Financial Package.
-                            {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <Landmark size={15} aria-hidden="true" />
+                        <span>Financial Package &amp; Credit Recommendation</span>
+                        <span className={`lf-mode ${canEdit ? 'edit' : 'read'}`}>
+                            {canEdit
+                                ? <><PenLine size={13} aria-hidden="true" />You can edit</>
+                                : <><Lock size={13} aria-hidden="true" />Read-only</>}
                         </span>
                     </p>
-                )}
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    <ul className="lf-meta">
+                        <li>
+                            <Wallet size={15} aria-hidden="true" />
+                            <span className="k">{one(app.loan_purposes)?.label ?? 'Housing loan'}</span>
+                            <span className="v">{pesoOf(app.loan_amount)}</span>
+                        </li>
+                        {aoName && (
+                            <li>
+                                <UserRound size={15} aria-hidden="true" />
+                                <span className="k">Handling Account Officer</span>
+                                <Byline layout="inline" name={aoName} fallback="Account Officer" />
+                            </li>
+                        )}
+                    </ul>
+                </div>
+                <div className="lf-actions">
+                    <MessagesPanel applicationId={app.id} inline />
+                    {/* The assigned CO gets these as steps / optional view below */}
+                    {!canEdit && (
+                        <>
+                            {/* The same page as VII. Approval's button: it reads the saved FP, so warn about unsaved edits */}
+                            <Link to={`/approvalRoutingPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
+                                <BadgeCheck size={16} aria-hidden="true" />Approval routing
+                            </Link>
+                            {/* The applicant's documents beside what the AI read (the Credit Investigator has a CI version) */}
+                            {role !== 'CREDIT_INVESTIGATOR' && (
+                                <Link to={`/documentCheckPage?id=${app.id}`} onClick={confirmLeave} className="lf-btn">
+                                    <ScanText size={16} aria-hidden="true" />Document check
+                                </Link>
+                            )}
+                            <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
+                                Loan folder<ArrowRight size={16} aria-hidden="true" />
+                            </Link>
+                        </>
+                    )}
+                </div>
             </header>
 
-            <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
+            {!canEdit && (
+                <p className="lf-note">
+                    <Lock size={16} aria-hidden="true" />
+                    <span>
+                        Read-only. Only the assigned Credit Officer can edit the Financial Package.
+                        {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
+                    </span>
+                </p>
+            )}
+
+            {canEdit && (
+                <section className="lf-card lf-stepcard" aria-label="Your steps">
+                    <CoSteps appId={app.id} current="package" pkg={savedPkg} score={score}
+                        sent={splitRouting(routing.rows).reviewers.length > 0} guard={guard} />
+                    <CoOptionalView appId={app.id} documentCheck guard={guard} />
+                </section>
+            )}
+
+            <div className="fp-return">
+                <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
+            </div>
+
+            <section className="fp-tiles" aria-label="Key figures">
+                {metrics.map(({ key, Icon, label, value, sub, tone, link }) => {
+                    const body = (
+                        <>
+                            <span className="ic" aria-hidden="true"><Icon size={18} /></span>
+                            <span className="lbl">{label}</span>
+                            <span className="val">{value}</span>
+                            <span className="sub">
+                                <Terms text={sub} />
+                                {link && <span className="go">{link[1]}<ArrowRight size={14} aria-hidden="true" /></span>}
+                            </span>
+                        </>
+                    );
+                    return link
+                        ? <Link key={key} to={link[0]} onClick={confirmLeave} className={`lf-tile fp-tile ${tone}`}>{body}</Link>
+                        : <div key={key} className={`lf-tile fp-tile ${tone}`}>{body}</div>;
+                })}
+            </section>
 
             <div ref={tabsRef} className="fp-pagetabs" role="tablist" aria-label="Financial Package pages" onKeyDown={onTabKey}>
                 {PAGES.map((p) => (
                     <button key={p.n} type="button" role="tab" id={`fp-tab-${p.n}`} aria-controls={`fp-page-${p.n}`}
                         aria-selected={page === p.n} tabIndex={page === p.n ? 0 : -1} onClick={() => showPage(p.n)}>
-                        <b>Page {p.n}: {p.title}</b>
-                        <span>{p.sub}</span>
+                        <span className="n" aria-hidden="true">{p.n}</span>
+                        <span className="txt">
+                            <b><span className="sr-only">Page {p.n}: </span>{p.title}</b>
+                            <span>{p.sub}</span>
+                        </span>
                     </button>
                 ))}
             </div>
@@ -504,7 +547,7 @@ const FinancialPackagePage = () => {
                         <ApprovalSection tier={routing.tier} rows={routing.rows} names={routing.names}
                             link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
                         <div className="fp-pagenav">
-                            <button type="button" onClick={() => showPage(2)}>
+                            <button type="button" className="fp-next" onClick={() => showPage(2)}>
                                 Next: Page 2, Application information<ArrowRight size={16} aria-hidden="true" />
                             </button>
                         </div>
@@ -545,7 +588,7 @@ const FinancialPackagePage = () => {
                             {audit.length === 0 ? <p className="fp-empty">No changes yet.</p> : <ChangeHistory app={app} entries={audit} names={names} />}
                         </details>
                         <div className="fp-pagenav">
-                            <button type="button" className="back" onClick={() => showPage(1)}>
+                            <button type="button" className="lf-btn quiet back" onClick={() => showPage(1)}>
                                 <ArrowLeft size={16} aria-hidden="true" />Back to Page 1, Recommendation
                             </button>
                         </div>
@@ -554,12 +597,12 @@ const FinancialPackagePage = () => {
                     {canEdit ? (
                         <div className="fp-savebar">
                             <div className="state" role="status">
-                                {dirty && <span className="fp-chip warn">Unsaved changes</span>}
-                                {saved && !dirty && <span className="fp-chip ok">Saved</span>}
+                                {dirty && <span className="lf-chip warn">Unsaved changes</span>}
+                                {saved && !dirty && <span className="lf-chip ok">Saved</span>}
                                 <FormError error={error} />
                             </div>
-                            <button type="submit" disabled={saving || !dirty}>
-                                {saving ? 'Saving...' : 'Save Financial Package'}
+                            <button type="submit" className="lf-primary" disabled={saving || !dirty}>
+                                <Save size={16} aria-hidden="true" />{saving ? 'Saving...' : 'Save Financial Package'}
                             </button>
                         </div>
                     ) : <FormError error={error} />}

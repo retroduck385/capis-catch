@@ -47,7 +47,7 @@ const Breadcrumbs = ({ current, appId, appNo, onNavigate }) => {
                 {trail.map((t, i) => (
                     <li key={`${i}-${t.label}`} className={t.kind === 'ahead' ? 'ahead' : undefined}>
                         {t.kind === 'here'
-                            ? <span aria-current="page"><Terms text={t.label} /></span>
+                            ? <span aria-current="page"><span><Terms text={t.label} /></span></span>
                             : <Link to={t.to} onClick={onNavigate} title={tt(t.label)}>{t.label}</Link>}
                         {i < trail.length - 1 && <ChevronRight size={14} className="crumb-sep" aria-hidden="true" />}
                     </li>

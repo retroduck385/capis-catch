@@ -5,12 +5,19 @@
 // After sending, the Dept Head or the Dispatch Admin can change the reviewers or override the authority
 // (update_review_routing()); the approvers follow the authority.
 // Everyone else with access reads.
-// Laid out like the Financial Package / loan folder pages: header card + metrics, section navigator, section cards.
+// Look (DESIGN.md, "Credit score and VII. Approval"): the Financial Package's .lf-fp look (root lf-ar): header with a
+// mode tag and fact chips, the steps card, the figures as tiles, section cards; the pickers are SelectMenu and the
+// routing history uses Byline. Page styles: financialPackage.css (.lf-ar).
 // The assigned CO's header shows step 3 of their three steps (financialPackage/coSteps.jsx): FP -> score -> this.
 import { ApprovalRoutingSkeleton } from '../../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Lock } from 'lucide-react';
+import {
+    ArrowRight, ArrowUp, ClipboardCheck, Gauge, Landmark, ListOrdered, Lock, PenLine, Send, Save, Trash2, Users, Wallet,
+} from 'lucide-react';
+import Byline from '../../components/byline';
+import SelectMenu from '../../components/selectMenu';
+import { personName } from '../../components/people';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { ROUTING_HEADS } from '../../roles';
@@ -28,8 +35,8 @@ import {
     AMOUNT_BANDS, APPROVAL_TIERS, amountBand, approversFor, missingApprovers, positionLabel, splitRouting,
     suggestApprovalTier, tierFor, tierLabel,
 } from './approval';
+import { RoutingPeople } from './approvalParts';
 import { ResendPanel } from './returnNotice';
-import RoutingSummary from './routingSummary';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
@@ -92,7 +99,7 @@ const AutoApprovers = ({ staff, tier }) => {
             {list.length > 0 && (
                 <ul className="rv-people">
                     {list.map((s) => (
-                        <li key={s.user_id}><b>{s.name}</b><span className="lf-chip none">{positionLabel(s.approval_position)}</span></li>
+                        <li key={s.user_id}><b>{personName(s.name) || s.name}</b><span className="lf-chip none">{positionLabel(s.approval_position)}</span></li>
                     ))}
                 </ul>
             )}
@@ -118,19 +125,20 @@ const PeoplePicker = ({ title, role, ordered, staff, value, onChange, disabled }
             {value.map((userId, i) => (
                 <div key={i} className="rv-slot">
                     {ordered && <span className="rv-seq" aria-hidden="true">{i + 1}</span>}
-                    <select value={userId} onChange={(e) => set(i, e.target.value)} disabled={disabled}
-                        aria-label={`${ROLE_NOUN[role]} ${i + 1}`}>
-                        <option value="">Pick {role === 'APPROVER' ? 'an' : 'a'} {ROLE_NOUN[role]}...</option>
-                        {options.filter((s) => s.user_id === userId || !value.includes(s.user_id)).map((s) => (
-                            <option key={s.user_id} value={s.user_id}>{s.name}</option>
-                        ))}
-                    </select>
+                    <div className="rv-pick">
+                        <SelectMenu id={`ar-${role}-${i}`} aria-label={`${ROLE_NOUN[role]} ${i + 1}`} value={userId} disabled={disabled}
+                            placeholder={`Pick ${role === 'APPROVER' ? 'an' : 'a'} ${ROLE_NOUN[role]}`} onChange={(v) => set(i, v)}
+                            options={options.filter((s) => s.user_id === userId || !value.includes(s.user_id))
+                                .map((s) => ({ value: s.user_id, label: personName(s.name) || s.name }))} />
+                    </div>
                     {!disabled && ordered && i > 0 && (
-                        <button type="button" className="rv-link" onClick={() => moveUp(i)}>Move up</button>
+                        <button type="button" className="rv-link" onClick={() => moveUp(i)}>
+                            <ArrowUp size={14} aria-hidden="true" />Move up<span className="sr-only"> {ROLE_NOUN[role]} {i + 1}</span>
+                        </button>
                     )}
                     {!disabled && value.length > 1 && (
                         <button type="button" className="rv-link danger" onClick={() => onChange(value.filter((_, j) => j !== i))}>
-                            Remove
+                            <Trash2 size={14} aria-hidden="true" />Remove<span className="sr-only"> {ROLE_NOUN[role]} {i + 1}</span>
                         </button>
                     )}
                 </div>
@@ -188,7 +196,13 @@ const ApprovalRoutingPage = () => {
     }, [applicationId]);
 
     if (loading) return <ApprovalRoutingSkeleton />;
-    if (error && !form) return <p className="ct-error">{error}</p>;
+    if (error && !form) {
+        return (
+            <div className="lf lf-folder lf-fp lf-ar">
+                <p className="lf-err" role="alert">{error}</p>
+            </div>
+        );
+    }
     if (!app || !data || !form || !rules) return null;
 
     const { fp, rows, stage, names, officers } = data;
@@ -250,18 +264,19 @@ const ApprovalRoutingPage = () => {
     const history = [...rows].sort((a, b) => new Date(b.assigned_at) - new Date(a.assigned_at));
     const borrowers = getParties(app, BORROWER_ROLES).map(fullName).filter(Boolean).join(', ');
 
+    // The figures as tiles (tone 'warn': still missing; 'done': set)
     const metrics = [
-        { key: 'result', label: 'Credit result', value: resultLabel ?? 'Not set', sub: 'CO recommendation', tone: resultLabel ? 'info' : 'warn' },
+        { key: 'result', Icon: ClipboardCheck, label: 'Credit result', value: resultLabel ?? 'Not set', sub: 'CO recommendation', tone: resultLabel ? 'done' : 'warn' },
         {
-            key: 'risk', label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
+            key: 'risk', Icon: Gauge, label: 'Credit risk rating', value: score.riskRating ?? 'Not scored',
             sub: score.riskRating ? `${score.total} / 100` : `${score.scored} of ${score.count} scored`,
-            tone: score.riskRating ? 'info' : 'warn',
+            tone: score.riskRating ? 'done' : 'warn',
         },
-        { key: 'loan', label: 'Loan amount', value: money(app.loan_amount), sub: 'Requested', tone: 'plain' },
+        { key: 'loan', Icon: Wallet, label: 'Loan amount', value: money(app.loan_amount), sub: 'Requested', tone: '' },
         {
-            key: 'tier', label: 'Approval authority', value: tierLabel(tier) ?? '—',
+            key: 'tier', Icon: Landmark, label: 'Approval authority', value: tierLabel(tier) ?? '—',
             sub: tier ? (deviations > 0 ? `With deviation (${deviations})` : 'No deviation') : 'Needs a loan amount',
-            tone: tier ? 'info' : 'warn',
+            tone: tier ? '' : 'warn',
         },
     ];
 
@@ -276,55 +291,73 @@ const ApprovalRoutingPage = () => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="lf fp rv">
+        <form onSubmit={handleSubmit} className="lf lf-folder lf-fp lf-ar fp rv">
             <Breadcrumbs current="routing" appId={app.id} appNo={app.application_no} />
-            <header className="lf-card">
-                <div className="lf-titlerow">
-                    <div>
-                        <h1>VII. Approval {app.application_no}</h1>
-                        <ul className="lf-meta">
-                            <li>Borrower/s: {borrowers || '—'}</li>
-                            <li>Stage: {stage ? `${stageLabel(stage.stage)} · ${STAGE_STATUS_LABELS[stage.status] ?? '—'}` : '—'}</li>
-                        </ul>
-                    </div>
-                    <div className="lf-actions">
-                        <MessagesPanel applicationId={app.id} inline />
-                        {/* The assigned CO gets these as steps / optional view below */}
-                        {!isAssignedCo && (
-                            <>
-                                <Link to="/adminHomePage" className="lf-btn">Work tray</Link>
-                                <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
-                                    Loan folder<ArrowRight size={16} aria-hidden="true" />
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {isAssignedCo && <CoSteps appId={app.id} current="routing" pkg={fp.pkg ?? null} score={score} sent={sent} />}
-
-                <div className="fp-metrics">
-                    {metrics.map((m) => (
-                        <div key={m.key} className={`fp-metric ${m.tone}`}>
-                            <span className="lbl">{m.label}</span>
-                            <span className="val">{m.value}</span>
-                            <span className="sub"><Terms text={m.sub} /></span>
-                        </div>
-                    ))}
-                </div>
-
-                {isAssignedCo && <CoOptionalView appId={app.id} />}
-
-                {!editable && (
-                    <p className="lf-note">
-                        <Lock size={16} aria-hidden="true" />
-                        <span>
-                            Read-only. {readOnlyNote}
-                            {!sent && role === 'CREDIT_OFFICER' && !isAssignedCo && ' Assign yourself in the work tray first.'}
+            <header className="lf-hero">
+                <div className="lf-hero-main">
+                    <p className="lf-eyebrow">
+                        <ListOrdered size={15} aria-hidden="true" />
+                        <span>VII. Approval routing</span>
+                        <span className={`lf-mode ${editable ? 'edit' : 'read'}`}>
+                            {editable
+                                ? <><PenLine size={13} aria-hidden="true" />You can edit</>
+                                : <><Lock size={13} aria-hidden="true" />Read-only</>}
                         </span>
                     </p>
-                )}
+                    <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    <ul className="lf-meta">
+                        <li>
+                            <Users size={15} aria-hidden="true" />
+                            <span className="k">Borrower/s</span>
+                            <span className="v cs-names">{borrowers || '—'}</span>
+                        </li>
+                        <li>
+                            <span className="k">Stage</span>
+                            <span className="v">{stage ? `${stageLabel(stage.stage)} · ${STAGE_STATUS_LABELS[stage.status] ?? '—'}` : '—'}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div className="lf-actions">
+                    <MessagesPanel applicationId={app.id} inline />
+                    {/* The assigned CO gets these as steps / optional view below */}
+                    {!isAssignedCo && (
+                        <>
+                            <Link to="/adminHomePage" className="lf-btn">Work tray</Link>
+                            <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
+                                Loan folder<ArrowRight size={16} aria-hidden="true" />
+                            </Link>
+                        </>
+                    )}
+                </div>
             </header>
+
+            {!editable && (
+                <p className="lf-note">
+                    <Lock size={16} aria-hidden="true" />
+                    <span>
+                        Read-only. {readOnlyNote}
+                        {!sent && role === 'CREDIT_OFFICER' && !isAssignedCo && ' Assign yourself in the work tray first.'}
+                    </span>
+                </p>
+            )}
+
+            {isAssignedCo && (
+                <section className="lf-card lf-stepcard" aria-label="Your steps">
+                    <CoSteps appId={app.id} current="routing" pkg={fp.pkg ?? null} score={score} sent={sent} />
+                    <CoOptionalView appId={app.id} />
+                </section>
+            )}
+
+            <section className="fp-tiles four" aria-label="Routing figures">
+                {metrics.map(({ key, Icon, label, value, sub, tone }) => (
+                    <div key={key} className={`lf-tile fp-tile ${tone}`}>
+                        <span className="ic" aria-hidden="true"><Icon size={18} /></span>
+                        <span className="lbl">{label}</span>
+                        <span className="val">{value}</span>
+                        <span className="sub"><Terms text={sub} /></span>
+                    </div>
+                ))}
+            </section>
 
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav fp-nav" aria-label="VII. Approval sections">
@@ -340,10 +373,14 @@ const ApprovalRoutingPage = () => {
                 <div className="lf-main fp-main">
                     <Section id="ar-prepared" title="Prepared by">
                         <dl className="fp-info">
-                            <Info label="Account Officer">{officers.ao ?? <span className="fp-pending">Unassigned</span>}</Info>
-                            <Info label="Credit Officer">{officers.co ?? <span className="fp-pending">Unassigned</span>}</Info>
+                            <Info label="Account Officer">
+                                {officers.ao ? <Byline layout="inline" name={officers.ao} fallback="Account Officer" /> : <span className="fp-pending">Unassigned</span>}
+                            </Info>
+                            <Info label="Credit Officer">
+                                {officers.co ? <Byline layout="inline" name={officers.co} fallback="Credit Officer" /> : <span className="fp-pending">Unassigned</span>}
+                            </Info>
                             <Info label="Credit result">
-                                {resultLabel ?? <span className="lf-err">Not set in the Financial Package</span>}
+                                {resultLabel ?? <span className="ar-miss">Not set in the Financial Package</span>}
                             </Info>
                             <Info label="Credit risk rating">
                                 {score.riskRating ? `${score.riskRating} (${score.total} / 100)` : `Not finished (${score.scored} of ${score.count} scored)`}
@@ -376,16 +413,15 @@ const ApprovalRoutingPage = () => {
                             )}
                         </dl>
                         {canUpdate && (
-                            <label className="ct-field rv-override">
-                                Approval authority (override)
-                                <select value={form.tier} onChange={(e) => change({ ...form, tier: e.target.value })} disabled={saving}>
-                                    <option value="">Pick...</option>
-                                    {APPROVAL_TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                </select>
+                            <div className="ct-field rv-override">
+                                <label id="ar-tier-label" htmlFor="ar-tier">Approval authority (override)</label>
+                                <SelectMenu id="ar-tier" labelId="ar-tier-label" value={form.tier} disabled={saving} placeholder="Pick one"
+                                    onChange={(v) => change({ ...form, tier: v })}
+                                    options={APPROVAL_TIERS.map((t) => ({ value: t.value, label: t.label }))} />
                                 {form.tier && suggestion && form.tier !== suggestion && (
                                     <span className="rv-differs">Differs from the suggestion.</span>
                                 )}
-                            </label>
+                            </div>
                         )}
                         <div className="fp-tablewrap rv-matrix">
                             <table>
@@ -421,7 +457,8 @@ const ApprovalRoutingPage = () => {
                                 <AutoApprovers staff={staff} tier={tier} />
                             </>
                         ) : (
-                            <RoutingSummary tier={pkg.approval_tier} rows={rows} names={names} myId={myId} />
+                            <RoutingPeople tier={pkg.approval_tier} rows={rows} names={names} myId={myId}
+                                positions={Object.fromEntries(staff.map((s) => [s.user_id, s.approval_position]))} />
                         )}
                     </Section>
 
@@ -436,12 +473,14 @@ const ApprovalRoutingPage = () => {
                                 {history.map((r) => (
                                     <li key={r.id} className={`rv-step ${r.unassigned_at ? 'none' : 'ok'}`}>
                                         <div className="rv-step-top">
-                                            <b>{r.assignee_role === 'REVIEWER' ? `Reviewer ${r.seq}` : 'Approver'}: {names[r.user_id] ?? 'Unknown'}</b>
+                                            <b>{r.assignee_role === 'REVIEWER' ? `Reviewer ${r.seq}` : 'Approver'}: {personName(names[r.user_id]) || 'Unknown'}</b>
                                             <span className="lf-chip">{r.unassigned_at ? 'Removed' : 'Active'}</span>
                                         </div>
-                                        <p className="lf-kyc-meta">
-                                            Added by {names[r.assigned_by] ?? 'unknown'} on {new Date(r.assigned_at).toLocaleString()}
-                                            {r.unassigned_at && ` · removed by ${names[r.unassigned_by] ?? 'unknown'} on ${new Date(r.unassigned_at).toLocaleString()}`}
+                                        <p className="ar-by">
+                                            <span>Added by <Byline layout="inline" name={names[r.assigned_by]} fallback="Unknown" at={r.assigned_at} /></span>
+                                            {r.unassigned_at && (
+                                                <span>Removed by <Byline layout="inline" name={names[r.unassigned_by]} fallback="Unknown" at={r.unassigned_at} /></span>
+                                            )}
                                         </p>
                                     </li>
                                 ))}
@@ -452,13 +491,14 @@ const ApprovalRoutingPage = () => {
                     {editable && (
                         <div className="fp-savebar">
                             <div className="state">
-                                {saved && <span className="fp-chip ok" role="status">{saved}</span>}
+                                {saved && <span className="lf-chip ok" role="status">{saved}</span>}
                                 <FormError error={error} />
                                 {blockers.length > 0 && (
                                     <ul className="rv-blockers">{blockers.map((b) => <li key={b}><Terms text={b} /></li>)}</ul>
                                 )}
                             </div>
-                            <button type="submit" disabled={saving || !ready}>
+                            <button type="submit" className="lf-primary" disabled={saving || !ready}>
+                                {canPick ? <Send size={16} aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}
                                 {saving ? 'Saving...' : canPick ? 'Send for review' : 'Save changes'}
                             </button>
                         </div>

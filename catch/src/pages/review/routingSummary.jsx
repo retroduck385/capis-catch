@@ -1,10 +1,11 @@
 // Read-only VII. Approval routing: approval authority, reviewers in order, approver/s.
 // rows = review_assignments rows (inactive ones are ignored); names = { [user_id]: name }
 import { splitRouting, tierLabel } from './approval';
+import { personName } from '../../components/people';
 
 const RoutingSummary = ({ tier, rows, names, myId }) => {
     const { reviewers, approvers } = splitRouting(rows);
-    const nameOf = (r) => `${names[r.user_id] ?? 'Unknown'}${r.user_id === myId ? ' (you)' : ''}`;
+    const nameOf = (r) => `${personName(names[r.user_id]) || 'Unknown'}${r.user_id === myId ? ' (you)' : ''}`;
 
     if (reviewers.length === 0 && approvers.length === 0) return <p className="italic">Not sent for review yet.</p>;
     return (

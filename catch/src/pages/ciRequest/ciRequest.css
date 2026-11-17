@@ -1,5 +1,6 @@
-/* CI request: NFIS / TU form tables, "Missing" markers and remark cards. The cards, header and metric tiles come from
-   loanFolder.css (.lf-*) and financialPackage.css (.fp-metric); this file adds what is specific to the CI forms. */
+/* CI request: NFIS / TU form tables, "Missing" markers and remark cards, shared with the loan folder's Request CI
+   panel (requestCiPanel.jsx). The cards and header come from loanFolder.css (.lf-*). Below them: the Credit
+   Investigator's page (.lf-ci) and the "Flag the findings" box (.ci-flags), which every page with CI results shows. */
 .ci-missing { display: inline-flex; padding: 0.05rem 0.65rem; border-radius: 999px; background: #fdeceb; color: #b3261e; border: 1px solid #f5bcb8; font-size: 0.8rem; font-weight: 700; }
 .ci-pending { color: var(--muted); font-style: italic; }
 .ci-party { font-weight: 600; white-space: nowrap; }
@@ -34,78 +35,310 @@
 .ci-warn svg { flex: none; margin-top: 0.15rem; }
 .ci-err { margin: 0; color: #b3261e; font-weight: 600; }
 
-.fp .fp-metric.ok { --tone: #15714a; }
+/* ==========================================================================================================
+   The Credit Investigator's page (ciRequestPage.jsx, ciResults.jsx; DESIGN.md "CI request"). Root: lf lf-folder lf-ci,
+   so the panel, glass cards, pills, header, step strip, chips, choice cards, tokens and dark mode come from
+   loanFolder.css. This block adds the step panel, the borrower blocks and report cards, the results rows, the save
+   bar and the Mark CI Done panel. Every colour is a --lf-* token. Status: a missing report or result is amber (it
+   needs the CI), done is green, not started is slate; red is never a status here.
+   ========================================================================================================== */
+.lf-folder .ci-chip { gap: 0.3rem; }
+.lf-folder .ci-chip svg { flex: none; }
 
-/* ---------- Credit Investigator's steps (ciRequestPage.jsx, ciResults.jsx) ---------- */
-/* one step subpage at a time: kicker + heading + intro, the step's content, Back / Next */
-.ci-panel { display: grid; gap: 1rem; }
-.ci-panel-head { padding-bottom: 0.9rem; border-bottom: 1px solid var(--line); }
-.ci-panel-kicker { margin: 0; color: var(--muted); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-.ci-panel-head h2 { margin: 0.15rem 0 0; font-size: 1.3rem; }
-.ci-panel-head h2:focus { outline: none; }
-.ci-panel-head h2:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 4px; }
-.ci-panel-intro { margin: 0.3rem 0 0; color: var(--muted); }
-.ci-panel-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--line); }
-.ci-empty-step { margin: 0; padding: 1rem; border: 1px dashed var(--line-strong); border-radius: 8px; color: var(--ink); }
+/* header: the missing-values fact is amber */
+.lf-folder .lf-meta li.ci-meta-warn { background: var(--lf-warn-bg); border-color: var(--lf-warn-line); color: var(--lf-warn); }
+.lf-folder .lf-meta li.ci-meta-warn :is(svg, .k, .v) { color: var(--lf-warn); }
 
-/* step 1: the request forms + remarks, flattened inside the panel */
-.ci-request-body { display: grid; gap: 1.5rem; }
-.ci-request-body .lf-card { padding: 0; border: 0; }
-
-/* step 2: one card per borrower, one cell per check */
-.ci-borrowers { display: grid; gap: 1rem; }
-.ci-borrower h3 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.6rem; margin: 0 0 0.55rem; font-size: 1rem; }
-.ci-borrower h3 span { color: var(--muted); font-size: 0.88rem; font-weight: 500; }
-.ci-slots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
-.ci-slots.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.ci-slot {
-  margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.55rem; padding: 0.75rem 0.9rem;
-  border: 1px solid var(--line); border-top: 4px solid var(--tone); border-radius: 8px; background: #fff;
+/* ---------- the step panel: icon disc, kicker / title / intro, progress chip; the step; Back / Next ---------- */
+.lf-ci .ci-panel { display: grid; gap: 1.25rem; padding: 1.4rem 1.5rem 1.25rem; }
+.lf-ci .ci-panel-head {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 0.35rem 0.95rem;
+  padding-bottom: 1.15rem; border-bottom: 1px solid var(--lf-hair);
 }
-.ci-slot-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; }
-.ci-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
-.ci-files li { margin: 0; display: grid; gap: 0.3rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--line); }
-.lf .ci-file {
-  justify-self: start; max-width: 100%; padding: 0; border: 0; background: none; color: var(--blue-700); font: inherit;
-  font-size: 0.9rem; font-weight: 600; text-align: left; text-decoration: underline; overflow-wrap: anywhere; cursor: pointer;
+.ci-panel-ic {
+  display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border-radius: 14px;
+  background: var(--lf-blue-grad); color: #fff; box-shadow: 0 10px 18px -12px rgba(20, 41, 95, 0.8);
 }
-.lf .ci-file:hover { color: var(--ink); background: none; }
-.ci-file-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.lf .ci-mini, .lf a.ci-mini {
-  display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2rem; padding: 0.15rem 0.65rem; border: 1px solid var(--line-strong);
-  border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer;
-}
-.lf .ci-mini:hover, .lf a.ci-mini:hover { background: #f1f4fa; color: var(--ink); }
-.lf .ci-mini:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-.lf .ci-upload { margin-top: auto; align-self: flex-start; cursor: pointer; }
-.lf .ci-upload:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
-.lf .ci-upload.busy { opacity: 0.7; cursor: progress; }
+.ci-panel-ic.small { width: 2.25rem; height: 2.25rem; border-radius: 12px; background: var(--lf-accent-bg); color: var(--lf-accent); box-shadow: none; }
+.lf-ci .ci-panel-title { display: grid; gap: 0.2rem; min-width: 0; }
+.lf-ci .ci-panel-kicker { margin: 0; color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.lf-ci .ci-panel-head h2 { margin: 0; color: var(--navy); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.lf-ci .ci-panel-head h2 span { color: inherit; font-size: inherit; }  /* glossary terms inside the title */
+.lf-ci .ci-panel-head h2:focus { outline: none; }
+.lf-ci .ci-panel-head h2:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 3px; border-radius: 6px; }
+.lf-ci .ci-panel-intro { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.lf-ci .ci-panel-head > .lf-chip { align-self: center; }
 
-/* step 4: results + summaries */
-.ci-results { margin: 0 0 1rem; padding: 0.4rem 1rem 0.2rem; border: 1px solid var(--line); border-radius: 8px; }
-.ci-results legend { padding: 0 0.35rem; font-weight: 700; }
-.ci-result { display: grid; grid-template-columns: minmax(16rem, 2fr) minmax(0, 3fr); gap: 0.75rem 1.25rem; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
-.ci-result:last-child { border-bottom: 0; }
-.ci-result-side { min-width: 0; }
-.ci-result .lf-choices { margin: 0.6rem 0 0.3rem; }
-.ci-req { color: #b3261e; }
-.lf .ci-link { padding: 0; border: 0; background: none; color: var(--blue-700); font: inherit; font-size: 0.88rem; text-decoration: underline; cursor: pointer; }
-.ci-summary { display: grid; gap: 0.35rem; margin: 0; font-weight: 600; }
-.ci-summary textarea { width: 100%; margin: 0; font-weight: 400; }
-.ci-remarks { margin-top: 0.5rem; }
-.ci-savebar {
-  position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem;
-  margin: 0.5rem -1.5rem 0; padding: 0.75rem 1.5rem; background: #fff; border-top: 1px solid var(--line);
+.lf-ci .ci-panel-nav {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding-top: 1.15rem; border-top: 1px solid var(--lf-hair);
 }
-.ci-unsaved { color: #8a4b00; font-weight: 600; }
-.ci-saved { color: var(--muted); font-size: 0.9rem; }
-.ci-done { margin-top: 1rem; padding: 0.9rem 1.1rem; border: 1px solid var(--tone-line); border-left: 4px solid var(--tone); border-radius: 8px; background: var(--tone-bg); }
-.ci-done h3 { margin: 0 0 0.35rem; font-size: 1rem; }
-.ci-done p { margin: 0.25rem 0; }
-.ci-done ul { margin: 0.25rem 0 0.6rem; padding-left: 1.3rem; color: #7a3410; }
-.ci-done button { margin-top: 0.5rem; }
+.lf-ci .ci-panel-nav :is(.lf-btn, .ci-go) { white-space: normal; text-align: left; }
+/* Next: orange, since it moves on to what is waiting (the loan folder's pager does the same) */
+.lf-folder .ci-go {
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; margin: 0; padding: 0.45rem 1.25rem;
+  border: 0; border-radius: 999px; background: var(--lf-orange); color: #fff; font: inherit; font-weight: 700; line-height: 1.25;
+  box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75); cursor: pointer;
+}
+.lf-folder .ci-go:hover { background: #9a3412; color: #fff; }
+.lf-folder .ci-go:focus-visible { outline: 3px solid rgba(194, 65, 12, 0.35); outline-offset: 2px; }
+.lf-folder .ci-go svg { flex: none; }
 
+/* a step's content: the note, then its blocks */
+.lf-ci .ci-step { display: grid; gap: 1.25rem; min-width: 0; }
+.lf-ci :is(.ci-panel, .ci-step) > * { min-width: 0; }  /* a wide table scrolls in its frame instead of widening the page */
+.lf-ci .ci-step > .ci-note { margin: 0; }
+
+/* step 1: inside the panel, the remarks and the NFIS / TU forms are sub-panels, not glass cards */
+.lf-ci .ci-panel .lf-card {
+  padding: 1.1rem 1.2rem 1.2rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg);
+  box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.lf-ci .ci-panel .lf-cardhead { margin-bottom: 0.8rem; }
+.lf-ci .ci-panel .lf-cardhead h2 { font-size: 1.02rem; }
+.lf-ci .ci-remark-box { display: grid; gap: 0.45rem; min-width: 0; }
+.lf-ci .ci-remark-label { display: block; margin: 0; color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.lf-ci .ci-remark-label span { color: inherit; font-size: inherit; }
+.lf-ci .ci-remark {
+  margin: 0; min-height: 3.5rem; padding: 0.75rem 1rem; border: 1px solid var(--lf-block-line); border-radius: 14px;
+  background: var(--lf-block-bg); box-shadow: inset 3px 0 0 var(--lf-accent); color: var(--ink); line-height: 1.5;
+}
+.lf-ci .ci-remark.empty { box-shadow: none; color: var(--muted); font-style: italic; }
+
+/* ---------- step 2: a block per borrower; a card per report: report | result + summary, then Save ---------- */
+/* a borrower is a dropdown: the summary row (person, a status chip per report, chevron), then the report cards */
+.lf-ci .ci-borrower { display: block; min-width: 0; border: 1px solid var(--lf-sub-line); border-radius: 18px; background: var(--lf-sub-bg); }
+.lf-ci .ci-borrower > summary {
+  min-height: 3.5rem; padding: 0.7rem 1rem; border-radius: 17px; list-style: none; cursor: pointer;
+}
+.lf-ci .ci-borrower > summary::-webkit-details-marker { display: none; }
+.lf-ci .ci-borrower > summary:hover { background: var(--lf-inset); }
+.lf-ci .ci-borrower > summary:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.lf-ci .ci-borrower[open] > summary { border-bottom: 1px solid var(--lf-sub-line); border-radius: 17px 17px 0 0; }
+.lf-ci .ci-borrower > .ci-cards { padding: 0.85rem; }
+.ci-person-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.lf-ci .ci-chev { flex: none; color: var(--lf-text-3); }
+.lf-ci .ci-borrower[open] > summary .ci-chev { transform: rotate(180deg); }
+.ci-person-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.65rem; min-width: 0; }
+.ci-person { display: inline-grid; place-items: center; flex: none; width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--lf-accent-bg); color: var(--lf-accent); }
+.lf-ci .ci-person-head h3 {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; flex: 1; min-width: 0; margin: 0;
+  color: var(--navy); font-size: 1rem; font-weight: 700; letter-spacing: -0.01em;
+}
+.ci-person-head .who { overflow-wrap: anywhere; }
+.ci-person-head .role { color: var(--muted); font-size: 0.86rem; font-weight: 500; }
+.ci-count {
+  flex: none; min-width: 2.75rem; padding: 0 0.6rem; border-radius: 999px; background: var(--lf-accent-bg); color: var(--lf-accent);
+  font-size: 0.75rem; font-weight: 800; line-height: 1.5rem; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.ci-count.all { background: var(--lf-ok-bg); color: var(--lf-ok); }
+
+.lf-ci .ci-cards { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.lf-ci .ci-card {
+  display: grid; gap: 0.9rem; min-width: 0; margin: 0; padding: 1rem 1.15rem 1.05rem 1.35rem;
+  border: 1px solid var(--lf-inset-rim); border-radius: 16px; background: var(--lf-inset); box-shadow: inset 4px 0 0 var(--tone), var(--lf-shadow-sm);
+  scroll-margin-top: calc(var(--ct-head, 0rem) + var(--ct-gap, 0rem) + 1rem);
+}
+.lf-ci .ci-card.none { --tone: var(--lf-hollow); }
+.lf-ci .ci-card:focus { outline: none; }
+.lf-ci .ci-card:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.lf-ci .ci-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; }
+.lf-ci .ci-card-head h4 { margin: 0; color: var(--ink); font-size: 1.02rem; font-weight: 700; }
+.lf-ci .ci-card-head h4 small { color: var(--muted); font-size: 0.82rem; font-weight: 500; }
+.ci-card-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+/* report on the left, result on the right, split by a hairline; stacked at 900px */
+.lf-ci .ci-card-body { display: grid; grid-template-columns: minmax(15rem, 2fr) minmax(0, 3fr); gap: 1rem 1.25rem; }
+.lf-ci .ci-card-files { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; padding-right: 1.25rem; border-right: 1px solid var(--lf-hair); }
+.lf-ci .ci-card-files .ci-upload { margin-top: 0.15rem; }
+.lf-ci .ci-nofile { margin: 0; color: var(--muted); font-size: 0.88rem; font-style: italic; }
+.lf-ci .ci-card-result { display: grid; align-content: start; gap: 0.6rem; min-width: 0; }
+.ci-card-label { margin: 0; color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.lf-ci .ci-hint {
+  display: flex; align-items: flex-start; gap: 0.45rem; margin: 0; padding: 0.5rem 0.75rem; border-radius: 12px;
+  background: var(--lf-accent-bg); color: var(--lf-text-2); font-size: 0.86rem; line-height: 1.45;
+}
+.lf-ci .ci-hint svg { flex: none; margin-top: 0.1rem; color: var(--lf-accent); }
+.lf-ci .ci-hint span span { color: inherit; font-size: inherit; }
+/* save state under a card (and the overall remarks): Unsaved changes + Discard / Save, or Saved */
+.lf-ci .ci-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; padding-top: 0.8rem; border-top: 1px solid var(--lf-hair); }
+.lf-ci .ci-card-foot > .lf-err { flex-basis: 100%; margin: 0; }
+.ci-card-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; }
+.lf-ci .ci-overall .ci-card-foot { margin-top: 0.25rem; }
+.lf-ci .ci-files { display: grid; gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+.lf-ci .ci-file-row { display: grid; gap: 0.4rem; min-width: 0; margin: 0; }
+.lf-ci .ci-file-row + .ci-file-row { padding-top: 0.6rem; border-top: 1px solid var(--lf-hair); }
+.lf-ci .ci-file-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+/* a file: a pill that opens it */
+.lf-folder .ci-file {
+  display: inline-flex; align-items: center; gap: 0.45rem; justify-self: start; max-width: 100%; min-height: 2.25rem; margin: 0;
+  padding: 0.3rem 0.85rem 0.3rem 0.7rem; border: 1px solid var(--lf-block-line); border-radius: 999px; background: var(--lf-block-bg);
+  box-shadow: none; color: var(--lf-accent); font: inherit; font-size: 0.86rem; font-weight: 600; line-height: 1.3; text-align: left; cursor: pointer;
+}
+.lf-folder .ci-file svg { flex: none; }
+.lf-folder .ci-file span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lf-folder .ci-file:hover { background: var(--lf-control-hover); border-color: var(--lf-accent); color: var(--navy); }
+/* small pill actions: OCR extraction (blue when it is the step's job), Remove (quiet; red on hover) */
+.lf-folder :is(.ci-mini, a.ci-mini) {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2rem; margin: 0; padding: 0.2rem 0.8rem;
+  border: 1px solid rgba(20, 41, 95, 0.18); border-radius: 999px; background: var(--lf-control); box-shadow: none;
+  color: var(--navy); font: inherit; font-size: 0.82rem; font-weight: 600; line-height: 1.2; text-decoration: none; cursor: pointer;
+}
+.lf-folder :is(.ci-mini, a.ci-mini):hover { background: var(--lf-control-hover); color: var(--navy); }
+.lf-folder .ci-mini.quiet { background: transparent; color: var(--lf-text-2); }
+.lf-folder .ci-mini.quiet:hover:not(:disabled) { background: #fdecea; border-color: rgba(180, 35, 24, 0.35); color: #b42318; }
+.lf-folder .ci-mini:disabled { opacity: 0.55; cursor: progress; }
+.lf-folder a.ci-mini.go { border-color: transparent; background: var(--lf-blue-grad); color: #fff; box-shadow: 0 8px 16px -10px rgba(20, 41, 95, 0.75); }
+.lf-folder a.ci-mini.go:hover { background: var(--lf-blue-grad); color: #fff; filter: brightness(1.12); }
+/* upload: a dashed pill at the foot of the card; the native file input sits inside it */
+.lf-folder .ci-upload {
+  display: inline-flex; align-items: center; gap: 0.45rem; align-self: flex-start; margin-top: auto; min-height: 2.5rem;
+  padding: 0.35rem 1.05rem; border: 1.5px dashed rgba(30, 63, 151, 0.4); border-radius: 999px; background: var(--lf-accent-bg);
+  color: var(--lf-accent); font-size: 0.88rem; font-weight: 700; cursor: pointer;
+}
+.lf-folder .ci-upload:hover { border-style: solid; background: var(--lf-control-hover); }
+.lf-folder .ci-upload:focus-within { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.lf-folder .ci-upload.busy { opacity: 0.7; cursor: progress; }
+@media (pointer: coarse) { .lf-folder :is(.ci-mini, .ci-file, .ci-upload) { min-height: 2.75rem; } }
+
+/* ---------- step 3: recap of what is saved, overall remarks, flags, Mark CI Done ---------- */
+.lf-ci .ci-sub-h { margin: 0 0 0.7rem; color: var(--navy); font-size: 1.02rem; font-weight: 700; }
+.lf-ci .ci-recap .ci-party small { display: block; color: var(--muted); font-size: 0.82rem; font-weight: 500; white-space: normal; }
+.ci-recap-cell { display: grid; justify-items: start; gap: 0.35rem; min-width: 10rem; }
+.ci-recap-meta { display: flex; flex-wrap: wrap; gap: 0 0.45rem; color: var(--muted); font-size: 0.82rem; }
+.ci-recap-meta > span + span::before { content: '·'; margin-right: 0.45rem; }
+.ci-recap-miss { color: var(--lf-warn); font-weight: 600; }
+.ci-recap-sum {
+  display: -webkit-box; margin: 0; overflow: hidden; color: var(--lf-text-2); font-size: 0.86rem; line-height: 1.45;
+  white-space: pre-wrap; overflow-wrap: anywhere; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
+.lf-ci .lf-linkbtn.ci-recap-edit { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.84rem; }
+.lf-ci .ci-recap-edit svg { display: inline-block; flex: none; }
+.lf-ci .ci-req { color: #b42318; }
+.lf-ci .ci-choices { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.lf-ci .ci-clear { justify-self: start; font-size: 0.86rem; }
+.lf-ci .ci-summary { display: grid; align-content: start; gap: 0.4rem; min-width: 0; margin: 0; }
+.lf-ci .ci-summary label { color: var(--ink); font-size: 0.9rem; font-weight: 600; }
+.lf-ci .ci-summary label small { color: var(--muted); font-size: 0.8rem; font-weight: 500; }
+.lf-ci .ci-summary label span { color: inherit; font-size: inherit; }
+.lf-ci .ci-summary textarea {
+  width: 100%; min-height: 5.5rem; margin: 0; padding: 0.65rem 0.85rem; border: 1px solid rgba(20, 41, 95, 0.2); border-radius: 14px;
+  background: var(--lf-control-hover); color: var(--ink); font: inherit; line-height: 1.5; resize: vertical;
+}
+.lf-ci .ci-summary textarea:focus { border-color: var(--lf-accent); outline: 3px solid rgba(30, 63, 151, 0.22); outline-offset: 0; }
+.ci-counter { justify-self: end; color: var(--muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.lf-ci .ci-overall { padding: 1rem 1.2rem 0.9rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg); }
+
+.lf-ci .lf-primary:disabled { opacity: 0.5; filter: none; box-shadow: none; cursor: not-allowed; }
+
+/* Mark CI Done: amber while something is still needed, green when it can go */
+.lf-ci .ci-done {
+  display: grid; gap: 0.85rem; padding: 1.1rem 1.2rem 1.15rem 1.3rem; border: 1px solid var(--tone-line); border-radius: 16px;
+  background: var(--tone-bg); box-shadow: inset 4px 0 0 var(--tone);
+}
+.ci-done-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.8rem; }
+.ci-done-ic { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--lf-control-hover); color: var(--tone); box-shadow: 0 0 0 1px var(--tone-line); }
+.lf-ci .ci-done h3 { margin: 0; color: var(--navy); font-size: 1.05rem; font-weight: 700; }
+.lf-ci .ci-done-head p { margin: 0.15rem 0 0; color: var(--lf-text-2); }
+.lf-ci .ci-still { display: grid; gap: 0.3rem; margin: 0; padding: 0 0 0 4.1rem; color: var(--ink); font-size: 0.92rem; list-style: disc; }
+.lf-ci .ci-still li::marker { color: var(--tone); }
+.ci-done-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; padding-left: 3.05rem; }
+.lf-ci .ci-unsaved { color: var(--lf-warn); font-size: 0.9rem; font-weight: 600; }
+
+/* the read-only CI results card (CiResultsView, here and in the loan folder): keep the card header on one row, and
+   colour the results by the page's tones (findings amber, not red: red is turnaround time only; readable in dark) */
+.lf-folder .lf-ciresults > .lf-cardhead { display: flex; }
+.lf-folder .lf-ciresults .text-red-700 { color: var(--lf-warn); }
+.lf-folder .lf-ciresults .text-green-700 { color: var(--lf-ok); }
+.lf-folder .lf-ciresults .text-gray-500 { color: var(--muted); }
+
+/* ---------- Flag the findings (findingFlags.jsx), on every page with CI results ----------
+   Tokens with light fallbacks: an amber box on the pages not converted yet, and it follows dark mode on .lf-folder */
+.ci-flags {
+  display: grid; gap: 0.75rem; margin: 0.75rem 0; padding: 0.95rem 1.1rem 1rem; border: 1px solid var(--lf-warn-line, #f7cfa4);
+  border-radius: 16px; background: var(--lf-warn-bg, #fff1e2); color: var(--ink, #0f1b33); text-align: left;
+}
+.lf-ci .ci-flags { margin: 0; }
+.ci-flags-head { display: flex; align-items: center; gap: 0.55rem; }
+.ci-flags-ic {
+  display: grid; place-items: center; flex: none; width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  background: var(--lf-control-hover, #fff); color: var(--lf-warn, #a8480b); box-shadow: 0 0 0 1px var(--lf-warn-line, #f7cfa4);
+}
+.ci-flags h3 { margin: 0; color: var(--ink, #0f1b33); font-size: 0.98rem; font-weight: 700; }
+.ci-flags h3 span { color: inherit; font-size: inherit; }
+.ci-flags-n {
+  min-width: 1.5rem; padding: 0 0.4rem; border-radius: 999px; background: var(--lf-control-hover, #fff); color: var(--lf-warn, #a8480b);
+  font-size: 0.75rem; font-weight: 800; line-height: 1.5rem; text-align: center; font-variant-numeric: tabular-nums;
+}
+.ci-flags-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.ci-flags-list li { display: grid; gap: 0.35rem; margin: 0; padding: 0.65rem 0; border-top: 1px solid var(--lf-warn-line, #f7cfa4); }
+.ci-flags-list li:first-child { padding-top: 0; border-top: 0; }
+.ci-flags-by { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; color: var(--lf-text-2, #2b3a5c); font-size: 0.86rem; }
+.ci-flags-note { margin: 0; padding: 0.55rem 0.8rem; border-radius: 12px; background: var(--lf-control-hover, #fff); color: var(--ink, #0f1b33); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ci-flags-form { display: grid; gap: 0.45rem; }
+.ci-flags-form label { color: var(--ink, #0f1b33); font-size: 0.9rem; font-weight: 600; }
+.ci-flags-form textarea {
+  width: 100%; min-height: 4.5rem; margin: 0; padding: 0.6rem 0.8rem; border: 1px solid rgba(20, 41, 95, 0.2); border-radius: 12px;
+  background: var(--lf-control-hover, #fff); color: var(--ink, #0f1b33); font: inherit; line-height: 1.5; resize: vertical;
+}
+.ci-flags-form textarea:focus-visible { border-color: var(--lf-accent, #1e3f97); outline: 3px solid rgba(30, 63, 151, 0.25); outline-offset: 0; }
+.ci-flags-hint { margin: 0; color: var(--lf-text-2, #2b3a5c); font-size: 0.84rem; line-height: 1.45; }
+.ci-flags .ci-flags-btn {
+  display: inline-flex; align-items: center; justify-self: start; gap: 0.4rem; min-height: 2.5rem; margin: 0; padding: 0.35rem 1.05rem;
+  border: 1px solid var(--lf-warn, #a8480b); border-radius: 999px; background: var(--lf-control-hover, #fff); box-shadow: none;
+  color: var(--lf-warn, #a8480b); font: inherit; font-size: 0.9rem; font-weight: 700; line-height: 1.2; cursor: pointer;
+}
+.ci-flags .ci-flags-btn:hover:not(:disabled) { background: #ffe4cc; color: #7a3410; }
+.ci-flags .ci-flags-btn:focus-visible { outline: 3px solid rgba(168, 72, 11, 0.35); outline-offset: 2px; }
+.ci-flags .ci-flags-btn:disabled { opacity: 0.55; cursor: progress; }
+.ci-flags-sent { margin: 0; color: var(--lf-ok, #15714a); font-weight: 700; }
+.ci-flags-err { margin: 0; color: #b42318; font-weight: 600; }
+
+/* ---------- smaller screens ---------- */
 @media (max-width: 900px) {
-  .ci-slots, .ci-slots.two { grid-template-columns: minmax(0, 1fr); }
-  .ci-result { grid-template-columns: minmax(0, 1fr); }
+  .lf-ci .ci-card-body { grid-template-columns: minmax(0, 1fr); }
+  .lf-ci .ci-card-files { padding: 0 0 1rem; border-right: 0; border-bottom: 1px solid var(--lf-hair); }
 }
+@media (max-width: 640px) {
+  .lf-ci .ci-panel { padding: 1rem 1.1rem; }
+  .lf-ci .ci-panel-head { grid-template-columns: auto minmax(0, 1fr); }
+  .lf-ci .ci-panel-head > .lf-chip { grid-column: 2; justify-self: start; }
+  .lf-ci .ci-panel-head h2 { font-size: 1.25rem; }
+  .lf-ci .ci-panel-nav > :is(button, span) { flex: 1 1 100%; justify-content: center; }
+  .lf-ci .ci-panel-nav > span:empty { display: none; }
+  .lf-ci .ci-card { padding: 0.9rem 0.9rem 0.95rem 1.1rem; }
+  .lf-ci .ci-still { padding-left: 1.25rem; }
+  .ci-done-foot { padding-left: 0; }
+}
+
+/* ---------- motion (none under reduced motion) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .lf-ci .ci-borrower > summary { transition: background-color 0.18s; }
+  .lf-ci .ci-chev { transition: transform 0.25s var(--lf-ease); }
+  .lf-ci .ci-borrower[open] > .ci-cards { animation: lf-fade 0.3s var(--lf-ease) both; }
+  .lf-ci .ci-step { animation: lf-fade 0.35s var(--lf-ease) both; }
+  .lf-ci .ci-panel-ic { animation: lf-pop 0.4s var(--lf-ease) both; }
+  .lf-ci .ci-card { transition: box-shadow 0.2s, background-color 0.2s; }
+  .lf-ci .ci-card:hover { box-shadow: inset 6px 0 0 var(--tone), var(--lf-shadow-sm); }
+  .lf-ci .ci-card:target, .lf-ci .ci-card:focus { animation: lf-pop-ring 0.9s var(--lf-ease); }
+  @keyframes lf-pop-ring { 0% { box-shadow: inset 4px 0 0 var(--tone), 0 0 0 0 rgba(30, 63, 151, 0.45); } 100% { box-shadow: inset 4px 0 0 var(--tone), 0 0 0 10px rgba(30, 63, 151, 0); } }
+  .lf-folder :is(.ci-file, .ci-mini, .ci-upload, .ci-go, .ci-flags-btn) {
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s var(--lf-ease), filter 0.2s;
+  }
+  .lf-folder :is(.ci-mini, .ci-upload, .ci-go):hover:not(:disabled) { transform: translateY(-1px); }
+  .lf-ci :is(.ci-go, .ci-prev) svg { transition: transform 0.2s var(--lf-ease); }
+  .lf-ci .ci-go:hover svg { transform: translateX(3px); }
+  .lf-ci .ci-prev:hover svg { transform: translateX(-3px); }
+  .lf-ci .ci-done-ic { animation: lf-pop 0.35s var(--lf-ease) both; }
+}
+
+/* ---------- dark mode: the tokens do most of it; these are the fixed light values above ---------- */
+[data-theme='dark'] .lf-folder .ci-mini { border-color: rgba(255, 255, 255, 0.18); }
+[data-theme='dark'] .lf-ci .ci-borrower > summary:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
+[data-theme='dark'] .lf-folder .ci-mini.quiet:hover:not(:disabled) { background: rgba(248, 113, 113, 0.12); border-color: rgba(252, 165, 165, 0.4); color: #fca5a5; }
+[data-theme='dark'] .lf-folder .ci-upload { border-color: rgba(169, 192, 255, 0.45); }
+[data-theme='dark'] .lf-folder :is(.ci-summary, .ci-flags-form) textarea { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.18); }
+[data-theme='dark'] .lf-folder :is(.ci-summary, .ci-flags-form) textarea:focus { outline-color: rgba(169, 192, 255, 0.45); }
+[data-theme='dark'] .lf-folder .ci-flags .ci-flags-btn:hover:not(:disabled) { background: rgba(251, 146, 60, 0.2); color: #fed7aa; }
+[data-theme='dark'] .lf-folder .ci-flags .ci-flags-btn:focus-visible { outline-color: rgba(253, 186, 116, 0.6); }
+[data-theme='dark'] .lf-folder :is(.ci-flags-err, .ci-req) { color: #fca5a5; }
+[data-theme='dark'] .lf-ci .ci-panel-head h2:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }

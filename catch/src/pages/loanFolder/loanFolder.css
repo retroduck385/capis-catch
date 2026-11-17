@@ -90,7 +90,7 @@
 /* a step skipped on purpose (optional, done another way): quiet tag instead of "Next" */
 .lf-step-tag { flex: none; align-self: flex-start; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--lf-none-bg); border: 1px solid var(--lf-none-line); color: var(--lf-none); font-size: 0.75rem; font-weight: 700; }
 @media (max-width: 1100px) { .lf-steps.many { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 760px) { .lf-steps { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .lf-steps, .lf-steps.many { grid-template-columns: minmax(0, 1fr); } }  /* .many too: it would win on specificity */
 @media (prefers-reduced-motion: reduce) { .lf .lf-step > a, .lf .lf-step > button { transition: none; } }
 
 /* Any AO: pages they can only read, kept apart from their own steps */

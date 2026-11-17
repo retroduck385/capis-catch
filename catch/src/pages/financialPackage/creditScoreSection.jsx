@@ -1,14 +1,19 @@
 // Housing Loan Credit Scoring Sheet (KYC-FP "Credit_Score" tab). One card per category (id `cs-<CATEGORY>`), then the
-// total (`cs-total`). Laid out like the Financial Package page (.lf / .fp / .rv, see credit score page).
+// total (`cs-total`). Laid out like the Financial Package page (.lf-fp, see credit score page).
 // The page suggests a band where the record allows it (see creditScore.js); the CO accepts, changes or
 // leaves each one. Only the CO's picks count toward the total.
+// Each criterion is a card (not a table row): what the record says, the suggestion, then the score (SelectMenu) and
+// remarks. Cards need no sideways-scrolling frame, which would clip the dropdown, and they stack on a phone.
+// Styles: creditScore.css (.cs-*).
+import { Check } from 'lucide-react';
 import { Section } from '../applicationForm/fields';
+import SelectMenu from '../../components/selectMenu';
 import { CATEGORIES } from './creditScore';
 import { Terms } from '../../components/term';
 
 const pts = (n) => `${n} ${Math.abs(n) === 1 ? 'pt' : 'pts'}`;
 
-const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks, disabled }) => {
+const CriterionCard = ({ criterion, bands, suggestion, entry, onScore, onRemarks, disabled }) => {
     const bandLabel = (code) => {
         const b = bands.find((x) => x.code === code);
         return b ? `${b.label} (${pts(b.points)})` : code;
@@ -18,36 +23,44 @@ const CriterionRow = ({ criterion, bands, suggestion, entry, onScore, onRemarks,
     // The CO's pick differs from what the record suggests now (an override, or the data changed since)
     const differs = picked && suggested && picked.code !== suggested;
     const changedSince = differs && entry.suggested_band && entry.suggested_band !== suggested;
+    // stripe: scored ok, a suggestion waiting (or a record that changed since) amber, nothing to go on slate
+    const tone = changedSince || (!picked && suggested) ? 'warn' : picked ? 'ok' : 'none';
+    const id = `cs-c-${criterion.code}`;
 
     return (
-        <tr>
-            <td><b><Terms text={criterion.label} /></b></td>
-            <td>{suggestion.input ?? '—'}</td>
-            <td>
-                {suggested
-                    ? <b>{bandLabel(suggested)}</b>
-                    : <span className="fp-pending">No suggestion</span>}
-                <p className="fp-note cs-source"><Terms text={suggestion.source} /></p>
-                {!disabled && suggested && entry?.band !== suggested && (
-                    <button type="button" className="rv-link" onClick={() => onScore(criterion.code, suggested)}>
-                        Use suggestion
-                    </button>
-                )}
-            </td>
-            <td className="cs-score">
-                <select aria-label={`${criterion.label} score`} value={entry?.band ?? ''}
-                    disabled={disabled} onChange={(e) => onScore(criterion.code, e.target.value)}>
-                    <option value="">-- Not scored --</option>
-                    {bands.map((b) => <option key={b.code} value={b.code}>{b.label} ({pts(b.points)})</option>)}
-                </select>
-                {!picked && suggested && <p className="cs-flag">Suggestion not confirmed yet</p>}
-                {changedSince && <p className="cs-flag">The record changed since this was scored</p>}
-                {differs && !changedSince && <p className="cs-flag">Differs from the suggestion</p>}
-                <input aria-label={`${criterion.label} remarks`} placeholder="Remarks (e.g. why you changed it)"
-                    value={entry?.remarks ?? ''} disabled={disabled} onChange={(e) => onRemarks(criterion.code, e.target.value)} />
-            </td>
-            <td className="cs-num">{picked ? <b>{picked.points}</b> : '—'}</td>
-        </tr>
+        <li className={`cs-crit ${tone}`} aria-labelledby={`${id}-h`}>
+            <div className="cs-crit-head">
+                <h4 id={`${id}-h`}><Terms text={criterion.label} /></h4>
+                <span className={`cs-pts${picked ? ' on' : ''}`}>{picked ? pts(picked.points) : 'Not scored'}</span>
+            </div>
+            <div className="cs-crit-body">
+                <div className="cs-col">
+                    <p className="cs-label">From the record</p>
+                    <p className="cs-val">{suggestion.input ?? '—'}</p>
+                </div>
+                <div className="cs-col">
+                    <p className="cs-label">Suggestion</p>
+                    {suggested ? <p className="cs-val"><b>{bandLabel(suggested)}</b></p> : <p className="fp-pending">No suggestion</p>}
+                    <p className="fp-note cs-source"><Terms text={suggestion.source} /></p>
+                    {!disabled && suggested && entry?.band !== suggested && (
+                        <button type="button" className="cs-use" onClick={() => onScore(criterion.code, suggested)}>
+                            <Check size={14} aria-hidden="true" />Use suggestion
+                        </button>
+                    )}
+                </div>
+                <div className="cs-col cs-score">
+                    <p className="cs-label">Score</p>
+                    <SelectMenu id={`${id}-band`} aria-label={`${criterion.label} score`} value={entry?.band ?? ''}
+                        placeholder="Not scored" disabled={disabled} onChange={(v) => onScore(criterion.code, v)}
+                        options={bands.map((b) => ({ value: b.code, label: `${b.label} (${pts(b.points)})` }))} />
+                    {!picked && suggested && <p className="cs-flag">Suggestion not confirmed yet</p>}
+                    {changedSince && <p className="cs-flag">The record changed since this was scored</p>}
+                    {differs && !changedSince && <p className="cs-flag quiet">Differs from the suggestion</p>}
+                    <input aria-label={`${criterion.label} remarks`} placeholder="Remarks (e.g. why you changed it)"
+                        value={entry?.remarks ?? ''} disabled={disabled} onChange={(e) => onRemarks(criterion.code, e.target.value)} />
+                </div>
+            </div>
+        </li>
     );
 };
 
@@ -63,7 +76,7 @@ export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore
                 </p>
                 {!disabled && unscoredSuggestions > 0 && (
                     <button type="button" className="lf-btn" onClick={onUseAll}>
-                        Use all {unscoredSuggestions} suggestions for unscored criteria
+                        <Check size={16} aria-hidden="true" />Use all {unscoredSuggestions} suggestions for unscored criteria
                     </button>
                 )}
             </div>
@@ -83,23 +96,13 @@ export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore
                                 <span style={{ width: `${pct}%` }} />
                             </div>
                         </div>
-                        <div className="fp-tablewrap">
-                            <table className="cs-table">
-                                <thead>
-                                    <tr>
-                                        <th>Criterion</th><th>From the record</th><th>Suggestion</th>
-                                        <th>Score</th><th className="cs-num">Points</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {criteria.map((c) => (
-                                        <CriterionRow key={c.code} criterion={c} suggestion={suggestions[c.code]}
-                                            bands={rules.bands.filter((b) => b.criterion === c.code)} entry={scores[c.code]}
-                                            onScore={onScore} onRemarks={onRemarks} disabled={disabled} />
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <ul className="cs-crits">
+                            {criteria.map((c) => (
+                                <CriterionCard key={c.code} criterion={c} suggestion={suggestions[c.code]}
+                                    bands={rules.bands.filter((b) => b.criterion === c.code)} entry={scores[c.code]}
+                                    onScore={onScore} onRemarks={onRemarks} disabled={disabled} />
+                            ))}
+                        </ul>
                     </Section>
                 );
             })}
@@ -112,7 +115,7 @@ export const CreditScoreSection = ({ rules, suggestions, scores, totals, onScore
                             <dd>{totals.byCategory[cat.value].score} / {totals.byCategory[cat.value].max}</dd>
                         </div>
                     ))}
-                    <div className="fp-info-row">
+                    <div className="fp-info-row cs-total-row">
                         <dt>Total Score</dt>
                         <dd>{totals.total} / 100{!totals.complete && ` (${totals.scored} of ${totals.count} criteria scored)`}</dd>
                     </div>

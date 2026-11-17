@@ -57,6 +57,12 @@ const Body = ({ message, names, userId }) => {
 // @mentions: typing @ lists the staff who can open this file; a mentioned name is highlighted in the thread.
 // Topics: a comment button on a page section (commentButton.jsx) opens this drawer with that section attached;
 // the message then carries a chip that opens the section.
+// Back to the opener if it's still on the page, else the Messages button; never scroll to it
+const focusOpener = (opener, fallback) => {
+    const el = opener?.isConnected && opener !== document.body ? opener : fallback;
+    el?.focus({ preventScroll: true });
+};
+
 const MessagesPanel = ({ applicationId, inline = false }) => {
     const { session } = UserAuth();
     const userId = session?.user?.id;
@@ -73,6 +79,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
     const { items, hasMore, unread, canPost, names, dividerId, latest, error, sending, loadEarlier, send } =
         useMessages(applicationId, userId, open);
     const buttonRef = useRef(null);
+    const openerRef = useRef(null);                      // what had focus when the drawer opened (a comment button, or the button)
     const closeRef = useRef(null);
     const listRef = useRef(null);
     const textRef = useRef(null);
@@ -83,6 +90,7 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
     useEffect(() => {
         if (!canPost) return undefined;
         return registerPanel(applicationId, (next) => {
+            openerRef.current = document.activeElement;
             setTopic(next);
             setOpen(true);
             setTimeout(() => textRef.current?.focus(), 0);
@@ -114,13 +122,17 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
     const activeRow = Math.min(active, Math.max(matches.length - 1, 0));
     useEffect(() => { listOpen.current = showList; }, [showList]);
 
-    // Esc closes and returns focus to the button (the @ list takes Esc first)
+    // Closing returns focus to where the reader was (the comment button they used, else the Messages button) without
+    // scrolling: focusing the header button used to jump the page back to the top
+    const restoreFocus = () => focusOpener(openerRef.current, buttonRef.current);
+
+    // Esc closes and returns focus to the opener (the @ list takes Esc first)
     useEffect(() => {
         if (!open) return;
         const onKey = (e) => {
             if (e.key !== 'Escape' || listOpen.current) return;
             setOpen(false);
-            buttonRef.current?.focus();
+            focusOpener(openerRef.current, buttonRef.current);
         };
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
@@ -206,13 +218,13 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
     const firstNewId = items.find((m) => m.id > dividerId && m.sender_id !== userId)?.id;
     const label = unread ? `Messages, ${unread} unread` : 'Messages';
     const badge = unread > 99 ? '99+' : String(unread);
-    const closeDrawer = () => { setOpen(false); buttonRef.current?.focus(); };
+    const closeDrawer = () => { setOpen(false); restoreFocus(); };
 
     const button = (
         <button
             ref={buttonRef}
             type='button'
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => { openerRef.current = buttonRef.current; setOpen((o) => !o); }}
             aria-expanded={open}
             aria-controls='messages-panel'
             aria-label={label}

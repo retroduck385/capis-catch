@@ -1,7 +1,9 @@
 // Pieces of the reviewer sign-off (review summary page, VII. Approval page, FP banner).
 // MyWorkProgress: the progress bar in the review summary's header for the reviewer / approver whose turn it is,
 // fed by ReviewForm's / ApprovalForm's onProgress (what's filled in so far; nothing is saved until Submit).
+// Who did what and when is a Byline (components/byline.jsx), never "name on <date>".
 import { useEffect, useState } from 'react';
+import Byline from '../../components/byline';
 import { ArrowDown, CheckCircle2, Circle } from 'lucide-react';
 import { getDocumentUrl, getParties } from '../applicationForm/api';
 import { BORROWER_ROLES, EMPLOYMENT_TYPES, REQUIREMENT_LABELS, formatMoney, labelFor, partyLabel } from '../applicationForm/options';
@@ -11,7 +13,6 @@ import {
 import { Term, Terms } from '../../components/term';
 
 const money = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
-const when = (t) => new Date(t).toLocaleString();
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 
 export const FlagList = ({ flags }) => (flags.length === 0 ? null : (
@@ -48,17 +49,24 @@ export const ReturnCard = ({ decision, rows, names, checkItems, round }) => {
     const by = deciderOf(decision, rows);
     return (
         <div className="border border-red-300 p-3 my-2 rv-return">
-            <p className="font-semibold">
-                Round {round}: returned by reviewer {by?.seq ?? '?'} ({names[by?.user_id] ?? 'Reviewer'}) on {when(decision.decided_at)}
-                {' · '}{severityLabel(decision.severity)} revision
+            <p className="rv-return-head">
+                <b>Round {round}</b>
+                <span className="rv-return-by">
+                    Returned by reviewer {by?.seq ?? '?'}
+                    <Byline layout="inline" name={names[by?.user_id]} fallback="Reviewer" at={decision.decided_at} />
+                </span>
+                <span className="lf-chip warn">{severityLabel(decision.severity)} revision</span>
             </p>
             <p className="whitespace-pre-wrap">{decision.remarks}</p>
             <DecisionItems decision={decision} checkItems={checkItems} onlyFlagged />
             {decision.response ? (
-                <p className="pt-1 text-sm">
-                    <span className="font-semibold">Credit Officer ({names[decision.responded_by] ?? 'Credit Officer'}), {when(decision.responded_at)}:</span>{' '}
-                    <span className="whitespace-pre-wrap">{decision.response}</span>
-                </p>
+                <div className="rv-return-answer">
+                    <p className="rv-return-by">
+                        Credit Officer's answer
+                        <Byline layout="inline" name={names[decision.responded_by]} fallback="Credit Officer" at={decision.responded_at} />
+                    </p>
+                    <p className="whitespace-pre-wrap">{decision.response}</p>
+                </div>
             ) : <p className="pt-1 text-sm italic text-amber-700">Waiting for the Credit Officer's revision.</p>}
         </div>
     );
@@ -81,7 +89,9 @@ export const ReviewProgress = ({ rows, state, names, myId, checkItems, stage }) 
                             <div className="rv-step-top">
                                 <span className="rv-who">
                                     <span className="rv-seq" aria-hidden="true">{r.seq}</span>
-                                    <b>{names[r.user_id] ?? 'Unknown'}{r.user_id === myId ? ' (you)' : ''}</b>
+                                    <span className="sr-only">Reviewer {r.seq}: </span>
+                                    <Byline layout="inline" name={names[r.user_id]} fallback="Unknown" at={d?.decided_at} />
+                                    {r.user_id === myId && <span className="lf-chip none">You</span>}
                                 </span>
                                 {d ? (
                                     <span className="lf-chip">{DECISION_LABELS[d.action]}</span>
@@ -93,7 +103,6 @@ export const ReviewProgress = ({ rows, state, names, myId, checkItems, stage }) 
                             </div>
                             {d && (
                                 <>
-                                    <p className="lf-kyc-meta">{when(d.decided_at)}</p>
                                     {d.remarks && <p className="lf-kyc-remark whitespace-pre-wrap">{d.remarks}</p>}
                                     <button type="button" className="rv-link"
                                         onClick={() => setOpen({ ...open, [d.id]: !open[d.id] })}>
@@ -184,6 +193,9 @@ export const IncomeEvidence = ({ app, computed, fp, onError }) => {
         </div>
     );
 };
+
+// decision card tones: an endorsement is ok, not endorsing amber (it needs a look), a return slate
+const ACTION_TONES = { ENDORSED: 'ok', NOT_ENDORSED: 'warn', RETURNED: 'none' };
 
 const emptyChecks = (items) => Object.fromEntries(items.map((i) => [i.code, { result: '', remark: '' }]));
 
@@ -291,7 +303,7 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                 <h3 className="fp-subhead">Your decision</h3>
                 <div className="lf-choices">
                     {REVIEW_ACTIONS.map((a) => (
-                        <label key={a.value} className="lf-choice">
+                        <label key={a.value} className={`lf-choice ${ACTION_TONES[a.value] ?? 'none'}`}>
                             <input type="radio" name="review-action" checked={action === a.value}
                                 onChange={() => setAction(a.value)} disabled={busy} /> {a.label}
                         </label>
@@ -306,7 +318,7 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                         <h3 className="fp-subhead">Revision</h3>
                         <div className="lf-choices">
                             {SEVERITIES.map((s) => (
-                                <label key={s.value} className="lf-choice">
+                                <label key={s.value} className="lf-choice none">
                                     <input type="radio" name="severity" checked={severity === s.value}
                                         onChange={() => setSeverity(s.value)} disabled={busy} /> {s.label} ({s.hint})
                                 </label>
@@ -330,9 +342,9 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                     {error && <p className="ct-error">{error}</p>}
                     {blockers.length > 0
                         ? <ul className="rv-blockers">{blockers.map((b) => <li key={b}>{b}</li>)}</ul>
-                        : <span className="fp-chip ok">Ready to submit</span>}
+                        : <span className="lf-chip ok">Ready to submit</span>}
                 </div>
-                <button type="submit" disabled={busy || blockers.length > 0}>
+                <button type="submit" className="lf-primary" disabled={busy || blockers.length > 0}>
                     {busy ? 'Submitting...' : 'Submit review'}
                 </button>
             </div>
@@ -390,7 +402,7 @@ export const MyWorkProgress = ({ kind, progress, total = 0, onJump }) => {
         <div className="rv-mywork">
             <div className="rv-mywork-top">
                 <p className="lf-steps-label">{title}</p>
-                <span className={`fp-chip ${ready ? 'ok' : 'warn'}`}>{ready ? 'Ready to submit' : `${pct}% done`}</span>
+                <span className={`lf-chip ${ready ? 'ok' : 'warn'}`}>{ready ? 'Ready to submit' : `${pct}% done`}</span>
                 <button type="button" className="lf-btn quiet rv-mywork-jump" onClick={onJump}>
                     Go to {title.toLowerCase()}<ArrowDown size={16} aria-hidden="true" />
                 </button>

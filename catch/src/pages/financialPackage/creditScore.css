@@ -1,28 +1,83 @@
-/* Credit score page: the category cards, criterion table and intro. Everything else comes from the loan folder /
-   Financial Package / review styles (.lf-*, .fp-*, .rv-*). */
-
-.cs-hint { margin: 0.9rem 0 0; }
+/* Credit score page (creditScorePage.jsx, creditScoreSection.jsx). An .lf-folder page in the Financial Package's look
+   (root lf lf-folder lf-fp lf-cs): the header, step card, tiles, nav, section cards, save bar and dark mode come from
+   loanFolder.css and the .lf-fp block in financialPackage.css. This file adds the intro, the category sub-total and the
+   criterion cards. Colours are --lf-* tokens (with light fallbacks where the class could appear elsewhere). */
 
 .cs-intro { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; }
 .cs-intro p { margin: 0; max-width: 44rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+.lf-folder .cs-intro .lf-btn { white-space: normal; text-align: left; }  /* "Use all n suggestions" can wrap on a phone */
+
+/* header: borrower names may be long, so that fact chip wraps */
+.lf-folder .lf-meta .v.cs-names { white-space: normal; overflow-wrap: anywhere; }
 
 /* category sub-total with a meter */
 .cs-sub { margin-bottom: 1rem; }
-.cs-sub-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; font-size: 0.95rem; }
-.cs-sub-top b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
-.cs-sub .lf-meter { margin-top: 0.4rem; }
-.cs-sub .lf-meter > span { background: var(--blue); transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+.cs-sub-top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; font-size: 0.95rem; color: var(--lf-text-2, var(--ink)); }
+.cs-sub-top b { color: var(--navy); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.cs-sub .lf-meter { height: 8px; margin-top: 0.45rem; background: var(--lf-track, #e3e8f5); }
+.cs-sub .lf-meter > span { background: var(--lf-bar-grad, var(--blue)); transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* criterion table */
-.cs-table { min-width: 46rem; }
-.cs-table th.cs-num, .cs-table td.cs-num { text-align: right; width: 5.5rem; font-variant-numeric: tabular-nums; }
-.cs-table td { vertical-align: top; }
-.cs-table .cs-source { margin: 0.25rem 0 0.15rem; font-size: 0.82rem; }
-.cs-score { min-width: 15rem; }
-.cs-score select, .cs-score input { width: 100%; }
-.cs-score input { margin-top: 0.4rem; }
-.cs-flag { margin: 0.3rem 0 0; color: var(--lf-warn); font-size: 0.84rem; font-weight: 600; }
+/* one card per criterion: a stripe in its state (scored ok, a suggestion to confirm amber, nothing to go on slate),
+   the name and its points, then three columns: from the record | suggestion | score + remarks */
+.cs-crits { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.cs-crit {
+  display: grid; gap: 0.75rem; min-width: 0; margin: 0; padding: 0.95rem 1.1rem 1rem 1.3rem;
+  border: 1px solid var(--lf-sub-line, #e3e7ee); border-radius: 16px; background: var(--lf-sub-bg, #fafbfd);
+  box-shadow: inset 4px 0 0 var(--tone);
+}
+.cs-crit.none { --tone: var(--lf-hollow, #8b97ab); }
+.cs-crit-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.3rem 0.75rem; }
+.cs-crit-head h4 { margin: 0; color: var(--ink); font-size: 0.98rem; font-weight: 700; }
+.cs-crit-head h4 span { color: inherit; font-size: inherit; }
+.cs-pts {
+  flex: none; padding: 0 0.6rem; border-radius: 999px; background: var(--lf-wash, #eef1f6); color: var(--muted);
+  font-size: 0.78rem; font-weight: 700; line-height: 1.5rem; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.cs-pts.on { background: var(--lf-accent-bg, #e8edf9); color: var(--lf-accent, #1e3f97); }
+.cs-crit-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(15rem, 1.35fr); gap: 0.75rem 1.5rem; }
+/* minmax(0, 1fr): an auto track would grow to a long band name and push the dropdown out of the card */
+.cs-col { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 0.3rem; min-width: 0; }
+.cs-col > * { min-width: 0; }
+/* band names can be long ("With 1 mishandled checking account more than 5 years ..."): the chosen one wraps instead of
+   being cut off, so the score reads in full */
+.cs-score .ct-select-btn .val { overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+.cs-label { margin: 0; color: var(--lf-text-3, var(--muted)); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.cs-val { margin: 0; color: var(--ink); font-size: 0.95rem; overflow-wrap: anywhere; }
+.cs-val b { font-weight: 700; }
+.cs-crit .cs-source { margin: 0; font-size: 0.82rem; }
+.cs-score input { width: 100%; margin-top: 0.35rem; }
+.cs-flag { margin: 0.1rem 0 0; color: var(--lf-warn); font-size: 0.84rem; font-weight: 600; }
+.cs-flag.quiet { color: var(--muted); font-weight: 500; }
+/* "Use suggestion": a small accent pill */
+.ct .cs-use {
+  display: inline-flex; align-items: center; justify-self: start; gap: 0.3rem; min-height: 2rem; margin: 0.15rem 0 0; padding: 0.2rem 0.8rem;
+  border: 1px solid rgba(30, 63, 151, 0.3); border-radius: 999px; background: var(--lf-accent-bg, #e8edf9); box-shadow: none;
+  color: var(--lf-accent, #1e3f97); font: inherit; font-size: 0.82rem; font-weight: 700; line-height: 1.2; cursor: pointer;
+}
+.ct .cs-use:hover:not(:disabled) { background: var(--lf-control-hover, #fff); border-color: var(--lf-accent, #1e3f97); color: var(--lf-accent, #1e3f97); }
+.ct .cs-use:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+@media (pointer: coarse) { .ct .cs-use { min-height: 2.75rem; } }
 
+/* total: the total score line stands out */
+.lf-folder .cs-total-row dt { color: var(--ink); font-weight: 700; }
+.lf-folder .cs-total-row dd { color: var(--navy); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1000px) {
+  .cs-crit-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cs-crit-body > .cs-score { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .cs-crit { padding: 0.85rem 0.9rem 0.9rem 1.1rem; }
+  .cs-crit-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ct .cs-use { transition: background-color 0.18s, border-color 0.18s, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ct .cs-use:hover:not(:disabled) { transform: translateY(-1px); }
+}
 @media (prefers-reduced-motion: reduce) {
   .cs-sub .lf-meter > span { transition: none; }
 }
+
+[data-theme='dark'] .lf-folder .cs-crit.ok, [data-theme='dark'] .lf-folder .cs-crit.warn { border-color: var(--lf-sub-line); }
+[data-theme='dark'] .ct .lf-folder .cs-use { border-color: rgba(169, 192, 255, 0.4); }
