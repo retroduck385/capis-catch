@@ -3,7 +3,7 @@
 // The profile picture and the sign-out door are compact; on hover or keyboard focus each slides open to show the
 // user's name and role, or "Sign out". Styled by applicantTheme.css (.ct-e).
 import { BookOpen, FileText, Layers, LogOut, Moon, Plus, Sun, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
 import { fetchStaffNames } from '../pages/loanFolder/api';
@@ -80,12 +80,20 @@ const AppLayout = ({ children }) => {
     const displayName = nameWithoutRole(staffName, roleLabel) || email || '';
     const who = [displayName, roleLabel].filter(Boolean).join(' · ');
 
+    const dialogRef = useRef(null);
+    const [signingOut, setSigningOut] = useState(false);
+
+    const openConfirm = () => dialogRef.current?.showModal();
+    const closeConfirm = () => dialogRef.current?.close();
+
     const handleSignOut = async () => {
+        setSigningOut(true);
         try {
             await signOut();
             navigate('/loginPage');
         } catch (err) {
             console.error(err);
+            setSigningOut(false);
         }
     };
 
@@ -135,12 +143,46 @@ const AppLayout = ({ children }) => {
                             <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
                         </span>
                     </button>
-                    <button type="button" className="ct-signout ct-expand" onClick={handleSignOut} aria-label="Sign out">
+                    <button type="button" className="ct-signout ct-expand" onClick={openConfirm} aria-label="Sign out">
                         <LogOut size={18} aria-hidden="true" />
                         <span className="ct-expand-text" aria-hidden="true"><span>Sign out</span></span>
                     </button>
                 </div>
             </header>
+
+            <dialog
+                ref={dialogRef}
+                className="ct-so-dialog"
+                aria-labelledby="so-title"
+                onClick={(e) => { if (e.target === e.currentTarget) closeConfirm(); }}>
+                <div className="ct-so-header">
+                    <span className="ct-so-icon" aria-hidden="true">
+                        <LogOut size={22} />
+                    </span>
+                    <p className="ct-so-eyebrow">Session</p>
+                </div>
+                <div className="ct-so-body">
+                    <h2 id="so-title" className="ct-so-title">Sign out?</h2>
+                    <p className="ct-so-desc">You&rsquo;ll need to sign back in to access your work.</p>
+                    <div className="ct-so-actions">
+                        {/* autofocus Cancel — the safe option gets focus first */}
+                        <button
+                            type="button"
+                            className="ct-so-cancel"
+                            autoFocus
+                            onClick={closeConfirm}>
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            className="ct-so-confirm"
+                            disabled={signingOut}
+                            onClick={handleSignOut}>
+                            {signingOut ? 'Signing out…' : 'Sign out'}
+                        </button>
+                    </div>
+                </div>
+            </dialog>
             <div className="ct-e-body">
                 <main className="ct-main">{children}</main>
             </div>

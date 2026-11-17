@@ -1,5 +1,5 @@
 import {
-    Check, CheckCheck, ChevronRight, Eye, Hourglass, Lock, Play, RefreshCw, Send, Settings2, Undo2, UserMinus, UserPlus, X,
+    Check, CheckCheck, ChevronRight, Eye, Hourglass, Info, Lock, Play, RefreshCw, Send, Settings2, Undo2, UserMinus, UserPlus, X,
 } from 'lucide-react';
 import { WorkTraySkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -63,6 +63,9 @@ const isMyReviewTurn = (routing, row, userId) => row.stage === 'REVIEW'
 
 
 const SLOT_FULL_LABELS = { ACCOUNT_OFFICER: 'Account Officer', CREDIT_OFFICER: 'Credit Officer' };
+
+// Urgency priority for sorting: most urgent first
+const TAT_PRIORITY = { BEYOND: 0, NEAR: 1, ON_TRACK: 2 };
 
 // Stage status as a small icon + word (no pill)
 const STATUS_ICONS = { PENDING: Hourglass, IN_PROGRESS: Play, REQUESTED: Send, RETURNED: Undo2, DONE: Check };
@@ -398,13 +401,19 @@ const WorkTray = () => {
 
     const visible = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return rows.filter((r) =>
+        const filtered = rows.filter((r) =>
             (stage === 'OPEN' ? r.stage !== 'DECIDED' : stage === 'ALL' || r.stage === stage)
             && (tat === 'ALL' || r.tat_state === tat)
             && (assignment === 'ALL'
                 || (assignment === 'MINE' && isMine(r))
                 || (assignment === 'UNASSIGNED' && isUnassigned(r)))
             && (!q || [r.application_no, r.applicant_name].some((v) => v?.toLowerCase().includes(q))));
+        // Sort by urgency: Beyond TAT → Near TAT → On track → no TAT; ties preserve original FIFO order
+        return filtered.sort((a, b) => {
+            const pa = TAT_PRIORITY[a.tat_state] ?? 3;
+            const pb = TAT_PRIORITY[b.tat_state] ?? 3;
+            return pa - pb;
+        });
     }, [rows, search, tat, assignment, stage, isMine, isUnassigned]);
 
     const filtersActive = search || tat !== 'ALL' || assignment !== defaultAssignment || stage !== 'OPEN';
@@ -607,7 +616,17 @@ const WorkTray = () => {
                                 <th>Application</th>
                                 <th>Stage</th>
                                 <th className='wt-amt'>Amount</th>
-                                <th><Term k="TAT" /> position</th>
+                                <th>
+                                    <span className='wt-th-with-info'>
+                                        <Term k="TAT" /> position
+                                        <span
+                                            className='wt-th-info'
+                                            title='Sorted by urgency: beyond TAT first, then near TAT, then on track'
+                                            aria-label='Sorted by urgency: beyond TAT first, then near TAT, then on track'>
+                                            <Info size={13} aria-hidden='true' />
+                                        </span>
+                                    </span>
+                                </th>
                                 <th>Assigned to</th>
                                 <th>Review &amp; approval</th>
                             </tr>

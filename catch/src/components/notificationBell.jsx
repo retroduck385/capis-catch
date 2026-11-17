@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { Bell, FileText, MessageSquare, Users } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
+import { openTopic, panelApplicationId } from '../pages/messages/topics';
 import { useNotifications } from '../pages/notifications/useNotifications';
+import './notificationBell.css';
 
 // "5 min ago"; the full date is in the title attribute
 const timeAgo = (iso) => {
@@ -14,8 +17,15 @@ const timeAgo = (iso) => {
     return days < 7 ? `${days} d ago` : new Date(iso).toLocaleDateString();
 };
 
+const KindIcon = ({ kind }) => {
+    if (kind === 'MESSAGE_POSTED') return <MessageSquare size={15} aria-hidden='true' />;
+    if (kind === 'APPROVAL_ROUTED' || kind === 'NEW_APPLICATION') return <Users size={15} aria-hidden='true' />;
+    if (kind?.startsWith('STAGE_') || kind === 'DONE_REVERTED' || kind === 'DEFERRED_ACCOUNT_UPDATED')
+        return <FileText size={15} aria-hidden='true' />;
+    return <Bell size={15} aria-hidden='true' />;
+};
+
 // Bell with unread count, top right of every signed-in page (mounted in the app layout's top bar).
-// Light colours on purpose (meeting feedback: no dark mode); restyle freely.
 // onDark: light icon for the navy top bar; the dropdown panel stays white either way.
 const NotificationBell = ({ onDark = false }) => {
     const { session } = UserAuth();
@@ -23,6 +33,7 @@ const NotificationBell = ({ onDark = false }) => {
     const { items, unread, hasMore, latest, error, loadMore, markOneRead, markAllRead } =
         useNotifications(session?.user?.id);
     const [open, setOpen] = useState(false);
+    const [tab, setTab] = useState('ALL');
     const buttonRef = useRef(null);
     const panelRef = useRef(null);
 
@@ -43,16 +54,35 @@ const NotificationBell = ({ onDark = false }) => {
         };
     }, [open]);
 
+    const filteredItems = useMemo(() => {
+        if (tab === 'MESSAGES') return items.filter((n) => n.kind === 'MESSAGE_POSTED');
+        if (tab === 'UPDATES') return items.filter((n) => n.kind !== 'MESSAGE_POSTED');
+        return items;
+    }, [items, tab]);
+
     const openItem = (n) => {
         markOneRead(n.id);
         setOpen(false);
+        // Message notification: open the drawer directly if already on that file; otherwise navigate and
+        // signal the panel to open on arrival via router state
+        if (n.kind === 'MESSAGE_POSTED') {
+            const currentApp = panelApplicationId();
+            if (currentApp !== null && String(currentApp) === String(n.application_id)) {
+                openTopic(null);
+                return;
+            }
+            if (n.link) { navigate(n.link, { state: { openMessages: true } }); return; }
+        }
         if (n.link) navigate(n.link);
     };
 
     const badge = unread > 99 ? '99+' : String(unread);
+    const emptyMsg = tab === 'MESSAGES' ? 'No message notifications.'
+        : tab === 'UPDATES' ? 'No update notifications.'
+        : 'No notifications yet.';
 
     return (
-        <div className='relative z-50 text-base text-gray-900'>
+        <div style={{ position: 'relative', zIndex: 50 }}>
             <button
                 ref={buttonRef}
                 type='button'
@@ -60,18 +90,13 @@ const NotificationBell = ({ onDark = false }) => {
                 aria-expanded={open}
                 aria-controls='notification-panel'
                 aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-                className={`relative rounded-full border-0 bg-transparent p-2.5 focus:outline-none focus-visible:ring-2 ${onDark
-                    ? 'text-white/85 hover:bg-white/10 hover:text-white focus-visible:ring-white/75'
-                    : 'text-neutral-700 hover:bg-black/5 hover:text-black focus-visible:ring-black'}`}>
-                <svg aria-hidden='true' viewBox='0 0 24 24' className='h-5 w-5' fill='none' stroke='currentColor' strokeWidth='2'>
+                className={`nb-btn${onDark ? '' : ' nb-btn--light'}`}>
+                <svg aria-hidden='true' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
                     <path strokeLinecap='round' strokeLinejoin='round'
                         d='M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0' />
                 </svg>
                 {unread > 0 && (
-                    <span aria-hidden='true'
-                        className={`absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full bg-orange-700 px-1 text-center text-[11px] font-bold leading-[18px] text-white ring-2 ${onDark ? 'ring-[#14295f]' : 'ring-white'}`}>
-                        {badge}
-                    </span>
+                    <span className='nb-badge' aria-hidden='true'>{badge}</span>
                 )}
             </button>
 
@@ -79,49 +104,63 @@ const NotificationBell = ({ onDark = false }) => {
             <p className='sr-only' aria-live='polite'>{latest ? `New notification: ${latest.title}` : ''}</p>
 
             {open && (
-                <div
-                    ref={panelRef}
-                    id='notification-panel'
-                    role='region'
-                    aria-label='Notifications'
-                    className='absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-300 bg-white text-gray-900 shadow-lg'>
-                    <div className='flex items-center justify-between border-b border-gray-200 px-4 py-3'>
-                        <h2 className='text-lg font-semibold text-gray-900!'>Notifications</h2>
+                <div ref={panelRef} id='notification-panel' role='region' aria-label='Notifications' className='nb-panel'>
+                    <div className='nb-head'>
+                        <h2>Notifications</h2>
                         {unread > 0 && (
-                            <button type='button' onClick={markAllRead}
-                                className='text-blue-800 underline hover:text-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
+                            <button type='button' className='nb-mark-read' onClick={markAllRead}>
                                 Mark all as read
                             </button>
                         )}
                     </div>
 
-                    {error && <p className='px-4 py-2 text-red-700'>{error}</p>}
+                    <ul className='nb-tabs' role='tablist' aria-label='Filter notifications'>
+                        {[['ALL', 'All'], ['MESSAGES', 'Messages'], ['UPDATES', 'Updates']].map(([value, label]) => (
+                            <li key={value} role='none'>
+                                <button
+                                    type='button'
+                                    role='tab'
+                                    aria-selected={tab === value}
+                                    className='nb-tab'
+                                    onClick={() => setTab(value)}>
+                                    {label}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
 
-                    <ul className='max-h-[70vh] overflow-y-auto'>
-                        {items.length === 0 && <li className='px-4 py-6 text-gray-700'>No notifications yet.</li>}
-                        {items.map((n) => (
-                            <li key={n.id} className='border-b border-gray-100 last:border-b-0'>
-                                <button type='button' onClick={() => openItem(n)}
-                                    className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:bg-blue-50 ${n.read_at ? '' : 'bg-blue-50/60'}`}>
-                                    <span aria-hidden='true'
-                                        className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${n.read_at ? 'bg-transparent' : 'bg-blue-700'}`} />
-                                    <span className='min-w-0'>
-                                        {!n.read_at && <span className='sr-only'>Unread: </span>}
-                                        <span className={`block ${n.read_at ? 'font-normal' : 'font-semibold'}`}>{n.title}</span>
-                                        {n.body && <span className='block text-gray-700'>{n.body}</span>}
-                                        <span className='block text-sm text-gray-600' title={new Date(n.created_at).toLocaleString()}>
-                                            {timeAgo(n.created_at)}
-                                        </span>
+                    {error && <p className='nb-error' role='alert'>{error}</p>}
+
+                    <ul className='nb-list'>
+                        {filteredItems.length === 0 && (
+                            <li className='nb-empty'>{emptyMsg}</li>
+                        )}
+                        {filteredItems.map((n) => (
+                            <li key={n.id} className={`nb-item${n.read_at ? '' : ' unread'}`}>
+                                <button type='button' className='nb-item-btn' onClick={() => openItem(n)}>
+                                    <span className='nb-ic' aria-hidden='true'>
+                                        <KindIcon kind={n.kind} />
                                     </span>
+                                    <span className='nb-text'>
+                                        {!n.read_at && <span className='sr-only'>Unread: </span>}
+                                        <span className='nb-title'>{n.title}</span>
+                                        {n.body && <span className='nb-body'>{n.body}</span>}
+                                        <time
+                                            className='nb-time'
+                                            dateTime={n.created_at}
+                                            title={new Date(n.created_at).toLocaleString()}>
+                                            {timeAgo(n.created_at)}
+                                        </time>
+                                    </span>
+                                    {!n.read_at && <span className='nb-dot' aria-hidden='true' />}
                                 </button>
                             </li>
                         ))}
                     </ul>
 
                     {hasMore && (
-                        <div className='border-t border-gray-200 px-4 py-2 text-center'>
-                            <button type='button' onClick={loadMore}
-                                className='text-blue-800 underline hover:text-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
+                        <div className='nb-footer'>
+                            <button type='button' className='nb-older' onClick={loadMore}>
                                 Show older
                             </button>
                         </div>

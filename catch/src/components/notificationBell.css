@@ -1,0 +1,144 @@
+/* Notification bell: button on the navy top bar + drop-down panel.
+   Uses .ct CSS variables so it always matches the signed-in staff theme. */
+
+/* ---------- bell button ---------- */
+.nb-btn {
+    position: relative; display: grid; place-items: center;
+    padding: 0.5rem; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+    color: rgba(255, 255, 255, 0.82); transition: background 0.12s, color 0.12s;
+}
+.nb-btn:hover, .nb-btn[aria-expanded='true'] { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.nb-btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.75); outline-offset: 2px; }
+
+/* light variant (not on dark nav) */
+.nb-btn--light { color: var(--muted, #5b6b82); }
+.nb-btn--light:hover, .nb-btn--light[aria-expanded='true'] { background: rgba(12, 25, 41, 0.07); color: var(--ink, #0c1929); }
+.nb-btn--light:focus-visible { outline: 2px solid var(--blue, #1a4aa8); }
+.nb-btn--light .nb-badge { box-shadow: 0 0 0 2px var(--card, #fff); }
+
+.nb-btn svg { display: block; width: 1.2rem; height: 1.2rem; }
+
+/* unread badge */
+.nb-badge {
+    position: absolute; top: -3px; right: -3px;
+    min-width: 1.1rem; height: 1.1rem; padding: 0 0.28rem;
+    border-radius: 999px; background: var(--lf-orange, #c2410c);
+    box-shadow: 0 0 0 2px #14295f;
+    color: #fff; font-size: 10px; font-weight: 800; line-height: 1.1rem;
+    text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* ---------- panel ---------- */
+.nb-panel {
+    position: absolute; right: 0; top: calc(100% + 0.5rem); z-index: 60;
+    width: 22rem; max-width: calc(100vw - 1.5rem);
+    background: var(--card, #fff);
+    border: 1px solid var(--line-strong, #b9c2d1);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(12, 25, 41, 0.07), 0 20px 48px -16px rgba(12, 25, 41, 0.22);
+    overflow: hidden;
+}
+
+/* header */
+.nb-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.9rem 1rem 0;
+}
+.nb-head h2 {
+    margin: 0; font-size: 0.88rem; font-weight: 800; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--navy, #0f2d5e);
+}
+.nb-mark-read {
+    flex: none; border: 0; background: transparent; padding: 0; cursor: pointer;
+    font-size: 0.78rem; font-weight: 600; color: var(--blue, #1a4aa8);
+    text-decoration: underline; text-underline-offset: 2px;
+    transition: color 0.1s;
+}
+.nb-mark-read:hover { color: var(--navy, #0f2d5e); }
+.nb-mark-read:focus-visible { outline: 2px solid var(--blue, #1a4aa8); outline-offset: 2px; border-radius: 2px; }
+
+/* tabs */
+.nb-tabs {
+    display: flex; gap: 0; padding: 0.55rem 0.75rem 0; margin: 0;
+    list-style: none; border-bottom: 1px solid var(--line, rgba(12,25,41,.09));
+}
+.nb-tab {
+    border: 0; background: transparent; cursor: pointer; padding: 0.3rem 0.6rem 0.5rem;
+    font-size: 0.8rem; font-weight: 600; color: var(--muted, #5b6b82);
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.12s, border-color 0.12s;
+}
+.nb-tab:hover { color: var(--ink, #0c1929); }
+.nb-tab[aria-selected='true'] { color: var(--navy, #0f2d5e); border-bottom-color: var(--navy, #0f2d5e); }
+.nb-tab:focus-visible { outline: 2px solid var(--blue, #1a4aa8); outline-offset: 2px; border-radius: 3px; }
+
+/* item list */
+.nb-list { list-style: none; margin: 0; padding: 0; max-height: 65vh; overflow-y: auto; }
+
+.nb-item { border-bottom: 1px solid var(--line, rgba(12,25,41,.09)); }
+.nb-item:last-child { border-bottom: 0; }
+
+.nb-item-btn {
+    display: flex; align-items: flex-start; gap: 0.65rem; width: 100%; padding: 0.75rem 1rem;
+    border: 0; background: transparent; text-align: left; cursor: pointer;
+    transition: background 0.1s;
+}
+.nb-item-btn:hover { background: var(--muted-bg, #edf0f7); }
+.nb-item-btn:focus-visible { outline: 2px solid var(--blue, #1a4aa8); outline-offset: -2px; }
+.nb-item.unread .nb-item-btn { background: rgba(26, 74, 168, 0.05); }
+.nb-item.unread .nb-item-btn:hover { background: rgba(26, 74, 168, 0.1); }
+
+/* kind icon disc */
+.nb-ic {
+    flex: none; display: grid; place-items: center;
+    width: 2rem; height: 2rem; border-radius: 10px;
+    background: var(--muted-bg, #edf0f7); color: var(--muted, #5b6b82);
+    margin-top: 0.05rem;
+}
+.nb-item.unread .nb-ic { background: rgba(26, 74, 168, 0.1); color: var(--blue, #1a4aa8); }
+.nb-ic svg { display: block; }
+
+/* unread dot */
+.nb-dot {
+    flex: none; align-self: center;
+    width: 0.45rem; height: 0.45rem; border-radius: 50%;
+    background: var(--blue, #1a4aa8); flex-shrink: 0;
+}
+
+/* text block */
+.nb-text { flex: 1; min-width: 0; }
+.nb-title {
+    display: block; font-size: 0.82rem; font-weight: 600; color: var(--ink, #0c1929);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.4;
+}
+.nb-item:not(.unread) .nb-title { font-weight: 500; color: var(--muted, #5b6b82); }
+.nb-body {
+    display: block; margin-top: 0.1rem; font-size: 0.78rem; color: var(--muted, #5b6b82);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.4;
+}
+.nb-time {
+    display: block; margin-top: 0.2rem; font-size: 0.74rem; color: var(--muted, #5b6b82);
+    font-variant-numeric: tabular-nums;
+}
+
+/* empty state */
+.nb-empty {
+    padding: 2rem 1rem; text-align: center;
+    font-size: 0.82rem; color: var(--muted, #5b6b82);
+}
+
+/* error */
+.nb-error { padding: 0.5rem 1rem; font-size: 0.82rem; color: var(--red, #c41c1c); }
+
+/* footer: "Show older" */
+.nb-footer { border-top: 1px solid var(--line, rgba(12,25,41,.09)); padding: 0.6rem 1rem; text-align: center; }
+.nb-older {
+    border: 0; background: transparent; cursor: pointer; padding: 0;
+    font-size: 0.8rem; font-weight: 600; color: var(--blue, #1a4aa8);
+    text-decoration: underline; text-underline-offset: 2px;
+    transition: color 0.1s;
+}
+.nb-older:hover { color: var(--navy, #0f2d5e); }
+.nb-older:focus-visible { outline: 2px solid var(--blue, #1a4aa8); outline-offset: 2px; border-radius: 2px; }

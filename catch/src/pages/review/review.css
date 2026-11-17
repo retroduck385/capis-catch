@@ -16,8 +16,6 @@
   margin: 0; padding: 0.65rem 0.9rem; font-size: 0.93rem; line-height: 1.45; color: var(--ink);
   background: var(--tone-bg); border: 1px solid var(--tone-line); border-left: 4px solid var(--tone); border-radius: 8px;
 }
-.rv-checklist .rv-flags { margin: 0.5rem 0 0; }
-.rv-checklist .rv-flag { padding: 0.45rem 0.7rem; font-size: 0.85rem; }
 
 /* ---------- reviewer timeline ---------- */
 .rv-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
@@ -57,9 +55,6 @@
 
 /* ---------- checklist + decision ---------- */
 .rv-form { display: grid; gap: 1.25rem; }
-.rv-checklist th:nth-child(2) { width: 12.5rem; }
-.rv-checklist td { vertical-align: top; }
-.rv-checklist textarea { width: 100%; min-width: 12rem; }
 .rv-radios { display: grid; gap: 0.4rem; }
 .rv-radio {
   display: flex; align-items: center; gap: 0.55rem; margin: 0; padding: 0.45rem 0.7rem; border: 1.5px solid var(--line-strong);
@@ -69,15 +64,9 @@
 .rv-radio:has(input:checked) { border-color: var(--blue); background: var(--blue-50); }
 .rv-radio.warn:has(input:checked) { border-color: var(--lf-warn); background: var(--lf-warn-bg); }
 .rv-radio:has(input:disabled) { opacity: 0.55; cursor: not-allowed; }
-.rv-decision { display: grid; gap: 0.5rem; }
-.rv-decision .lf-choices { margin: 0.25rem 0; }
 .rv-remarks { display: grid; gap: 0.35rem; font-weight: 600; margin-top: 0.5rem; }
 .rv-remarks textarea { width: 100%; font-weight: 400; }
 .rv-blockers { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; color: var(--lf-warn); display: grid; gap: 0.1rem; }
-
-@media (max-width: 960px) {
-  .rv-checklist th:nth-child(2) { width: auto; }
-}
 
 /* ---------- VII. Approval page ---------- */
 .rv-block { display: grid; gap: 0.5rem; margin-bottom: 1.1rem; }
@@ -168,8 +157,7 @@
 .lf-folder.lf-fp .rv-step .lf-kyc-remark { margin: 0; padding: 0.5rem 0.8rem; border-radius: 12px; background: var(--lf-control-hover); color: var(--ink); }
 .lf-folder.lf-fp .rv-who { gap: 0.5rem 0.65rem; flex-wrap: wrap; }
 
-/* the review checklist and the approver's choices: pill radios (OK / Needs revision; Approve / with conditions / Disapprove) */
-.lf-folder.lf-rv .rv-checklist textarea { min-height: 3.25rem; border-radius: 12px; }
+/* the approver's choices: pill radios (OK / Needs revision; Approve / with conditions / Disapprove) */
 .lf-folder.lf-rv .rv-radio {
   display: flex; align-items: center; gap: 0.55rem; min-height: 2.5rem; margin: 0; padding: 0.4rem 0.9rem;
   border: 1.5px solid rgba(20, 41, 95, 0.14); border-radius: 999px; background: var(--lf-inset); color: var(--ink); font-weight: 600; cursor: pointer;
@@ -181,10 +169,176 @@
 .lf-folder.lf-rv .rv-radio.warn:has(input:checked) { background: var(--lf-warn-bg); border-color: var(--lf-warn); box-shadow: 0 0 0 1px var(--lf-warn); }
 .lf-folder.lf-rv .rv-radio:has(input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
 .lf-folder.lf-rv .rv-approve-choices .rv-radio { min-height: 3rem; padding: 0.6rem 1.3rem; }
-.lf-folder.lf-rv .rv-decision { gap: 0.75rem; }
 
 @media (prefers-reduced-motion: no-preference) {
   .lf-folder.lf-rv .rv-radio { transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s; }
 }
 [data-theme='dark'] .lf-folder.lf-rv .rv-radio { border-color: rgba(255, 255, 255, 0.16); }
 [data-theme='dark'] .lf-folder.lf-rv .lf-note.rv-yours { border-color: rgba(251, 146, 60, 0.4); }
+
+/* ---------- your review: "Check against" links, the draft status, "Back to your review" ---------- */
+/* where each checklist item is checked: small pills under the hint (a section above, or the CO's page in a new tab) */
+.rv-sources { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.4rem; margin: 0.5rem 0 0; }
+.rv-sources-k { margin-right: 0.15rem; color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.rv-source {
+  display: inline-flex; align-items: center; gap: 0.3rem; min-height: 1.9rem; padding: 0.2rem 0.7rem;
+  border: 1px solid rgba(30, 63, 151, 0.22); border-radius: 999px; background: var(--lf-accent-bg, #eef3ff);
+  color: var(--lf-accent, #1e3f97); font-size: 0.82rem; font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.rv-source:hover { border-color: var(--lf-accent, #1e3f97); background: var(--lf-inset-hover, #e3eaff); }
+.rv-source:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.rv-source svg { flex: none; }
+
+/* submit bar: the draft status sits next to the button */
+.rv-savebar-end { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem 0.9rem; }
+.rv-draft { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.82rem; }
+.rv-draft svg { flex: none; color: var(--lf-ok, #15714a); }
+.rv-draft time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rv-draft time::before { content: '·'; margin-right: 0.4rem; }
+.rv-draft.failed { color: var(--lf-warn); font-weight: 600; }
+.rv-draft-clear {
+  margin-left: 0.15rem; padding: 0.15rem 0.35rem; border: 0; border-radius: 6px; background: transparent; cursor: pointer;
+  color: var(--lf-accent, #1e3f97); font-size: 0.82rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
+}
+.rv-draft-clear:hover { background: var(--lf-control-hover, rgba(20, 41, 95, 0.06)); }
+.rv-draft-clear:focus-visible { outline: 2px solid var(--lf-accent, #1e3f97); outline-offset: 1px; }
+.rv-draft-clear:disabled { opacity: 0.5; cursor: default; }
+
+/* after a jump up from a checklist item: a navy pill, bottom centre, back down to that item */
+.rv-backpill {
+  position: fixed; left: 50%; bottom: 1.5rem; z-index: 40; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 0.6rem; max-width: calc(100vw - 2rem); min-height: 2.9rem; padding: 0.55rem 1.2rem 0.55rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 999px; cursor: pointer;
+  background: var(--lf-blue-grad, linear-gradient(135deg, #14295f 0%, #1e3f97 62%, #2b52c4 100%)); color: #fff;
+  font-size: 0.9rem; font-weight: 700; box-shadow: 0 14px 30px -12px rgba(20, 41, 95, 0.65);
+}
+.rv-backpill > span { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; }
+.rv-backpill-item {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22rem;
+  color: rgba(255, 255, 255, 0.75); font-weight: 500;
+}
+.rv-backpill-item::before { content: '·'; margin-right: 0.5rem; color: rgba(255, 255, 255, 0.5); }
+.rv-backpill:hover { box-shadow: 0 16px 34px -12px rgba(20, 41, 95, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.25) inset; }
+.rv-backpill:focus-visible { outline: 3px solid var(--amber, #f59e0b); outline-offset: 3px; }
+@media (max-width: 560px) { .rv-backpill-item { display: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .rv-source, .rv-draft-clear { transition: background-color 0.15s, border-color 0.15s; }
+  .rv-backpill { animation: rv-backpill-in 0.22s ease-out; }
+  @keyframes rv-backpill-in { from { opacity: 0; transform: translate(-50%, 0.6rem); } to { opacity: 1; transform: translate(-50%, 0); } }
+}
+[data-theme='dark'] .rv-source { border-color: rgba(126, 162, 255, 0.3); }
+[data-theme='dark'] .rv-backpill { border-color: rgba(255, 255, 255, 0.22); }
+
+/* ---------- your review: the checklist as item cards, the decision as described cards ---------- */
+/* head: "Checklist", how many are marked, and a thin meter */
+.rv-checks-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.rv-checks-head .fp-subhead, .rv-decide > legend.fp-subhead { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0; }
+:is(.rv-checks-head .fp-subhead, .rv-decide > legend) svg { flex: none; color: var(--lf-accent, #1e3f97); }
+.rv-checks-count { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+.rv-checks-count > b { color: var(--ink); font-weight: 800; }
+.rv-checks-meter { flex: 1 1 8rem; height: 6px; overflow: hidden; border-radius: 999px; background: var(--lf-track, #e5e9f2); }
+.rv-checks-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--lf-bar-grad, #1e3f97); }
+
+/* one card per checklist item: number | what to check | OK / Needs revision, then the remark across */
+.rv-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.rv-check {
+  --tone: var(--lf-hollow, #8b97ab);
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.35rem 0.9rem; align-items: start;
+  margin: 0; padding: 1rem 1.1rem 1rem 1rem; scroll-margin-top: 6rem; /* clear of the sticky top bar after "Back to your review" */
+  border: 1px solid var(--lf-hair, var(--line)); border-radius: 18px; background: var(--lf-inset, #f8fafd);
+}
+.rv-check.ok { --tone: var(--lf-ok); }
+.rv-check.warn { --tone: var(--lf-warn); }
+.rv-check:is(.ok, .warn) { border-color: var(--tone-line); box-shadow: inset 4px 0 0 var(--tone); }
+.rv-check.warn { background: color-mix(in srgb, var(--lf-warn-bg) 55%, var(--lf-inset, #fff)); }
+
+.rv-check-num {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; flex: none;
+  border: 2px solid var(--lf-hollow, #8b97ab); color: var(--lf-text-2, var(--muted)); font-size: 0.85rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.rv-check:is(.ok, .warn) .rv-check-num { border-color: var(--tone); background: var(--tone); color: #fff; }
+
+.rv-check-body { min-width: 0; padding-top: 0.2rem; }
+.rv-check-title { margin: 0; color: var(--navy); font-size: 1rem; font-weight: 700; line-height: 1.35; }
+.rv-check-hint { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+.rv-check .rv-sources { margin-top: 0.6rem; }
+.rv-check .rv-flags { margin: 0.6rem 0 0; }
+.rv-check .rv-flag { padding: 0.45rem 0.75rem 0.45rem 1rem; font-size: 0.85rem; }
+
+/* OK / Needs revision: a segmented control; the radios stay real (arrow keys, screen readers) */
+.rv-check-seg { display: inline-flex; gap: 0.2rem; padding: 0.25rem; border-radius: 999px; background: var(--lf-wash, #eef1f6); }
+.rv-seg-opt {
+  position: relative; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.5rem; padding: 0.35rem 0.95rem;
+  border-radius: 999px; color: var(--lf-text-2, var(--muted)); font-size: 0.9rem; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.rv-seg-opt input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.rv-seg-opt svg { flex: none; opacity: 0.55; }
+.rv-seg-opt:hover { background: var(--lf-inset-hover, #fff); color: var(--ink); }
+.rv-seg-opt.ok:has(input:checked) { background: var(--lf-ok); color: #fff; box-shadow: 0 6px 14px -8px var(--lf-ok); }
+.rv-seg-opt.warn:has(input:checked) { background: var(--lf-warn); color: #fff; box-shadow: 0 6px 14px -8px var(--lf-warn); }
+.rv-seg-opt:has(input:checked) svg { opacity: 1; }
+.rv-seg-opt:has(input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+.rv-seg-opt:has(input:disabled) { opacity: 0.55; cursor: not-allowed; }
+
+/* the remark: a visible label, under the item text and the control */
+.rv-check-remark { grid-column: 2 / -1; display: grid; gap: 0.3rem; margin-top: 0.45rem; }
+.rv-check-remark > span { display: flex; align-items: baseline; gap: 0.45rem; color: var(--ink); font-size: 0.85rem; font-weight: 700; }
+.rv-check-remark small { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.rv-check.warn .rv-check-remark small { color: var(--lf-warn); }
+.rv-check-remark textarea {
+  width: 100%; min-height: 3.2rem; padding: 0.6rem 0.85rem; resize: vertical; border-radius: 12px;
+  border: 1.5px solid rgba(20, 41, 95, 0.18); background: #fff; color: var(--ink); font: inherit; font-size: 0.92rem; line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(20, 41, 95, 0.07), inset 0 1px 2px rgba(20, 41, 95, 0.03);
+  cursor: text;
+}
+.rv-check-remark textarea:hover { border-color: rgba(20, 41, 95, 0.32); background: #fff; }
+.rv-check-remark textarea:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.3); outline-offset: 0; border-color: var(--lf-accent, #1e3f97); box-shadow: 0 0 0 3px rgba(30, 63, 151, 0.12), 0 1px 3px rgba(20, 41, 95, 0.07); }
+.rv-check-remark textarea[aria-invalid='true'] { border-color: var(--lf-warn); background: color-mix(in srgb, var(--lf-warn-bg) 30%, #fff); }
+[data-theme='dark'] .rv-check-remark textarea { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.2); box-shadow: none; }
+[data-theme='dark'] .rv-check-remark textarea:hover { border-color: rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.1); }
+@media (prefers-reduced-motion: no-preference) {
+  .rv-check-remark textarea { transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s; }
+}
+.rv-check-err { grid-column: 2 / -1; margin: 0; color: var(--lf-warn); font-size: 0.82rem; font-weight: 600; }
+
+/* base layout shared by both the reviewer fieldset and the approver div */
+.rv-decision { display: grid; gap: 0.75rem; }
+/* the reviewer's decision: a fieldset whose cards fill in their tone when chosen */
+.rv-decide { display: grid; gap: 0.75rem; margin: 0.25rem 0 0; padding: 1.1rem 0 0; min-width: 0; border: 0; border-top: 1px solid var(--lf-hair, var(--line)); }
+.rv-decide > legend { width: 100%; padding: 0; margin-bottom: 0; }
+.rv-decide .lf-choices { margin: 0; }
+.rv-action-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lf-folder.lf-rv .rv-decide .lf-choice { align-items: flex-start; min-height: 4.25rem; padding: 0.85rem 1rem; }
+.lf-folder.lf-rv .rv-decide .lf-choice input { margin-top: 0.1rem; }
+.lf-folder.lf-rv .rv-decide .lf-choice small { line-height: 1.4; }
+.lf-folder.lf-rv .rv-decide .lf-choice.none { --tone: var(--lf-accent); --tone-bg: var(--lf-accent-bg); }
+.lf-folder.lf-rv .rv-decide .lf-choice:has(input:checked) { border-color: var(--tone); background: var(--tone-bg); box-shadow: 0 0 0 1px var(--tone); }
+.lf-folder.lf-rv .rv-decide .lf-choice:has(input:checked) input { border-color: var(--tone); }
+.lf-folder.lf-rv .rv-decide .lf-choice:has(input:checked) input::after { background: var(--tone); }
+.lf-folder.lf-rv .rv-decide .lf-choice:has(input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.rv-severity { display: grid; gap: 0.5rem; padding: 0.85rem 1rem; border-radius: 16px; background: var(--lf-inset, #f8fafd); border: 1px solid var(--lf-hair, var(--line)); }
+.rv-severity-k { margin: 0; color: var(--navy); font-size: 0.92rem; font-weight: 700; }
+.lf-folder.lf-rv .rv-decide .lf-note.warn { margin: 0; }
+
+@media (max-width: 760px) {
+  .rv-check { grid-template-columns: auto minmax(0, 1fr); }
+  .rv-check-seg { grid-column: 2; justify-self: start; }
+  .rv-action-choices { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 420px) {
+  .rv-check { grid-template-columns: minmax(0, 1fr); padding: 0.9rem; }
+  .rv-check-num { display: none; }
+  :is(.rv-check-seg, .rv-check-remark, .rv-check-err) { grid-column: 1; }
+  .rv-check-seg { display: flex; }
+  .rv-seg-opt { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rv-check { transition: border-color 0.18s, box-shadow 0.18s, background-color 0.18s; }
+  .rv-check-num, .rv-seg-opt { transition: background-color 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s; }
+  .rv-checks-meter > span { transition: width 0.3s ease-out; }
+  .lf-folder.lf-rv .rv-decide .lf-choice { transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s; }
+}
+/* dark: the ok / warn tones are light there, so the text on them goes dark */
+[data-theme='dark'] .rv-seg-opt:is(.ok, .warn):has(input:checked),
+[data-theme='dark'] .rv-check:is(.ok, .warn) .rv-check-num { color: #0b1220; }
+[data-theme='dark'] .rv-check.warn { background: color-mix(in srgb, var(--lf-warn-bg) 40%, var(--lf-inset)); }

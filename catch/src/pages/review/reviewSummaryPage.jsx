@@ -11,11 +11,14 @@
 // chips, the figures as tiles, your part as a strip, glass section cards. Styles: review.css (.lf-rv block).
 // For a reviewer / approver: a progress bar of their own review / decision in the header (MyWorkProgress, fed by
 // the form), and the pages they can only read (FP, credit scoring, loan folder, Decision support) under "Optional view".
+// Your review: each checklist item links to where it's checked (a section above, or the CO's page in a new tab); after a
+// jump up, a "Back to your review" button returns to the item. Unsent answers are kept as a draft in this browser
+// (reviewDraft.js) and cleared once the review is submitted.
 import { ReviewSummarySkeleton } from '../../components/skeleton';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    ArrowRight, CalendarClock, ClipboardCheck, Eye, Gauge, House, Lock, Percent, PenLine, Scale, Send, UserCheck, Users, Wallet,
+    ArrowDown, ArrowRight, CalendarClock, ClipboardCheck, Eye, Gauge, House, Lock, Percent, PenLine, Scale, Send, UserCheck, Users, Wallet,
 } from 'lucide-react';
 import Byline from '../../components/byline';
 import { formatWhen, personName } from '../../components/people';
@@ -42,6 +45,7 @@ import {
 import { approvalProgress, splitRouting, tierLabel } from './approval';
 import { ApprovalForm, ApprovalProgress, RoutingPeople } from './approvalParts';
 import { isReviewedChange, reviewFlags, reviewState } from './reviewChecks';
+import { clearDraft, draftKey } from './reviewDraft';
 import { FlagList, IncomeEvidence, MyWorkProgress, ReviewForm, ReviewProgress } from './reviewParts';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
@@ -119,6 +123,20 @@ const ReviewSummaryPage = () => {
     // Routed approvers get the shorter page
     const approverView = Boolean(data?.rows.some((r) => r.assignee_role === 'APPROVER' && !r.unassigned_at && r.user_id === myId));
     const [activeId, pickSection] = useActiveSection(approverView ? APPROVER_TOC_IDS : TOC_IDS, Boolean(data));
+    const [returnTo, setReturnTo] = useState(null); // { code, label }: the checklist item the reviewer jumped up from
+
+    // "Back to your review" goes away once the item is back on screen (after it has left it: the jump scrolls smoothly)
+    useEffect(() => {
+        const row = returnTo && document.getElementById(`rv-check-${returnTo.code}`);
+        if (!row || typeof IntersectionObserver === 'undefined') return undefined;
+        let left = false;
+        const io = new IntersectionObserver(([entry]) => {
+            if (!entry.isIntersecting) left = true;
+            else if (left) setReturnTo(null);
+        }, { threshold: 0.6 });
+        io.observe(row);
+        return () => io.disconnect();
+    }, [returnTo]);
 
     useEffect(() => {
         let cancelled = false;
@@ -156,6 +174,7 @@ const ReviewSummaryPage = () => {
     const { reviewers, current } = state;
     const myReview = reviewers.find((r) => r.user_id === myId);
     const mySignoff = myReview && state.signoffs[myReview.id];
+    const reviewDraftKey = draftKey(myId, myReview?.id);
     const isApprover = approverView;
     const progress = approvalProgress(pkg.approval_tier, approvers, approvals, positions);
     const myApprover = approvers.find((r) => r.user_id === myId);
@@ -182,6 +201,7 @@ const ReviewSummaryPage = () => {
         setSubmitError(null);
         try {
             await submitReview(app.id, review);
+            clearDraft(reviewDraftKey);
             await reload();
             setDone(review.action === 'RETURNED' ? 'Returned to the Credit Officer.'
                 : isLast ? 'Review complete: sent to the approvers.' : 'Signed off: passed to the next reviewer.');
@@ -390,7 +410,8 @@ const ReviewSummaryPage = () => {
         'rv-review': canAct && (
             <Section id="rv-review" title={`Your review (reviewer ${current.seq} of ${reviewers.length})`}>
                 <ReviewForm checkItems={checkItems} flags={flags} nextLabel={nextLabel}
-                    onSubmit={handleSubmit} busy={busy} error={submitError} onProgress={setMyWork} />
+                    onSubmit={handleSubmit} busy={busy} error={submitError} onProgress={setMyWork}
+                    draftKey={reviewDraftKey} appId={app.id} onJump={jumpFromCheck} />
             </Section>
         ),
         'rv-decision': canApprove && (
@@ -405,6 +426,22 @@ const ReviewSummaryPage = () => {
         e.preventDefault();
         pickSection(id);
         scrollToSection(id);
+    };
+
+    // A checklist item's "Check against" link: scroll up to the section, and offer the way back
+    function jumpFromCheck(id, code) {
+        setReturnTo({ code, label: checkItems.find((i) => i.code === code)?.label ?? 'your review' });
+        pickSection(id);
+        scrollToSection(id);
+    }
+    const backToCheck = () => {
+        const row = document.getElementById(`rv-check-${returnTo.code}`);
+        setReturnTo(null);
+        pickSection('rv-review');
+        if (!row) return;
+        const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        row.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+        row.querySelector('input')?.focus({ preventScroll: true }); // keyboard users land on the item, not the top
     };
 
     // Reviewers / approvers only read these pages, so they go under "Optional view"; others keep them as buttons
@@ -513,6 +550,13 @@ const ReviewSummaryPage = () => {
                     {!canAct && !canApprove && submitError && <p className="lf-err" role="alert">{submitError}</p>}
                 </div>
             </div>
+
+            {returnTo && canAct && (
+                <button type="button" className="rv-backpill" onClick={backToCheck}>
+                    <ArrowDown size={16} aria-hidden="true" />
+                    <span>Back to your review<span className="rv-backpill-item">{returnTo.label}</span></span>
+                </button>
+            )}
         </div>
     );
 };

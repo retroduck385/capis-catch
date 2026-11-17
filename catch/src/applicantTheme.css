@@ -545,3 +545,84 @@ html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 5.75rem; }
 @media (prefers-reduced-motion: no-preference) {
   .ct.ct-e .ct-yesno-opt, .ct.ct-e button:is(.ct-row-remove, .ct-row-add) { transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s; }
 }
+
+/* ---------- sign-out confirm dialog ---------- */
+@keyframes ct-so-in {
+  from { opacity: 0; transform: scale(0.94) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+@keyframes ct-so-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@layer components {
+  .ct-so-dialog {
+    position: fixed; inset: 0; margin: auto; height: fit-content;
+    width: min(24rem, calc(100vw - 2rem)); border: 0; padding: 0;
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(13, 20, 40, 0.08), 0 32px 64px -24px rgba(13, 20, 40, 0.42);
+    background: var(--card, #fff); color: var(--ink);
+    animation: ct-so-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .ct-so-dialog::backdrop {
+    background: rgba(13, 20, 40, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: ct-so-backdrop-in 0.2s ease both;
+  }
+
+  /* navy gradient header band — matches the topnav */
+  .ct-so-header {
+    display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+    padding: 1.75rem 1.5rem 1.5rem;
+    background: linear-gradient(145deg, #0d2550 0%, #14295f 55%, #1e3a85 100%);
+  }
+  .ct-so-icon {
+    display: grid; place-items: center;
+    width: 3.4rem; height: 3.4rem; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    color: var(--amber, #f59e0b);
+  }
+  .ct-so-eyebrow {
+    margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(255, 255, 255, 0.55);
+  }
+
+  /* white body */
+  .ct-so-body { padding: 1.4rem 1.5rem 1.5rem; display: grid; gap: 0.5rem; text-align: center; }
+  .ct-so-title { font-size: 1.05rem; font-weight: 800; color: var(--ink); margin: 0; letter-spacing: -0.01em; }
+  .ct-so-desc { font-size: 0.82rem; color: var(--muted, #5b6b82); line-height: 1.55; margin: 0; }
+
+  /* buttons */
+  .ct-so-actions { display: flex; gap: 0.65rem; margin-top: 0.6rem; }
+  .ct-so-actions button {
+    flex: 1; padding: 0.65rem 1rem; border-radius: 999px;
+    font-size: 0.84rem; font-weight: 600; cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  }
+  .ct-so-cancel {
+    background: transparent;
+    border: 1.5px solid var(--line-strong, #b9c2d1);
+    color: var(--navy, #0f2d5e);
+  }
+  .ct-so-cancel:hover { background: var(--muted-bg, #edf0f7); border-color: var(--navy, #0f2d5e); }
+  .ct-so-confirm {
+    background: linear-gradient(135deg, #0d2550 0%, #14295f 55%, #1e3a85 100%);
+    border: 1.5px solid transparent;
+    color: #fff;
+    box-shadow: 0 6px 16px -6px rgba(13, 20, 40, 0.5);
+  }
+  .ct-so-confirm:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0a1e42 0%, #0f2050 55%, #172e72 100%);
+    box-shadow: 0 8px 20px -6px rgba(13, 20, 40, 0.65);
+  }
+  .ct-so-confirm:disabled { opacity: 0.65; cursor: not-allowed; }
+  .ct-so-confirm:focus-visible, .ct-so-cancel:focus-visible {
+    outline: 2px solid var(--blue, #1a4aa8); outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ct-so-dialog, .ct-so-dialog::backdrop { animation: none; }
+  }
+}

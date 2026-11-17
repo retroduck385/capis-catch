@@ -102,6 +102,14 @@ const MessagesPanel = ({ applicationId, inline = false }) => {
         if (location.hash) jumpToTopic(decodeURIComponent(location.hash.slice(1)));
     }, [location.hash, location.pathname]);
 
+    // Arriving from a message notification (openMessages in router state): open the drawer and clear the flag
+    useEffect(() => {
+        if (!location.state?.openMessages) return;
+        window.history.replaceState({ ...window.history.state, usr: { ...window.history.state?.usr, openMessages: false } }, '');
+        const t = setTimeout(() => setOpen(true), 0);
+        return () => clearTimeout(t);
+    }, [location.state?.openMessages]);
+
     // The @ list's people, loaded the first time the drawer opens
     useEffect(() => {
         if (!open || !canPost || candidates) return;

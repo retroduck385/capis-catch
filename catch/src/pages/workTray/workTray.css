@@ -919,3 +919,8 @@
   box-shadow: 0 0 0 3px #fff, 0 0 0 5px #3463d8, 0 20px 36px -20px rgba(26, 54, 131, 0.75);
 }
 [data-theme='dark'] .wt .wt-tile.hero[aria-pressed='true'] { box-shadow: 0 0 0 3px #0d1730, 0 0 0 5px #7ea2ff, 0 20px 36px -20px rgba(0, 0, 0, 0.8); }
+
+/* TAT position column header with inline info icon */
+.wt .wt-th-with-info { display: inline-flex; align-items: center; gap: .3rem; }
+.wt .wt-th-info { display: inline-flex; align-items: center; opacity: .55; flex-shrink: 0; cursor: help; }
+.wt th:has(.wt-th-info) { white-space: nowrap; }

@@ -128,3 +128,19 @@ export const isReviewedChange = (e) => REVIEWED_TABLES.includes(e.table_name)
 
 // Employment type of a borrower (KYC)
 export const jobOf = (party) => one(party.employment_info);
+
+// Where to check each checklist item. here: [section id on the review summary, label] (scrolls there; a "Back to your
+// review" button brings the reviewer back to the item). there: the page the Credit Officer worked on, opened in a new
+// tab so the review stays put; hash = the section id the page scrolls to (the FP shows the right tab itself).
+export const CHECK_SOURCES = {
+    DOCUMENTS: { here: ['rv-income', 'Income evidence'], there: { path: '/loanFolderPage', label: 'Loan folder' } },
+    INCOME: { here: ['rv-income', 'Income evidence'], there: { path: '/financialPackagePage', hash: 'fp-ix', label: 'FP IX. Cash flow' } },
+    LOAN_TERMS: { here: ['rv-figures', 'Key figures'], there: { path: '/financialPackagePage', hash: 'fp-ii', label: 'FP II. Facility' } },
+    COLLATERAL: { here: ['rv-figures', 'Key figures'], there: { path: '/financialPackagePage', hash: 'fp-iii', label: 'FP III. Collateral' } },
+    CREDIT_CHECKS: { here: ['rv-ci', 'IV. Credit checking'], there: { path: '/financialPackagePage', hash: 'fp-iv', label: 'FP IV. Credit checking' } },
+    EXCEPTIONS: { here: ['rv-exceptions', 'V. Exceptions'], there: { path: '/financialPackagePage', hash: 'fp-v', label: 'FP V. Exceptions' } },
+    CREDIT_SCORE: { here: ['rv-score', 'Credit score'], there: { path: '/creditScorePage', label: 'Credit scoring' } },
+    TERMS: { here: null, there: { path: '/financialPackagePage', hash: 'fp-vi', label: 'FP VI. Terms and conditions' } },
+    RECOMMENDATION: { here: ['rv-recommendation', "CO's recommendation"], there: { path: '/financialPackagePage', hash: 'fp-result', label: 'FP Credit result' } },
+};
+export const sourceHref = ({ path, hash }, appId) => `${path}?id=${appId}${hash ? `#${hash}` : ''}`;

@@ -1,15 +1,23 @@
 // Pieces of the reviewer sign-off (review summary page, VII. Approval page, FP banner).
 // MyWorkProgress: the progress bar in the review summary's header for the reviewer / approver whose turn it is,
-// fed by ReviewForm's / ApprovalForm's onProgress (what's filled in so far; nothing is saved until Submit).
+// fed by ReviewForm's / ApprovalForm's onProgress (what's filled in so far). The review is kept as a draft in this
+// browser as the reviewer goes (reviewDraft.js); nothing reaches the database until Submit.
 // Who did what and when is a Byline (components/byline.jsx), never "name on <date>".
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Byline from '../../components/byline';
-import { ArrowDown, CheckCircle2, Circle } from 'lucide-react';
+import {
+    ArrowDown, ArrowUp, Ban, Check, CheckCircle2, Circle, CloudCheck, CornerUpLeft, ExternalLink, Gavel, ListChecks, ThumbsUp,
+    TriangleAlert,
+} from 'lucide-react';
+import { formatWhen } from '../../components/people';
 import { getDocumentUrl, getParties } from '../applicationForm/api';
 import { BORROWER_ROLES, EMPLOYMENT_TYPES, REQUIREMENT_LABELS, formatMoney, labelFor, partyLabel } from '../applicationForm/options';
 import {
-    DECISION_LABELS, INCOME_DOCUMENT_TYPES, REVIEW_ACTIONS, SEVERITIES, deciderOf, jobOf, severityLabel,
+    CHECK_SOURCES, DECISION_LABELS, INCOME_DOCUMENT_TYPES, REVIEW_ACTIONS, SEVERITIES, deciderOf, jobOf, severityLabel,
+    sourceHref,
 } from './reviewChecks';
+import { clearDraft, formFromDraft, isBlankForm, loadDraft, saveDraft } from './reviewDraft';
 import { Term, Terms } from '../../components/term';
 
 const money = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
@@ -195,27 +203,95 @@ export const IncomeEvidence = ({ app, computed, fp, onError }) => {
 };
 
 // decision card tones: an endorsement is ok, not endorsing amber (it needs a look), a return slate
-const ACTION_TONES = { ENDORSED: 'ok', NOT_ENDORSED: 'warn', RETURNED: 'none' };
+// The three decisions as cards: tone, icon and what each one does
+const ACTION_CARDS = {
+    ENDORSED: { tone: 'ok', Icon: ThumbsUp, desc: 'Sign off and recommend it to the approvers.' },
+    NOT_ENDORSED: { tone: 'warn', Icon: Ban, desc: 'Sign off and recommend against it.' },
+    RETURNED: { tone: 'none', Icon: CornerUpLeft, desc: 'Send it back to fix what you marked Needs revision.' },
+};
 
-const emptyChecks = (items) => Object.fromEntries(items.map((i) => [i.code, { result: '', remark: '' }]));
+const emptyForm = (items) => formFromDraft(null, items);
+
+// "Check against": where the evidence for one checklist item is (CHECK_SOURCES). The section on this page scrolls
+// (onJump), the CO's page opens in a new tab.
+const CheckSources = ({ code, appId, onJump }) => {
+    const src = CHECK_SOURCES[code];
+    if (!src || (!src.here && !src.there)) return null;
+    return (
+        <p className="rv-sources">
+            <span className="rv-sources-k">Check against</span>
+            {src.here && onJump && (
+                <a href={`#${src.here[0]}`} className="rv-source"
+                    onClick={(e) => { e.preventDefault(); onJump(src.here[0], code); }}>
+                    <ArrowUp size={14} aria-hidden="true" /><Terms text={src.here[1]} />
+                </a>
+            )}
+            {src.there && appId && (
+                <Link to={sourceHref(src.there, appId)} target="_blank" rel="noopener" className="rv-source">
+                    <ExternalLink size={14} aria-hidden="true" />{src.there.label}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                </Link>
+            )}
+        </p>
+    );
+};
+
+// Draft status in the submit bar: when it was last kept in this browser, or that it couldn't be
+const DraftStatus = ({ saved, onClear, busy }) => {
+    if (saved.failed) {
+        return <span className="rv-draft failed">Couldn&apos;t keep a draft in this browser: submit before you leave the page.</span>;
+    }
+    if (!saved.at) return null;
+    return (
+        <span className="rv-draft">
+            <CloudCheck size={16} aria-hidden="true" />
+            <span>{saved.restored ? 'Draft restored' : 'Draft saved'}</span>
+            <time dateTime={saved.at} title={new Date(saved.at).toLocaleString()}>{formatWhen(saved.at)}</time>
+            <button type="button" className="rv-draft-clear" onClick={onClear} disabled={busy}>Clear</button>
+        </span>
+    );
+};
 
 // The current reviewer's checklist + decision. flags = reviewFlags() (shown under their checklist item)
+// draftKey: where reviewDraft.js keeps the unsent answers (saved on every change, restored on the next visit)
+// appId + onJump(sectionId, code): the "Check against" links under each item
+// Laid out as one card per checklist item (number, what to check, OK / Needs revision, remark) and the decision as
+// described cards; the ids rv-check-<code> are where "Back to your review" returns to.
 // onProgress({ kind: 'review', marked, total, action, actionLabel, isReturn, hasRemarks, ready }): for the header bar
-export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error, onProgress }) => {
-    const [checks, setChecks] = useState(() => emptyChecks(checkItems));
-    const [action, setAction] = useState('');
-    const [remarks, setRemarks] = useState('');
-    const [severity, setSeverity] = useState('');
+export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error, onProgress, draftKey, appId, onJump }) => {
+    const [restored] = useState(() => loadDraft(draftKey));
+    const [form, setForm] = useState(() => formFromDraft(restored, checkItems));
+    const [saved, setSaved] = useState(() => ({ at: restored?.savedAt ?? null, restored: Boolean(restored?.savedAt), failed: false }));
+    const { checks, action, remarks, severity } = form;
 
-    const dirty = action !== '' || remarks.trim() !== '' || Object.values(checks).some((c) => c.result || c.remark.trim());
+    // Every change is kept as a draft right away (a blank form removes it)
+    const update = (patch) => {
+        const next = { ...form, ...patch };
+        setForm(next);
+        if (isBlankForm(next)) {
+            clearDraft(draftKey);
+            setSaved({ at: null, restored: false, failed: false });
+            return;
+        }
+        const at = new Date().toISOString();
+        const ok = saveDraft(draftKey, { ...next, savedAt: at });
+        setSaved({ at: ok ? at : null, restored: false, failed: !ok });
+    };
+    const clear = () => {
+        if (!window.confirm('Clear your checklist, decision and remarks? This removes the saved draft.')) return;
+        update(emptyForm(checkItems));
+    };
+
+    // Only warn before leaving when the draft couldn't be kept
+    const dirty = !isBlankForm(form);
     useEffect(() => {
-        if (!dirty) return undefined;
+        if (!dirty || !saved.failed) return undefined;
         const warn = (e) => { e.preventDefault(); e.returnValue = ''; };
         window.addEventListener('beforeunload', warn);
         return () => window.removeEventListener('beforeunload', warn);
-    }, [dirty]);
+    }, [dirty, saved.failed]);
 
-    const set = (code, patch) => setChecks({ ...checks, [code]: { ...checks[code], ...patch } });
+    const set = (code, patch) => update({ checks: { ...checks, [code]: { ...checks[code], ...patch } } });
     const marked = checkItems.filter((i) => checks[i.code].result);
     const flagged = checkItems.filter((i) => checks[i.code].result === 'NEEDS_REVISION');
     const isReturn = action === 'RETURNED';
@@ -253,89 +329,119 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
     return (
         <form onSubmit={handleSubmit} className="rv-form">
             <p className="fp-note">
-                Check the Credit Officer's work against the documents. You can't edit the Financial Package: anything
-                that needs fixing goes back to the Credit Officer.
+                Check the Credit Officer&apos;s work against the documents. You can&apos;t edit the Financial Package: anything
+                that needs fixing goes back to the Credit Officer. Your answers are kept as a draft in this browser
+                until you submit.
             </p>
-            <div className="fp-tablewrap">
-                <table className="rv-checklist">
-                    <thead>
-                        <tr>
-                            <th>Check</th>
-                            <th>Result</th>
-                            <th>Remark</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {checkItems.map((i) => {
-                            const c = checks[i.code];
-                            return (
-                                <tr key={i.code}>
-                                    <td>
-                                        <b>{i.label}</b>
-                                        {i.hint && <p className="fp-note">{i.hint}</p>}
-                                        <FlagList flags={flags.filter((f) => f.item === i.code)} />
-                                    </td>
-                                    <td>
-                                        <div className="rv-radios">
-                                            {[['OK', 'OK'], ['NEEDS_REVISION', 'Needs revision']].map(([v, l]) => (
-                                                <label key={v} className={`rv-radio${v === 'NEEDS_REVISION' ? ' warn' : ''}`}>
-                                                    <input type="radio" name={`check-${i.code}`} checked={c.result === v}
-                                                        onChange={() => set(i.code, { result: v })} disabled={busy} />
-                                                    {l}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <textarea rows={2} value={c.remark} disabled={busy}
-                                            aria-label={`Remark for ${i.label}`}
-                                            placeholder={c.result === 'NEEDS_REVISION' ? 'What needs fixing (required)' : 'Optional'}
-                                            onChange={(e) => set(i.code, { remark: e.target.value })} />
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+
+            <div className="rv-checks-head">
+                <h3 className="fp-subhead"><ListChecks size={18} aria-hidden="true" />Checklist</h3>
+                <span className="rv-checks-count">
+                    <b>{marked.length}</b> of {checkItems.length} marked
+                    {flagged.length > 0 && <span className="lf-chip warn">{flagged.length} need revision</span>}
+                </span>
+                <span className="rv-checks-meter" aria-hidden="true">
+                    <span style={{ width: `${(marked.length / Math.max(checkItems.length, 1)) * 100}%` }} />
+                </span>
             </div>
 
-            <div className="rv-decision">
-                <h3 className="fp-subhead">Your decision</h3>
-                <div className="lf-choices">
-                    {REVIEW_ACTIONS.map((a) => (
-                        <label key={a.value} className={`lf-choice ${ACTION_TONES[a.value] ?? 'none'}`}>
-                            <input type="radio" name="review-action" checked={action === a.value}
-                                onChange={() => setAction(a.value)} disabled={busy} /> {a.label}
-                        </label>
-                    ))}
+            <ol className="rv-checks">
+                {checkItems.map((i, n) => {
+                    const c = checks[i.code];
+                    const tone = c.result === 'OK' ? 'ok' : c.result === 'NEEDS_REVISION' ? 'warn' : 'none';
+                    const missingRemark = c.result === 'NEEDS_REVISION' && !c.remark.trim();
+                    const errId = `rv-check-${i.code}-err`;
+                    return (
+                        <li key={i.code} id={`rv-check-${i.code}`} className={`rv-check ${tone}`}>
+                            <span className="rv-check-num" aria-hidden="true">
+                                {tone === 'ok' ? <Check size={16} strokeWidth={3} />
+                                    : tone === 'warn' ? <TriangleAlert size={15} strokeWidth={2.5} /> : n + 1}
+                            </span>
+                            <div className="rv-check-body">
+                                <h4 className="rv-check-title">{i.label}</h4>
+                                {i.hint && <p className="rv-check-hint">{i.hint}</p>}
+                                <CheckSources code={i.code} appId={appId} onJump={onJump} />
+                                <FlagList flags={flags.filter((f) => f.item === i.code)} />
+                            </div>
+                            <div className="rv-check-seg" role="radiogroup" aria-label={`Result for ${i.label}`}>
+                                {[['OK', 'OK', 'ok', Check], ['NEEDS_REVISION', 'Needs revision', 'warn', TriangleAlert]].map(([v, l, t, Icon]) => (
+                                    <label key={v} className={`rv-seg-opt ${t}`}>
+                                        <input type="radio" name={`check-${i.code}`} checked={c.result === v}
+                                            onChange={() => set(i.code, { result: v })} disabled={busy} />
+                                        <Icon size={15} strokeWidth={2.5} aria-hidden="true" />{l}
+                                    </label>
+                                ))}
+                            </div>
+                            <label className="rv-check-remark">
+                                <span>
+                                    Remark
+                                    <small>{c.result === 'NEEDS_REVISION' ? 'required' : 'optional'}</small>
+                                </span>
+                                <textarea rows={2} value={c.remark} disabled={busy}
+                                    aria-describedby={missingRemark ? errId : undefined}
+                                    aria-invalid={missingRemark || undefined}
+                                    placeholder={c.result === 'NEEDS_REVISION' ? 'What the Credit Officer should fix' : 'Anything worth noting'}
+                                    onChange={(e) => set(i.code, { remark: e.target.value })} />
+                            </label>
+                            {missingRemark && (
+                                <p id={errId} className="rv-check-err">Say what needs fixing before you submit.</p>
+                            )}
+                        </li>
+                    );
+                })}
+            </ol>
+
+            <fieldset className="rv-decision rv-decide">
+                <legend className="fp-subhead"><Gavel size={18} aria-hidden="true" />Your decision</legend>
+                <div className="lf-choices rv-action-choices">
+                    {REVIEW_ACTIONS.map((a) => {
+                        const { tone, Icon, desc } = ACTION_CARDS[a.value] ?? { tone: 'none', Icon: Circle, desc: '' };
+                        return (
+                            <label key={a.value} className={`lf-choice ${tone}`}>
+                                <input type="radio" name="review-action" checked={action === a.value}
+                                    onChange={() => update({ action: a.value })} disabled={busy} />
+                                <Icon size={20} className="mark" aria-hidden="true" />
+                                <span>
+                                    <b>{a.label}</b>
+                                    {desc && <small>{desc}</small>}
+                                </span>
+                            </label>
+                        );
+                    })}
                 </div>
                 <p className="fp-note">
-                    Endorse / Not endorse is your recommendation to the approvers, like the Credit Officer's Credit Result.
-                    It doesn't approve or reject the loan.
+                    Endorse / Not endorse is your recommendation to the approvers, like the Credit Officer&apos;s Credit Result.
+                    It doesn&apos;t approve or reject the loan.
                 </p>
                 {isReturn && (
-                    <>
-                        <h3 className="fp-subhead">Revision</h3>
+                    <div className="rv-severity">
+                        <h4 className="rv-severity-k">How big is the revision?</h4>
                         <div className="lf-choices">
                             {SEVERITIES.map((s) => (
                                 <label key={s.value} className="lf-choice none">
                                     <input type="radio" name="severity" checked={severity === s.value}
-                                        onChange={() => setSeverity(s.value)} disabled={busy} /> {s.label} ({s.hint})
+                                        onChange={() => update({ severity: s.value })} disabled={busy} />
+                                    <span><b>{s.label}</b><small>{s.hint}</small></span>
                                 </label>
                             ))}
                         </div>
-                    </>
+                    </div>
                 )}
                 <label className="ct-field rv-remarks">
                     {isReturn ? 'What the Credit Officer needs to revise' : 'Justification and remarks'}
-                    <textarea rows={4} value={remarks} disabled={busy} onChange={(e) => setRemarks(e.target.value)} />
+                    <textarea rows={4} value={remarks} disabled={busy} onChange={(e) => update({ remarks: e.target.value })}
+                        placeholder={isReturn ? 'Summarize what to fix; the items above have the details' : 'Why you endorse it or not'} />
                 </label>
                 {signingOffWithFlags && (
                     <p className="lf-note warn">
-                        You marked {flagged.map((i) => i.label).join(', ')} as Needs revision. To have it fixed, return it to the Credit Officer instead.
+                        <TriangleAlert size={16} aria-hidden="true" />
+                        <span>
+                            You marked {flagged.map((i) => i.label).join(', ')} as Needs revision. To have it fixed, return it to
+                            the Credit Officer instead.
+                        </span>
                     </p>
                 )}
-            </div>
+            </fieldset>
 
             <div className="fp-savebar">
                 <div className="state">
@@ -344,9 +450,12 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                         ? <ul className="rv-blockers">{blockers.map((b) => <li key={b}>{b}</li>)}</ul>
                         : <span className="lf-chip ok">Ready to submit</span>}
                 </div>
-                <button type="submit" className="lf-primary" disabled={busy || blockers.length > 0}>
-                    {busy ? 'Submitting...' : 'Submit review'}
-                </button>
+                <div className="rv-savebar-end">
+                    <span role="status"><DraftStatus saved={saved} onClear={clear} busy={busy} /></span>
+                    <button type="submit" className="lf-primary" disabled={busy || blockers.length > 0}>
+                        {busy ? 'Submitting...' : 'Submit review'}
+                    </button>
+                </div>
             </div>
         </form>
     );
@@ -414,7 +523,11 @@ export const MyWorkProgress = ({ kind, progress, total = 0, onJump }) => {
             <ul className="rv-mywork-parts">
                 {parts.map((x) => <Part key={x.key} done={x.done} label={x.label} value={x.value} />)}
             </ul>
-            <p className="rv-mywork-note">Nothing is saved until you submit.</p>
+            <p className="rv-mywork-note">
+                {kind === 'review'
+                    ? 'Kept as a draft in this browser as you go. Nothing is sent until you submit.'
+                    : 'Nothing is saved until you submit.'}
+            </p>
         </div>
     );
 };
