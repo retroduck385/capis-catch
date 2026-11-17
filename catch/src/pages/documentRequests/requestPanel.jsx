@@ -8,6 +8,8 @@ import { closeRequest, fetchRequestContext, fileUrl, openRequest, previewRequest
 import { refreshCanAsk } from './askStore';
 import FileMark from './fileMark';
 import { useFileMarks } from './useFileMarks';
+import { useReadStates } from './useReadStates';
+import { UNREADABLE_TEXT } from '../documentCheck/api';
 import { Terms } from '../../components/term';
 import Byline from '../../components/byline';
 import { formatDay, fullWhen } from '../../components/people';
@@ -16,7 +18,9 @@ import './requestPanel.css';
 
 // "Ask the applicant for documents" (the deferral loop): the assigned Account Officer sends a short message plus the
 // specific documents needed, in-app, by SMS and by email (no links). The applicant uploads them and sends them back;
-// the AO checks them (they go through OCR and the AI document check like any upload) and closes the request.
+// the AO checks them and closes the request. Every file is read on its own: IDs, COE / ITR, payslips and bank
+// statements by OCR + the AI document check like any upload; Other, SPA and permits by OCR only (no AI). Each file
+// shows whether it could be read (useReadStates.js).
 // Everyone who can open the file sees the current request read-only.
 // A disclosure card in the staff look (DESIGN.md, "Ask the applicant"), closed by default so it doesn't push the loan
 // folder down; the summary row shows where the current request stands. It opens by itself when the applicant has sent
@@ -35,10 +39,19 @@ const DELIVERY = {
 };
 
 const keyOf = (r) => `${r.applicant_id}:${r.requirement_type}`;
+// Read state of an uploaded file (useReadStates.js): [label, chip tone, icon]
+const READ = { READING: ['Reading...', 'info', Clock], READ: ['Read', 'ok', CheckCircle2], UNREADABLE: ["Couldn't read", 'err', AlertTriangle] };
+const uploadIds = (reqs) => reqs.flatMap((r) => r.items.flatMap((i) => i.uploads.map((u) => u.document_id)));
 
 // marks: useFileMarks() of the application (staff check of each uploaded file)
 // past: an earlier request, so each file's staff check starts closed
-const Uploads = ({ item, onView, applicationId, marks, past }) => (
+// reads: useReadStates() of the shown uploads; a file that couldn't be read offers "Ask the applicant"
+const ReadChip = ({ state }) => {
+    if (!READ[state]) return null;
+    const [label, tone, Icon] = READ[state];
+    return <span className={`dr-chip ${tone}`}><Icon size={13} aria-hidden="true" />{label}</span>;
+};
+const Uploads = ({ item, onView, applicationId, marks, past, reads = {} }) => (
     item.uploads.length === 0 ? <p className="dr-none">Nothing uploaded yet</p> : (
         <ul className="dr-files">
             {item.uploads.map((u) => (
@@ -48,9 +61,12 @@ const Uploads = ({ item, onView, applicationId, marks, past }) => (
                             <FileText size={15} aria-hidden="true" />{u.file_name}
                         </button>
                         <Byline layout="inline" name="Applicant" at={u.uploaded_at} className="dr-file-at" />
+                        <ReadChip state={reads[u.document_id]} />
                     </div>
+                    {reads[u.document_id] === 'UNREADABLE' && <p className="dr-unreadable" role="status">{UNREADABLE_TEXT}</p>}
                     {marks && (
                         <FileMark applicationId={applicationId} marks={marks} autoOpen={!past}
+                            unreadable={reads[u.document_id] === 'UNREADABLE'}
                             file={{ documentId: u.document_id, applicantId: item.applicant_id, requirementType: item.requirement_type, label: item.label }} />
                     )}
                 </li>
@@ -59,7 +75,7 @@ const Uploads = ({ item, onView, applicationId, marks, past }) => (
     )
 );
 
-const RequestView = ({ req, onView, marks, past = false }) => (
+const RequestView = ({ req, onView, marks, reads, past = false }) => (
     <>
         <p className="dr-quote">{req.message}</p>
         <ul className="dr-items">
@@ -71,7 +87,7 @@ const RequestView = ({ req, onView, marks, past = false }) => (
                             {i.uploads.length} / {i.min_files}<span className="sr-only"> files uploaded</span>
                         </span>
                     </div>
-                    <Uploads item={i} onView={onView} applicationId={req.application_id} marks={marks} past={past} />
+                    <Uploads item={i} onView={onView} applicationId={req.application_id} marks={marks} past={past} reads={reads} />
                 </li>
             ))}
         </ul>
@@ -109,6 +125,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const [expanded, setExpanded] = useState(null);    // null = not toggled yet: open only if documents came back
     const [askSeen, setAskSeen] = useState(null);       // the "Ask the applicant" click already put into the box
     const marks = useFileMarks(applicationId);
+    const reads = useReadStates(ctx ? uploadIds([ctx.current, ...(ctx.history ?? [])].filter(Boolean)) : []);
     const boxRef = useRef(null);
     // Set by an "Ask the applicant" button (ask.jsx): documents to tick and a note to prefill
     const ask = useLocation().state?.ask ?? null;
@@ -249,7 +266,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                             <span className="dr-by">Sent by <Byline layout="inline" name={cur.opened_by} fallback="Account Officer" at={cur.opened_at} /></span>
                             {cur.sent_at && <span className="dr-by">Sent back <Byline layout="inline" name="Applicant" at={cur.sent_at} /></span>}
                         </div>
-                        <RequestView req={cur} onView={view} marks={marks} />
+                        <RequestView req={cur} onView={view} marks={marks} reads={reads} />
 
                         {ctx.is_assigned_ao && (!closing ? (
                             <div className="dr-acts">
@@ -446,7 +463,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                                                     <span className="dr-by">{r.closed_as === 'WITHDRAWN' ? 'Withdrawn by' : 'Closed by'} <Byline layout="inline" name={r.closed_by} fallback="Account Officer" at={r.closed_at} /></span>
                                                 </div>
                                                 {r.close_note && <p className="dr-past-note"><b>Note for the file</b> {r.close_note}</p>}
-                                                <RequestView req={r} onView={view} marks={marks} past />
+                                                <RequestView req={r} onView={view} marks={marks} reads={reads} past />
                                             </div>
                                         </details>
                                     </li>

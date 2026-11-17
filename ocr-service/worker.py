@@ -1,7 +1,8 @@
 """CATCH OCR worker: OCRs uploaded documents (IDs, COE / ITR, payslips / remittances, bank statements) and
-CI reports (NFIS, TU, BRAS) queued in Supabase, saves the raw lines, then has Claude label the lines into
+CI reports (NFIS, TU) queued in Supabase, saves the raw lines, then has Claude label the lines into
 fields (AI extraction) for the Account Officer (application documents) or a Credit Investigator (NFIS / TU)
-to confirm. Claude only gets the OCR text, never the file.
+to confirm. Claude only gets the OCR text, never the file. A failed reading (OCR or AI) is tried once more after
+RETRY_PAUSE seconds; only a second failure is saved as FAILED (the staff then ask for a clearer copy).
 
   python worker.py              wait for uploads (Realtime), with a fallback check every 5 min (Ctrl+C to stop)
   python worker.py --poll       old behaviour: check the queue every --interval seconds, no Realtime
@@ -29,6 +30,7 @@ from ocr import engine_name, run_ocr
 BUCKET = "application-documents"
 PAGE_SIZE = 1000          # PostgREST returns at most this many rows per request
 RATE_LIMIT_PAUSE = 60     # seconds to leave the AI queue alone after a Claude API rate limit
+RETRY_PAUSE = 10          # seconds before the one automatic retry of a failed reading
 
 
 def now():
@@ -82,16 +84,33 @@ def listen_for_runs(url, key, wake):
         print(f"Realtime unavailable ({e}); falling back to the slow poll", flush=True)
 
 
+def with_one_retry(label, attempt):
+    """Runs attempt(); if it raises, waits RETRY_PAUSE seconds and runs it once more (the second error is raised).
+    RetryLater (a Claude API rate limit) is not a failure and is never retried here."""
+    try:
+        return attempt()
+    except RetryLater:
+        raise
+    except Exception as e:
+        print(f"{label}: failed ({e}); trying once more in {RETRY_PAUSE}s", flush=True)
+        time.sleep(RETRY_PAUSE)
+        return attempt()
+
+
+def read_file(client, job):
+    data = client.storage.from_(BUCKET).download(job["file_path"])
+    suffix = Path(job["file_path"]).suffix.lower()
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / f"doc{suffix}"
+        path.write_bytes(data)
+        return run_ocr(str(path))
+
+
 def process(client, job):
     run_id = job["run_id"]
     print(f"run {run_id}: {job['file_name']} ...", flush=True)
     try:
-        data = client.storage.from_(BUCKET).download(job["file_path"])
-        suffix = Path(job["file_path"]).suffix.lower()
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / f"doc{suffix}"
-            path.write_bytes(data)
-            lines, pages = run_ocr(str(path))
+        lines, pages = with_one_retry(f"run {run_id}", lambda: read_file(client, job))
 
         if lines:
             client.table("ocr_lines").insert([{**l, "run_id": run_id} for l in lines]).execute()
@@ -105,7 +124,7 @@ def process(client, job):
             "status": "DONE", "engine": engine_name(), "finished_at": now(),
         }).eq("id", run_id).execute()
         print(f"run {run_id}: done, {len(lines)} lines", flush=True)
-    except Exception as e:  # keep the worker alive; the error is saved on the run
+    except Exception as e:  # failed twice (or a database write failed): the error is saved on the run
         client.table("ocr_runs").update({
             "status": "FAILED", "engine": engine_name(), "finished_at": now(), "error": str(e)[:2000],
         }).eq("id", run_id).execute()
@@ -134,7 +153,8 @@ def process_extraction(client, job, api_key, model):
     try:
         lines = fetch_all(client.table("ocr_lines").select("id,page_no,line_no,text,bbox")
                           .eq("run_id", job["ocr_run_id"]).order("page_no").order("line_no"))
-        result = extract(job["document_type"], field_defs(client, job["document_type"]), lines, api_key, model)
+        defs = field_defs(client, job["document_type"])
+        result = with_one_retry(f"extraction {run_id}", lambda: extract(job["document_type"], defs, lines, api_key, model))
         client.rpc("save_extraction", {
             "p_run_id": run_id, "p_model": result["model"], "p_output": result["output"],
             "p_fields": result["fields"], "p_input_tokens": result["input_tokens"],
@@ -147,7 +167,7 @@ def process_extraction(client, job, api_key, model):
         client.table("extraction_runs").update({"status": "PENDING", "started_at": None}).eq("id", run_id).execute()
         print(f"extraction {run_id}: {e}; retrying in {RATE_LIMIT_PAUSE}s", flush=True)
         return False
-    except Exception as e:  # keep the worker alive; the error is saved on the run (the AO can re-run it)
+    except Exception as e:  # failed twice: keep the worker alive; the error is saved on the run
         client.table("extraction_runs").update({
             "status": "FAILED", "model": model, "finished_at": now(), "error": str(e)[:2000],
         }).eq("id", run_id).execute()

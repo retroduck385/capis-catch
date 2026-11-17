@@ -1,4 +1,4 @@
-// CI results (BPMN Credit Investigator lane: TU, NFIS, BRAS -> upload results -> Done).
+// CI results (BPMN Credit Investigator lane: TU, NFIS -> upload results -> Done). BRAS was dropped (meeting 2026-11-18).
 // Per borrower and per check: the report file(s), a result and the CI's summarized findings, plus overall remarks.
 // Uploaded reports are OCR'd by the PaddleOCR worker; NFIS and TU reports are then read by the AI and checked
 // on the CI report check page (/documentCheckPage?ci=1, "OCR extraction" next to each file). Confirming there writes
@@ -367,7 +367,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
     const reportsStep = (
         <div className="ci-step" key="reports">
             <p className="ci-note">
-                <Term k="NFIS" /> and <Term k="TU" /> are required for every borrower; <Term k="BRAS" /> is optional. Files are saved as soon
+                <Term k="NFIS" /> and <Term k="TU" /> are required for every borrower. Files are saved as soon
                 as you upload them (JPG, PNG or PDF, up to 10 MB); the applicant can't see them. For NFIS and TU, the OCR extraction
                 can draft the result and summary for you to check; you can also choose them yourself. Save each card.
             </p>
@@ -479,7 +479,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                         <p>
                             {missing.length > 0
                                 ? 'Still needed before this can go to the Credit Officer:'
-                                : <Terms>All NFIS and TU results and reports are in. BRAS is optional.</Terms>}
+                                : <Terms>All NFIS and TU results and reports are in.</Terms>}
                         </p>
                     </div>
                 </div>

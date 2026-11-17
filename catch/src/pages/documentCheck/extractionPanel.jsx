@@ -6,11 +6,11 @@
 // Look: .dc-* in documentCheck.css (inset field cards, Keep / Update pills, the table frame). Status chips use the
 // page's tones: a difference or an expired ID is amber (it needs a look), a wrong format is the form red.
 import { useEffect, useId, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Lock, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 import SelectMenu from '../../components/selectMenu';
 import Byline from '../../components/byline';
 import { CI_RESULTS } from '../ciRequest/options';
-import { confirmCiExtraction, confirmExtraction, RERUN_HINT } from './api';
+import { confirmCiExtraction, confirmExtraction } from './api';
 import {
     FORMAT_HINTS, LOW_CONFIDENCE, applicationValue, bankSummary, compareStatus, displayValue, isExpired, isValid,
     lowestConfidence, needsChoice, payslipSummary, percentOff, toNumber, tuSummary,
@@ -77,7 +77,7 @@ const ValueInput = ({ def, value, onChange, onFocus, readOnly, compact }) => {
 };
 
 // ci = null for application documents; for CI reports { check: saved ci_checks row | null, label: "TU for <name>" }
-const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onFocusField, onConfirmed, onRerun, onDirtyChange, ci = null }) => {
+const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onFocusField, onConfirmed, onDirtyChange, ci = null }) => {
     const { run, fields } = check;
     const confirmed = Boolean(run.confirmed_at);
     const editable = canEdit && !confirmed;
@@ -279,16 +279,12 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                     </div>
                     {editable && !reviewing && (
                         <div className="dc-acts">
-                            <button type="button" className="lf-btn quiet" onClick={onRerun} disabled={saving}>
-                                <RefreshCw size={15} aria-hidden="true" />Run AI again
-                            </button>
                             <button type="button" className="lf-primary" disabled={saving} onClick={() => { setError(null); setReviewing(true); }}>
                                 Confirm
                             </button>
                         </div>
                     )}
                 </div>
-                {editable && !reviewing && <p className="dc-muted">{RERUN_HINT}</p>}
 
                 {confirmed && (
                     <p className="dc-strip ok">

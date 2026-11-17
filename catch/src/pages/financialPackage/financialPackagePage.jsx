@@ -1,7 +1,7 @@
 // Financial Package & Credit Recommendation (KYC-FP "FP" tab), opened from the Credit Officer's work tray.
 // Fields copied from the KYC are read live from the AO's record; the CO's own inputs are saved with
 // save_financial_package(). Only the assigned CO edits (any stage before Decided); everyone else with access reads.
-// IV. Credit checking shows the Credit Investigator's results (BRAS / NFIS / TU), read-only.
+// IV. Credit checking shows the Credit Investigator's results (NFIS / TU), read-only.
 // Two pages, like the paper FP: 1 = the recommendation (I to VII), 2 = the application information (VIII onwards, the
 // credit result and the change history). Both stay mounted inside ONE form (the inactive one is hidden), so switching
 // keeps every edit, the policy check result and the single Save button; the page is kept in ?page=2.

@@ -43,6 +43,8 @@
 .dr-strip.info { background: var(--lf-accent-bg, rgba(30, 63, 151, 0.1)); border: 1px solid rgba(30, 63, 151, 0.2); color: var(--ink, #0f1b33); }
 .dr-strip.info svg { color: var(--lf-accent, #1e3f97); }
 .dr-err { margin: 0; color: #b42318; font-size: 0.9rem; font-weight: 600; }
+/* a requested file the reader couldn't read (after its one automatic retry) */
+.dr-unreadable { margin: 0; color: #b42318; font-size: 0.86rem; font-weight: 600; }
 .dr-note, .dr-muted { margin: 0; color: var(--muted, #475569); font-size: 0.86rem; line-height: 1.5; }
 .dr-none { margin: 0.2rem 0 0; color: var(--muted, #475569); font-size: 0.86rem; }
 .dr-party { color: var(--muted, #475569); font-size: 0.84rem; font-weight: 500; }
@@ -228,7 +230,7 @@
 
 [data-theme='dark'] .lf-folder .dr-chip.err { background: rgba(248, 113, 113, 0.14); border-color: rgba(248, 113, 113, 0.4); color: #fca5a5; }
 [data-theme='dark'] .lf-folder .dr-chip.info { border-color: rgba(126, 162, 255, 0.4); }
-[data-theme='dark'] .lf-folder .dr-err { color: #fca5a5; }
+[data-theme='dark'] .lf-folder :is(.dr-err, .dr-unreadable) { color: #fca5a5; }
 [data-theme='dark'] .lf-folder :is(.dr-pick, .ct .dr-btn) { border-color: rgba(255, 255, 255, 0.16); }
 [data-theme='dark'] .lf-folder .dr-confirm, [data-theme='dark'] .lf-folder .dr-strip.info { border-color: rgba(126, 162, 255, 0.3); }
 [data-theme='dark'] .lf-folder .dr-pick input { accent-color: #7ea2ff; }

@@ -5,7 +5,9 @@ Two steps per uploaded ID, COE / ITR, payslips / remittances and bank statement:
 1. **OCR** (PaddleOCR, local): every text line + its box + confidence goes to `ocr_lines`, the page sizes to `ocr_pages`.
 2. **AI extraction** (Claude API, Anthropic): the OCR **text** already in the database is sent to Claude (never the file), which labels it into the fields in `extraction_field_defs` (name, DOB, employer, gross pay per period, deposits per month, ...). The answer is a **proposal** in `extraction_fields`; nothing touches the application until the assigned AO checks it on **Document check** (`/documentCheckPage?id=<app>`, linked from the loan folder) and clicks *Confirm & lock*.
 
-Flow: upload → trigger queues a `PENDING` row in `ocr_runs` → worker OCRs it and marks it `DONE` → trigger queues a `PENDING` row in `extraction_runs` → worker sends the lines to Claude and saves the fields with `save_extraction()` (or marks the run `FAILED` with the error; the AO can press *Run AI again*).
+Flow: upload → trigger queues a `PENDING` row in `ocr_runs` → worker OCRs it and marks it `DONE` → trigger queues a `PENDING` row in `extraction_runs` → worker sends the lines to Claude and saves the fields with `save_extraction()` (or marks the run `FAILED` with the error). A failed OCR or AI step is tried once more after 10 s; only a second failure is saved as `FAILED`, and the page then tells staff to ask the applicant for a clearer copy (AO) or upload the report again (CI). There is no "Run AI again" button.
+
+Files an applicant sends through a document request whose type isn't read on upload (Other, SPA, SEC / DTI / Mayor's permit) get an OCR run only (`20261118_request_uploads_ocr.sql`), so the AO sees in the request box whether they could be read. The AI step is never queued for them: no text of theirs goes to Claude.
 
 ## Setup (once)
 
@@ -65,9 +67,9 @@ Queued types: `VALID_ID_PASSPORT`, `COE_ITR`, `PAYSLIPS_REMITTANCES`, `FS_BANK_S
 
 If the Claude API rate-limits (429), is overloaded (529) or is down, the run goes back to the queue and the AI step pauses for 60 s; OCR keeps going.
 
-**CI reports** (NFIS / TU / BRAS uploaded by the Credit Investigator, `20261108_ci_results.sql`) are queued too: every row in `ci_documents` gets a run with `ci_document_id` set instead of `document_id`. Same bucket (files at `ci/{application_id}/...`), so the worker needs no change. In `ocr_run_text` they show as `document_type` `CI_NFIS` / `CI_TU` / `CI_BRAS` with `ci_document_id` filled. Re-OCR one: `select requeue_ci_ocr(<ci_document_id>);`.
+**CI reports** (NFIS / TU uploaded by the Credit Investigator, `20261108_ci_results.sql`) are queued too: every row in `ci_documents` gets a run with `ci_document_id` set instead of `document_id`. Same bucket (files at `ci/{application_id}/...`), so the worker needs no change. In `ocr_run_text` they show as `document_type` `CI_NFIS` / `CI_TU` with `ci_document_id` filled. Re-OCR one: `select requeue_ci_ocr(<ci_document_id>);`.
 
-**CI report extraction** (`20261109_ci_extraction.sql`): NFIS and TU reports go through the same AI queue (BRAS doesn't yet: no field list). Claude also drafts the CI result (`output.proposed_result`: `NO_ADVERSE_FINDINGS` / `WITH_FINDINGS`) and a short `output.findings_summary`, facts only. A Credit Investigator checks it on the CI report check page (`/documentCheckPage?id=<app>&ci=1`, "AI check" next to each file on the CI request page), edits it and confirms with `confirm_ci_extraction()`, which writes `ci_checks.result` / `summary` for that borrower × check. CI extractions never write to the application record; identity, IDs and accounts are only compared with it on the page.
+**CI report extraction** (`20261109_ci_extraction.sql`): NFIS and TU reports go through the same AI queue. Claude also drafts the CI result (`output.proposed_result`: `NO_ADVERSE_FINDINGS` / `WITH_FINDINGS`) and a short `output.findings_summary`, facts only. A Credit Investigator checks it on the CI report check page (`/documentCheckPage?id=<app>&ci=1`, "AI check" next to each file on the CI request page), edits it and confirms with `confirm_ci_extraction()`, which writes `ci_checks.result` / `summary` for that borrower × check. CI extractions never write to the application record; identity, IDs and accounts are only compared with it on the page.
 
 `line_no` is PaddleOCR's reading order. On tables (payslips) a slightly tilted photo can interleave the columns, so pair labels with amounts using `bbox`, not `line_no`.
 

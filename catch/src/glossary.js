@@ -11,14 +11,13 @@ export const GLOSSARY = {
     // ---- Roles ----
     AO: ['Account Officer', 'The borrower\'s main contact; takes in the application and checks it section by section.'],
     CO: ['Credit Officer', 'Evaluates the file and prepares the Financial Package and the credit result.'],
-    CI: ['Credit Investigator / Credit Investigation', 'Checks each borrower against NFIS, TransUnion and BRAS.'],
+    CI: ['Credit Investigator / Credit Investigation', 'Checks each borrower against NFIS and TransUnion.'],
     AIF: ['Attorney-in-Fact', 'The person who signs for a borrower under a Special Power of Attorney.'],
 
     // ---- Credit checks and data sources ----
     KYC: ['Know Your Customer', 'The borrower\'s details from the application, verified by the Account Officer.'],
     NFIS: ['Negative File Information System', 'A shared database of adverse credit behavior.'],
     TU: ['TransUnion', 'The TransUnion Philippines credit bureau report.'],
-    BRAS: ['Bank Reference and Account Status', 'The bank\'s own reference database for accounts held at the bank.'],
 
     // ---- Figures ----
     DBR: ['Debt Burden Ratio', 'New plus existing monthly amortizations, divided by the total gross income of all borrowers.'],

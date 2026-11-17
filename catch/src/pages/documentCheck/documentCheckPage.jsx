@@ -20,11 +20,12 @@ import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
 import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
-import { fetchDocumentChecks, fetchFieldDefs, RERUN_HINT, requestCiExtraction, requestExtraction } from './api';
+import { fetchDocumentChecks, fetchFieldDefs, UNREADABLE_TEXT } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
 import Breadcrumbs from '../../components/breadcrumbs';
+import AskApplicantButton from '../documentRequests/ask';
 import FileMark from '../documentRequests/fileMark';
 import { useFileMarks } from '../documentRequests/useFileMarks';
 import { Term, Terms } from '../../components/term';
@@ -45,7 +46,8 @@ const docStatus = (c) => {
     if (run?.confirmed_at) return { key: 'CONFIRMED', label: 'Confirmed', tone: 'ok', Icon: CheckCircle2 };
     if (run?.status === 'DONE') return { key: 'READY', label: 'Ready to check', tone: 'warn', Icon: Eye };
     if (run && BUSY.includes(run.status)) return { key: 'AI', label: 'AI extracting...', tone: 'info', Icon: Loader2, spin: true };
-    if (run?.status === 'FAILED') return { key: 'AI_FAILED', label: 'AI extraction failed', tone: 'err', Icon: AlertTriangle };
+    // FAILED is final: the worker already retried once (ocr-service/worker.py)
+    if (run?.status === 'FAILED') return { key: 'AI_FAILED', label: 'Could not read file', tone: 'err', Icon: AlertTriangle };
     if (!c?.ocr || BUSY.includes(c.ocr.status)) return { key: 'OCR', label: 'Reading document...', tone: 'info', Icon: Loader2, spin: true };
     if (c.ocr.status === 'FAILED') return { key: 'OCR_FAILED', label: 'Could not read file', tone: 'err', Icon: AlertTriangle };
     return { key: 'WAITING', label: 'Waiting for AI', tone: 'none', Icon: Clock };
@@ -80,7 +82,6 @@ const DocumentCheckPage = () => {
     const [focused, setFocused] = useState(null);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
     const dirtyRef = useRef(false);
     const setDirty = useCallback((d) => { dirtyRef.current = d; }, []);
@@ -181,6 +182,7 @@ const DocumentCheckPage = () => {
     const doc = selectedParty?.docs.find((d) => d.id === docId) ?? selectedParty?.docs[0] ?? null;
     const check = doc ? checks[doc.id] : null;
     const status = docStatus(check);
+    const unreadable = ['OCR_FAILED', 'AI_FAILED'].includes(status.key); // final: the worker already retried once
     const principal = getParties(app, ['PRINCIPAL'])[0] ?? null;
     const ctx = selectedParty ? {
         party: selectedParty.party,
@@ -222,21 +224,6 @@ const DocumentCheckPage = () => {
         await loadCiData(record);                              // ...or the CI results
         setApp(record);
         await loadChecks(docIds);
-    };
-    const rerun = async () => {
-        if (!window.confirm('Run the AI on this document again? The current values and your unsaved edits are replaced by a new proposal.')) return;
-        setBusy(true);
-        setError(null);
-        try {
-            await (ciMode ? requestCiExtraction(doc.id) : requestExtraction(doc.id));
-            setDirty(false);
-            setFocused(null);
-            await loadChecks(docIds);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setBusy(false);
-        }
     };
 
     const docDefs = doc ? defs.filter((d) => d.document_type === doc.document_type) : [];
@@ -292,7 +279,7 @@ const DocumentCheckPage = () => {
                     <p>
                         <b><Terms text={ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'} /></b>{' '}
                         <Terms text={ciMode
-                            ? 'Their results and summaries are saved. Next: add BRAS in step 2 if you have it, then check the results and Mark CI Done.'
+                            ? 'Their results and summaries are saved. Next: check the results and Mark CI Done.'
                             : 'Next: KYC verification of each section in the loan folder.'} />
                     </p>
                     <Link to={ciMode ? `/ciRequestPage?id=${app.id}&step=send` : `/loanFolderPage?id=${app.id}`}
@@ -357,7 +344,7 @@ const DocumentCheckPage = () => {
                             {doc && !ciMode && (
                                 <div className="dc-filemark">
                                     <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks}
-                                        unreadable={status.key === 'OCR_FAILED'} confirmLeave={leaveEdits}
+                                        unreadable={unreadable} confirmLeave={leaveEdits}
                                         file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
                                 </div>
                             )}
@@ -380,24 +367,33 @@ const DocumentCheckPage = () => {
                                         <ExtractionPanel key={`${check.run.id}-${check.run.confirmed_at ?? ''}`}
                                             doc={doc} defs={docDefs} check={check} ctx={ctx} canEdit={canEdit} names={names}
                                             focusedId={focused?.id} onFocusField={focusField} onConfirmed={refreshAll}
-                                            onRerun={rerun} onDirtyChange={setDirty} ci={ci} />
+                                            onDirtyChange={setDirty} ci={ci} />
                                     </div>
                                 ) : (
                                     <div className="dc-wait">
                                         <span className={`dc-wait-ic ${status.tone}`}>
                                             <status.Icon size={22} className={status.spin ? 'dc-spin' : undefined} aria-hidden="true" />
                                         </span>
-                                        <p className="dc-wait-title">{status.label}</p>
+                                        <p className="dc-wait-title">{unreadable ? (ciMode ? "We couldn't read this file." : UNREADABLE_TEXT) : status.label}</p>
                                         {['OCR', 'AI', 'WAITING'].includes(status.key) && <p className="dc-muted"><Terms text={workerHint} /></p>}
-                                        {status.key === 'OCR_FAILED' && <p className="lf-err">{check.ocr.error}</p>}
-                                        {status.key === 'AI_FAILED' && <p className="lf-err">{check.run.error}</p>}
-                                        {canEdit && status.key === 'AI_FAILED' && (
-                                            <>
-                                                <button type="button" className="lf-btn" disabled={busy} onClick={rerun}>
-                                                    {busy ? 'Queuing...' : 'Run AI again'}
-                                                </button>
-                                                <p className="dc-muted">{RERUN_HINT}</p>
-                                            </>
+                                        {/* the worker already tried twice: the AO asks for a clearer copy, the CI uploads it again */}
+                                        {unreadable && !ciMode && (
+                                            <AskApplicantButton applicationId={app.id} confirmLeave={leaveEdits} plain className="lf-ask-btn"
+                                                ask={{
+                                                    items: [{ applicant_id: selectedParty.party.id, requirement_type: doc.document_type, label: docLabel(doc.document_type) }],
+                                                    note: `We couldn't read the ${docLabel(doc.document_type)} you sent. Please upload a clearer copy.`,
+                                                    from: `the Document check (${docLabel(doc.document_type)} could not be read)`,
+                                                }}>
+                                                Ask the applicant for a clearer copy
+                                            </AskApplicantButton>
+                                        )}
+                                        {unreadable && ciMode && canEdit && (
+                                            <Link to={`/ciRequestPage?id=${app.id}&step=reports`} className="lf-btn" onClick={guardLink}>
+                                                Upload it again
+                                            </Link>
+                                        )}
+                                        {unreadable && (
+                                            <p className="dc-muted">Details: {(status.key === 'OCR_FAILED' ? check.ocr.error : check.run.error) || 'no error saved'}</p>
                                         )}
                                     </div>
                                 )}

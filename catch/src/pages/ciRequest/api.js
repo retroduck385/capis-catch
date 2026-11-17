@@ -1,6 +1,9 @@
 // Supabase calls for CI requests and CI results (see 20261020_ci_request.sql, 20261108_ci_results.sql).
 // Functions throw on error; callers handle it in try/catch/finally.
 import { supabase } from '../../supabaseClient';
+import { CI_CHECKS } from './options';
+
+const CI_CHECK_VALUES = new Set(CI_CHECKS.map((c) => c.value));
 
 const BUCKET = 'application-documents';
 
@@ -44,14 +47,16 @@ export const fetchConfirmedIdDetails = async (documentIds) => {
 export const fetchCiCanEdit = async (applicationId) =>
     check(await supabase.rpc('ci_can_edit', { p_application_id: applicationId })) ?? false;
 
-// Results and files of the given borrowers (ids from the application record)
+// Results and files of the given borrowers (ids from the application record). Only the checks in CI_CHECKS
+// (NFIS, TU): old BRAS rows stay in the database but are never shown or counted.
 export const fetchCiResults = async (borrowerIds) => {
     if (!borrowerIds.length) return { checks: [], documents: [] };
     const [checks, documents] = await Promise.all([
         supabase.from('ci_checks').select('*').in('applicant_id', borrowerIds),
         supabase.from('ci_documents').select('*').in('applicant_id', borrowerIds).order('uploaded_at').order('id'),
     ]);
-    return { checks: check(checks) ?? [], documents: check(documents) ?? [] };
+    const used = (r) => CI_CHECK_VALUES.has(r.check_type);
+    return { checks: (check(checks) ?? []).filter(used), documents: (check(documents) ?? []).filter(used) };
 };
 
 // How many times a Credit Investigator flagged CI findings on this file (ci_finding_flags, staff read by RLS)
