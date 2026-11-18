@@ -53,6 +53,7 @@ import '../financialPackage/financialPackage.css';
 import './review.css';
 import { scrollToSection, useActiveSection } from './useActiveSection';
 import { Term, Terms } from '../../components/term';
+import FinalReportButton from '../finalReport/finalReportButton';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const money = (v) => (v === null || v === undefined || v === '' ? '—' : `₱${formatMoney(v)}`);
@@ -493,6 +494,7 @@ const ReviewSummaryPage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
+                    <FinalReportButton applicationId={app.id} />
                     {!reviewRole && pageLinks}
                 </div>
             </header>

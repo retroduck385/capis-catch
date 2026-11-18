@@ -47,6 +47,7 @@ import {
 } from './options';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
+import FinalReportButton from '../finalReport/finalReportButton';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -426,6 +427,8 @@ const FinancialPackagePage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
+                    {/* The assigned CO's draft of the final report (Credit Evaluation only); it reads the saved FP */}
+                    <FinalReportButton applicationId={app.id} draft coCanEdit={canEdit} onClick={confirmLeave} />
                     {/* The assigned CO gets these as steps / optional view below */}
                     {!canEdit && (
                         <>

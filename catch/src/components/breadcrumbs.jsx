@@ -24,6 +24,7 @@ const PAGES = {
     decision: { label: () => 'Decision support', to: (id) => `/decisionSupportPage?id=${id}` },
     docs: { label: () => 'Document check', to: (id) => `/documentCheckPage?id=${id}` },
     cidocs: { label: () => 'CI report check', to: (id) => `/documentCheckPage?id=${id}&ci=1` },
+    report: { label: () => 'Final report', to: (id) => `/finalReportPage?id=${id}` },
 };
 
 const Breadcrumbs = ({ current, appId, appNo, onNavigate }) => {

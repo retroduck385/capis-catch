@@ -1,0 +1,97 @@
+/* Final report (finalReportPage.jsx). On screen: the usual .lf-folder header, then each part as a white A4 "paper"
+   sheet (paper stays white in dark mode, like a print preview). In print: A4 portrait, 12 mm margins, the app's top
+   bar and backdrop hidden (html.fr-print is set only while this page is open), each sheet on a new page, rows and
+   short blocks never split, headings kept with what follows. Black text, thin grey lines. */
+
+.fr { --fr-ink: #111827; --fr-muted: #4b5563; --fr-line: #c7cdd6; --fr-head: #eef1f6; --fr-pick: #e8f0ff; }
+.fr .fr-hint { margin: 0.35rem 0 0; color: var(--lf-text-2, #475569); font-size: 0.9rem; max-width: 46rem; }
+.fr .fr-locked { display: grid; justify-items: start; gap: 0.75rem; padding: 1.5rem; }
+.fr .fr-locked p { margin: 0; max-width: 40rem; }
+
+.fr-sheets { display: grid; justify-content: center; gap: 1.5rem; margin-top: 1.25rem; }
+.fr-sheet {
+  position: relative; box-sizing: border-box; width: min(210mm, 100%); min-height: 297mm; padding: 12mm;
+  background: #fff; color: var(--fr-ink); border: 1px solid var(--fr-line); border-radius: 4px;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.12); font-size: 10pt; line-height: 1.4; overflow-wrap: anywhere;
+}
+.fr-sheet * { color: inherit; }
+.fr-mark, .fr-mark-print {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-size: 96pt; font-weight: 800; letter-spacing: 0.2em; color: rgba(185, 28, 28, 0.08) !important; transform: rotate(-30deg);
+}
+.fr-mark-print { display: none; }
+
+.fr-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-end; padding-bottom: 4mm;
+  margin-bottom: 4mm; border-bottom: 2px solid var(--fr-ink); }
+.fr-head h2 { margin: 0; font-size: 14pt; font-weight: 800; }
+.fr-kicker { margin: 0 0 1mm; font-size: 8pt; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fr-muted) !important; }
+.fr-head-meta { display: grid; justify-items: end; font-size: 9pt; }
+.fr-head-meta b { font-size: 11pt; }
+.fr-foot { margin-top: 6mm; padding-top: 2mm; border-top: 1px solid var(--fr-line); font-size: 8pt; color: var(--fr-muted) !important; }
+
+.fr-h { margin: 5mm 0 2mm; padding: 1mm 2mm; background: var(--fr-head); font-size: 10.5pt; font-weight: 800;
+  border-left: 3px solid var(--fr-ink); break-after: avoid; page-break-after: avoid; }
+.fr-label { margin: 3mm 0 1mm; font-weight: 700; break-after: avoid; }
+.fr-label.small { font-size: 9pt; }
+.fr-sub { color: var(--fr-muted) !important; font-size: 8.5pt; }
+.fr-text, .fr-pre { margin: 0 0 2mm; white-space: pre-wrap; }
+.fr-warn { margin: 1mm 0 2mm; font-weight: 600; }
+.fr-block { break-inside: avoid; page-break-inside: avoid; }
+.fr-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6mm; }
+
+.fr-kv { display: grid; margin: 0 0 2mm; }
+.fr-kv.two { grid-template-columns: 1fr 1fr; column-gap: 6mm; }
+.fr-kv > div { display: grid; grid-template-columns: 42% 1fr; gap: 2mm; padding: 1mm 0; border-bottom: 1px solid var(--fr-line); break-inside: avoid; }
+.fr-kv dt { margin: 0; font-weight: 600; color: var(--fr-muted) !important; }
+.fr-kv dd { margin: 0; }
+
+.fr-table { width: 100%; margin: 0 0 2mm; border-collapse: collapse; font-size: 9pt; }
+.fr-table th, .fr-table td { padding: 1mm 1.5mm; border: 1px solid var(--fr-line); text-align: left; vertical-align: top; }
+.fr-table th { background: var(--fr-head); font-weight: 700; }
+.fr-table thead { display: table-header-group; }
+.fr-table tr, .fr-table .fr-crit { break-inside: avoid; page-break-inside: avoid; }
+.fr-table .num { text-align: right; white-space: nowrap; }
+.fr-table tfoot td { font-weight: 700; background: var(--fr-head); }
+.fr-score tr.picked td:nth-child(n) { background: var(--fr-pick); font-weight: 600; }
+.fr-score tr.picked td[rowspan] { background: transparent; font-weight: inherit; }
+.fr-state { width: 16mm; font-weight: 700; }
+.fr-total { margin: 3mm 0; break-inside: avoid; }
+.fr-list { margin: 0 0 2mm; padding-left: 5mm; }
+.fr-cite { margin: 0 0 2mm; padding: 1.5mm 2.5mm; border-left: 3px solid var(--fr-line); break-inside: avoid; }
+.fr-cite-head { margin: 0 0 1mm; }
+
+.fr-signoffs { display: grid; gap: 3mm; margin: 2mm 0 0; padding: 0; list-style: none; }
+.fr-signoffs li { padding: 2mm 3mm; border: 1px solid var(--fr-line); break-inside: avoid; page-break-inside: avoid; }
+.fr-signoffs li p { margin: 0.5mm 0; }
+.fr-signoffs li.outcome { border-width: 2px; border-color: var(--fr-ink); }
+.fr-sign-top { display: flex; justify-content: space-between; gap: 2mm; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+.fr-step { font-weight: 800; }
+.fr-outcome { font-size: 12pt; }
+.fr-signline { display: grid; grid-template-columns: 2fr 1fr; gap: 8mm; margin-top: 6mm; font-size: 8pt; color: var(--fr-muted) !important; }
+.fr-signline span { padding-top: 1mm; border-top: 1px solid var(--fr-ink); }
+
+@media (max-width: 640px) {
+  .fr-sheet { padding: 5mm; min-height: 0; }
+  .fr-cols, .fr-kv.two { grid-template-columns: 1fr; }
+}
+
+/* Named page: only the report's sheets get A4 + page numbers, printing other pages of the app is unchanged */
+@page report {
+  size: A4 portrait;
+  margin: 12mm 12mm 14mm;
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 8pt; color: #4b5563; }
+}
+
+@media print {
+  html.fr-print, html.fr-print body { background: #fff !important; }
+  html.fr-print .ct > :not(.ct-e-body), html.fr-print .fr-noprint, html.fr-print .ct-so-dialog { display: none !important; }
+  html.fr-print :is(.ct, .ct-e-body, .ct-main) { background: #fff !important; padding: 0 !important; margin: 0 !important; min-height: 0 !important; }
+  html.fr-print .ct-main > * { padding: 0 !important; max-width: none !important; }
+  html.fr-print .fr { padding: 0 !important; background: #fff !important; border: 0 !important; box-shadow: none !important; }
+  .fr-sheets { display: block; margin: 0; }
+  .fr-sheet { page: report; width: auto; min-height: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; break-before: page; page-break-before: always; }
+  .fr-sheet:first-child { break-before: auto; page-break-before: auto; }
+  .fr-mark { display: none; }
+  .fr-mark-print { display: grid; position: fixed; z-index: 0; }
+  .fr-sheet, .fr-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
