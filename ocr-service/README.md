@@ -32,6 +32,14 @@ ANTHROPIC_MODEL=          # optional, default claude-opus-5-5 (claude-sonnet-5-5
 
 Without `ANTHROPIC_API_KEY` the worker still OCRs; extraction runs just wait in the queue until you add the key and restart.
 
+### If every file fails with a oneDNN error
+
+On some CPUs PaddlePaddle's oneDNN (MKLDNN) path fails on every file with
+`(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support [pir::ArrayAttribute<pir::DoubleAttribute>]`.
+Add `OCR_DISABLE_MKLDNN=1` to `ocr-service/.env` and restart the worker: PaddleOCR then runs without oneDNN
+(slower, same results) and the worker prints "OCR: oneDNN (MKLDNN) off" on the first file. Leave it unset everywhere
+else; the default is unchanged.
+
 The request uses structured outputs (the answer must match the field schema built from `extraction_field_defs`), effort `low`, and, on the models that support it, server-side refusal fallbacks (`fallbacks: "default"`); `extraction_runs.model` records the model that actually answered. Only **synthetic test documents** go through it (CATCH rule).
 
 Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`, then `20261109_ai_extraction.sql` and `20261109_ci_extraction.sql` (NFIS / TU extraction).

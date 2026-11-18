@@ -1,7 +1,10 @@
 """PaddleOCR wrapper: file in, detected text lines out. No database code here."""
 
+import os
 from importlib.metadata import version
+from pathlib import Path
 
+from dotenv import load_dotenv
 from paddleocr import PaddleOCR
 
 _engine = None
@@ -11,15 +14,28 @@ def engine_name():
     return f"paddleocr {version('paddleocr')} (lang=en)"
 
 
+def mkldnn_disabled():
+    """OCR_DISABLE_MKLDNN=1 in .env: run PaddleOCR without oneDNN (MKLDNN) on CPU. Works around the PaddlePaddle bug
+    "ConvertPirAttribute2RuntimeAttribute not support [pir::ArrayAttribute<pir::DoubleAttribute>]" that fails every
+    file on some machines. Slower, same results. Unset or anything else: PaddleOCR's default, unchanged."""
+    load_dotenv(Path(__file__).with_name(".env"))  # also for --file, which OCRs before the worker loads .env
+    return os.getenv("OCR_DISABLE_MKLDNN", "").strip() == "1"
+
+
 def _get_engine():
     # Loading the models takes a few seconds, so do it once per process.
     global _engine
     if _engine is None:
+        options = {}
+        if mkldnn_disabled():
+            options["enable_mkldnn"] = False
+            print("OCR: oneDNN (MKLDNN) off (OCR_DISABLE_MKLDNN=1)", flush=True)
         _engine = PaddleOCR(
             lang="en",
             use_doc_orientation_classify=True,  # phone photos are often rotated 90/180
             use_doc_unwarping=False,            # unwarping tends to distort flat IDs and scans
             use_textline_orientation=True,      # upside-down text lines
+            **options,
         )
     return _engine
 
