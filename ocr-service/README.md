@@ -60,7 +60,8 @@ This worker picks it up when the OCR and extraction queues are empty (Realtime w
 and up to 10 cited passages cut to about 700 characters, and asks Claude (`ANTHROPIC_MODEL`, effort `medium`,
 structured output) for a suggested result (Endorsed / Not endorsed / Deferred), 2 to 5 reasons that each cite a
 passage by `chunk_key`, a draft justification and missing data. Reasons that cite a passage it wasn't given are
-dropped and noted. The row keeps what was sent, the model and the tokens; the Credit Officer who asked gets
+dropped and noted. Peso amounts are sent with cents (₱2,500,000.00; the stored input keeps plain numbers), the
+model is told to write them the same way, and any amount it still writes without cents is corrected. The row keeps what was sent, the model and the tokens; the Credit Officer who asked gets
 `AI_SUGGESTION_READY`. A failure is retried once, a rate limit goes back to the queue. Without `ANTHROPIC_API_KEY`
 requests stay `QUEUED` and the panel says so. The suggestion never sets the credit result.
 

@@ -111,11 +111,53 @@ class AdviseTests(unittest.TestCase):
 
     def test_sent_is_input_plus_policy_summary_and_excerpts(self):
         sent, passages = advise.build_request(INPUT, RESULT)
-        self.assertEqual(sent["input"], INPUT)
+        self.assertEqual(sent["input"], advise.with_pesos(INPUT))
         self.assertEqual(sent["policy_check"]["overall"], "REVIEW")
         self.assertEqual(sent["policy_check"]["criteria"][1]["chunk_key"], "age-1")
         self.assertNotIn("excerpt", json.dumps(sent["policy_check"]), "passage texts only under passages")
         self.assertEqual(len(sent["passages"]), len(passages))
+
+    def test_peso_amounts_are_sent_with_cents(self):
+        result = {**RESULT, "criteria": RESULT["criteria"] + [
+            {"code": "INC", "label": "Minimum income", "status": "pass", "field": "total_gross_income", "value": 42300,
+             "threshold": ">= 40000", "reason": None, "source": None}]}
+        sent, _ = advise.build_request(INPUT, result)
+        self.assertEqual(sent["input"]["loan"]["amount"], "₱4,850,000.00")
+        self.assertEqual(sent["input"]["borrowers"][0]["gross_income"], "₱90,500.00")
+        self.assertEqual(sent["input"]["totals"]["existing_monthly_amortization"], "₱18,500.00")
+        self.assertEqual(sent["input"]["loan"]["lcr"], 0.81, "ratios stay ratios")
+        self.assertEqual(sent["input"]["loan"]["term_years"], 20, "years stay numbers")
+        self.assertEqual(sent["input"]["credit_score"]["total"], 89, "scores aren't money")
+        self.assertEqual(INPUT["loan"]["amount"], 4850000, "the stored input keeps numbers")
+        inc = sent["policy_check"]["criteria"][-1]
+        self.assertEqual((inc["value"], inc["threshold"]), ("₱42,300.00", ">= ₱40,000.00"))
+        dbr = sent["policy_check"]["criteria"][0]
+        self.assertEqual((dbr["value"], dbr["threshold"]), (0.3, "<= 0.35"), "non-money facts as stored")
+        self.assertRegex(json.dumps(sent, ensure_ascii=False), r"₱\d{1,3}(,\d{3})*\.\d\d")
+        self.assertNotRegex(json.dumps(sent["input"], ensure_ascii=False), r"₱[\d,]+(?!\.\d\d)[^\d.,]")
+
+    def test_model_is_told_to_write_cents(self):
+        self.assertIn("₱2,500,000.00", advise.SYSTEM)
+        self.assertIn("exactly two decimals", advise.SYSTEM)
+
+    def test_peso_amounts_in_the_answer_get_cents(self):
+        cases = {
+            "Loan of ₱2,500,000 approved": "Loan of ₱2,500,000.00 approved",
+            "income ₱42300 and fee ₱1,234.5": "income ₱42,300.00 and fee ₱1,234.50",
+            "₱ 900": "₱900.00",
+            "already ₱2,500,000.00": "already ₱2,500,000.00",
+            "list ₱1,000, ₱2,000.": "list ₱1,000.00, ₱2,000.00.",
+            "DBR 35% and 20 years": "DBR 35% and 20 years",
+        }
+        for given, expected in cases.items():
+            self.assertEqual(advise.cents_in_text(given), expected)
+        self.use(FakeClient(message({
+            "suggested_result": "ENDORSED", "reasons": [{"text": "Income of ₱42,300 meets the ₱40,000 minimum.", "chunk_key": "age-1"}],
+            "draft_justification": "Loan of ₱4,850,000 with amortization ₱38,333.2.", "missing_data": ["Payslip showing ₱90,500"]})))
+        out = advise.suggest(INPUT, RESULT, "key", "claude-opus-5-5")["output"]
+        self.assertEqual(out["reasons"][0]["text"], "Income of ₱42,300.00 meets the ₱40,000.00 minimum.")
+        self.assertEqual(out["draft_justification"], "Loan of ₱4,850,000.00 with amortization ₱38,333.20.")
+        self.assertEqual(out["missing_data"], ["Payslip showing ₱90,500.00"])
 
     def test_suggest_keeps_only_cited_reasons(self):
         client = FakeClient(message({
