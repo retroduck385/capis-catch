@@ -40,6 +40,10 @@ export const fetchOpenRequest = async (applicationId) =>
     (check(await supabase.from('document_requests').select('id, status, opened_at, sent_at')
         .eq('application_id', applicationId).neq('status', 'CLOSED')) ?? [])[0] ?? null;
 
+// Reminders sent for the file's requests and the next one due (20261119_document_request_reminders.sql)
+export const fetchReminderStatus = async (applicationId) =>
+    check(await supabase.rpc('document_reminder_status', { p_application_id: applicationId }));
+
 // Read state of uploaded files (useReadStates.js): latest OCR run of each document, and its AI run if it has one.
 // Staff read ocr_runs / extraction_runs by RLS.
 export const fetchReadStates = async (documentIds) => {

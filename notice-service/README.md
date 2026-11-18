@@ -9,6 +9,16 @@ Flow: the AO sends a notice → `send_applicant_notice()` saves it and queues on
 and records the result (`finish_notice_delivery()`: LOGGED / SENT, or FAILED, retried until the third attempt).
 The AO sees each channel's status in the panel.
 
+**Document request reminders** (`20261119_document_request_reminders.sql`): about once a minute the worker calls
+`queue_document_reminders()`. For every document request still waiting on the applicant, the database makes reminder 1
+after 2 days and reminder 2 after 4 days (calendar days from when the AO sent it; the numbers are in the one row of
+`document_reminder_settings`), only between 8 AM and 8 PM Philippine time, never twice. Each reminder sends the
+applicant an in-app alert at once and queues one `document_reminder_deliveries` row per channel, which this worker sends
+like a notice (`claim_reminder_deliveries()` / `finish_reminder_delivery()`, same log mode, allowlist and link check).
+SMS / email: "We're still waiting for your documents for HL-.... Your Account Officer will contact you." The assigned AO
+gets a bell alert. Without that migration the worker says "Reminders off" once and carries on with notices.
+Change the days in the SQL Editor: `update document_reminder_settings set first_after_days = 3, second_after_days = 6;`
+
 ## Modes
 - `NOTICE_MODE=log` (default): nothing is sent. Each SMS / email is printed and marked LOGGED. No provider keys needed.
 - `NOTICE_MODE=live`: sends for real, but only to the numbers / addresses in `NOTICE_LIVE_ALLOWLIST` (the team's own),

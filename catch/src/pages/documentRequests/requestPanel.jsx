@@ -4,7 +4,8 @@ import {
     AlertTriangle, Bell, CheckCircle2, ChevronDown, Clock, FileText, History, Mail, MailQuestion, Plus, RefreshCw, Send, Smartphone, Undo2, X,
 } from 'lucide-react';
 import { smsSegments } from '../applicantNotices/sms';
-import { closeRequest, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
+import { closeRequest, fetchReminderStatus, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
+import Reminders from './reminders';
 import { refreshCanAsk } from './askStore';
 import FileMark from './fileMark';
 import { useFileMarks } from './useFileMarks';
@@ -125,6 +126,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const [expanded, setExpanded] = useState(null);    // null = not toggled yet: open only if documents came back
     const [askSeen, setAskSeen] = useState(null);       // the "Ask the applicant" click already put into the box
     const marks = useFileMarks(applicationId);
+    const [reminders, setReminders] = useState(null);  // document_reminder_status(); null = not loaded / not run yet
     const reads = useReadStates(ctx ? uploadIds([ctx.current, ...(ctx.history ?? [])].filter(Boolean)) : []);
     const boxRef = useRef(null);
     // Set by an "Ask the applicant" button (ask.jsx): documents to tick and a note to prefill
@@ -141,6 +143,16 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
             .catch(() => { if (!cancelled) setCtx(null); });
         return () => { cancelled = true; };
     }, [applicationId, reloadKey]);
+
+    // Reminders: reloaded with the request; only a hint, so a failed load (migration not run yet) just hides them
+    useEffect(() => {
+        if (!ctx) return undefined;
+        let cancelled = false;
+        fetchReminderStatus(applicationId)
+            .then((s) => { if (!cancelled) setReminders(s); })
+            .catch(() => { if (!cancelled) setReminders(null); });
+        return () => { cancelled = true; };
+    }, [applicationId, ctx]);
 
     const checklist = useMemo(() => ctx?.suggestions?.checklist ?? [], [ctx]);
     // Missing documents start ticked
@@ -267,6 +279,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                             {cur.sent_at && <span className="dr-by">Sent back <Byline layout="inline" name="Applicant" at={cur.sent_at} /></span>}
                         </div>
                         <RequestView req={cur} onView={view} marks={marks} reads={reads} />
+                        <Reminders status={reminders} requestId={cur.id} current={cur.status === 'OPEN'} />
 
                         {ctx.is_assigned_ao && (!closing ? (
                             <div className="dr-acts">
@@ -464,6 +477,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                                                 </div>
                                                 {r.close_note && <p className="dr-past-note"><b>Note for the file</b> {r.close_note}</p>}
                                                 <RequestView req={r} onView={view} marks={marks} reads={reads} past />
+                                                <Reminders status={reminders} requestId={r.id} />
                                             </div>
                                         </details>
                                     </li>
