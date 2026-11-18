@@ -304,10 +304,11 @@ export const ReviewSummarySkeleton = () => (
             ))}
         </section>
         <div className="lf-body edit">
-            <Nav items={['Review progress', 'Flags to check (4)', "Credit Officer's recommendation", 'Income evidence', 'Key figures',
+            <Nav items={['Review progress', 'Decision support', 'Flags to check (4)', "Credit Officer's recommendation", 'Income evidence', 'Key figures',
                 'IV. Credit checking', 'Credit score', 'V. Exceptions', 'Changes since', 'VII. Approval', 'Your review']} />
             <div className="lf-main fp-main">
                 <Sec title="Review progress"><Bars n={1} h="3.4rem" /></Sec>
+                <Sec title="Decision support"><Bars n={2} h="2.7rem" /></Sec>
                 <Sec title="Flags to check (4)"><Bars n={3} h="2.7rem" /></Sec>
                 <Sec title="Credit Officer's recommendation">
                     <Info rows={[['Credit result', 'Endorsed'], ['Justification and remarks', 'Sample remarks from the credit officer']]} />
@@ -481,11 +482,14 @@ export const WorkTraySkeleton = () => (
 
 // My profile / staff profile (the .sp layout)
 export const ProfileSkeleton = ({ label = 'Loading profile', back = 'My applications' }) => (
-    <Status label={label} className="sp">
+    <Status label={label} className="ap sp">
         <div className="sp-head" aria-hidden="true">
-            <span className="sp-back"><T>{back}</T></span>
-            <h1><T>My profile</T></h1>
-            <p className="sp-muted"><T>These details are used to fill in your loan applications.</T></p>
+            <p className="ap-back"><span className="sk-btn"><T>{back}</T></span></p>
+            <div>
+                <p className="ap-eyebrow"><T>Your account</T></p>
+                <h1><T>My profile</T></h1>
+                <p className="sp-muted"><T>These details are used to fill in your loan applications.</T></p>
+            </div>
         </div>
         <div className="sp-grid" aria-hidden="true">
             <div className="sp-col">
@@ -506,8 +510,8 @@ export const ProfileSkeleton = ({ label = 'Loading profile', back = 'My applicat
                 </section>
             </div>
             <div className="sp-col">
-                <div className="sp-card sp-form">
-                    <div className="sp-formhead"><h2><T>Personal information</T></h2><span className="sp-muted"><T>0 of 12 required fields filled</T></span></div>
+                <div className="ct-card sp-card sp-form">
+                    <div className="sp-formhead"><h2><T>Personal information</T></h2><span className="sp-count sk-btn">0 of 12 required fields filled</span></div>
                     <div className="sp-meter"><span /></div>
                     {['Name', 'Personal details', 'Contact'].map((g) => (
                         <fieldset key={g} className="ct-section">
@@ -527,7 +531,7 @@ const FORM_STEPS = [['Loan details', 'Your loan'], ['Principal borrower', 'About
     ['Documents', 'Finish'], ['Review']];
 
 export const ApplicationFormSkeleton = () => (
-    <Status label="Opening your application" className="ct-shell">
+    <Status label="Opening your application" className="ap ap-wizard ct-shell">
         <aside className="ct-aside" aria-hidden="true">
             <div className="ct-aside-inner">
                 <div className="ct-prog-head">
@@ -558,12 +562,13 @@ export const ApplicationFormSkeleton = () => (
                         </li>
                     ))}
                 </ol>
+                <span className="ap-exit"><T>Save and exit</T></span>
             </div>
         </aside>
         <section className="ct-content" aria-hidden="true">
             <div className="inner">
-                <div className="ct-pagehead"><div><h1><T>Loan details</T></h1><p><T>Step 1 of 12. Your answers save when you continue.</T></p></div></div>
-                <div className="ct-card">
+                <div className="ct-pagehead"><div><p className="ap-eyebrow"><T>Step 1 of 12</T></p><h1><T>Loan details</T></h1><p><T>Your answers save when you continue.</T></p></div></div>
+                <div className="ct-card ap-paper">
                     <div className="ct-sheet-body">
                         {['Loan', 'Purpose'].map((g) => (
                             <fieldset key={g} className="ct-section">
@@ -584,10 +589,10 @@ export const RegisterSkeleton = () => (
         <ul className="ct-register" aria-hidden="true">
             {stack(3, (i) => (
                 <li key={i}>
-                    <span className="ct-mono"><T>{APP_NO}</T></span>
+                    <span className="ap-app"><span className="ct-mono"><T>{APP_NO}</T></span><small><T>Submitted Oct 2, 2026</T></small></span>
                     <span><span className="ct-badge sk-btn">Submitted</span></span>
                     <span className="amt"><T>₱1,000,000.00</T></span>
-                    <span className="ct-link"><T>View</T></span>
+                    <span className="ap-rowlink sk-btn">View</span>
                 </li>
             ))}
         </ul>

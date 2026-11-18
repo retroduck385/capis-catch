@@ -8,8 +8,8 @@
 // and fact chips, the figures as tiles (Readiness and Policy check jump to their section), glass section cards.
 // Styles: decisionSupport.css (.lf-ds block).
 import { DecisionSupportSkeleton } from '../../components/skeleton';
-import { Fragment, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import {
     ArrowRight, ClipboardCheck, Gauge, House, Info as InfoIcon, ListChecks, Lock, Percent, Scale, ShieldCheck, Stamp, Users, Wallet,
 } from 'lucide-react';
@@ -18,19 +18,14 @@ import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { getParties } from '../applicationForm/api';
 import { BORROWER_ROLES, partyLabel } from '../applicationForm/options';
-import { computeFp, percent } from '../financialPackage/compute';
-import { totalCreditScore } from '../financialPackage/creditScore';
-import { CREDIT_RESULTS } from '../financialPackage/options';
-import { buildMracFacts } from '../mrac/facts';
+import { percent } from '../financialPackage/compute';
 import { OVERALL } from '../mrac/labels';
-import { splitRouting } from '../review/approval';
-import { reviewState } from '../review/reviewChecks';
 import { scrollToSection, useActiveSection } from '../review/useActiveSection';
 import { STAGE_STATUS_LABELS, stageLabel } from '../workTray/options';
 import MessagesPanel from '../messages/messagesPanel';
 import { fetchDecisionSupport } from './api';
 import { money } from './format';
-import { buildReadiness } from './readiness';
+import { buildDssContext } from './context';
 import { SECTIONS } from './registry';
 import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
@@ -40,19 +35,6 @@ import { useTermTitle } from '../../components/useTermTitle';
 import FinalReportButton from '../finalReport/finalReportButton';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
-const humanize = (key) => key.replaceAll('_', ' ');
-
-// Which facts differ between the ones the check ran on and the figures now (numbers compared with a small tolerance)
-const changedFacts = (runFacts, nowFacts) => {
-    if (!runFacts) return [];
-    return Object.keys(nowFacts).filter((key) => {
-        if (key === 'schema' || !(key in runFacts)) return false;
-        const a = runFacts[key];
-        const b = nowFacts[key];
-        if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) > 1e-6 * Math.max(1, Math.abs(b));
-        return (a ?? null) !== (b ?? null);
-    }).map(humanize);
-};
 
 const DecisionSupportPage = () => {
     const { session } = UserAuth();
@@ -64,6 +46,8 @@ const DecisionSupportPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeId, pickSection] = useActiveSection(SECTIONS.map((s) => s.id), Boolean(data));
+    const { hash } = useLocation();
+    const scrolledTo = useRef(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -80,6 +64,15 @@ const DecisionSupportPage = () => {
         return () => { cancelled = true; };
     }, [applicationId]);
 
+    // Opened at a section (a review checklist item links to /decisionSupportPage?id=7#ds-highlights): go there once loaded
+    useEffect(() => {
+        const id = hash ? decodeURIComponent(hash.slice(1)) : null;
+        if (!data || !id || scrolledTo.current === id || !document.getElementById(id)) return;
+        scrolledTo.current = id;
+        pickSection(id);
+        scrollToSection(id);
+    }, [data, hash, pickSection]);
+
     if (loading) return <DecisionSupportSkeleton />;
     if (error) {
         return (
@@ -90,24 +83,8 @@ const DecisionSupportPage = () => {
     }
     if (!data) return null;
 
-    const { app, fp, rules, mrac, stage, rows, reviews, approvals } = data;
-    const pkg = fp.pkg ?? {};
-    const details = Object.fromEntries(fp.parties.map((r) => [r.applicant_id, r]));
-    const computed = computeFp(app, details, pkg, { interest_rate: app.interest_rate });
-    const score = totalCreditScore(rules, Object.fromEntries(fp.creditScore.map((r) => [r.criterion, r])));
-    const exceptions = fp.exceptions.filter((e) => e.policy || e.exception_recommendation || e.mitigant);
-    const { reviewers, approvers } = splitRouting(rows);
-    const resultLabel = CREDIT_RESULTS.find((r) => r.value === pkg.credit_result)?.label;
-
-    // Same facts the Financial Package would send now, to tell whether the last check is out of date
-    const nowFacts = buildMracFacts({ app, computed, score, pricing: { interest_rate: app.interest_rate }, exceptions: fp.exceptions });
-    const mracChanges = mrac?.status === 'DONE' ? changedFacts(mrac.facts, nowFacts) : [];
-
-    const base = {
-        ...data, pkg, computed, score, exceptions, reviewers, approvers, resultLabel, mracChanges,
-        reviewState: reviewState(rows, reviews), myId: session?.user?.id,
-    };
-    const ctx = { ...base, readiness: buildReadiness(base) };
+    const ctx = buildDssContext(data, session?.user?.id);
+    const { app, mrac, stage, approvals, computed, score, resultLabel, mracChanges } = ctx;
 
     const visible = SECTIONS.filter((s) => !s.show || s.show(ctx));
     const borrowers = getParties(app, BORROWER_ROLES).map((p) => `${fullName(p)} (${partyLabel(p)})`).join(', ');

@@ -1,7 +1,11 @@
+// Last step: the whole application as label-over-value tiles (SummaryContext stacked, as in the staff loan folder),
+// a certify box, and Submit. Only the server decides it is complete (submitApplication returns what's missing).
 import { useState } from 'react';
+import { CircleAlert, ShieldCheck } from 'lucide-react';
 import { submitApplication } from '../api';
 import { FormError, StepButtons } from '../fields';
 import ApplicationSummary from '../applicationSummary';
+import { SummaryContext } from '../summaryContext';
 
 const ReviewStep = ({ app, onRefresh, onBack }) => {
     const [confirmed, setConfirmed] = useState(false);
@@ -27,20 +31,28 @@ const ReviewStep = ({ app, onRefresh, onBack }) => {
 
     return (
         <form onSubmit={handleSubmit} noValidate>
-            <p>Check each sheet below. Use the list on the left to go back and change anything.</p>
-            <ApplicationSummary app={app} />
+            <p className="ct-intro">Check each part below. Use the steps on the left to go back and change anything.</p>
+            <div className="ap-summary">
+                <SummaryContext.Provider value={{ stacked: true, hideEmpty: false }}>
+                    <ApplicationSummary app={app} />
+                </SummaryContext.Provider>
+            </div>
 
-            <label className="flex gap-2 items-center py-4 text-left">
+            <label className={`ap-certify${confirmed ? ' on' : ''}`}>
                 <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-                I certify that the information above is true and correct.
+                <ShieldCheck size={20} aria-hidden="true" />
+                <span>I certify that the information above is true and correct.</span>
             </label>
 
             {missing.length > 0 && (
-                <div className="ct-note" role="alert">
-                    <strong>Your application can't be submitted yet. Still missing:</strong>
-                    <ul className="list-disc pl-6">
-                        {missing.map((m) => <li key={m}>{m}</li>)}
-                    </ul>
+                <div className="ap-missing" role="alert">
+                    <CircleAlert size={18} aria-hidden="true" />
+                    <div>
+                        <strong>Your application can&apos;t be submitted yet. Still missing:</strong>
+                        <ul>
+                            {missing.map((m) => <li key={m}>{m}</li>)}
+                        </ul>
+                    </div>
                 </div>
             )}
             <FormError error={error} />

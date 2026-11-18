@@ -1,9 +1,10 @@
 // Reviewer sign-off (20261108_reviewer_signoff.sql): labels, whose turn it is, and the automatic flags the
 // review page raises. Flags only point the reviewer at something to look at; the reviewer decides (no flag
-// blocks a sign-off). MRAC / policy (RAG) flags come with Sprint 4.
+// blocks a sign-off). policyFlags() adds the latest policy check (MRAC / RAG) to the same list.
 import { getParties, one } from '../applicationForm/api';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, formatMoney, minFilesFor, partyLabel } from '../applicationForm/options';
 import { percent } from '../financialPackage/compute';
+import { showFact, showRequirement } from '../mrac/labels';
 import { splitRouting } from './approval';
 
 export const REVIEW_ACTIONS = [
@@ -116,6 +117,36 @@ export const reviewFlags = ({ app, fp, computed, score, rules, ciDone, changes, 
     return flags;
 };
 
+// The checklist item a policy criterion that needs review belongs to, by the fact it is missing or reads
+// (mrac-service/rules/housing_raac_draft.json). A criterion that fails always goes to V. Exception/s: every policy
+// deviation should be listed there with its mitigant.
+const POLICY_ITEM = {
+    total_gross_income: 'INCOME', net_income_after_tax: 'INCOME', dbr: 'INCOME', dbr_standalone: 'INCOME',
+    employment_type: 'INCOME', tenure_years: 'INCOME', business_years: 'INCOME',
+    age: 'DOCUMENTS', age_at_maturity: 'DOCUMENTS', borrower_count: 'DOCUMENTS',
+    loan_amount: 'LOAN_TERMS', has_replevin_or_foreclosure: 'CREDIT_CHECKS', scorecard_total: 'CREDIT_SCORE',
+};
+
+// The latest policy check as flags, same shape as reviewFlags(). mracChanges: the facts that changed since it ran
+export const policyFlags = (mrac, mracChanges = []) => {
+    if (!mrac) return [{ item: 'EXCEPTIONS', level: 'warn', text: 'No policy check (MRAC) has been run on this application.' }];
+    if (mrac.status === 'FAILED') return [{ item: 'EXCEPTIONS', level: 'warn', text: 'The last policy check (MRAC) failed to run.' }];
+    if (mrac.status !== 'DONE') return [{ item: 'EXCEPTIONS', level: 'info', text: 'A policy check (MRAC) is still running.' }];
+    const flags = [];
+    if (mracChanges.length > 0) {
+        flags.push({ item: 'EXCEPTIONS', level: 'warn', text: `The policy check (MRAC) is out of date: ${mracChanges.join(', ')} changed after it ran.` });
+    }
+    (mrac.result?.criteria ?? []).forEach((c) => {
+        const figs = `${showFact(c.field, c.value)} vs. required ${showRequirement(c.field, c.threshold)}`;
+        if (c.status === 'fail') {
+            flags.push({ item: 'EXCEPTIONS', level: 'warn', text: `Policy check (MRAC): ${c.label} fails (${figs}). Check V. Exception/s lists it with a mitigant.` });
+        } else if (c.status === 'needs_review') {
+            flags.push({ item: POLICY_ITEM[c.field] ?? 'EXCEPTIONS', level: 'warn', text: `Policy check (MRAC): ${c.label} needs review${c.reason ? ` (${c.reason})` : ''}.` });
+        }
+    });
+    return flags;
+};
+
 // Audit tables that count as "the CO's work" for "Changes since ..."
 export const REVIEWED_TABLES = ['financial_packages', 'fp_party_details', 'fp_exceptions', 'fp_deposit_checks',
     'fp_loan_checks', 'fp_trade_checks', 'fp_title_verifications', 'credit_score_entries', 'collateral_details',
@@ -132,15 +163,28 @@ export const jobOf = (party) => one(party.employment_info);
 // Where to check each checklist item. here: [section id on the review summary, label] (scrolls there; a "Back to your
 // review" button brings the reviewer back to the item). there: the page the Credit Officer worked on, opened in a new
 // tab so the review stays put; hash = the section id the page scrolls to (the FP shows the right tab itself).
+// dss: the section of the Decision Support page with the analysis for the item (also opened in a new tab).
 export const CHECK_SOURCES = {
-    DOCUMENTS: { here: ['rv-income', 'Income evidence'], there: { path: '/loanFolderPage', label: 'Loan folder' } },
-    INCOME: { here: ['rv-income', 'Income evidence'], there: { path: '/financialPackagePage', hash: 'fp-ix', label: 'FP IX. Cash flow' } },
+    DOCUMENTS: {
+        here: ['rv-income', 'Income evidence'], there: { path: '/loanFolderPage', label: 'Loan folder' },
+        dss: { path: '/decisionSupportPage', hash: 'ds-readiness', label: 'DSS readiness' },
+    },
+    INCOME: {
+        here: ['rv-income', 'Income evidence'], there: { path: '/financialPackagePage', hash: 'fp-ix', label: 'FP IX. Cash flow' },
+        dss: { path: '/decisionSupportPage', hash: 'ds-highlights', label: 'DSS exception highlights' },
+    },
     LOAN_TERMS: { here: ['rv-figures', 'Key figures'], there: { path: '/financialPackagePage', hash: 'fp-ii', label: 'FP II. Facility' } },
     COLLATERAL: { here: ['rv-figures', 'Key figures'], there: { path: '/financialPackagePage', hash: 'fp-iii', label: 'FP III. Collateral' } },
     CREDIT_CHECKS: { here: ['rv-ci', 'IV. Credit checking'], there: { path: '/financialPackagePage', hash: 'fp-iv', label: 'FP IV. Credit checking' } },
-    EXCEPTIONS: { here: ['rv-exceptions', 'V. Exceptions'], there: { path: '/financialPackagePage', hash: 'fp-v', label: 'FP V. Exceptions' } },
+    EXCEPTIONS: {
+        here: ['rv-exceptions', 'V. Exceptions'], there: { path: '/financialPackagePage', hash: 'fp-v', label: 'FP V. Exceptions' },
+        dss: { path: '/decisionSupportPage', hash: 'ds-highlights', label: 'DSS exception highlights' },
+    },
     CREDIT_SCORE: { here: ['rv-score', 'Credit score'], there: { path: '/creditScorePage', label: 'Credit scoring' } },
     TERMS: { here: null, there: { path: '/financialPackagePage', hash: 'fp-vi', label: 'FP VI. Terms and conditions' } },
-    RECOMMENDATION: { here: ['rv-recommendation', "CO's recommendation"], there: { path: '/financialPackagePage', hash: 'fp-result', label: 'FP Credit result' } },
+    RECOMMENDATION: {
+        here: ['rv-recommendation', "CO's recommendation"], there: { path: '/financialPackagePage', hash: 'fp-result', label: 'FP Credit result' },
+        dss: { path: '/decisionSupportPage', hash: 'ds-policy', label: 'DSS policy check' },
+    },
 };
 export const sourceHref = ({ path, hash }, appId) => `${path}?id=${appId}${hash ? `#${hash}` : ''}`;

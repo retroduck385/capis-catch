@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Byline from '../../components/byline';
 import {
-    ArrowDown, ArrowUp, Ban, Check, CheckCircle2, Circle, CloudCheck, CornerUpLeft, ExternalLink, Gavel, ListChecks, ThumbsUp,
+    ArrowDown, ArrowUp, Ban, Check, CheckCircle2, Circle, CloudCheck, CornerUpLeft, ExternalLink, Gavel, ListChecks, Scale, ThumbsUp,
     TriangleAlert,
 } from 'lucide-react';
 import { formatWhen } from '../../components/people';
@@ -213,10 +213,10 @@ const ACTION_CARDS = {
 const emptyForm = (items) => formFromDraft(null, items);
 
 // "Check against": where the evidence for one checklist item is (CHECK_SOURCES). The section on this page scrolls
-// (onJump), the CO's page opens in a new tab.
+// (onJump); the CO's page and the Decision Support analysis open in a new tab.
 const CheckSources = ({ code, appId, onJump }) => {
     const src = CHECK_SOURCES[code];
-    if (!src || (!src.here && !src.there)) return null;
+    if (!src || (!src.here && !src.there && !src.dss)) return null;
     return (
         <p className="rv-sources">
             <span className="rv-sources-k">Check against</span>
@@ -229,6 +229,12 @@ const CheckSources = ({ code, appId, onJump }) => {
             {src.there && appId && (
                 <Link to={sourceHref(src.there, appId)} target="_blank" rel="noopener" className="rv-source">
                     <ExternalLink size={14} aria-hidden="true" />{src.there.label}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                </Link>
+            )}
+            {src.dss && appId && (
+                <Link to={sourceHref(src.dss, appId)} target="_blank" rel="noopener" className="rv-source">
+                    <Scale size={14} aria-hidden="true" /><Terms text={src.dss.label} />
                     <span className="sr-only"> (opens in a new tab)</span>
                 </Link>
             )}

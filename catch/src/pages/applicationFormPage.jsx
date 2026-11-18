@@ -1,5 +1,8 @@
 // Step-by-step housing loan application. Each step saves to Supabase as a DRAFT;
 // the next step only unlocks once the current one is complete.
+// Layout (applicationForm/applicantPages.css, .ap): a sticky glass sidebar (who, progress, loan summary, the steps in
+// their groups, Save and exit) beside the step, whose form sits on a paper card that stays light in dark mode.
+// A submitted application shows the same summary tiles as the staff loan folder (SummaryContext stacked).
 import { ApplicationFormSkeleton } from '../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -8,11 +11,14 @@ import { fetchProfile, getOrCreateDraft, refreshApplication } from './applicatio
 import ApplicationSummary from './applicationForm/applicationSummary';
 import { formatPeso } from './applicationForm/options';
 import { buildSteps } from './applicationForm/steps';
-import { Check } from 'lucide-react';
+import { ArrowLeft, Check, FileText } from 'lucide-react';
 import ApplicantShell from '../components/applicantShell';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
 import ApplicantRequestCard from './documentRequests/applicantRequestCard';
+import { SummaryContext } from './applicationForm/summaryContext';
+import { formatDay } from '../components/people';
+import './applicationForm/applicantPages.css';
 
 // Which steps the applicant has saved at least once (so optional steps can't be skipped unseen)
 const visitedKey = (applicationId) => `catch:visitedSteps:${applicationId}`;
@@ -93,22 +99,33 @@ const ApplicationFormPage = () => {
 
     if (app.status !== 'DRAFT') {
         return (
-            <ApplicantShell wide={false}>
-                <div className="ct-pagehead">
+            <div className="ap ap-view">
+                <p className="ap-back">
+                    <Link to="/applicantHomePage"><ArrowLeft size={16} aria-hidden="true" />Back to your applications</Link>
+                </p>
+                <header className="ap-viewhead">
+                    <span className="ap-viewhead-icon" aria-hidden="true"><FileText size={22} /></span>
                     <div>
-                        <h1>Application <span className="ct-mono">{app.application_no}</span></h1>
-                        <p>{app.submitted_at ? `Submitted ${new Date(app.submitted_at).toLocaleDateString()}` : 'Not submitted'}</p>
+                        <p className="ap-eyebrow">Housing loan application</p>
+                        <h1><span className="ct-mono">{app.application_no}</span></h1>
+                        <p className="ap-facts">
+                            {app.submitted_at
+                                ? <span>Submitted <b>{formatDay(app.submitted_at)}</b></span>
+                                : <span>Not submitted</span>}
+                            {app.loan_amount && <span>Amount <b>{loanAmount}</b></span>}
+                        </p>
                     </div>
-                    <span className="ct-badge"><ApplicantStatusLabel application={app} /></span>
-                </div>
+                    <span className="ct-badge plain"><ApplicantStatusLabel application={app} /></span>
+                </header>
                 <ApplicantRequestCard applicationId={app.id} />
-                <div className="ct-card">
+                <section className="ct-card ap-summary" aria-label="Your application">
                     <div className="ct-sheet-body">
-                        <ApplicationSummary app={app} />
+                        <SummaryContext.Provider value={{ stacked: true, hideEmpty: false }}>
+                            <ApplicationSummary app={app} />
+                        </SummaryContext.Provider>
                     </div>
-                </div>
-                <p style={{ marginTop: '1rem' }}><Link to="/applicantHomePage" className="ct-link">Back to your applications</Link></p>
-            </ApplicantShell>
+                </section>
+            </div>
         );
     }
 
@@ -145,11 +162,12 @@ const ApplicationFormPage = () => {
         ['Finish', ['documents', 'review']],
     ];
     const groupStart = Object.fromEntries(GROUPS.map(([label, keys]) => [keys[0], label]));
+    const groupOf = (key) => GROUPS.find(([, keys]) => keys.includes(key))?.[0];
     const doneCount = steps.filter((s) => s.complete && visited.includes(s.key)).length;
     const progress = doneCount / (steps.length - 1); // the review step can't be "done" until submitted
 
     return (
-        <div className="ct-shell">
+        <div className="ap ap-wizard ct-shell">
             <aside className="ct-aside" aria-label="Application progress">
                 <div className="ct-aside-inner">
                     <div className="ct-prog-head">
@@ -191,19 +209,25 @@ const ApplicationFormPage = () => {
                             </li>
                         ))}
                     </ol>
+                    <Link to="/applicantHomePage" className="ap-exit">
+                        <ArrowLeft size={16} aria-hidden="true" />Save and exit
+                    </Link>
                 </div>
             </aside>
-            <p className="ct-prog-exit"><Link to="/applicantHomePage" className="ct-link">Save and exit</Link></p>
 
             <section className="ct-content">
                 <div className="inner">
                     <div className="ct-pagehead">
                         <div>
+                            <p className="ap-eyebrow">
+                                Step {currentIndex + 1} of {steps.length}
+                                {groupOf(step.key) && <span>{groupOf(step.key)}</span>}
+                            </p>
                             <h1>{step.title}</h1>
-                            <p>Step {currentIndex + 1} of {steps.length}. Your answers save when you continue.</p>
+                            <p>Your answers save when you continue.</p>
                         </div>
                     </div>
-                    <div className="ct-card">
+                    <div className="ct-card ap-paper" key={step.key}>
                         <div className="ct-sheet-body">
                             <Component
                                 key={step.key}

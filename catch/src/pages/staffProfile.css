@@ -1,71 +1,126 @@
-/* Staff profile: identity card beside the profile form. Scoped to .sp; unlayered so it wins over the theme rules. */
-.sp { width: 100%; max-width: 84rem; margin-inline: auto; text-align: left; display: grid; gap: 1.25rem; }
-.sp-muted { margin: 0.2rem 0 0; color: var(--muted); }
-.sp-head h1 { margin: 0.4rem 0 0; font-size: 1.7rem; }
-.sp-back { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; font-size: 0.92rem; text-decoration: none; color: var(--blue-700); }
-.sp-back:hover { text-decoration: underline; }
-.sp-banner { display: flex; align-items: flex-start; gap: 0.65rem; margin: 0; padding: 0.8rem 1rem; border-radius: 8px; background: var(--amber-50); border: 1px solid var(--amber-200); color: #7a3410; }
-.sp-banner svg { flex: none; margin-top: 0.2rem; }
+/* Profile pages, applicant (/profilePage) and staff (/staffProfilePage): an identity card and the account details
+   beside the profile form. The root is `ap sp`: .ap (applicationForm/applicantPages.css) brings the page panel, the
+   --lf-* tokens, dark mode, the section blocks and paper forms; this file adds the profile pieces, scoped to .sp.
+   The form card is also .ct-card, so it stays light in dark mode. Unlayered so it wins over the theme rules. */
+/* full panel width; the two columns stretch to the bottom of the panel (applicantPages.css sets its height) */
+.ct-main > .ap.sp { display: flex; flex-direction: column; }
 
-.sp-grid { display: grid; grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr); gap: 1.25rem; align-items: stretch; }
+/* ---------- header ---------- */
+.sp-head { display: grid; justify-items: start; gap: 0.9rem; padding: 0 0.25rem; }
+.sp-head .ap-back > span { display: inline-block; width: 9rem; min-height: 2.75rem; border-radius: 999px; }  /* skeleton */
+.sp-muted { margin: 0.45rem 0 0; color: var(--muted); font-size: 0.98rem; }
+
+/* ---------- layout: two columns as tall as each other; the form keeps its buttons at the bottom ---------- */
+.sp-grid { flex: 1; display: grid; grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr); gap: 1.25rem; align-items: stretch; }
 .sp-col { display: grid; gap: 1.25rem; min-width: 0; }
-.sp-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; }
-
-/* ---------- identity card ---------- */
-.sp-id { display: grid; justify-items: center; gap: 0.35rem; padding: 1.75rem 1.25rem 1.25rem; text-align: center; }
-.sp-avatar { display: grid; place-items: center; width: 5rem; height: 5rem; border-radius: 50%; background: var(--hue, #334155); color: #fff; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.02em; box-shadow: 0 0 0 5px color-mix(in srgb, var(--hue, #334155) 15%, #fff); }
-.sp-id h2 { margin: 0.7rem 0 0; font-size: 1.25rem; text-align: center; overflow-wrap: anywhere; }
-.sp-role { padding: 0.15rem 0.8rem; border-radius: 999px; background: color-mix(in srgb, var(--hue, #334155) 12%, #fff); border: 1px solid color-mix(in srgb, var(--hue, #334155) 35%, #fff); color: var(--hue, #334155); font-size: 0.85rem; font-weight: 700; }
-.sp-email { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.9rem; overflow-wrap: anywhere; text-align: center; }
-.sp-blurb { margin: 0.5rem 0 0; padding-top: 0.9rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.88rem; line-height: 1.45; text-align: center; }
-.sp-links { list-style: none; margin: 0.9rem 0 0; padding: 0; width: 100%; display: grid; gap: 0.4rem; text-align: left; }
-.sp-links li { margin: 0; }
-.sp-links a { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--ink); }
-.sp-links a:hover { background: var(--blue-50); border-color: var(--blue-200); }
-.sp-links a > svg:first-child { flex: none; color: var(--blue-700); }
-.sp-links a > svg:last-child { flex: none; margin-left: auto; color: var(--muted); }
-.sp-links span { display: grid; min-width: 0; }
-.sp-links b { font-weight: 600; font-size: 0.95rem; }
-.sp-links small { color: var(--muted); font-size: 0.8rem; line-height: 1.3; }
-
-/* ---------- form card ---------- */
-.sp-form { padding: 1.5rem 1.6rem 1.4rem; }
-.sp-formhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; }
-.sp-formhead h2 { margin: 0; font-size: 1.15rem; }
-.sp-formhead .sp-muted { margin: 0; font-size: 0.88rem; }
-.sp-meter { height: 6px; margin: 0.6rem 0 1.25rem; border-radius: 999px; background: #e3e8f5; overflow: hidden; }
-.sp-meter > span { display: block; height: 100%; border-radius: 999px; background: var(--blue); transition: width 0.3s; }
-.sp-form .ct-section { margin: 0 0 1.25rem; }
-.sp-form .ct-section > legend { font-size: 1rem; }
-.sp-actions { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; margin-top: 0.5rem; padding-top: 1.1rem; border-top: 1px solid var(--line); }
-.sp-cancel { font-weight: 600; text-decoration: none; color: var(--muted); }
-.sp-cancel:hover { color: var(--ink); text-decoration: underline; }
-
-@media (max-width: 860px) { .sp-grid { grid-template-columns: minmax(0, 1fr); } }
-@media (prefers-reduced-motion: reduce) { .sp-meter > span { transition: none; } }
-
-/* ---------- account details ---------- */
-.sp-account { padding: 1.25rem 1.35rem; }
-.sp-account h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
-.sp-account dl { margin: 0; }
-.sp-account dl > div { padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
-.sp-account dl > div:last-child { border-bottom: 0; }
-.sp-account dt { margin: 0; padding: 0; color: var(--muted); font-size: 0.82rem; }
-.sp-account dd { margin: 0.1rem 0 0; padding: 0; font-weight: 600; overflow-wrap: anywhere; }
-.sp-hint { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.85rem; }
-
-/* Fill the page: both columns are as tall as the taller one; the form card stretches and keeps its buttons at the bottom,
-   and the name / contact fields spread across the card's width. */
+.sp-col:first-child { grid-template-rows: auto 1fr; }  /* the account card takes the rest of the column */
 .sp-col:last-child { grid-template-rows: 1fr; }
-.sp-form { display: flex; flex-direction: column; }
-.sp-form .ct-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); column-gap: 1.5rem; }
-.sp-form .ct-section > legend { float: none; grid-column: 1 / -1; width: 100%; }
-.sp-actions { margin-top: auto; }
-.sp-form > .ct-error { margin-bottom: 0.5rem; }
-.sp-account { align-self: stretch; }
+.sp-card {
+  margin: 0; border: 1px solid var(--lf-glass-rim); border-radius: 22px; background: var(--lf-glass);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: var(--lf-glass-shadow);
+}
+.sp-card h2 { margin: 0; color: var(--navy); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; }
 
-/* The left column is stretched to the form's height; keep its cards at their natural size and the role chip a pill
-   (otherwise the spare height is shared between the card's grid rows and the chip grows tall). */
-.sp-col:first-child { align-content: start; }
-.sp-id { align-content: start; }
-.sp-role { align-self: center; justify-self: center; line-height: 1.5; white-space: nowrap; }
+/* ---------- identity card: a blue band with the avatar over its edge ---------- */
+.sp-id { display: grid; justify-items: center; align-content: start; gap: 0.35rem; overflow: hidden; padding: 0 1.4rem 1.35rem; text-align: center; }
+.sp-id::before {
+  content: ''; justify-self: stretch; height: 4.75rem; margin: 0 -1.4rem -2.9rem;
+  background: radial-gradient(16rem 8rem at 100% 0%, rgba(242, 106, 51, 0.3), transparent 65%), var(--lf-blue-grad);
+}
+.sp-avatar {
+  position: relative; display: grid; place-items: center; width: 5.5rem; height: 5.5rem; border-radius: 50%;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--hue, #1e3f97) 70%, #0b1430), var(--hue, #1e3f97));
+  color: #fff; font-size: 1.75rem; font-weight: 700; letter-spacing: 0.02em;
+  box-shadow: 0 0 0 4px var(--sp-ring, #fff), var(--lf-shadow-lift);
+}
+.sp-id h2 { margin: 0.7rem 0 0; font-size: 1.25rem; text-align: center; overflow-wrap: anywhere; }
+/* the role chip keeps the role's own colour (staffAccounts/options.js ROLE_INFO), as on Staff accounts */
+.sp-role {
+  align-self: center; justify-self: center; padding: 0.2rem 0.85rem; border: 1px solid color-mix(in srgb, var(--hue, #334155) 35%, transparent);
+  border-radius: 999px; background: color-mix(in srgb, var(--hue, #334155) 11%, transparent); color: var(--hue, #334155);
+  font-size: 0.82rem; font-weight: 700; line-height: 1.5; white-space: nowrap;
+}
+.sp-email { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem; overflow-wrap: anywhere; text-align: center; }
+.sp-blurb {
+  justify-self: stretch; margin: 0.6rem 0 0; padding-top: 0.9rem; border-top: 1px solid var(--lf-hair);
+  color: var(--lf-text-2); font-size: 0.9rem; line-height: 1.5; text-align: center;
+}
+/* shortcuts: inset rows with an icon disc, a title over a hint, and an arrow */
+.sp-links { justify-self: stretch; display: grid; gap: 0.45rem; margin: 0.9rem 0 0; padding: 0; list-style: none; text-align: left; }
+.sp-links li { margin: 0; }
+.sp-links a {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; min-height: 3.25rem;
+  padding: 0.55rem 0.85rem 0.55rem 0.6rem; border: 1px solid var(--lf-hair); border-radius: 16px; background: var(--lf-inset);
+  color: var(--ink); text-decoration: none;
+}
+.sp-links a:hover { border-color: var(--lf-block-line); background: var(--lf-inset-hover); color: var(--ink); text-decoration: none; }
+.sp-links a:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+.sp-links a > svg:first-child { box-sizing: content-box; padding: 0.45rem; border-radius: 12px; background: var(--lf-accent-bg); color: var(--lf-accent); }
+.sp-links a > svg:last-child { color: var(--lf-text-3); }
+.sp-links span { display: grid; min-width: 0; }
+.sp-links b { color: var(--ink); font-size: 0.95rem; font-weight: 600; }
+.sp-links small { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+
+/* ---------- account details: label-over-value tiles ---------- */
+.sp-account { padding: 1.15rem 1.4rem 1.25rem; }
+.sp-account h2 { margin-bottom: 0.9rem; }
+.sp-account dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.95rem 1.25rem; margin: 0; }
+.sp-account dl > div { min-width: 0; margin: 0; padding: 0; border: 0; }
+.sp-account dl > div:first-child { grid-column: 1 / -1; }  /* the email gets the whole row */
+.sp-account dt { margin: 0 0 0.15rem; padding: 0; color: var(--muted); font-size: 0.8rem; font-weight: 500; }
+.sp-account dd { margin: 0; padding: 0; color: var(--ink); font-size: 0.95rem; font-weight: 600; overflow-wrap: anywhere; }
+.sp-account time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sp-hint { margin: 1rem 0 0; padding-top: 0.85rem; border-top: 1px solid var(--lf-hair); color: var(--muted); font-size: 0.86rem; }
+
+/* ---------- the form (paper) ---------- */
+.sp-form { display: flex; flex-direction: column; padding: 1.35rem 1.5rem 1.25rem; }
+.sp-formhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
+.sp-count {
+  padding: 0.15rem 0.7rem; border: 1px solid transparent; border-radius: 999px; background: var(--lf-accent-bg); color: var(--lf-accent);
+  font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.sp-count.done { border-color: var(--lf-ok-line); background: var(--lf-ok-bg); color: var(--lf-ok); }
+.sp-meter { height: 8px; margin: 0.75rem 0 1.25rem; overflow: hidden; border-radius: 999px; background: var(--lf-track); }
+.sp-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--lf-bar-grad); }
+.sp-form .ct-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); column-gap: 1.5rem; }
+.ct-e .sp .sp-form .ct-section > legend { grid-column: 1 / -1; }  /* stays floated, so it sits inside the block */
+.sp-form > .ct-error { margin: 0 0 0.75rem; }
+.sp-actions {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.75rem;
+  margin-top: auto; padding-top: 1.1rem; border-top: 1px solid var(--lf-hair);
+}
+.sp-cancel {
+  display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0.5rem 1.3rem; border: 1px solid var(--lf-block-line);
+  border-radius: 999px; background: var(--lf-control); color: var(--navy); font-weight: 600; text-decoration: none;
+}
+.sp-cancel:hover { background: var(--lf-control-hover); color: var(--navy); text-decoration: none; }
+.sp-cancel:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+
+/* ---------- motion (off under reduced motion) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .sp-links a, .sp-cancel { transition: background-color 0.2s, border-color 0.2s, transform 0.2s var(--lf-ease); }
+  .sp-links a:hover { transform: translateY(-2px); }
+  .sp-links a > svg:last-child { transition: transform 0.2s var(--lf-ease); }
+  .sp-links a:hover > svg:last-child { transform: translateX(3px); }
+  .sp:not(.sk-root) .sp-meter > span { animation: ap-grow 0.8s var(--lf-ease) both; transform-origin: left center; }
+}
+
+/* ---------- smaller screens ---------- */
+@media (max-width: 860px) { .sp-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .sp-form { padding: 1rem 1.1rem 1.1rem; }
+  .sp-form .ct-section { grid-template-columns: minmax(0, 1fr); }
+  .sp-account dl { grid-template-columns: minmax(0, 1fr); }
+  .sp-actions > * { flex: 1 1 auto; justify-content: center; }
+}
+
+/* ---------- dark mode: tokens come from .ap; the role colours are lifted so they read on dark glass ---------- */
+[data-theme='dark'] .sp { --sp-ring: #1b2850; }
+[data-theme='dark'] .sp-role {
+  border-color: color-mix(in srgb, var(--hue, #334155) 55%, transparent); background: color-mix(in srgb, var(--hue, #334155) 26%, transparent);
+  color: color-mix(in srgb, var(--hue, #334155) 35%, #fff);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sp-card { background: rgba(255, 255, 255, 0.96); }
+  [data-theme='dark'] .sp-card { background: #16213f; }
+}

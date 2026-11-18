@@ -90,3 +90,50 @@
 
 [data-theme='dark'] .lf-folder .ds-go { border-color: rgba(169, 192, 255, 0.4); }
 [data-theme='dark'] .lf-folder .ds-go:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
+
+/* ---------- the brief (brief.jsx): the short version of this page inside the review summary ----------
+   Three inset status tiles that open their section of the full page in a new tab, then the readiness items still
+   open, then a "Full analysis" link. Tones are the policy check's (.mrac .ok / .warn / .bad). */
+.ds-brief-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr)); gap: 0.75rem; }
+.ds-brief-tile {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'ic lbl' 'val val' 'sub sub';
+  align-content: start; gap: 0.25rem 0.65rem; padding: 0.9rem 2.2rem 0.95rem 1.1rem;
+  border: 1px solid var(--lf-sub-line, #e3e7ee); border-radius: 16px; background: var(--lf-sub-bg, #fafbfd);
+  box-shadow: inset 4px 0 0 var(--tone); color: var(--ink); text-decoration: none;
+}
+div.ds-brief-tile { padding-right: 1.1rem; }
+a.ds-brief-tile:hover { border-color: var(--tone-line); background: var(--lf-inset-hover, #fff); color: var(--ink); text-decoration: none; }
+.ds-brief-tile:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.ds-brief-tile .ic {
+  grid-area: ic; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 10px;
+  background: var(--tone-bg); color: var(--tone); box-shadow: 0 0 0 1px var(--tone-line);
+}
+.ds-brief-tile .lbl { grid-area: lbl; align-self: center; color: var(--lf-text-2, var(--ink)); font-size: 0.88rem; font-weight: 600; }
+.ds-brief-tile .val { grid-area: val; margin-top: 0.3rem; color: var(--navy); font-size: 1.2rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ds-brief-tile .sub { grid-area: sub; color: var(--muted); font-size: 0.84rem; line-height: 1.4; overflow-wrap: anywhere; }
+.ds-brief-tile .go { position: absolute; top: 0.95rem; right: 0.9rem; color: var(--lf-text-3, var(--muted)); }
+
+/* the readiness items still open: one line each, chip + what + who */
+.ds-brief-open { display: grid; gap: 0.45rem; margin: 0.9rem 0 0; padding: 0; list-style: none; }
+.ds-brief-open li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 0.3rem 0.75rem; margin: 0;
+  padding: 0.6rem 0.9rem; border: 1px solid var(--lf-hair, #e8ebf2); border-radius: 12px; background: var(--lf-sub-bg, #fafbfd);
+}
+.ds-brief-open .mrac-chip { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.ds-brief-open .what { color: var(--lf-text-2, var(--ink)); font-size: 0.9rem; line-height: 1.45; }
+.ds-brief-open .what b { color: var(--ink); font-weight: 600; }
+.ds-brief-open .who { color: var(--muted); font-size: 0.84rem; text-align: right; }
+.ds-brief-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem;
+  margin: 0.9rem 0 0; color: var(--muted); font-size: 0.86rem;
+}
+.ds-brief-foot .ds-go { margin-left: 0; }
+
+@media (max-width: 900px) {
+  .ds-brief-open li { grid-template-columns: auto minmax(0, 1fr); }
+  .ds-brief-open .who { grid-column: 2; text-align: left; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ds-brief-tile { transition: background-color 0.18s, border-color 0.18s, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  a.ds-brief-tile:hover { transform: translateY(-1px); }
+}

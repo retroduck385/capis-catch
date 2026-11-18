@@ -486,8 +486,9 @@ html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 5.75rem; }
 .ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-t { fill: rgba(70, 100, 180, 0.3); }
 .ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .edge { stroke-opacity: 0.16; }
 .ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .grid { stroke-opacity: 0.05; }
-/* not-yet-dark pages: a light sheet on the dark canvas (the work tray and the loan folder have their own dark rules) */
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-main > :not(.wt-page, .lf-folder) {
+/* not-yet-dark pages: a light sheet on the dark canvas (the work tray, the loan folder and the applicant pages (.ap,
+   applicationForm/applicantPages.css) have their own dark rules) */
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-main > :not(.wt-page, .lf-folder, .ap) {
   color-scheme: light; background: #f4f7fc; border-radius: 26px; margin-top: 1.25rem; margin-bottom: 2rem;
   box-shadow: 0 40px 80px -50px rgba(0, 0, 0, 0.8);
 }

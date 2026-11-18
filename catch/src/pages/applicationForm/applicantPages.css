@@ -1,0 +1,563 @@
+/* Applicant pages: home (/applicantHomePage), the application wizard and a submitted application (/applicationFormPage).
+   The staff look (DESIGN.md section 11): a near-opaque page panel on the canvas, glass cards, blue gradient primary
+   pills, orange only for what waits on the applicant. Root class .ap (+ .ap-home / .ap-wizard / .ap-view).
+   Tokens are the same --lf-* pair as .lf-folder (loanFolder.css), copied for this root, so shared pieces read alike.
+   Forms stay on light paper in dark mode (.ap .ct-card resets the tokens), like the staff loan folder's edit card.
+   Unlayered, so it wins over the theme's component-layer rules; every rule is scoped to .ap except the document cards
+   (.ap-doc*), which the staff loan folder also shows. Keep the readability pass: 16px text, 44px+ controls. */
+
+/* ---------- tokens ---------- */
+.ap {
+  --ink: #0f1b33; --muted: #475569; --navy: #14295f; --blue: #1e3f97; --blue-700: #173380; --blue-50: #e8edf9;
+  --lf-ok: #15714a;   --lf-ok-bg: #e6f5ed;   --lf-ok-line: #b6e0c8;
+  --lf-warn: #a8480b; --lf-warn-bg: #fff1e2;  --lf-warn-line: #f7cfa4;
+  --lf-none: #475569; --lf-none-bg: #eef1f6;  --lf-none-line: #d5dbe6;
+  --lf-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --lf-blue-grad: linear-gradient(135deg, #14295f 0%, #1e3f97 62%, #2b52c4 100%);
+  --lf-bar-grad: linear-gradient(90deg, #1e3f97, #3a63d6);
+  --lf-orange: #c2410c; --lf-orange-text: #c2410c;
+  --lf-glass: rgba(255, 255, 255, 0.78); --lf-glass-hi: rgba(255, 255, 255, 0.92);
+  --lf-glass-blur: saturate(1.5) blur(20px); --lf-glass-rim: rgba(255, 255, 255, 0.8);
+  --lf-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 41, 95, 0.04), 0 24px 48px -30px rgba(20, 41, 95, 0.45);
+  --lf-inset: rgba(255, 255, 255, 0.62); --lf-inset-hover: rgba(255, 255, 255, 0.88); --lf-inset-rim: rgba(255, 255, 255, 0.9);
+  --lf-control: rgba(255, 255, 255, 0.72); --lf-control-hover: #fff; --lf-control-rim: rgba(255, 255, 255, 0.95);
+  --lf-selected: #fff; --lf-wash: rgba(20, 41, 95, 0.05); --lf-hair: rgba(20, 41, 95, 0.08); --lf-track: rgba(20, 41, 95, 0.08);
+  --lf-shadow-sm: 0 6px 14px -10px rgba(20, 41, 95, 0.4); --lf-shadow-lift: 0 14px 24px -16px rgba(20, 41, 95, 0.55);
+  --lf-text-2: #2b3a5c; --lf-text-3: #4c5a73; --lf-accent: #1e3f97; --lf-accent-bg: rgba(30, 63, 151, 0.1); --lf-hollow: #8b97ab;
+  --lf-block-bg: #fff; --lf-block-line: rgba(20, 41, 95, 0.13); --lf-block-head: rgba(30, 63, 151, 0.06);
+  --lf-sub-bg: rgba(20, 41, 95, 0.035); --lf-sub-line: rgba(20, 41, 95, 0.09);
+  color: var(--ink); text-align: left;
+}
+
+/* ---------- the page panel (near-opaque: these are reading and working pages) ---------- */
+.ct-main > .ap {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-content: start;
+  width: auto; max-width: var(--ap-max, 110rem); margin: 1.25rem max(1.5rem, calc((100% - var(--ap-max, 110rem)) / 2)) 2rem;
+  padding: 1.5rem 2rem 2rem; border-radius: 30px;
+  background: linear-gradient(160deg, rgba(247, 250, 255, 0.96), rgba(238, 243, 252, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 40px 80px -50px rgba(20, 41, 95, 0.55);
+}
+.ap-view { --ap-max: 84rem; }  /* a single application reads better narrower; home and the profiles use the full 110rem */
+/* the panel reaches the bottom of the screen (below the top bar and its own margins), so short pages still fill it */
+@media (min-width: 961px) {
+  .ct-main > .ap { min-height: calc(100dvh - var(--ct-head, 0rem) - var(--ct-gap, 0rem) - 3.25rem); }
+}
+/* the documents request card sets an inline bottom margin; the panel and column gaps already space it */
+.ap > section.ct-card, .ap-home-main > section.ct-card { margin-bottom: 0 !important; }
+.ap > *, .ap .ct-content > .inner > * { min-width: 0; }
+
+/* ---------- shared type and pieces ---------- */
+.ap h1 { margin: 0; color: var(--navy); font-size: 2.1rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
+.ap-eyebrow {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.55rem; margin: 0 0 0.45rem;
+  color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+}
+.ap-eyebrow > span {
+  padding: 0.12rem 0.6rem; border-radius: 999px; background: var(--lf-accent-bg); color: var(--lf-accent); letter-spacing: 0.05em;
+}
+.ap .ct-badge {
+  display: inline-flex; align-items: center; min-height: 1.6rem; padding: 0.15rem 0.7rem; border: 1px solid var(--lf-block-line);
+  border-radius: 999px; background: var(--lf-accent-bg); color: var(--lf-accent); font: 700 0.78rem/1.4 'Inter', system-ui, sans-serif;
+  letter-spacing: 0; text-transform: none; white-space: nowrap;
+}
+.ap .ct-badge.warm { border-color: var(--lf-warn-line); background: var(--lf-warn-bg); color: var(--lf-warn); }
+.ap .ct-mono { overflow-wrap: anywhere; }
+.ap .ct-error { margin: 0; color: #b42318; }
+
+/* cards: glass; .ct-card is the "paper" that holds a form or the application (light in dark mode, below) */
+.ap :is(.ap-card, .ct-card) {
+  margin: 0; overflow: visible; border: 1px solid var(--lf-glass-rim); border-radius: 22px; background: var(--lf-glass);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: var(--lf-glass-shadow);
+}
+.ap .ct-card { background: var(--lf-glass-hi); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ap :is(.ap-card, .ct-card, .ap-stat, .ct-aside) { background: rgba(255, 255, 255, 0.96); }
+}
+.ap :is(.ap-card-head, .ct-card-head) {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem;
+  padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--lf-hair); border-radius: 22px 22px 0 0; background: transparent; box-shadow: none;
+}
+.ap :is(.ap-card-head, .ct-card-head) h2 { margin: 0; color: var(--navy); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; }
+.ap .ct-sheet-body { padding: 1.25rem 1.4rem 1.4rem; }
+.ap-count {
+  padding: 0.15rem 0.7rem; border-radius: 999px; background: var(--lf-accent-bg); color: var(--lf-accent);
+  font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* primary action inside a card (the documents request's "Send to my Account Officer") */
+.ap .ct-primary, .ap .ct-card button[type='submit'] {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.9rem; padding: 0.55rem 1.5rem;
+  border: 0; border-radius: 999px; background: var(--lf-blue-grad); color: #fff; font-weight: 700;
+  box-shadow: 0 10px 20px -12px rgba(20, 41, 95, 0.8); cursor: pointer;
+}
+.ap .ct-primary:hover:not(:disabled), .ap .ct-card button[type='submit']:hover:not(:disabled) { background: var(--lf-blue-grad); color: #fff; filter: brightness(1.12); }
+.ap .ct-primary:disabled, .ap .ct-card button[type='submit']:disabled { opacity: 0.5; filter: none; box-shadow: none; cursor: not-allowed; }
+.ap :is(.ct-primary, button[type='submit']):focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+
+/* ---------- home ---------- */
+/* profile missing: an amber strip (it is incomplete) with its action as an orange outline pill */
+.ap-alert {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem 1rem;
+  padding: 0.9rem 1rem 0.9rem 1.2rem; border: 1px solid var(--lf-warn-line); border-radius: 16px; background: var(--lf-warn-bg);
+  box-shadow: inset 4px 0 0 var(--lf-warn);
+}
+.ap-alert-icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--lf-control); color: var(--lf-warn); }
+.ap-alert strong { color: var(--ink); font-size: 1rem; }
+.ap-alert p { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.92rem; }
+.ap-btn {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.75rem; padding: 0.45rem 1.1rem; border: 1.5px solid var(--lf-orange);
+  border-radius: 999px; background: var(--lf-control); color: var(--lf-orange-text); font-weight: 700; text-decoration: none; white-space: nowrap;
+}
+.ap-btn:hover { background: var(--lf-control-hover); color: var(--lf-orange-text); text-decoration: none; }
+
+/* welcome banner: navy gradient with a faint orange glow, the main action as the one orange pill on the page */
+.ap-hero {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 1.25rem 2rem;
+  padding: 2rem 2.25rem; border-radius: 22px; color: #fff;
+  background: radial-gradient(30rem 18rem at 100% 0%, rgba(242, 106, 51, 0.3), transparent 62%), var(--lf-blue-grad);
+  box-shadow: 0 30px 60px -36px rgba(20, 41, 95, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.ap-hero h1 { color: #fff; }
+.ap-hero .ap-eyebrow { color: rgba(255, 255, 255, 0.78); }
+.ap-hero-text p:last-child { max-width: 40rem; margin: 0.55rem 0 0; color: rgba(255, 255, 255, 0.86); font-size: 1.02rem; line-height: 1.55; }
+.ap .ap-hero-cta {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; min-height: 3.25rem; margin: 0; padding: 0.7rem 1.55rem;
+  border: 0; border-radius: 999px; background: var(--lf-orange); color: #fff; font-size: 1.02rem; font-weight: 700; white-space: nowrap;
+  box-shadow: 0 14px 28px -14px rgba(154, 52, 18, 0.95); cursor: pointer;
+}
+.ap .ap-hero-cta:hover { background: #9a3412; color: #fff; }
+.ap .ap-hero-cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.ap-hero-art { position: absolute; z-index: -1; right: 14rem; bottom: -3.25rem; color: rgba(255, 255, 255, 0.08); pointer-events: none; }
+
+/* three counts */
+.ap-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.ap-stat {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'icon label' 'icon num'; align-items: center; gap: 0.1rem 0.9rem;
+  padding: 1.05rem 1.25rem; border: 1px solid var(--lf-glass-rim); border-radius: 20px; background: var(--lf-glass);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: var(--lf-glass-shadow);
+}
+.ap-stat-icon { grid-area: icon; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 14px; background: var(--lf-accent-bg); color: var(--lf-accent); }
+.ap-stat-label { grid-area: label; color: var(--muted); font-size: 0.9rem; }
+.ap-stat strong { grid-area: num; color: var(--ink); font-size: 2rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+
+/* the applications: inset rows, the whole row opens the application (the link stretches over it) */
+.ap .ct-register { display: grid; gap: 0.5rem; margin: 0; padding: 0.75rem; list-style: none; }
+.ap .ct-register li {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 8.5rem; align-items: center; gap: 0.6rem 1.25rem;
+  margin: 0; padding: 0.85rem 0.9rem 0.85rem 1.15rem; border: 1px solid var(--lf-hair); border-radius: 16px; background: var(--lf-inset);
+}
+.ap .ct-register li + li { border-top: 1px solid var(--lf-hair); }
+.ap .ct-register li:hover { background: var(--lf-inset-hover); }
+.ap-app { display: grid; gap: 0.1rem; min-width: 0; }
+.ap .ct-register .ct-mono { color: var(--navy); font-size: 0.98rem; font-weight: 600; }
+.ap-app b { color: var(--navy); font-size: 1rem; font-weight: 700; }
+.ap-app small { color: var(--muted); font-size: 0.84rem; }
+.ap-nowrap { white-space: nowrap; }  /* a date never breaks inside itself */
+.ap .ct-register .amt { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.ap-rowlink {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 2.75rem; padding: 0.45rem 1.1rem;
+  border: 1px solid var(--lf-block-line); border-radius: 999px; background: var(--lf-control); color: var(--lf-accent);
+  font-weight: 700; text-decoration: none; white-space: nowrap; box-shadow: var(--lf-shadow-sm);
+}
+.ap-rowlink::after { content: ''; position: absolute; inset: 0; border-radius: 16px; }
+.ap-rowlink.primary { border-color: transparent; background: var(--lf-blue-grad); color: #fff; }
+.ap-rowlink:hover { background: var(--lf-control-hover); color: var(--lf-accent); text-decoration: none; }
+.ap-rowlink.primary:hover { background: var(--lf-blue-grad); color: #fff; filter: brightness(1.12); }
+.ap-rowlink:focus-visible { outline: none; }
+.ap-rowlink:focus-visible::after { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+.ap-card > .ct-error { padding: 0.85rem 1.4rem 0; }
+.ap-empty { display: grid; justify-items: center; gap: 0.75rem; padding: 2.5rem 1.5rem; color: var(--muted); text-align: center; }
+.ap-empty p { max-width: 34rem; margin: 0; line-height: 1.55; }
+.ap-empty-icon { display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 50%; background: var(--lf-accent-bg); color: var(--lf-accent); }
+
+/* two columns that fill the panel: banner, request, counts, applications | the identity card, How it works.
+   The last card in each column stretches, so both columns end on the same line. */
+.ct-main > .ap-home { display: flex; flex-direction: column; }
+.ap-home-grid { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 1.25rem; align-items: stretch; }
+.ap-home-main, .ap-home-side { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+.ap-home-main > .ap-card:last-child { flex: 1; display: flex; flex-direction: column; }
+.ap-home-main > .ap-card:last-child > .ap-empty { flex: 1; align-content: center; }
+.ap-home-side > .ap-next { flex: 1; }
+.ap .ap-me-status {
+  display: inline-flex; align-items: center; gap: 0.4rem; margin: 0.55rem 0 0; padding: 0.2rem 0.8rem; border: 1px solid var(--tone-line);
+  border-radius: 999px; background: var(--tone-bg); color: var(--tone); font-size: 0.84rem; font-weight: 700;
+}
+.ap .ap-me-status.ok { --tone: var(--lf-ok); --tone-bg: var(--lf-ok-bg); --tone-line: var(--lf-ok-line); }
+.ap .ap-me-status.warn { --tone: var(--lf-warn); --tone-bg: var(--lf-warn-bg); --tone-line: var(--lf-warn-line); }
+/* How it works: numbered steps on a line; done = blue disc with a tick, the next one = orange (it waits on you) */
+.ap-steps { display: grid; margin: 0; padding: 1rem 1.25rem 1.2rem; list-style: none; }
+.ap-steps li { position: relative; display: grid; grid-template-columns: 1.9rem minmax(0, 1fr); gap: 0.8rem; margin: 0; padding: 0 0 1.05rem; }
+.ap-steps li:last-child { padding-bottom: 0; }
+.ap-steps li:not(:last-child)::before {
+  content: ''; position: absolute; top: 2.1rem; bottom: 0.2rem; left: calc(0.95rem - 1px); width: 2px; border-radius: 2px; background: var(--lf-track);
+}
+.ap-steps li.done:not(:last-child)::before { background: var(--lf-accent); opacity: 0.55; }
+.ap-steps .n {
+  display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border: 2px solid var(--lf-hollow); border-radius: 50%;
+  color: var(--lf-text-2); font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.ap-steps li.done .n { border-color: transparent; background: var(--lf-blue-grad); color: #fff; }
+.ap-steps li.current .n { border-color: transparent; background: var(--lf-orange); color: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--lf-orange) 18%, transparent); }
+.ap-steps li > span:last-child { display: grid; gap: 0.1rem; min-width: 0; padding-top: 0.2rem; }
+.ap-steps b { color: var(--ink); font-size: 0.95rem; font-weight: 600; }
+.ap-steps li.current b { color: var(--navy); font-weight: 700; }
+.ap-steps small { color: var(--muted); font-size: 0.84rem; line-height: 1.45; }
+
+/* the documents request card (documentRequests/applicantRequestCard.jsx) on this look */
+.ap .ct-card .ct-card-head .ct-mono { color: var(--lf-text-3); font-family: inherit; font-size: 0.86rem; font-weight: 600; }
+.ap .ct-card .ct-sheet-body > p { margin: 0 0 0.6rem; line-height: 1.55; }
+
+/* ---------- wizard: sticky sidebar | the step ---------- */
+.ct-main > .ap-wizard { grid-template-columns: 19.5rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.ap-wizard .ct-aside {
+  position: sticky; top: calc(var(--ct-head, 0rem) + var(--ct-gap, 0rem) + 1rem);
+  max-height: calc(100dvh - var(--ct-head, 0rem) - var(--ct-gap, 0rem) - 2rem); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  margin: 0; padding: 1.15rem; border: 1px solid var(--lf-glass-rim); border-radius: 22px; background: var(--lf-glass);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: var(--lf-glass-shadow);
+}
+.ap-wizard .ct-aside-inner { position: static; display: grid; gap: 1rem; }
+.ap-wizard .ct-prog-head { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: none; gap: 0.9rem; margin: 0; padding: 0; border: 0; }
+.ap-wizard .ct-prog-head > * { grid-area: auto; margin: 0; }
+.ap-wizard .ct-profile { display: flex; flex-direction: row; align-items: center; gap: 0.8rem; margin: 0; padding: 0; border: 0; }
+.ap-wizard .ct-profile > div { display: grid; justify-items: start; min-width: 0; }
+.ap-wizard .ct-avatar.lg {
+  display: grid; place-items: center; flex: none; width: 3rem; height: 3rem; border-radius: 50%;
+  background: var(--lf-blue-grad); color: #fff; font-size: 1rem; font-weight: 700; box-shadow: var(--lf-shadow-sm);
+}
+.ap-wizard .ct-profile h2 { margin: 0; color: var(--navy); font-size: 1rem; font-weight: 700; overflow-wrap: anywhere; }
+.ap-wizard .ct-profile .id { margin: 0.05rem 0 0.35rem; color: var(--lf-text-3); font-family: inherit; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; }
+.ap-wizard .ct-profile .ct-badge { margin: 0; }
+.ap-wizard .ct-label {
+  display: block; margin: 0; color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+}
+.ap-wizard .ct-prog-meter { display: grid; gap: 0.4rem; }
+.ap-wizard .ct-meter-label { display: flex; justify-content: space-between; gap: 0.5rem; margin: 0; color: var(--muted); font-size: 0.88rem; }
+.ap-wizard .ct-meter-label strong { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ap-wizard .ct-meter-label > span:last-child { color: var(--lf-accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ap-wizard .ct-meter { height: 8px; margin: 0; overflow: hidden; border-radius: 999px; background: var(--lf-track); }
+.ap-wizard .ct-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--lf-bar-grad); transform-origin: left center; }
+.ap-wizard .ct-box { display: grid; gap: 0.15rem; margin: 0; padding: 0.8rem 0.95rem; border: 1px solid var(--lf-hair); border-radius: 16px; background: var(--lf-inset); }
+.ap-wizard .ct-box .ct-label { margin-bottom: 0.25rem; }
+.ap-wizard .ct-kv { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.15rem 0; border: 0; font-size: 0.9rem; }
+.ap-wizard .ct-kv > span:first-child { color: var(--muted); }
+.ap-wizard .ct-kv > span:last-child { color: var(--ink); font-weight: 600; text-align: right; }
+.ap-wizard .ct-kv .ct-mono { font-family: inherit; font-size: 1em; font-variant-numeric: tabular-nums; }
+
+/* the steps, in their groups: done = blue disc with a tick, current = white with a blue bar and the orange number
+   (it is waiting on you), not yet open = dashed ring */
+.ap-wizard .ct-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.15rem; margin: 0; padding: 0; overflow: visible; list-style: none; }
+.ap-wizard .ct-steps li { margin: 0; }
+.ap-wizard .ct-steps li[data-group]::before {
+  content: attr(data-group); display: block; margin: 0.85rem 0.65rem 0.3rem;
+  color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+}
+.ap-wizard .ct-steps li:first-child::before { margin-top: 0.1rem; }
+.ap-wizard .ct-steps button {
+  display: flex; align-items: center; gap: 0.7rem; width: 100%; min-height: 2.75rem; margin: 0; padding: 0.4rem 0.65rem;
+  border: 1px solid transparent; border-radius: 12px; background: transparent; box-shadow: none;
+  color: var(--lf-text-2); font-size: 0.95rem; font-weight: 500; line-height: 1.3; text-align: left; white-space: normal; cursor: pointer;
+}
+.ap-wizard .ct-steps button:hover:not(:disabled) { border-color: transparent; background: var(--lf-inset-hover); color: var(--navy); }
+.ap-wizard .ct-steps button[aria-current='step'] {
+  border-color: var(--lf-hair); background: var(--lf-selected); color: var(--navy); font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--lf-accent), var(--lf-shadow-sm);
+}
+.ap-wizard .ct-steps button:disabled { color: var(--lf-text-3); opacity: 1; cursor: not-allowed; }
+.ap-wizard .ct-steps button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 1px; }
+.ap-wizard .ct-steps .n {
+  display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; border: 2px solid var(--lf-hollow); border-radius: 50%;
+  background: transparent; box-shadow: none; color: var(--lf-text-2); font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.ap-wizard .ct-steps button:disabled .n { border-style: dashed; color: var(--lf-text-3); }
+.ap-wizard .ct-steps .is-done .n { border-color: transparent; background: var(--lf-blue-grad); color: #fff; }
+.ap-wizard .ct-steps button[aria-current='step'] .n { border-color: transparent; background: var(--lf-orange); color: #fff; }
+.ap-wizard .ct-steps .is-done button[aria-current='step'] .n { background: var(--lf-blue-grad); box-shadow: 0 0 0 2px var(--lf-selected), 0 0 0 4px var(--lf-orange); }
+.ap-exit {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; margin-top: 0.15rem; padding: 0.5rem 1rem;
+  border: 1px solid var(--lf-block-line); border-radius: 999px; background: var(--lf-control); color: var(--lf-accent);
+  font-size: 0.95rem; font-weight: 700; text-decoration: none; box-shadow: var(--lf-shadow-sm);
+}
+.ap-exit:hover { background: var(--lf-control-hover); color: var(--lf-accent); text-decoration: none; }
+.ap-exit:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+
+/* the step: eyebrow, title, then the form on paper */
+.ap-wizard .ct-content { min-width: 0; padding: 0; }
+.ap-wizard .ct-content > .inner { display: grid; gap: 1rem; max-width: none; margin: 0; }
+.ap .ct-pagehead { display: block; margin: 0; padding: 0.25rem 0.25rem 0; }
+.ap .ct-pagehead > div > p:last-child { margin: 0.45rem 0 0; color: var(--muted); font-size: 0.98rem; }
+.ap-wizard .ct-sheet-body { padding: 1.4rem 1.5rem 1.25rem; }
+.ap-wizard .ct-sheet-body > form > .ct-intro:first-child { margin: 0 0 1rem; }
+
+/* sections: white blocks with a short blue bar before the title */
+.ct-e .ap .ct-section {
+  min-width: 0; margin: 0 0 1rem; padding: 1.05rem 1.25rem 0.95rem; border: 1px solid var(--lf-block-line); border-radius: 16px;
+  background: var(--lf-block-bg); box-shadow: 0 1px 2px rgba(20, 41, 95, 0.04);
+}
+.ct-e .ap .ct-section > legend {
+  display: flex; align-items: center; gap: 0.6rem; float: left; width: 100%; margin: 0 0 0.5rem; padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--lf-hair); color: var(--navy); font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em;
+}
+.ct-e .ap .ct-section > legend::before { content: ''; flex: none; width: 0.3rem; height: 1.05rem; border-radius: 999px; background: var(--lf-bar-grad); }
+/* inputs and dropdowns: 12px corners (DESIGN.md scale) */
+.ct-e .ap :is(input:not([type='checkbox'], [type='radio'], [type='file']), textarea, .ct-select-btn) { border-radius: 12px; }
+
+/* Back | Save and continue: a glass pill that stays in view at the bottom while the form scrolls */
+.ap .ct-actions {
+  position: sticky; bottom: 0.75rem; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem;
+  margin: 1.25rem 0 0; padding: 0.5rem; border: 1px solid var(--lf-block-line); border-radius: 999px; background: var(--lf-glass-hi);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: var(--lf-glass-shadow), var(--lf-shadow-lift);
+}
+.ap .ct-actions button:not([type='submit']) {
+  min-height: 2.75rem; margin: 0; padding: 0.5rem 1.3rem; border: 1px solid var(--lf-block-line); border-radius: 999px;
+  background: var(--lf-control); color: var(--navy); font-weight: 600; box-shadow: none;
+}
+.ap .ct-actions button:not([type='submit']):hover:not(:disabled) { background: var(--lf-control-hover); border-color: var(--lf-block-line); color: var(--navy); }
+.ap .ct-actions button[type='submit'] { margin: 0 0 0 auto; padding-inline: 1.6rem; }
+
+/* ---------- document cards (wizard Documents step; the staff loan folder's edit card shows them too) ---------- */
+:is(.ap, .lf-formcard) .ap-docs { grid-column: 1 / -1; min-width: 0; display: grid; gap: 0.75rem; margin: 0.25rem 0; padding: 0; list-style: none; }
+:is(.ap, .lf-formcard) :is(.ap-doc, .ap-chip).ok { --tone: var(--lf-ok); --tone-bg: var(--lf-ok-bg); --tone-line: var(--lf-ok-line); }
+:is(.ap, .lf-formcard) :is(.ap-doc, .ap-chip).warn { --tone: var(--lf-warn); --tone-bg: var(--lf-warn-bg); --tone-line: var(--lf-warn-line); }
+:is(.ap, .lf-formcard) .ap-doc {
+  display: grid; gap: 0.75rem; margin: 0; padding: 0.9rem 1rem 0.95rem 1.15rem; border: 1px solid var(--lf-sub-line); border-radius: 16px;
+  background: var(--lf-sub-bg); box-shadow: inset 4px 0 0 var(--tone);
+}
+:is(.ap, .lf-formcard) .ap-doc-head { display: grid; grid-template-columns: 1.75rem minmax(0, 1fr) auto; align-items: start; gap: 0.75rem; }
+:is(.ap, .lf-formcard) .ap-doc-icon { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--tone-bg); color: var(--tone); }
+:is(.ap, .lf-formcard) .ap-doc-title { min-width: 0; padding-top: 0.15rem; }
+:is(.ap, .lf-formcard) .ap-doc-title strong { display: block; color: var(--ink); font-size: 0.98rem; font-weight: 700; line-height: 1.4; }
+:is(.ap, .lf-formcard) .ap-doc-hint { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+:is(.ap, .lf-formcard) .ap-chip {
+  display: inline-flex; align-items: center; min-height: 1.6rem; padding: 0.1rem 0.7rem; border: 1px solid var(--tone-line); border-radius: 999px;
+  background: var(--tone-bg); color: var(--tone); font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+}
+:is(.ap, .lf-formcard) .ap-files { display: grid; gap: 0.4rem; margin: 0; padding: 0 0 0 2.5rem; list-style: none; }
+:is(.ap, .lf-formcard) .ap-files li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.6rem; margin: 0; padding: 0.4rem 0.45rem 0.4rem 0.75rem;
+  border: 1px solid var(--lf-block-line); border-radius: 12px; background: var(--lf-block-bg);
+}
+:is(.ap, .lf-formcard) .ap-files li > svg { flex: none; color: var(--lf-accent); }
+:is(.ap, .lf-formcard) .ap-file-name { flex: 1 1 12rem; min-width: 0; color: var(--ink); font-size: 0.92rem; font-weight: 500; overflow-wrap: anywhere; }
+.ct :is(.ap, .lf-formcard) .ap-filebtn {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.25rem; margin: 0; padding: 0.3rem 0.85rem;
+  border: 1px solid var(--lf-block-line); border-radius: 999px; background: var(--lf-control, #fff); box-shadow: none;
+  color: var(--lf-accent); font-size: 0.86rem; font-weight: 600; cursor: pointer;
+}
+.ct :is(.ap, .lf-formcard) .ap-filebtn.quiet { color: var(--lf-text-2); }
+.ct :is(.ap, .lf-formcard) .ap-filebtn:hover:not(:disabled) { border-color: var(--lf-block-line); background: var(--lf-control-hover, #fff); color: var(--lf-accent); }
+.ct :is(.ap, .lf-formcard) .ap-filebtn.quiet:hover:not(:disabled) { color: #b42318; }
+.ct :is(.ap, .lf-formcard) .ap-filebtn:disabled { opacity: 0.55; cursor: not-allowed; }
+.ct :is(.ap, .lf-formcard) .ap-filebtn:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+@media (pointer: coarse) { .ct :is(.ap, .lf-formcard) .ap-filebtn { min-height: 2.75rem; } }
+:is(.ap, .lf-formcard) .ap-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0; padding-left: 2.5rem; }
+:is(.ap, .lf-formcard) .ap-doc { grid-template-columns: minmax(0, 1fr); min-width: 0; }  /* the file picker can't widen the card */
+:is(.ap, .lf-formcard) .ap-upload input[type='file'] { min-width: 0; max-width: 100%; margin: 0; }
+:is(.ap, .lf-formcard) .ap-uploading { color: var(--lf-accent); font-size: 0.88rem; font-weight: 600; }
+
+/* ---------- the application as tiles (review step, submitted view): the loan folder's stacked summary ---------- */
+.ap .ap-summary > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); gap: 1rem; align-items: start; }
+.ap .ap-summary .sum-block:has(> .sum-body > .pt-2) { grid-column: 1 / -1; }  /* a borrower: full width, one per row */
+.ap .sum-block { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--lf-block-line); border-radius: 16px; background: var(--lf-block-bg); }
+.ap .sum-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.75rem; padding: 0.75rem 1.15rem;
+  border-bottom: 1px solid var(--lf-block-line); background: var(--lf-block-head); box-shadow: inset 4px 0 0 var(--lf-accent);
+}
+.ap .sum-head h3 { margin: 0; padding: 0; border: 0; color: var(--navy); font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+.ap .sum-sub { color: var(--lf-text-2); font-size: 0.88rem; font-weight: 500; }
+.ap .sum-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; align-items: start; padding: 1rem 1.15rem 1.15rem; }
+.ap .sum-body:has(> .border-b) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); }
+.ap .sum-body > :is(dl, .pt-1, .sum-none, p) { grid-column: 1 / -1; }
+.ap .sum-body > :is(.pt-2, .border-b) {
+  min-width: 0; margin: 0; padding: 0.85rem 1rem 1rem; border: 1px solid var(--lf-sub-line); border-radius: 12px; background: var(--lf-sub-bg);
+}
+.ap .sum-body .italic, .ap .sum-num {
+  margin: 0 0 0.7rem; color: var(--lf-accent); font-size: 0.72rem; font-style: normal; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+}
+.ap .sum-body > .pt-1, .ap .sum-body .pt-2 > .pt-1 { margin: 0.6rem 0 0; padding: 0; color: var(--lf-text-2); font-size: 0.9rem; }
+.ap .sum-body p:not([class]) { margin: 0; color: var(--lf-text-2); font-size: 0.92rem; }
+.ap .sum-body .list-disc { display: grid; gap: 0.4rem; margin: 0; padding: 0; color: var(--lf-text-2); font-size: 0.92rem; list-style: none; }
+.ap .sum-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 0.95rem 1.5rem; margin: 0; }
+.ap .sum-f { min-width: 0; }
+.ap .sum-f dt { margin: 0 0 0.15rem; color: var(--muted); font-size: 0.8rem; font-weight: 500; }
+.ap .sum-f dd { margin: 0; color: var(--ink); font-size: 0.95rem; font-weight: 600; overflow-wrap: anywhere; }
+@supports (grid-template-rows: subgrid) {
+  .ap .sum-f { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 0.15rem; }
+  .ap .sum-f dt { margin: 0; align-self: end; }
+}
+.ap .sum-none { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+/* review step: the certify box turns green once ticked; what the server says is missing is an amber strip */
+.ap .ap-certify {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 0.75rem; margin: 1.25rem 0 0;
+  padding: 0.95rem 1.15rem; border: 1.5px solid var(--lf-block-line); border-radius: 16px; background: var(--lf-block-bg);
+  color: var(--ink); font-size: 1rem; font-weight: 600; line-height: 1.45; cursor: pointer;
+}
+.ap .ap-certify input { width: 1.3rem; height: 1.3rem; margin: 0; accent-color: var(--lf-accent); cursor: pointer; }
+.ap .ap-certify svg { color: var(--lf-hollow); }
+.ap .ap-certify:hover { border-color: rgba(20, 41, 95, 0.3); }
+.ap .ap-certify.on { border-color: var(--lf-ok); background: var(--lf-ok-bg); }
+.ap .ap-certify.on svg { color: var(--lf-ok); }
+.ap .ap-certify:has(input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+.ap-missing {
+  display: flex; align-items: flex-start; gap: 0.75rem; margin: 1rem 0 0; padding: 0.9rem 1.1rem; border: 1px solid var(--lf-warn-line);
+  border-radius: 16px; background: var(--lf-warn-bg); color: var(--ink); box-shadow: inset 4px 0 0 var(--lf-warn);
+}
+.ap-missing > svg { flex: none; margin-top: 0.15rem; color: var(--lf-warn); }
+.ap-missing ul { margin: 0.35rem 0 0; padding-left: 1.2rem; font-size: 0.94rem; list-style: disc; }
+
+/* ---------- a submitted application ---------- */
+.ap-back { margin: 0; }
+.ap-back a {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.75rem; padding: 0.45rem 1.05rem 0.45rem 0.85rem;
+  border: 1px solid var(--lf-control-rim); border-radius: 999px; background: var(--lf-control); color: var(--lf-accent);
+  font-weight: 600; text-decoration: none; box-shadow: var(--lf-shadow-sm);
+}
+.ap-back a:hover { background: var(--lf-control-hover); color: var(--lf-accent); text-decoration: none; }
+.ap-back a:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+.ap-viewhead { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 0.75rem 1.1rem; padding: 0 0.25rem; }
+.ap-viewhead-icon { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 16px; background: var(--lf-blue-grad); color: #fff; box-shadow: var(--lf-shadow-sm); }
+.ap-viewhead h1 .ct-mono { font-family: inherit; font-size: 1em; font-weight: 700; }
+.ap-facts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.65rem 0 0; }
+.ap-facts > span {
+  padding: 0.3rem 0.85rem; border: 1px solid var(--lf-control-rim); border-radius: 999px; background: var(--lf-control);
+  color: var(--muted); font-size: 0.88rem; white-space: nowrap;
+}
+.ap-facts b { color: var(--ink); font-weight: 600; }
+.ap-viewhead > .ct-badge { margin-top: 0.35rem; }
+
+/* ---------- motion (DESIGN.md 11.6): rows rise on load, lists cascade, the step fades in, hover lifts ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ap-rise { from { opacity: 0; transform: translateY(12px); } }
+  @keyframes ap-fade { from { opacity: 0; transform: translateY(4px); } }
+  @keyframes ap-grow { from { transform: scaleX(0); } }
+  .ct-main > .ap:not(.sk-root) > * { animation: ap-rise 0.55s var(--lf-ease) both; }
+  .ct-main > .ap:not(.sk-root) > :nth-child(2) { animation-delay: 0.05s; }
+  .ct-main > .ap:not(.sk-root) > :nth-child(3) { animation-delay: 0.1s; }
+  .ct-main > .ap:not(.sk-root) > :nth-child(4) { animation-delay: 0.15s; }
+  .ct-main > .ap:not(.sk-root) > :nth-child(n + 5) { animation-delay: 0.2s; }
+  .ap:not(.sk-root) .ct-register li { animation: ap-fade 0.35s var(--lf-ease) both; }
+  .ap:not(.sk-root) .ct-register li:nth-child(2) { animation-delay: 0.03s; }
+  .ap:not(.sk-root) .ct-register li:nth-child(3) { animation-delay: 0.06s; }
+  .ap:not(.sk-root) .ct-register li:nth-child(4) { animation-delay: 0.09s; }
+  .ap:not(.sk-root) .ct-register li:nth-child(n + 5) { animation-delay: 0.12s; }
+  .ap-wizard:not(.sk-root) .ap-paper { animation: ap-fade 0.32s var(--lf-ease) both; }
+  .ap-wizard:not(.sk-root) .ct-meter > span { animation: ap-grow 0.8s var(--lf-ease) both; }
+
+  .ap .ct-register li { transition: background-color 0.2s, transform 0.2s var(--lf-ease), box-shadow 0.2s; }
+  .ap .ct-register li:hover { transform: translateY(-2px); box-shadow: var(--lf-shadow-lift); }
+  .ap :is(.ap-hero-cta, .ap-rowlink, .ap-exit, .ap-btn, .ap-back a, .ct-primary, .ct-actions button) {
+    transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s var(--lf-ease), filter 0.2s;
+  }
+  .ap :is(.ap-hero-cta, .ap-exit, .ap-btn, .ap-back a, .ct-actions button):hover:not(:disabled) { transform: translateY(-1px); }
+  .ap :is(.ap-hero-cta, .ap-rowlink, .ap-btn) svg, .ap :is(.ap-exit, .ap-back a) svg { transition: transform 0.2s var(--lf-ease); }
+  .ap .ap-hero-cta:hover svg, .ap .ct-register li:hover .ap-rowlink svg, .ap .ap-btn:hover svg { transform: translateX(3px); }
+  .ap :is(.ap-exit, .ap-back a):hover svg { transform: translateX(-3px); }
+  .ap-wizard .ct-steps button { transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
+  :is(.ap, .lf-formcard) .ap-filebtn, .ap .ap-certify { transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
+}
+
+/* ---------- smaller screens ---------- */
+@media (max-width: 1100px) {
+  /* the sidebar moves above the step: who | progress | loan summary across, the steps in a grid below */
+  .ct-main > .ap-wizard { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .ap-wizard .ct-aside { position: static; max-height: none; overflow: visible; }
+  .ap-wizard .ct-prog-head { grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); align-items: center; gap: 1rem 1.5rem; }
+  .ap-wizard .ct-steps { grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: 0.3rem; }
+  .ap-wizard .ct-steps li[data-group]::before { display: none; }
+  .ap-exit { justify-self: end; }
+  .ap-hero-art { right: 1rem; }
+  /* home: the side column moves under the applications, its two cards side by side */
+  .ap-home-grid { grid-template-columns: minmax(0, 1fr); }
+  .ap-home-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); align-items: stretch; }
+}
+@media (max-width: 960px) {
+  .ct-main > .ap { margin: 0.75rem; padding: 1rem; border-radius: 22px; }
+  .ap h1 { font-size: 1.7rem; }
+  .ap-hero { padding: 1.5rem; }
+  .ap .ct-sheet-body, .ap-wizard .ct-sheet-body { padding: 1rem 1.1rem 1.1rem; }
+  .ap :is(.ap-card-head, .ct-card-head) { padding: 1rem 1.1rem; }
+}
+@media (max-width: 760px) {
+  .ap-hero { grid-template-columns: minmax(0, 1fr); }
+  .ap .ap-hero-cta { width: 100%; white-space: normal; }
+  .ap-alert { grid-template-columns: auto minmax(0, 1fr); }
+  .ap-alert .ap-btn { grid-column: 1 / -1; justify-self: start; }
+  .ap .ct-register li { grid-template-columns: minmax(0, 1fr) 8rem; }
+  .ap .ct-register .amt { text-align: left; }
+}
+@media (max-width: 640px) {
+  .ap-stats { grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+  .ap-stat { padding: 0.85rem 1rem; }
+  .ap-stat strong { font-size: 1.65rem; }
+  .ap-wizard .ct-steps { grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+  .ap-exit { justify-self: stretch; }
+  .ct-e .ap .ct-section { grid-template-columns: minmax(0, 1fr); min-width: 0; padding: 0.9rem 0.95rem 0.8rem; }
+  .ap .ct-actions { flex-wrap: nowrap; gap: 0.5rem; border-radius: 22px; }
+  .ap .ct-actions button:not([type='submit']) { flex: none; padding-inline: 1rem; }
+  .ap .ct-actions button[type='submit'] { min-width: 0; padding-inline: 1.1rem; white-space: normal; text-align: center; line-height: 1.25; }
+  .ap-viewhead { grid-template-columns: auto minmax(0, 1fr); }
+  .ap-viewhead > .ct-badge { grid-column: 2; justify-self: start; margin: 0; }
+  :is(.ap, .lf-formcard) .ap-doc-head { grid-template-columns: 1.75rem minmax(0, 1fr); }
+  :is(.ap, .lf-formcard) .ap-doc-head .ap-chip { grid-column: 2; justify-self: start; }
+  :is(.ap, .lf-formcard) :is(.ap-files, .ap-upload) { padding-left: 0; }
+  :is(.ap, .lf-formcard) .ap-files li > svg { display: none; }  /* the name gets the whole first line */
+}
+
+/* ---------- dark mode (opt-in from the top bar): the same dark tokens as .lf-folder; forms stay on light paper ---------- */
+[data-theme='dark'] .ap {
+  --ink: #e6ecff; --muted: #a3b0cc; --navy: #dbe5ff; --blue: #7ea2ff; --blue-700: #a9c0ff; --blue-50: rgba(126, 162, 255, 0.14);
+  --line: rgba(255, 255, 255, 0.1); --line-strong: rgba(255, 255, 255, 0.25);
+  --lf-ok: #4ade80;   --lf-ok-bg: rgba(74, 222, 128, 0.12);  --lf-ok-line: rgba(74, 222, 128, 0.35);
+  --lf-warn: #fdba74; --lf-warn-bg: rgba(251, 146, 60, 0.14); --lf-warn-line: rgba(251, 146, 60, 0.4);
+  --lf-none: #a3b0cc; --lf-none-bg: rgba(255, 255, 255, 0.06); --lf-none-line: rgba(255, 255, 255, 0.14);
+  --lf-orange-text: #fdba74;
+  --lf-glass: rgba(22, 34, 68, 0.62); --lf-glass-hi: rgba(30, 46, 90, 0.75); --lf-glass-rim: rgba(255, 255, 255, 0.08);
+  --lf-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -30px rgba(0, 0, 0, 0.8);
+  --lf-inset: rgba(255, 255, 255, 0.04); --lf-inset-hover: rgba(255, 255, 255, 0.08); --lf-inset-rim: rgba(255, 255, 255, 0.08);
+  --lf-control: rgba(255, 255, 255, 0.07); --lf-control-hover: rgba(255, 255, 255, 0.14); --lf-control-rim: rgba(255, 255, 255, 0.14);
+  --lf-selected: rgba(126, 162, 255, 0.18);
+  --lf-wash: rgba(255, 255, 255, 0.05); --lf-hair: rgba(255, 255, 255, 0.08); --lf-track: rgba(255, 255, 255, 0.09);
+  --lf-shadow-sm: 0 6px 14px -10px rgba(0, 0, 0, 0.7); --lf-shadow-lift: 0 14px 26px -16px rgba(0, 0, 0, 0.85);
+  --lf-text-2: #c7d2ee; --lf-text-3: #a3b0cc; --lf-accent: #a9c0ff; --lf-accent-bg: rgba(126, 162, 255, 0.16); --lf-hollow: #8f9cba;
+  --lf-block-bg: rgba(255, 255, 255, 0.035); --lf-block-line: rgba(255, 255, 255, 0.14); --lf-block-head: rgba(126, 162, 255, 0.12);
+  --lf-sub-bg: rgba(255, 255, 255, 0.04); --lf-sub-line: rgba(255, 255, 255, 0.11);
+  --sk-base: rgba(255, 255, 255, 0.08); --sk-shine: rgba(255, 255, 255, 0.1);
+  color: var(--ink); color-scheme: dark;
+}
+[data-theme='dark'] .ct-main > .ap {
+  background: linear-gradient(160deg, rgba(17, 27, 58, 0.96), rgba(11, 18, 40, 0.94)); border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 40px 80px -50px rgba(0, 0, 0, 0.8);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-theme='dark'] .ap :is(.ap-card, .ap-stat, .ct-aside) { background: #16213f; }
+}
+[data-theme='dark'] .ap-hero { box-shadow: 0 30px 60px -36px rgba(0, 0, 0, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+[data-theme='dark'] .ap-card > .ct-error { color: #fca5a5; }
+[data-theme='dark'] .ap-wizard .ct-steps button:focus-visible,
+[data-theme='dark'] .ap :is(.ap-exit, .ap-back a):focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
+[data-theme='dark'] .ap .ap-rowlink:focus-visible::after { outline-color: rgba(169, 192, 255, 0.7); }
+/* paper: a form or the application stays light in dark mode (its inputs, menus and file pickers are light-only) */
+[data-theme='dark'] .ap .ct-card {
+  --ink: #0f1b33; --muted: #475569; --navy: #14295f; --blue: #1e3f97; --blue-700: #173380; --blue-50: #e8edf9; --blue-200: #cdd7f1;
+  --line: #e3e7ee; --line-strong: #8b97ab;
+  --lf-ok: #15714a; --lf-ok-bg: #e6f5ed; --lf-ok-line: #b6e0c8; --lf-warn: #a8480b; --lf-warn-bg: #fff1e2; --lf-warn-line: #f7cfa4;
+  --lf-none: #475569; --lf-none-bg: #eef1f6; --lf-none-line: #d5dbe6; --lf-orange-text: #c2410c;
+  --lf-glass-hi: rgba(255, 255, 255, 0.92); --lf-glass-rim: rgba(255, 255, 255, 0.8);
+  --lf-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 41, 95, 0.04), 0 24px 48px -30px rgba(20, 41, 95, 0.45);
+  --lf-inset: rgba(255, 255, 255, 0.62); --lf-inset-hover: rgba(255, 255, 255, 0.88);
+  --lf-control: rgba(255, 255, 255, 0.72); --lf-control-hover: #fff; --lf-control-rim: rgba(255, 255, 255, 0.95);
+  --lf-selected: #fff; --lf-wash: rgba(20, 41, 95, 0.05); --lf-hair: rgba(20, 41, 95, 0.08); --lf-track: rgba(20, 41, 95, 0.08);
+  --lf-shadow-sm: 0 6px 14px -10px rgba(20, 41, 95, 0.4); --lf-shadow-lift: 0 14px 24px -16px rgba(20, 41, 95, 0.55);
+  --lf-text-2: #2b3a5c; --lf-text-3: #4c5a73; --lf-accent: #1e3f97; --lf-accent-bg: rgba(30, 63, 151, 0.1); --lf-hollow: #8b97ab;
+  --lf-block-bg: #fff; --lf-block-line: rgba(20, 41, 95, 0.13); --lf-block-head: rgba(30, 63, 151, 0.06);
+  --lf-sub-bg: rgba(20, 41, 95, 0.035); --lf-sub-line: rgba(20, 41, 95, 0.09);
+  --sk-base: #e6eaf2; --sk-shine: rgba(255, 255, 255, 0.75);
+  color: var(--ink); color-scheme: light;
+  background: #f4f7fc; border-color: rgba(255, 255, 255, 0.12); -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+[data-theme='dark'] .ap .ct-card :is(button, a, summary, input):focus-visible { outline-color: rgba(15, 45, 94, 0.5); }
+/* the loan folder's edit card is paper too, but its reset leaves the block and control tokens dark */
+[data-theme='dark'] .lf-formcard .ap-docs {
+  --lf-block-bg: #fff; --lf-block-line: rgba(20, 41, 95, 0.13); --lf-control: rgba(255, 255, 255, 0.72); --lf-text-3: #4c5a73;
+}

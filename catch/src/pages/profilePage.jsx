@@ -1,25 +1,25 @@
 // Master profile: the applicant's own details, filled in once and used to pre-fill
 // the Principal Borrower step of every new application. Required before applying.
-// Same layout as the staff profile page (identity card + account details beside the form); styles in staffProfile.css.
+// Same layout as the staff profile page (identity card + account details beside the form); styles in staffProfile.css,
+// on the applicant glass look (.ap, applicationForm/applicantPages.css). The form is paper: light in dark mode.
 import { ProfileSkeleton } from '../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, FileText, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileText, UserRound } from 'lucide-react';
 import { UserAuth } from '../context/authContext';
-import ApplicantShell from '../components/applicantShell';
+import { formatDay, formatWhen, fullWhen } from '../components/people';
 import { fetchProfile, saveProfile, toForm } from './applicationForm/api';
 import { FieldGroup, FormError, Section } from './applicationForm/fields';
 import { PARTY_FIELDS, PERSON_FIELDS } from './applicationForm/options';
 import { hasErrors, validatePerson } from './applicationForm/validators';
 import { initialsOf } from './staffAccounts/options';
+import './applicationForm/applicantPages.css';
 import './staffProfile.css';
 
 const FIELDS = PARTY_FIELDS.PROFILE.map(([f]) => f);
 const REQUIRED = PARTY_FIELDS.PROFILE.filter(([, r]) => r).map(([f]) => f);
 const HUE = '#1e3f97';
 
-const dateOf = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { dateStyle: 'long' }) : '-');
-const dateTimeOf = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '-');
 
 // Same fields as PARTY_FIELDS.PROFILE, grouped so related details sit together
 const GROUPS = [
@@ -70,28 +70,33 @@ const ProfilePage = () => {
         }
     };
 
-    if (loading) return <ApplicantShell><ProfileSkeleton label="Loading your profile" /></ApplicantShell>;
+    if (loading) return <ProfileSkeleton label="Loading your profile" />;
 
     const onChange = (f, v) => setForm((p) => ({ ...p, [f]: v }));
     const fullName = [form.first_name, form.last_name].filter(Boolean).join(' ').trim();
     const filled = REQUIRED.filter((f) => String(form[f] ?? '').trim() !== '').length;
 
     return (
-        <ApplicantShell>
-            <div className="sp">
-                <div className="sp-head">
-                    <Link to="/applicantHomePage" className="sp-back"><ArrowLeft size={16} aria-hidden="true" />My applications</Link>
-                    <h1>My profile</h1>
-                    <p className="sp-muted">These details are used to fill in your loan applications.</p>
-                </div>
+        <div className="ap sp">
+                <header className="sp-head">
+                    <p className="ap-back">
+                        <Link to="/applicantHomePage"><ArrowLeft size={16} aria-hidden="true" />My applications</Link>
+                    </p>
+                    <div>
+                        <p className="ap-eyebrow">Your account</p>
+                        <h1>My profile</h1>
+                        <p className="sp-muted">These details are used to fill in your loan applications.</p>
+                    </div>
+                </header>
 
                 {applyNext && (
-                    <p className="sp-banner" role="note">
-                        <Info size={18} aria-hidden="true" />
-                        <span>
-                            <b>Before you apply.</b> Please complete your profile first. We use it to fill in your loan application for you.
-                        </span>
-                    </p>
+                    <div className="ap-alert" role="note">
+                        <span className="ap-alert-icon" aria-hidden="true"><UserRound size={20} /></span>
+                        <div>
+                            <strong>Before you apply.</strong>
+                            <p>Please complete your profile first. We use it to fill in your loan application for you.</p>
+                        </div>
+                    </div>
                 )}
 
                 <div className="sp-grid">
@@ -118,17 +123,20 @@ const ProfilePage = () => {
                             <dl>
                                 <div><dt>Email</dt><dd>{email}</dd></div>
                                 <div><dt>Account type</dt><dd>Loan Applicant</dd></div>
-                                <div><dt>Account created</dt><dd>{dateOf(user?.created_at)}</dd></div>
-                                <div><dt>Last sign-in</dt><dd>{dateTimeOf(user?.last_sign_in_at)}</dd></div>
+                                <div><dt>Account created</dt><dd>{formatDay(user?.created_at)}</dd></div>
+                                <div>
+                                    <dt>Last sign-in</dt>
+                                    <dd><time dateTime={user?.last_sign_in_at} title={fullWhen(user?.last_sign_in_at)}>{formatWhen(user?.last_sign_in_at)}</time></dd>
+                                </div>
                             </dl>
                         </section>
                     </div>
 
                     <div className="sp-col">
-                        <form onSubmit={handleSubmit} noValidate className="sp-card sp-form">
+                        <form onSubmit={handleSubmit} noValidate className="ct-card sp-card sp-form">
                             <div className="sp-formhead">
                                 <h2>Personal information</h2>
-                                <span className="sp-muted">{filled} of {REQUIRED.length} required fields filled</span>
+                                <span className={`sp-count${filled === REQUIRED.length ? ' done' : ''}`}>{filled} of {REQUIRED.length} required fields filled</span>
                             </div>
                             <div className="sp-meter" role="img" aria-label={`${filled} of ${REQUIRED.length} required fields filled`}>
                                 <span style={{ width: `${(filled / REQUIRED.length) * 100}%` }} />
@@ -152,7 +160,6 @@ const ProfilePage = () => {
                     </div>
                 </div>
             </div>
-        </ApplicantShell>
     );
 };
 

@@ -14,6 +14,9 @@
 // Your review: each checklist item links to where it's checked (a section above, or the CO's page in a new tab); after a
 // jump up, a "Back to your review" button returns to the item. Unsent answers are kept as a draft in this browser
 // (reviewDraft.js) and cleared once the review is submitted.
+// Decision support on this page (reviewers and approvers): a brief (decisionSupport/brief.jsx: readiness, policy check,
+// exception highlights, what is still missing) and the policy check's flags in "Flags to check", so the full Decision
+// Support page is only needed for the full analysis. Its data loads beside this page's; if it fails, both are left out.
 import { ReviewSummarySkeleton } from '../../components/skeleton';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -44,7 +47,7 @@ import {
 } from './api';
 import { approvalProgress, splitRouting, tierLabel } from './approval';
 import { ApprovalForm, ApprovalProgress, RoutingPeople } from './approvalParts';
-import { isReviewedChange, reviewFlags, reviewState } from './reviewChecks';
+import { isReviewedChange, policyFlags, reviewFlags, reviewState } from './reviewChecks';
 import { clearDraft, draftKey } from './reviewDraft';
 import { FlagList, IncomeEvidence, MyWorkProgress, ReviewForm, ReviewProgress } from './reviewParts';
 import MessagesPanel from '../messages/messagesPanel';
@@ -54,6 +57,9 @@ import './review.css';
 import { scrollToSection, useActiveSection } from './useActiveSection';
 import { Term, Terms } from '../../components/term';
 import FinalReportButton from '../finalReport/finalReportButton';
+import { fetchDecisionSupport } from '../decisionSupport/api';
+import { buildDssContext } from '../decisionSupport/context';
+import DecisionBrief from '../decisionSupport/brief';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const money = (v) => (v === null || v === undefined || v === '' ? '—' : `₱${formatMoney(v)}`);
@@ -71,7 +77,7 @@ const Text = ({ label, value }) => (blank(value) ? null : <Info label={label} wr
 
 // Section navigator: [element id, label]; the ids are set on the <Section>s below
 const TOC = [
-    ['rv-progress', 'Review progress'], ['rv-flags', 'Flags to check'], ['rv-recommendation', "Credit Officer's recommendation"],
+    ['rv-progress', 'Review progress'], ['rv-dss', 'Decision support'], ['rv-flags', 'Flags to check'], ['rv-recommendation', "Credit Officer's recommendation"],
     ['rv-income', 'Income evidence'], ['rv-figures', 'Key figures'], ['rv-ci', 'IV. Credit checking'],
     ['rv-score', 'Credit score'], ['rv-exceptions', 'V. Exceptions'], ['rv-changes', 'Changes since'],
     ['rv-approval', 'VII. Approval'], ['rv-review', 'Your review'],
@@ -81,9 +87,10 @@ const TOC_IDS = TOC.map(([id]) => id);
 
 // Approver's view: what they need to decide, then the decision
 const APPROVER_TOC = [
-    ['rv-recommendation', "Credit Officer's recommendation"], ['rv-progress', "Reviewers' sign-offs"],
+    ['rv-recommendation', "Credit Officer's recommendation"], ['rv-dss', 'Decision support'], ['rv-flags', 'Flags to check'],
+    ['rv-progress', "Reviewers' sign-offs"], ['rv-income', 'Income evidence'],
     ['rv-figures', 'Key figures'], ['rv-ci', 'IV. Credit checking'], ['rv-score', 'Credit score'],
-    ['rv-exceptions', 'V. Exceptions'], ['rv-approval', 'VII. Approval'], ['rv-decision', 'Your decision'],
+    ['rv-exceptions', 'V. Exceptions'], ['rv-changes', 'Changes since'], ['rv-approval', 'VII. Approval'], ['rv-decision', 'Your decision'],
 ];
 const APPROVER_TOC_IDS = APPROVER_TOC.map(([id]) => id);
 
@@ -93,6 +100,11 @@ const days = (from) => {
 };
 
 const load = async (applicationId) => {
+    const [review, dss] = await Promise.all([loadReview(applicationId), fetchDecisionSupport(applicationId).catch(() => null)]);
+    return { ...review, dss };
+};
+
+const loadReview = async (applicationId) => {
     const app = await fetchApplication(applicationId);
     const ids = getParties(app, BORROWER_ROLES).map((p) => p.id);
     const [fp, rules, rows, stage, coId, checkItems, decisions, canAct, ciDone, log, approvals, canApprove, staff] = await Promise.all([
@@ -164,7 +176,8 @@ const ReviewSummaryPage = () => {
     }
     if (!data) return null;
 
-    const { app, fp, rules, rows, stage, coId, checkItems, decisions, canAct, ciDone, log, names, approvals, canApprove, positions } = data;
+    const { app, fp, rules, rows, stage, coId, checkItems, decisions, canAct, ciDone, log, names, approvals, canApprove, positions, dss } = data;
+    const dssCtx = dss ? buildDssContext(dss, myId) : null;
     const pkg = fp.pkg ?? {};
     const details = Object.fromEntries(fp.parties.map((r) => [r.applicant_id, r]));
     const computed = computeFp(app, details, pkg, { interest_rate: app.interest_rate });
@@ -191,7 +204,10 @@ const ReviewSummaryPage = () => {
     const changesSince = lastReturn ? { at: lastReturn.decided_at, label: 'it was last returned' }
         : sentRow ? { at: sentRow.assigned_at, label: 'it was sent for review' } : null;
     const changes = changesSince ? log.filter((e) => isReviewedChange(e) && new Date(e.changed_at) > new Date(changesSince.at)) : [];
-    const flags = reviewFlags({ app, fp, computed, score, rules, ciDone, changes, changesSince });
+    const flags = [
+        ...reviewFlags({ app, fp, computed, score, rules, ciDone, changes, changesSince }),
+        ...(dssCtx ? policyFlags(dssCtx.mrac, dssCtx.mracChanges) : []),
+    ];
 
     const isLast = current && reviewers.at(-1)?.id === current.id;
     const nextLabel = isLast ? 'You are the last reviewer: it moves to Approval and the approvers are notified.'
@@ -280,10 +296,11 @@ const ReviewSummaryPage = () => {
         { key: 'amort', Icon: CalendarClock, label: 'Monthly amortization', value: money(computed.amortization), sub: 'New loan', tone: computed.amortization === null ? 'warn' : '' },
     ];
 
-    const nav = approverView
-        ? APPROVER_TOC.filter(([id]) => id !== 'rv-decision' || canApprove)
-        : TOC.filter(([id]) => (id === 'rv-changes' ? Boolean(changesSince) : id === 'rv-review' ? canAct : true))
-            .map(([id, label]) => [id, id === 'rv-flags' ? `${label} (${flags.length})` : label]);
+    const nav = (approverView
+        ? APPROVER_TOC.filter(([id]) => (id === 'rv-decision' ? canApprove : id === 'rv-changes' ? Boolean(changesSince) : true))
+        : TOC.filter(([id]) => (id === 'rv-changes' ? Boolean(changesSince) : id === 'rv-review' ? canAct : true)))
+        .filter(([id]) => id !== 'rv-dss' || dssCtx)
+        .map(([id, label]) => [id, id === 'rv-flags' ? `${label} (${flags.length})` : label]);
 
     // Section cards by id; rendered in the order of `nav`
     const sections = {
@@ -296,11 +313,12 @@ const ReviewSummaryPage = () => {
             <Section id="rv-flags" title={`Flags to check (${flags.length})`}>
                 {flags.length === 0 ? <p className="fp-empty">Nothing flagged.</p> : <FlagList flags={flags} />}
                 <p className="fp-note">
-                    Computed from the record. Flags point at something to check; you decide. <Term k="DBR" /> / <Term k="LCR" /> limits are the
-                    credit score's worst bands, not the bank's <Term k="MRAC" /> (policy checks come later).
+                    Computed from the record and the latest policy check. Flags point at something to check; you decide. The <Term k="DBR" /> /{' '}
+                    <Term k="LCR" /> limits here are the credit score's worst bands; the bank's <Term k="MRAC" /> limits are in the policy check.
                 </p>
             </Section>
         ),
+        'rv-dss': dssCtx && <DecisionBrief ctx={dssCtx} />,
         'rv-recommendation': (
             <Section id="rv-recommendation" title={`Credit Officer's recommendation${coId ? ` (${personName(names[coId]) || 'Credit Officer'})` : ''}`}>
                 <dl className="fp-info">

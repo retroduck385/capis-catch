@@ -70,6 +70,16 @@ export const tatDetail = (days, limit) => {
     ].join('\n');
 };
 
+// Time in the current stage against its target, the same rule as the tray's TAT column (for pages that only have
+// the stage and when it was entered). null when the stage has no target (Decided) or the entry time is unknown.
+export const stageTat = (stage, enteredAt, now = Date.now()) => {
+    const target = TAT_TARGET_DAYS[stage];
+    if (target == null || !enteredAt) return null;
+    const days = Math.max(0, (now - new Date(enteredAt).getTime()) / 86400000);
+    const state = days > target ? 'BEYOND' : days > target * TAT_NEAR_RATIO ? 'NEAR' : 'ON_TRACK';
+    return { days, target, state };
+};
+
 // Colour tones for the tray (ok = green, warn = orange, bad = red, info = blue, plain = grey)
 export const TAT_TONES = { ON_TRACK: 'ok', NEAR: 'warn', BEYOND: 'bad' };
 export const STATUS_TONES = { PENDING: 'plain', IN_PROGRESS: 'info', REQUESTED: 'info', RETURNED: 'warn', DONE: 'ok' };
