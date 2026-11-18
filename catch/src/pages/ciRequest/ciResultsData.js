@@ -12,7 +12,7 @@ export const keyOf = (applicantId, checkType) => `${applicantId}:${checkType}`;
 export const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ') || '—';
 export const personLabel = (p) => `${partyLabel(p)}: ${fullName(p)}`;
 
-// NFIS and TU reports have an AI extraction (20261109_ci_extraction.sql); BRAS doesn't yet
+// NFIS and TU reports have an AI extraction (20261109_ci_extraction.sql)
 export const AI_CHECKED = new Set(['NFIS', 'TU']);
 export const aiCheckUrl = (applicationId, doc) => (AI_CHECKED.has(doc.check_type)
     ? `/documentCheckPage?id=${applicationId}&ci=1&doc=${doc.id}` : null);

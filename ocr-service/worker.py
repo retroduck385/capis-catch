@@ -1,7 +1,10 @@
 """CATCH OCR worker: OCRs uploaded documents (IDs, COE / ITR, payslips / remittances, bank statements) and
-CI reports (NFIS, TU, BRAS) queued in Supabase, saves the raw lines, then has Claude label the lines into
+CI reports (NFIS, TU) queued in Supabase, saves the raw lines, then has Claude label the lines into
 fields (AI extraction) for the Account Officer (application documents) or a Credit Investigator (NFIS / TU)
-to confirm. Claude only gets the OCR text, never the file.
+to confirm. Claude only gets the OCR text, never the file. A failed reading (OCR or AI) is tried once more after
+RETRY_PAUSE seconds; only a second failure is saved as FAILED (the staff then ask for a clearer copy).
+It also answers the Credit Officer's "Ask AI for a suggestion" requests (credit_ai_suggestions, advise.py) when the
+OCR and extraction queues are empty. SYNTHETIC TEST FILES ONLY until Q-04 is cleared.
 
   python worker.py              wait for uploads (Realtime), with a fallback check every 5 min (Ctrl+C to stop)
   python worker.py --poll       old behaviour: check the queue every --interval seconds, no Realtime
@@ -23,12 +26,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from advise import suggest
 from extract import RetryLater, ai_config, extract
 from ocr import engine_name, run_ocr
 
 BUCKET = "application-documents"
 PAGE_SIZE = 1000          # PostgREST returns at most this many rows per request
 RATE_LIMIT_PAUSE = 60     # seconds to leave the AI queue alone after a Claude API rate limit
+RETRY_PAUSE = 10          # seconds before the one automatic retry of a failed reading
 
 
 def now():
@@ -73,6 +78,7 @@ def listen_for_runs(url, key, wake):
         channel = client.channel("ocr-worker")
         channel.on_postgres_changes("INSERT", schema="public", table="ocr_runs", callback=lambda _: wake.set())
         channel.on_postgres_changes("INSERT", schema="public", table="extraction_runs", callback=lambda _: wake.set())
+        channel.on_postgres_changes("INSERT", schema="public", table="credit_ai_suggestions", callback=lambda _: wake.set())
         await channel.subscribe(on_status)
         await asyncio.Event().wait()  # keep the loop (and the socket) alive
 
@@ -82,16 +88,33 @@ def listen_for_runs(url, key, wake):
         print(f"Realtime unavailable ({e}); falling back to the slow poll", flush=True)
 
 
+def with_one_retry(label, attempt):
+    """Runs attempt(); if it raises, waits RETRY_PAUSE seconds and runs it once more (the second error is raised).
+    RetryLater (a Claude API rate limit) is not a failure and is never retried here."""
+    try:
+        return attempt()
+    except RetryLater:
+        raise
+    except Exception as e:
+        print(f"{label}: failed ({e}); trying once more in {RETRY_PAUSE}s", flush=True)
+        time.sleep(RETRY_PAUSE)
+        return attempt()
+
+
+def read_file(client, job):
+    data = client.storage.from_(BUCKET).download(job["file_path"])
+    suffix = Path(job["file_path"]).suffix.lower()
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / f"doc{suffix}"
+        path.write_bytes(data)
+        return run_ocr(str(path))
+
+
 def process(client, job):
     run_id = job["run_id"]
     print(f"run {run_id}: {job['file_name']} ...", flush=True)
     try:
-        data = client.storage.from_(BUCKET).download(job["file_path"])
-        suffix = Path(job["file_path"]).suffix.lower()
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / f"doc{suffix}"
-            path.write_bytes(data)
-            lines, pages = run_ocr(str(path))
+        lines, pages = with_one_retry(f"run {run_id}", lambda: read_file(client, job))
 
         if lines:
             client.table("ocr_lines").insert([{**l, "run_id": run_id} for l in lines]).execute()
@@ -105,7 +128,7 @@ def process(client, job):
             "status": "DONE", "engine": engine_name(), "finished_at": now(),
         }).eq("id", run_id).execute()
         print(f"run {run_id}: done, {len(lines)} lines", flush=True)
-    except Exception as e:  # keep the worker alive; the error is saved on the run
+    except Exception as e:  # failed twice (or a database write failed): the error is saved on the run
         client.table("ocr_runs").update({
             "status": "FAILED", "engine": engine_name(), "finished_at": now(), "error": str(e)[:2000],
         }).eq("id", run_id).execute()
@@ -134,7 +157,8 @@ def process_extraction(client, job, api_key, model):
     try:
         lines = fetch_all(client.table("ocr_lines").select("id,page_no,line_no,text,bbox")
                           .eq("run_id", job["ocr_run_id"]).order("page_no").order("line_no"))
-        result = extract(job["document_type"], field_defs(client, job["document_type"]), lines, api_key, model)
+        defs = field_defs(client, job["document_type"])
+        result = with_one_retry(f"extraction {run_id}", lambda: extract(job["document_type"], defs, lines, api_key, model))
         client.rpc("save_extraction", {
             "p_run_id": run_id, "p_model": result["model"], "p_output": result["output"],
             "p_fields": result["fields"], "p_input_tokens": result["input_tokens"],
@@ -147,12 +171,46 @@ def process_extraction(client, job, api_key, model):
         client.table("extraction_runs").update({"status": "PENDING", "started_at": None}).eq("id", run_id).execute()
         print(f"extraction {run_id}: {e}; retrying in {RATE_LIMIT_PAUSE}s", flush=True)
         return False
-    except Exception as e:  # keep the worker alive; the error is saved on the run (the AO can re-run it)
+    except Exception as e:  # failed twice: keep the worker alive; the error is saved on the run
         client.table("extraction_runs").update({
             "status": "FAILED", "model": model, "finished_at": now(), "error": str(e)[:2000],
         }).eq("id", run_id).execute()
         print(f"extraction {run_id}: FAILED — {e}", flush=True)
         return True
+
+
+def process_suggestion(client, job, api_key, model):
+    """One "Ask AI for a suggestion" request. Returns False when the Claude API asked us to slow down."""
+    sid = job["suggestion_id"]
+    print(f"suggestion {sid}: application {job['application_id']} ...", flush=True)
+    try:
+        result = with_one_retry(f"suggestion {sid}", lambda: suggest(job["input"], job["policy"], api_key, model))
+        client.rpc("save_credit_suggestion", {
+            "p_id": sid, "p_model": result["model"], "p_sent": result["sent"], "p_output": result["output"],
+            "p_input_tokens": result["input_tokens"], "p_output_tokens": result["output_tokens"],
+        }).execute()
+        print(f"suggestion {sid}: {result['output']['suggested_result']}, {len(result['output']['reasons'])} cited reasons "
+              f"({result['input_tokens']} in / {result['output_tokens']} out tokens)", flush=True)
+        return True
+    except RetryLater as e:
+        client.rpc("requeue_credit_suggestion", {"p_id": sid}).execute()
+        print(f"suggestion {sid}: {e}; retrying in {RATE_LIMIT_PAUSE}s", flush=True)
+        return False
+    except Exception as e:  # failed twice: keep the worker alive; the error is saved on the request
+        client.rpc("fail_credit_suggestion", {"p_id": sid, "p_error": str(e)[:2000], "p_model": model}).execute()
+        print(f"suggestion {sid}: FAILED — {e}", flush=True)
+        return True
+
+
+def claim_suggestions(client):
+    """One queued suggestion request, or [] (also when 20261120_credit_ai_suggestions.sql isn't run yet)."""
+    try:
+        return client.rpc("claim_credit_suggestions", {"p_limit": 1}).execute().data or []
+    except Exception as e:
+        if not getattr(claim_suggestions, "warned", False):
+            print(f"AI suggestions off: claim_credit_suggestions() failed ({e}); run 20261120_credit_ai_suggestions.sql", flush=True)
+            claim_suggestions.warned = True
+        return []
 
 
 def work(once, interval, realtime):
@@ -164,7 +222,7 @@ def work(once, interval, realtime):
     if api_key:
         print(f"AI extraction on ({model})", flush=True)
     else:
-        print("AI extraction off: set ANTHROPIC_API_KEY in ocr-service/.env (extraction runs stay queued)", flush=True)
+        print("AI extraction and suggestions off: set ANTHROPIC_API_KEY in ocr-service/.env (their requests stay queued)", flush=True)
     if once:
         print("OCR worker: processing the current queue", flush=True)
     elif realtime:
@@ -183,6 +241,12 @@ def work(once, interval, realtime):
             jobs = client.rpc("claim_extraction_runs", {"p_limit": 1}).execute().data
             for job in jobs:
                 if not process_extraction(client, job, api_key, model):
+                    paused_until = time.monotonic() + RATE_LIMIT_PAUSE
+        # Without a key, suggestion requests stay QUEUED (the panel says why)
+        if not jobs and api_key and time.monotonic() >= paused_until:
+            jobs = claim_suggestions(client)
+            for job in jobs:
+                if not process_suggestion(client, job, api_key, model):
                     paused_until = time.monotonic() + RATE_LIMIT_PAUSE
         if not jobs:
             if once:

@@ -40,6 +40,7 @@ import AskApplicantButton from '../documentRequests/ask';
 import './loanFolder.css';
 import { Term } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
+import FinalReportButton from '../finalReport/finalReportButton';
 
 const OVERVIEW = 'overview';
 const REQUEST_CI = 'request-ci';
@@ -286,6 +287,7 @@ const LoanFolderPage = () => {
                     )}
                     {!isAo && decisionLink}
                     {!isAo && packageLink}
+                    <FinalReportButton applicationId={app.id} />
                 </div>
             </header>
             {!canEdit && (

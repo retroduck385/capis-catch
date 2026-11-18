@@ -11,6 +11,10 @@ NOTICE_MODE=live: sends for real, but only to destinations in NOTICE_LIVE_ALLOWL
   Brevo keys are required. SMS is optional: with SEMAPHORE_API_KEY empty, SMS deliveries are printed and marked LOGGED
   (as in log mode) while email still sends.
 Every text is checked again for links (notice_link_in() in the database) right before it is sent.
+
+Reminders (20261119_document_request_reminders.sql): about once a minute the worker asks the database to queue the
+document request reminders that are due (queue_document_reminders(); 8 AM - 8 PM Philippine time only), then sends
+their SMS / email from the reminder queue the same way (claim_reminder_deliveries / finish_reminder_delivery).
 """
 
 import argparse
@@ -23,6 +27,7 @@ from dotenv import load_dotenv
 from providers import BrevoEmail, LogProvider, ProviderError, SemaphoreSms, mask
 
 ALLOWLIST_OFF = "yes-q04-cleared"   # NOTICE_LIVE_ALLOWLIST value that sends to everyone
+REMINDER_CHECK_EVERY = 60           # seconds between checks for due document request reminders
 
 
 def get_client():
@@ -77,54 +82,87 @@ def link_in(client, text):
     return client.rpc("notice_link_in", {"p_text": text or ""}).execute().data
 
 
-def finish(client, delivery_id, status, provider=None, message_id=None, error=None):
-    return client.rpc("finish_notice_delivery", {
+def finish(client, delivery_id, status, provider=None, message_id=None, error=None, rpc="finish_notice_delivery"):
+    return client.rpc(rpc, {
         "p_id": delivery_id, "p_status": status, "p_provider": provider,
         "p_provider_message_id": message_id, "p_error": error,
     }).execute().data
 
 
-def process(client, delivery, config, providers, out=print):
+# kind: "notice" (applicant_notice_deliveries) or "reminder" (document_reminder_deliveries); only the finish call differs
+def process(client, delivery, config, providers, out=print, kind="notice"):
     did, channel = delivery["id"], delivery["channel"]
-    label = f"delivery {did} ({channel} to {mask(delivery['destination'])})"
+    label = f"{'reminder ' if kind == 'reminder' else ''}delivery {did} ({channel} to {mask(delivery['destination'])})"
+    rpc = "finish_reminder_delivery" if kind == "reminder" else "finish_notice_delivery"
     try:
         for text in (delivery.get("subject"), delivery["body"]):
             found = link_in(client, text)
             if found:
-                status = finish(client, did, "FAILED", "check", None, f"Text contains something that looks like a link: {found[:60]}")
+                status = finish(client, did, "FAILED", "check", None, f"Text contains something that looks like a link: {found[:60]}", rpc=rpc)
                 out(f"{label}: refused, looks like a link: {found[:60]} -> {status}")
                 return status
 
         on_list = config["allow_all"] or normalise(delivery["destination"]) in config["allowlist"]
         provider = providers[channel] if config["mode"] == "live" and on_list else providers["log"]
         message_id = provider.send(delivery)
-        status = finish(client, did, "LOGGED" if provider.name == "log" else "SENT", provider.name, message_id)
+        status = finish(client, did, "LOGGED" if provider.name == "log" else "SENT", provider.name, message_id, rpc=rpc)
         out(f"{label}: {status}")
         return status
     except ProviderError as e:
-        status = finish(client, did, "FAILED", providers[channel].name, None, str(e))
+        status = finish(client, did, "FAILED", providers[channel].name, None, str(e), rpc=rpc)
         out(f"{label}: failed ({e}) -> {status}")
         return status
     except Exception as e:  # keep the worker alive; the error is saved on the delivery (retried up to 3 attempts)
-        status = finish(client, did, "FAILED", None, None, f"{type(e).__name__}: {e}")
+        status = finish(client, did, "FAILED", None, None, f"{type(e).__name__}: {e}", rpc=rpc)
         out(f"{label}: error ({type(e).__name__}: {e}) -> {status}")
         return status
 
 
-def process_batch(client, jobs, config, providers, out=print):
+def process_batch(client, jobs, config, providers, out=print, kind="notice"):
     # Oldest first: claim_notice_deliveries() picks the oldest ids, but UPDATE ... RETURNING doesn't keep that order,
     # and a correction must never go out before the notice it corrects
     for job in sorted(jobs, key=lambda j: j["id"]):
-        process(client, job, config, providers, out)
+        process(client, job, config, providers, out, kind)
+
+
+def claim_reminders(client):
+    """Up to 5 queued reminder SMS / emails ([] if the reminders migration isn't run yet)."""
+    if getattr(queue_reminders, "warned", False):
+        return []
+    try:
+        return client.rpc("claim_reminder_deliveries", {"p_limit": 5}).execute().data or []
+    except Exception:
+        return []
+
+
+def queue_reminders(client, out=print):
+    """Asks the database to queue the reminders that are due now. Returns how many were made (0 if the reminders
+    migration isn't run yet: said once, then the worker carries on with notices)."""
+    try:
+        made = client.rpc("queue_document_reminders", {}).execute().data or 0
+    except Exception as e:
+        if not getattr(queue_reminders, "warned", False):
+            out(f"Reminders off: queue_document_reminders() failed ({e}); run 20261119_document_request_reminders.sql")
+            queue_reminders.warned = True
+        return 0
+    if made:
+        out(f"queued {made} document request reminder(s)")
+    return made
 
 
 def preview(client, out=print):
-    rows = (client.table("applicant_notice_deliveries").select("id, channel, destination, subject, body, status, attempts")
-            .in_("status", ["QUEUED", "RUNNING"]).order("id").execute().data)
+    rows = []
+    for table, note in (("applicant_notice_deliveries", ""), ("document_reminder_deliveries", ", reminder")):
+        try:
+            found = (client.table(table).select("id, channel, destination, subject, body, status, attempts")
+                     .in_("status", ["QUEUED", "RUNNING"]).order("id").execute().data)
+        except Exception:  # the reminders migration isn't run yet
+            continue
+        for d in found:
+            LogProvider(out=out, note=f"{note}, {d['status'].lower()}, attempt {d['attempts']}").send(d)
+        rows += found
     if not rows:
         out("Nothing queued.")
-    for d in rows:
-        LogProvider(out=out, note=f", {d['status'].lower()}, attempt {d['attempts']}").send(d)
     return rows
 
 
@@ -133,9 +171,16 @@ def work(once, interval, out=print):
     providers = make_providers(config, out=out)
     client = get_client()
     out(f"Notice worker started in {config['mode']} mode" + ("" if once else f", polling every {interval}s"))
+    next_reminder_check = 0.0
     while True:
+        if time.monotonic() >= next_reminder_check:
+            queue_reminders(client, out)
+            next_reminder_check = time.monotonic() + REMINDER_CHECK_EVERY
         jobs = client.rpc("claim_notice_deliveries", {"p_limit": 5}).execute().data or []
         process_batch(client, jobs, config, providers, out)
+        reminder_jobs = claim_reminders(client)
+        process_batch(client, reminder_jobs, config, providers, out, kind="reminder")
+        jobs = jobs + reminder_jobs
         if not jobs:
             if once:
                 return

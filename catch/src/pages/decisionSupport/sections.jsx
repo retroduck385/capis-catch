@@ -20,6 +20,7 @@ import { ApprovalProgress, RoutingPeople } from '../review/approvalParts';
 import { ReviewProgress } from '../review/reviewParts';
 import { READY } from './readiness';
 import AskApplicantButton from '../documentRequests/ask';
+import { SuggestionView } from '../aiSuggestion/suggestionPanel';
 import './decisionSupport.css';
 import { Terms } from '../../components/term';
 import { personName } from '../../components/people';
@@ -217,6 +218,21 @@ export const PolicyCheck = ({ ctx }) => {
                 </p>
             )}
             {mrac?.status === 'DONE' && <MracResult key={mrac.id} run={mrac} />}
+        </Section>
+    );
+};
+
+// ---- The latest AI suggestion given to the Credit Officer (20261120_credit_ai_suggestions.sql) ----
+export const AiSuggestionGiven = ({ ctx }) => {
+    const s = ctx.aiSuggestion;
+    return (
+        <Section id="ds-ai" title="AI suggestion given to the CO" className="mrac">
+            {!s ? <p className="fp-empty">The Credit Officer has not asked for an AI suggestion on this file.</p> : (
+                <>
+                    <p className="fp-note">What the AI suggested to the Credit Officer, for comparison with the credit result they set. A suggestion only; synthetic test files only until Q-04 is cleared.</p>
+                    <SuggestionView row={s} names={{ [s.requested_by]: s.requestedByName }} canEdit={false} />
+                </>
+            )}
         </Section>
     );
 };

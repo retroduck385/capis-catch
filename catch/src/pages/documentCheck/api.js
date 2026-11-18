@@ -79,21 +79,14 @@ export const fetchDocumentProgress = async (documents) => {
     return { total: ids.length, confirmed: (await fetchConfirmedIds(ids)).size };
 };
 
-// AO: run the AI again on the document's latest OCR (refused once confirmed)
-export const requestExtraction = async (documentId) =>
-    check(await supabase.rpc('request_extraction', { p_document_id: documentId }));
-
-// When to use "Run AI again" (shown beside the button). OCR is queued when a file is uploaded (queue_ocr_run /
-// queue_ci_ocr_run) and the AI extraction when OCR finishes (queue_extraction_run); the button replaces the values.
-export const RERUN_HINT = 'The reading starts on its own when a file is uploaded. Use Run AI again only if it failed or the values look wrong. It replaces the current values.';
+// Reading is automatic: OCR is queued when a file is uploaded (queue_ocr_run / queue_ci_ocr_run) and the AI
+// extraction when OCR finishes (queue_extraction_run). The worker retries a failed step once by itself; a second
+// failure is final, and staff ask the applicant for a clearer copy (AO) or upload the report again (CI).
+export const UNREADABLE_TEXT = "We couldn't read this file. Ask the applicant for a clearer copy.";
 
 // AO: confirm & lock. fields = [{ id, final_value, apply_to_record }] for every field of the run
 export const confirmExtraction = async (runId, fields) =>
     check(await supabase.rpc('confirm_extraction', { p_run_id: runId, p_fields: fields }));
-
-// Credit Investigator: run the AI again on a CI report's latest OCR (refused once confirmed)
-export const requestCiExtraction = async (ciDocumentId) =>
-    check(await supabase.rpc('request_ci_extraction', { p_ci_document_id: ciDocumentId }));
 
 // Credit Investigator: confirm & lock a CI report and save the result + summary to the CI results.
 // fields = [{ id, final_value }] for every field of the run; result = NO_ADVERSE_FINDINGS | WITH_FINDINGS

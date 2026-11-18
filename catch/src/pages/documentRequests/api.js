@@ -40,6 +40,28 @@ export const fetchOpenRequest = async (applicationId) =>
     (check(await supabase.from('document_requests').select('id, status, opened_at, sent_at')
         .eq('application_id', applicationId).neq('status', 'CLOSED')) ?? [])[0] ?? null;
 
+// Reminders sent for the file's requests and the next one due (20261119_document_request_reminders.sql)
+export const fetchReminderStatus = async (applicationId) =>
+    check(await supabase.rpc('document_reminder_status', { p_application_id: applicationId }));
+
+// Read state of uploaded files (useReadStates.js): latest OCR run of each document, and its AI run if it has one.
+// Staff read ocr_runs / extraction_runs by RLS.
+export const fetchReadStates = async (documentIds) => {
+    if (documentIds.length === 0) return {};
+    const ocr = check(await supabase.from('ocr_runs').select('id, document_id, status')
+        .in('document_id', documentIds).order('id')) ?? [];
+    const latest = {};
+    for (const r of ocr) latest[r.document_id] = r;   // ordered by id: the last one wins
+    const done = Object.values(latest).filter((r) => r.status === 'DONE').map((r) => r.id);
+    const ai = done.length === 0 ? [] : check(await supabase.from('extraction_runs').select('ocr_run_id, status')
+        .in('ocr_run_id', done).order('id')) ?? [];
+    const aiOf = {};
+    for (const a of ai) aiOf[a.ocr_run_id] = a.status;
+    return Object.fromEntries(Object.values(latest).map((r) => [r.document_id,
+        r.status === 'FAILED' || aiOf[r.id] === 'FAILED' ? 'UNREADABLE'
+            : r.status === 'DONE' ? 'READ' : 'READING']));
+};
+
 // ---------- Staff marks on uploaded files (20261116_findings_and_file_marks.sql) ----------
 // Every mark on the application's files, oldest first: the last one per document is its current mark
 export const fetchFileMarks = async (applicationId) =>

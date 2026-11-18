@@ -1,7 +1,7 @@
 // Financial Package & Credit Recommendation (KYC-FP "FP" tab), opened from the Credit Officer's work tray.
 // Fields copied from the KYC are read live from the AO's record; the CO's own inputs are saved with
 // save_financial_package(). Only the assigned CO edits (any stage before Decided); everyone else with access reads.
-// IV. Credit checking shows the Credit Investigator's results (BRAS / NFIS / TU), read-only.
+// IV. Credit checking shows the Credit Investigator's results (NFIS / TU), read-only.
 // Two pages, like the paper FP: 1 = the recommendation (I to VII), 2 = the application information (VIII onwards, the
 // credit result and the change history). Both stay mounted inside ONE form (the inactive one is hidden), so switching
 // keeps every edit, the policy check result and the single Save button; the page is kept in ?page=2.
@@ -47,6 +47,8 @@ import {
 } from './options';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
+import FinalReportButton from '../finalReport/finalReportButton';
+import SuggestionPanel from '../aiSuggestion/suggestionPanel';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -426,6 +428,8 @@ const FinancialPackagePage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
+                    {/* The assigned CO's draft of the final report (Credit Evaluation only); it reads the saved FP */}
+                    <FinalReportButton applicationId={app.id} draft coCanEdit={canEdit} onClick={confirmLeave} />
                     {/* The assigned CO gets these as steps / optional view below */}
                     {!canEdit && (
                         <>
@@ -577,6 +581,9 @@ const FinancialPackagePage = () => {
                         <TitleSection titles={form.titles} onTitle={onTitle} disabled={disabled} />
                         <CustomerSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
                         <CreditResultSection form={form.pkg} onPkg={onPkg} disabled={disabled} />
+                        {/* AI suggestion for the credit result (suggestion only; the CO may copy the draft justification) */}
+                        <SuggestionPanel applicationId={app.id} canEdit={canEdit} dirty={dirty} justification={form.pkg.justification}
+                            onUseDraft={(text) => onPkg('justification', text)} />
 
                         {/* A dropdown, closed until opened (same look as the loan folder's); the navigator link opens it */}
                         <details id="fp-history" className="lf-card lf-history">
