@@ -9,6 +9,7 @@ import { fetchOpenRequest } from '../documentRequests/api';
 import { fetchKycChecks, fetchStaffNames } from '../loanFolder/api';
 import { fetchAssignee, fetchCreditScoreRules, fetchFinancialPackage } from '../financialPackage/api';
 import { fetchLatestMracCheck } from '../mrac/api';
+import { fetchLatestSuggestion } from '../aiSuggestion/latest';
 import {
     fetchApprovalDecisions, fetchCurrentStage, fetchReviewAssignments, fetchReviewCheckItems, fetchReviewDecisions,
     fetchReviewStaff,
@@ -50,7 +51,7 @@ const fetchDocumentStates = async (documentIds) => {
 export const fetchDecisionSupport = async (applicationId) => {
     const app = await fetchApplication(applicationId);
     const ids = getParties(app, BORROWER_ROLES).map((p) => p.id);
-    const [fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, kycChecks, types, docRequest] = await Promise.all([
+    const [fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, kycChecks, types, docRequest, aiSuggestion] = await Promise.all([
         fetchFinancialPackage(app.id, ids),
         fetchCreditScoreRules(),
         optional(fetchCiDone(app.id), false),
@@ -66,6 +67,7 @@ export const fetchDecisionSupport = async (applicationId) => {
         optional(fetchKycChecks(app.id), []),
         optional(fetchExtractionTypes(), new Set()),
         optional(fetchOpenRequest(app.id), null),
+        optional(fetchLatestSuggestion(app.id), null),   // the latest AI suggestion given to the CO (20261120)
     ]);
 
     // The documents the AI reads, with where each one is in OCR -> AI -> confirmation
@@ -80,6 +82,6 @@ export const fetchDecisionSupport = async (applicationId) => {
         ...reviews.map((d) => d.responded_by)]);
     return {
         app, fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, positions, names,
-        kycChecks, docs, docStates, docRequest,
+        kycChecks, docs, docStates, docRequest, aiSuggestion,
     };
 };

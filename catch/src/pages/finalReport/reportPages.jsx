@@ -401,9 +401,10 @@ export const ScorePage = ({ r }) => {
 
 // ---------- 4. Decision support ----------
 const READY_WORDS = { done: 'Done', missing: 'Missing', check: 'Check' };
+const AI_RESULTS = { ENDORSED: 'Endorsed', NOT_ENDORSED: 'Not endorsed', DEFERRED: 'Deferred' };
 
 export const DecisionPage = ({ r }) => {
-    const { readiness, computed, score, pkg, resultLabel, exceptions, mrac, mracChanges, app } = r;
+    const { readiness, computed, score, pkg, resultLabel, exceptions, mrac, mracChanges, app, aiSuggestion: ai, names } = r;
     const done = mrac?.status === 'DONE';
     const criteria = done ? mrac.result?.criteria ?? [] : [];
     const flagged = criteria.filter((c) => c.status !== 'pass');
@@ -433,6 +434,24 @@ export const DecisionPage = ({ r }) => {
 
             <H>Credit Officer&apos;s recommendation</H>
             <KV rows={[['Credit Result', resultLabel ?? 'Not set'], ['Justification and Remarks', pkg.justification]]} />
+
+            <H>AI suggestion given to the CO</H>
+            {!ai ? <Text value={null} empty="The Credit Officer did not ask for an AI suggestion." /> : (
+                <>
+                    <KV rows={[
+                        ['Suggested result', AI_RESULTS[ai.output?.suggested_result] ?? ai.output?.suggested_result],
+                        ['Asked by', `${nameOf(names, ai.requested_by, ai.requestedByName || 'Credit Officer')} (Credit Officer), ${whenPH(ai.requested_at)}`],
+                        ['Model', ai.model],
+                    ]} />
+                    {ai.output?.reasons?.length > 0 && (
+                        <ul className="fr-list">
+                            {ai.output.reasons.map((x, i) => <li key={`${x.chunk_key}-${i}`}>{x.text} <span className="fr-sub">[{x.heading || x.chunk_key}]</span></li>)}
+                        </ul>
+                    )}
+                    {ai.output?.missing_data?.length > 0 && <KV rows={[['Missing or to verify', ai.output.missing_data.join('; ')]]} />}
+                    <p className="fr-sub">A suggestion only: the AI never sets the credit result. Synthetic test files only until Q-04 is cleared.</p>
+                </>
+            )}
 
             <H>{`Exceptions (${exceptions.length + flagged.length})`}</H>
             {exceptions.length + flagged.length === 0 ? <Text value={null} empty="No recorded exceptions and no criteria that fail or need review." /> : (

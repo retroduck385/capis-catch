@@ -48,6 +48,7 @@ import {
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 import FinalReportButton from '../finalReport/finalReportButton';
+import SuggestionPanel from '../aiSuggestion/suggestionPanel';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -580,6 +581,9 @@ const FinancialPackagePage = () => {
                         <TitleSection titles={form.titles} onTitle={onTitle} disabled={disabled} />
                         <CustomerSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
                         <CreditResultSection form={form.pkg} onPkg={onPkg} disabled={disabled} />
+                        {/* AI suggestion for the credit result (suggestion only; the CO may copy the draft justification) */}
+                        <SuggestionPanel applicationId={app.id} canEdit={canEdit} dirty={dirty} justification={form.pkg.justification}
+                            onUseDraft={(text) => onPkg('justification', text)} />
 
                         {/* A dropdown, closed until opened (same look as the loan folder's); the navigator link opens it */}
                         <details id="fp-history" className="lf-card lf-history">

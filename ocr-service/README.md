@@ -44,6 +44,35 @@ The request uses structured outputs (the answer must match the field schema buil
 
 Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`, then `20261109_ai_extraction.sql` and `20261109_ci_extraction.sql` (NFIS / TU extraction).
 
+## AI suggestion for the Credit Officer (`advise.py`)
+
+> **Synthetic test files only.** The figures of a file and short excerpts of the bank's policy passages go to the
+> Claude API, an external model. Don't use "Ask AI for a suggestion" on real applicant files until the data privacy
+> question (Q-04) is cleared. Same rule as the AI extraction.
+
+The assigned Credit Officer presses **Ask AI for a suggestion** under the Credit Result of the Financial Package
+(`20261120_credit_ai_suggestions.sql`). The page sends the saved figures by borrower role (no names, birth dates,
+addresses, contact details, employer / bank names, ID / account / title numbers or CI summaries; the Condition score
+criteria only as a sub-total, never gender, civil status, dependents, residence type or length of stay). The database
+refuses an input with personal fields and only accepts a request with a finished policy check run on the same figures.
+
+This worker picks it up when the OCR and extraction queues are empty (Realtime wakes it), adds the policy check result
+and up to 10 cited passages cut to about 700 characters, and asks Claude (`ANTHROPIC_MODEL`, effort `medium`,
+structured output) for a suggested result (Endorsed / Not endorsed / Deferred), 2 to 5 reasons that each cite a
+passage by `chunk_key`, a draft justification and missing data. Reasons that cite a passage it wasn't given are
+dropped and noted. The row keeps what was sent, the model and the tokens; the Credit Officer who asked gets
+`AI_SUGGESTION_READY`. A failure is retried once, a rate limit goes back to the queue. Without `ANTHROPIC_API_KEY`
+requests stay `QUEUED` and the panel says so. The suggestion never sets the credit result.
+
+Cost: about 4,000 to 8,000 input and 1,500 to 4,000 output tokens (thinking included), about $0.07 to $0.10 per
+suggestion on `claude-opus-5-5` ($4 / $20 per million tokens); about half on `claude-sonnet-5-5`.
+
+Policy passage fields used (only `policy_passages()` reads them): `chunk_key` and `excerpt` (required), `document`,
+`heading_path`, `manual_pages`, `revision_date`, from `criteria[].source`, `manual_checks[].source`,
+`suggested_exceptions[].citations`, `reasoning.approval_path.passages` and `policy_context` of the latest policy check.
+
+Tests (no API calls): `python -m unittest discover -s tests`.
+
 ## Run
 
 ```bash
