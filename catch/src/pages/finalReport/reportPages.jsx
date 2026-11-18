@@ -34,7 +34,6 @@ const nameOf = (names, id, fallback) => (id && personName(names[id])) || names[i
 // ---------- building blocks ----------
 export const Sheet = ({ no, title, mode, app, generated, children }) => (
     <section className={`fr-sheet${mode === 'DRAFT' ? ' draft' : ''}`} aria-label={`${no}. ${title}`}>
-        {mode === 'DRAFT' && <div className="fr-mark" aria-hidden="true">DRAFT</div>}
         <header className="fr-head">
             <div>
                 <p className="fr-kicker">Financial Package and Credit Recommendation · Housing Loans</p>
@@ -72,7 +71,7 @@ const RowTable = ({ config, rows }) => {
     if (rows.length === 0) return null;
     const fmt = (c, v) => (c.type === 'money' ? peso(v) : c.type === 'date' ? day(v) : v);
     return (
-        <table className="fr-table">
+        <table className="fr-table fr-wide">
             <thead><tr>{Object.values(config).map((c) => <th key={c.label}>{c.label.replace(' (PHP)', '')}</th>)}</tr></thead>
             <tbody>
                 {rows.map((r) => (
@@ -109,7 +108,7 @@ export const FpPageOne = ({ r }) => {
             </div>
 
             <H>I. Borrower/s Highlight</H>
-            <table className="fr-table">
+            <table className="fr-table fr-wide">
                 <thead><tr><th>Applicant Type</th><th>Name</th><th>Employer / Business Name</th><th>Position / Rank</th><th>Employment Tenure</th><th>Monthly Income (Gross)</th></tr></thead>
                 <tbody>
                     {computed.incomes.map(({ party, gross }) => {
@@ -363,6 +362,7 @@ export const ScorePage = ({ r }) => {
                 <div key={g.category} className="fr-block">
                     <H>{`${g.label} (maximum score: ${g.max})`}</H>
                     <table className="fr-table fr-score">
+                        <colgroup><col className="c-crit" /><col className="c-band" /><col className="c-pts" /><col className="c-act" /><col className="c-rem" /></colgroup>
                         <thead><tr><th>Criterion</th><th>Band</th><th className="num">Score</th><th className="num">Actual</th><th>Remarks</th></tr></thead>
                         {g.criteria.map(({ criterion, bands, picked, points, remarks }) => (
                             <tbody key={criterion.code} className="fr-crit">

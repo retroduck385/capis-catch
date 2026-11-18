@@ -3,9 +3,12 @@
 // Every staff role except the Credit Investigator (DSS_ROLES, like Decision Support), once the file is Decided.
 // The assigned Credit Officer can preview it as a DRAFT while editing in Credit Evaluation (also after a reviewer
 // return). "Download PDF" opens the browser's print dialog ("Save as PDF"): A4 portrait, each part on a new page
-// (finalReport.css). Nothing is uploaded or stored. Read only; layout after the bank's KYC-FP workbook, values from
+// (finalReport.css). For print the sheets are rendered a second time through a portal straight into <body>
+// (.fr-print-root) and #root is hidden, so no app container, grid, flex, height or overflow touches the printout.
+// Nothing is uploaded or stored. Read only; layout after the bank's KYC-FP workbook, values from
 // our own records only.
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, FileText, Lock } from 'lucide-react';
 import { DecisionSupportSkeleton } from '../../components/skeleton';
@@ -65,7 +68,7 @@ const FinalReportPage = () => {
         return () => { cancelled = true; };
     }, [applicationId, session?.user?.id]);
 
-    // Printing this page hides the app's top bar and backdrop (finalReport.css, html.fr-print)
+    // While this page is open, printing shows only .fr-print-root (finalReport.css: html.fr-print hides #root)
     useEffect(() => {
         document.documentElement.classList.add('fr-print');
         return () => document.documentElement.classList.remove('fr-print');
@@ -111,6 +114,15 @@ const FinalReportPage = () => {
     const signoffs = buildSignoffs({ stages: data.stages, rows, reviews, approvals, app, aoId: data.aoId, coId: data.coId, positionLabel });
     const generated = { at: whenPH(new Date().toISOString()), by: personName(me) || me || 'staff' };
     const sheet = { mode, app, generated };
+    const sheets = (
+        <>
+            <Sheet no={1} title="Financial Package (I to VII)" {...sheet}><FpPageOne r={r} /></Sheet>
+            <Sheet no={2} title="Financial Package (VIII to XIV)" {...sheet}><FpPageTwo r={r} /></Sheet>
+            <Sheet no={3} title="Housing Loan Credit Scoring Sheet" {...sheet}><ScorePage r={r} /></Sheet>
+            <Sheet no={4} title="Decision Support" {...sheet}><DecisionPage r={r} /></Sheet>
+            <Sheet no={5} title="Sign-offs" {...sheet}><SignoffPage r={r} signoffs={signoffs} /></Sheet>
+        </>
+    );
 
     return (
         <div className="lf lf-folder fr">
@@ -135,14 +147,9 @@ const FinalReportPage = () => {
                 </header>
             </div>
 
-            {mode === 'DRAFT' && <div className="fr-mark-print" aria-hidden="true">DRAFT</div>}
-            <div className="fr-sheets">
-                <Sheet no={1} title="Financial Package (I to VII)" {...sheet}><FpPageOne r={r} /></Sheet>
-                <Sheet no={2} title="Financial Package (VIII to XIV)" {...sheet}><FpPageTwo r={r} /></Sheet>
-                <Sheet no={3} title="Housing Loan Credit Scoring Sheet" {...sheet}><ScorePage r={r} /></Sheet>
-                <Sheet no={4} title="Decision Support" {...sheet}><DecisionPage r={r} /></Sheet>
-                <Sheet no={5} title="Sign-offs" {...sheet}><SignoffPage r={r} signoffs={signoffs} /></Sheet>
-            </div>
+            <div className="fr-sheets">{sheets}</div>
+            {/* The printout: hidden on screen, the only thing printed (outside the app frame) */}
+            {createPortal(<div className="fr-print-root">{sheets}</div>, document.body)}
         </div>
     );
 };
