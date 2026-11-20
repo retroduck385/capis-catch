@@ -150,6 +150,14 @@
 .lf-ci .ci-card-body { display: grid; grid-template-columns: minmax(15rem, 2fr) minmax(0, 3fr); gap: 1rem 1.25rem; }
 .lf-ci .ci-card-files { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; padding-right: 1.25rem; border-right: 1px solid var(--lf-hair); }
 .lf-ci .ci-card-files .ci-upload { margin-top: 0.15rem; }
+/* drag a file onto a report card: the left column is the drop zone */
+.lf-ci .ci-card-files { position: relative; }
+.lf-ci .ci-drophint { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.lf-ci .ci-card-files.dragging { border-radius: 12px; outline: 2px dashed var(--lf-accent); outline-offset: 4px; background: var(--lf-accent-bg); }
+.lf-ci .ci-dropnote {
+  position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem;
+  margin: 0; border-radius: 12px; background: var(--lf-accent-bg); color: var(--lf-accent); font-size: 0.95rem; font-weight: 700; pointer-events: none;
+}
 .lf-ci .ci-nofile { margin: 0; color: var(--muted); font-size: 0.88rem; font-style: italic; }
 .lf-ci .ci-card-result { display: grid; align-content: start; gap: 0.6rem; min-width: 0; }
 .ci-card-label { margin: 0; color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }

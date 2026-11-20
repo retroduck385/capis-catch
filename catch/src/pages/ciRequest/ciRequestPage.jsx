@@ -8,7 +8,7 @@
 //   2. Reports and results: per borrower x check, upload the report, open its OCR extraction on
 //      /documentCheckPage?ci=1 (optional; confirming there fills in the result + summary), choose the result, Save
 //   3. Check and send: a recap of the saved results, overall remarks, flag findings, Mark CI Done
-// Opened without &step, the page starts on the first step that isn't done.
+// Opened without &step (e.g. from the work tray), the page always starts on the first step, done or not.
 // Look (DESIGN.md, "CI request"): an .lf-folder page like the loan folder and document check: header with a mode tag
 // and fact chips, the steps as glass step cards, then one step panel with its own progress chip and Back / Next.
 // Styles: ciRequest.css (.lf-ci block).
@@ -167,9 +167,9 @@ const CiRequestPage = () => {
     }, [setSearchParams]);
     const goTo = useCallback((key, target) => openStep(key, { target }), [openStep]);
 
-    // Opened without a step: start on the first one still to do (fixed in the URL, so it doesn't move on by itself)
+    // Opened without a step: start on the first one, even when it is done (fixed in the URL, so it doesn't move on by itself)
     const steps = ready ? ciSteps({ data: ciData, missing, dirty, onOpen: openStep }) : [];
-    const firstOpen = steps.find((s) => !s.done)?.key ?? 'send';
+    const firstOpen = STEP_KEYS[0];
     useEffect(() => {
         if (ready && !stepParam) openStep(firstOpen, { replace: true, focus: false });
     }, [ready, stepParam, firstOpen, openStep]);

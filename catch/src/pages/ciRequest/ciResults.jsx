@@ -28,6 +28,7 @@ import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 
 const MAX_TEXT = 4000;
+const DROP_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 const resultLabel = (value) => CI_RESULTS.find((r) => r.value === value)?.label ?? null;
 const cardId = (p, c) => `ci-card-${p.id}-${c.value}`;
 
@@ -87,6 +88,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
     const [busy, setBusy] = useState(null);           // slot key (upload) / doc id / 'save:<key>' / 'remarks' / 'done'
     const [error, setError] = useState(null);         // { message, at: card key | 'remarks' | null }
     const [justSaved, setJustSaved] = useState(null); // card key or 'remarks', until the next edit
+    const [dragKey, setDragKey] = useState(null);     // report card a file is being dragged over
     const [openIds, setOpenIds] = useState(null);     // borrowers expanded in step 2 (null until the data loads)
     const [serverMissing, setServerMissing] = useState(null);
 
@@ -152,6 +154,24 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
             setServerMissing(null);
             reload();
         }
+    };
+
+    // Drag and drop onto a report card: the same upload as the button, but only PDF / JPG / PNG (the picker's accept
+    // list doesn't apply to dropped files)
+    const dragHasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+    const handleDrop = (e, party, checkType) => {
+        const k = keyOf(party.id, checkType);
+        e.preventDefault();
+        setDragKey(null);
+        if (busy === k) return;
+        const dropped = [...e.dataTransfer.files];
+        const ok = dropped.filter((f) => DROP_TYPES.includes(f.type));
+        if (ok.length === 0) {
+            fail('Only PDF, JPG or PNG files can be uploaded.', k);
+            return;
+        }
+        if (ok.length < dropped.length) fail(`${dropped.length - ok.length} file(s) skipped: only PDF, JPG or PNG can be uploaded.`, k);
+        handleUpload(party, checkType, ok);
     };
 
     const handleRemove = async (doc, k) => {
@@ -308,7 +328,10 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                     </span>
                 </div>
                 <div className="ci-card-body">
-                    <div className="ci-card-files">
+                    <div className={`ci-card-files${dragKey === k ? ' dragging' : ''}`}
+                        onDragOver={(e) => { if (dragHasFiles(e) && busy !== k) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; if (dragKey !== k) setDragKey(k); } }}
+                        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragKey((cur) => (cur === k ? null : cur)); }}
+                        onDrop={(e) => { if (dragHasFiles(e)) handleDrop(e, p, c.value); }}>
                         <p className="ci-card-label">Report</p>
                         {docs.length > 0
                             ? <ul className="ci-files">{docs.map((doc) => fileRow(doc, k))}</ul>
@@ -324,6 +347,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                                     if (files.length) handleUpload(p, c.value, files);
                                 }} />
                         </label>
+{dragKey === k && <p className="ci-dropnote" aria-hidden="true"><Upload size={20} />Drop to upload</p>}
                     </div>
                     <div className="ci-card-result">
                         <p className="ci-card-label" id={`${id}-res`}>Result</p>

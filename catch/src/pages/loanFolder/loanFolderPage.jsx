@@ -194,6 +194,7 @@ const LoanFolderPage = () => {
     // The AO keeps editing after the request (Intake -> Credit Investigation); just reload
     const handleCiRequested = async () => {
         await refresh();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleViewDocument = async (doc) => {
