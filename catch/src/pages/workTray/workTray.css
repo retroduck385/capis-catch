@@ -924,3 +924,58 @@
 .wt .wt-th-with-info { display: inline-flex; align-items: center; gap: .3rem; }
 .wt .wt-th-info { display: inline-flex; align-items: center; opacity: .55; flex-shrink: 0; cursor: help; }
 .wt th:has(.wt-th-info) { white-space: nowrap; }
+
+/* ======================================================================================================
+   Team workload (AO / CO Manager only): one line per officer with a load bar, last assignment and an
+   Available switch; "Auto-assign unassigned" top right. Stacks on narrow screens.
+   ====================================================================================================== */
+.wt-team { padding: 1.15rem 1.4rem 1.2rem; display: grid; gap: 0.85rem; }
+.wt-team-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.wt-team .wt-wtitle { display: flex; align-items: center; gap: 0.45rem; }
+.wt-team-sub { margin: 0.25rem 0 0; font-size: 0.86rem; color: #5b6880; max-width: 46rem; }
+.wt .wt-team-auto {
+  display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.3rem; padding: 0 1rem; border-radius: 999px;
+  background: #1e3f97; border: 1px solid #1e3f97; color: #fff; font-size: 0.86rem; font-weight: 700;
+}
+.wt .wt-team-auto:hover:not(:disabled) { background: #17307a; border-color: #17307a; }
+.wt .wt-team-auto:disabled { background: rgba(255, 255, 255, 0.6); border-color: rgba(20, 41, 95, 0.18); color: #6b7890; }
+.wt-team-result { margin: 0; font-size: 0.86rem; font-weight: 600; color: var(--wt-ok); }
+.wt-team-empty { margin: 0; font-size: 0.88rem; color: #5b6880; }
+.wt-team-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.wt-team-list li {
+  display: grid; grid-template-columns: minmax(8rem, 1.2fr) minmax(10rem, 2fr) minmax(7rem, 1fr) auto;
+  align-items: center; gap: 0.9rem; padding: 0.55rem 0; margin: 0;
+}
+.wt-team-list li + li { border-top: 1px solid var(--wt-glass-line, rgba(20, 41, 95, 0.08)); }
+.wt-team-list .nm { font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt-team-list li.off .nm, .wt-team-list li.off .load { color: #6b7890; }
+.wt-team-list .load { display: flex; align-items: center; gap: 0.5rem; font-size: 0.86rem; min-width: 0; }
+.wt-team-list .load b { font-variant-numeric: tabular-nums; font-weight: 800; }
+.wt-team-list .load .unit { color: #5b6880; white-space: nowrap; }
+.wt-team-list .bar { flex: 1; min-width: 3rem; height: 0.5rem; border-radius: 999px; background: var(--wt-track, #e4e9f3); overflow: hidden; }
+.wt-team-list .bar i { display: block; height: 100%; border-radius: inherit; background: #1e3f97; }
+.wt-team-list li.off .bar i { background: #9aa5ba; }
+.wt-team-list .last { font-size: 0.8rem; color: #5b6880; white-space: nowrap; }
+.wt .wt-team-switch {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2rem; padding: 0 0.75rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(20, 41, 95, 0.18); color: #4c5a73; font-size: 0.8rem; font-weight: 700;
+}
+.wt .wt-team-switch i { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: #9aa5ba; }
+.wt .wt-team-switch.on { background: var(--wt-ok-bg); border-color: var(--wt-ok-line); color: var(--wt-ok); }
+.wt .wt-team-switch.on i { background: var(--wt-ok); }
+.wt .wt-team-switch:focus-visible, .wt .wt-team-auto:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 1px; }
+@media (max-width: 720px) {
+  .wt-team-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .wt-team-list .load { grid-column: 1 / -1; grid-row: 2; }
+  .wt-team-list .last { display: none; }
+}
+[data-theme='dark'] .wt-team-sub, [data-theme='dark'] .wt-team-empty, [data-theme='dark'] .wt-team-list .load .unit,
+[data-theme='dark'] .wt-team-list .last { color: #a3b0cc; }
+[data-theme='dark'] .wt-team-list li.off .nm, [data-theme='dark'] .wt-team-list li.off .load { color: #8b97b3; }
+[data-theme='dark'] .wt-team-list .bar i { background: #7ea2ff; }
+[data-theme='dark'] .wt-team-list li.off .bar i { background: #5d6884; }
+[data-theme='dark'] .wt .wt-team-auto { background: #3b63d6; border-color: #3b63d6; }
+[data-theme='dark'] .wt .wt-team-auto:hover:not(:disabled) { background: #4a72e6; border-color: #4a72e6; }
+[data-theme='dark'] .wt .wt-team-auto:disabled,
+[data-theme='dark'] .wt .wt-team-switch { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); color: #a3b0cc; }
+[data-theme='dark'] .wt .wt-team-switch.on { background: var(--wt-ok-bg); border-color: var(--wt-ok-line); color: var(--wt-ok); }

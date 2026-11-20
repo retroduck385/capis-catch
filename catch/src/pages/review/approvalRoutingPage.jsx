@@ -336,7 +336,7 @@ const ApprovalRoutingPage = () => {
                     <Lock size={16} aria-hidden="true" />
                     <span>
                         Read-only. {readOnlyNote}
-                        {!sent && role === 'CREDIT_OFFICER' && !isAssignedCo && ' Assign yourself in the work tray first.'}
+                        {!sent && role === 'CREDIT_OFFICER' && !isAssignedCo && ' Only the assigned Credit Officer can send it; your Manager can reassign it to you.'}
                     </span>
                 </p>
             )}

@@ -3,14 +3,22 @@
 // real permissions live in the database (RLS / RPCs, see roles.js) and nothing here is read from or saved to it.
 
 export const ROLE_INFO = {
-    ACCOUNT_OFFICER: { hue: '#1e3f97', blurb: 'Takes in applications and verifies the KYC for the ones assigned to them.' },
+    ACCOUNT_OFFICER: { hue: '#1e3f97', blurb: 'Takes in applications and verifies the KYC for the ones assigned to them. A Manager balances the AO team instead.' },
     CREDIT_INVESTIGATOR: { hue: '#5b2bb0', blurb: 'Runs the NFIS and TU checks on requests sent by Account Officers.' },
-    DISPATCH_ADMIN: { hue: '#0f766e', blurb: 'Assigns Account and Credit Officers and can change review routing.' },
-    CREDIT_OFFICER: { hue: '#3730a3', blurb: 'Prepares the Financial Package and credit score, then sends it for approval.' },
+    DISPATCH_ADMIN: { hue: '#0f766e', blurb: 'Monitors CI, deferred and decided files and can change review routing.' },
+    CREDIT_OFFICER: { hue: '#3730a3', blurb: 'Prepares the Financial Package and credit score, then sends it for approval. A Manager balances the CO team instead.' },
     REVIEWER: { hue: '#9a4a0c', blurb: 'Reviews the applications routed to them, in order.' },
     APPROVER: { hue: '#166534', blurb: 'Gives the final approval on routed applications.' },
-    DEPT_HEAD: { hue: '#334155', blurb: 'Manages staff accounts, assignments and review routing.' },
+    DEPT_HEAD: { hue: '#334155', blurb: 'Manages staff accounts, Manager positions and review routing.' },
 };
+
+// Position on Account / Credit Officer accounts: '' = officer (auto-assigned files), 'MANAGER' = runs the team
+// (reassigns, sets availability, never auto-assigned). Stored as users.is_manager.
+export const OFFICER_POSITIONS = [
+    { value: '', label: 'Officer' },
+    { value: 'MANAGER', label: 'Manager' },
+];
+export const TEAM_ROLES = ['ACCOUNT_OFFICER', 'CREDIT_OFFICER'];
 
 export const PERMISSIONS = [
     { key: 'view_apps', label: 'View Loan Applications' },

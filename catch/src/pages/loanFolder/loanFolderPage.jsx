@@ -295,7 +295,7 @@ const LoanFolderPage = () => {
                     <Lock size={16} aria-hidden="true" />
                     <span>
                         Read-only. Only the assigned Account Officer can edit, while the application is in Intake or Credit Investigation.
-                        {isAo && ' Assign yourself in the work tray to edit.'}
+                        {isAo && ' Your Manager can reassign it to you.'}
                     </span>
                 </p>
             )}

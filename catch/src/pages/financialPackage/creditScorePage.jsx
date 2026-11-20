@@ -243,7 +243,7 @@ const CreditScorePage = () => {
                     <Lock size={16} aria-hidden="true" />
                     <span>
                         Read-only. Only the assigned Credit Officer can edit the credit score.
-                        {role === 'CREDIT_OFFICER' && ' Assign yourself in the work tray to edit.'}
+                        {role === 'CREDIT_OFFICER' && ' Your Manager can reassign it to you.'}
                     </span>
                 </p>
             )}

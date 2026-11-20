@@ -5,7 +5,7 @@ import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { ROLE_LABELS, STAFF_ROLES } from '../../roles';
 import { APPROVAL_POSITIONS } from '../review/approval';
 import { createStaffAccount } from './api';
-import { ROLE_INFO, generatePassword } from './options';
+import { OFFICER_POSITIONS, ROLE_INFO, TEAM_ROLES, generatePassword } from './options';
 import { useTermTitle } from '../../components/useTermTitle';
 
 const MIN_PASSWORD = 8;
@@ -45,7 +45,7 @@ const AddAccountDialog = ({ open, onClose, onCreated }) => {
     };
 
     const set = (field, value) => setForm((p) => ({
-        ...p, [field]: value, ...(field === 'role' && value !== 'APPROVER' ? { position: '' } : {}),
+        ...p, [field]: value, ...(field === 'role' && value !== p.role ? { position: '' } : {}),
     }));
 
     const handleSubmit = async (e) => {
@@ -58,7 +58,10 @@ const AddAccountDialog = ({ open, onClose, onCreated }) => {
         setError(null);
         try {
             const email = form.email.trim();
-            const { existing } = await createStaffAccount(email, form.password, form.role, form.position);
+            // position: an approval position for Approvers, 'MANAGER' or '' (officer) for AOs / COs
+            const isApprover = form.role === 'APPROVER';
+            const { existing } = await createStaffAccount(email, form.password, form.role,
+                isApprover ? form.position : null, !isApprover && form.position === 'MANAGER');
             onCreated(existing
                 ? `${email} already had a login, so it keeps its current password. It now has the ${ROLE_LABELS[form.role]} role.`
                 : `Account created for ${email} (${ROLE_LABELS[form.role]}). Give them the temporary password so they can log in.`);
@@ -133,6 +136,15 @@ const AddAccountDialog = ({ open, onClose, onCreated }) => {
                             {APPROVAL_POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
                         {errors.position && <p className="sa-err">{errors.position}</p>}
+                    </div>
+                )}
+
+                {TEAM_ROLES.includes(form.role) && (
+                    <div className="sa-field">
+                        <label htmlFor="sa-team-position">Position (a Manager runs the team's assignments and gets no files)</label>
+                        <select id="sa-team-position" value={form.position} onChange={(e) => set('position', e.target.value)}>
+                            {OFFICER_POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                        </select>
                     </div>
                 )}
 

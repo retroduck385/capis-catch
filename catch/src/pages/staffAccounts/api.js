@@ -12,18 +12,25 @@ export const fetchStaffAccounts = async () => check(await supabase.rpc('list_sta
 
 // Creates the login, then gives it the staff role (see grant_staff_role() in 20261010_staff_accounts.sql).
 // Returns { existing }: true when the email already had a login, so the password typed here was not used.
-// position = approval_position, Approver accounts only (null otherwise)
-export const createStaffAccount = async (email, password, role, position) => {
+// position = approval_position, Approver accounts only (null otherwise); manager = AO / CO Manager
+// (20261120_team_managers_auto_assignment.sql), Account / Credit Officer accounts only
+export const createStaffAccount = async (email, password, role, position, manager = false) => {
     const { data, error } = await createDetachedClient().auth.signUp({ email, password });
     // With email confirmation on, Supabase hides "already registered" behind a user with no identities
     const existing = error?.code === 'user_already_exists' || /already registered/i.test(error?.message ?? '')
         || data?.user?.identities?.length === 0;
     if (error && !existing) throw error;
 
-    check(await supabase.rpc('grant_staff_role', { p_email: email, p_role: role, p_position: position || null }));
+    check(await supabase.rpc('grant_staff_role', {
+        p_email: email, p_role: role, p_position: position || null, p_manager: Boolean(manager),
+    }));
     return { existing };
 };
 
 // Department Head: change an existing Approver's position (20261108_approver_positions.sql)
 export const setApprovalPosition = async (userId, position) =>
     check(await supabase.rpc('set_approval_position', { p_user_id: userId, p_position: position }));
+
+// Department Head: make an Account / Credit Officer a Manager of their team, or back to officer
+export const setTeamManager = async (userId, manager) =>
+    check(await supabase.rpc('set_team_manager', { p_user_id: userId, p_manager: manager }));

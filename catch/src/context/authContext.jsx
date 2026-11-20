@@ -65,6 +65,20 @@ export const AuthContextProvider = ({children}) => {
         return () => { cancelled = true; };
     }, [userId]);
 
+    // AO / CO Manager flag (20261120_team_managers_auto_assignment.sql). Loaded on its own, so a database
+    // without that migration still loads the role; false until it arrives or when the column is missing.
+    const [loadedManager, setLoadedManager] = useState({ userId: null, isManager: false })
+    useEffect(() => {
+        if (!userId) return;
+        let cancelled = false;
+        supabase.from('users').select('is_manager').eq('id', userId).maybeSingle()
+            .then(({ data }) => {
+                if (!cancelled) setLoadedManager({ userId, isManager: data?.is_manager === true });
+            });
+        return () => { cancelled = true; };
+    }, [userId]);
+    const isManager = loadedManager.userId === userId && loadedManager.isManager;
+
     // undefined = still loading, null = signed out / no role
     const role = session === undefined ? undefined
         : !userId ? null
@@ -79,7 +93,7 @@ export const AuthContextProvider = ({children}) => {
     };
 
     return(
-        <AuthContext.Provider value={{session, role, signUpNewUser, signOut, signInUser}}>
+        <AuthContext.Provider value={{session, role, isManager, signUpNewUser, signOut, signInUser}}>
             {children}
         </AuthContext.Provider>
     )

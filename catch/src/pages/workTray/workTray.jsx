@@ -1,11 +1,11 @@
 import {
-    Check, CheckCheck, ChevronRight, Eye, Hourglass, Info, Lock, Play, RefreshCw, Send, Settings2, Undo2, UserMinus, UserPlus, X,
+    Check, CheckCheck, ChevronRight, Eye, Hourglass, Info, Lock, Play, RefreshCw, Send, Settings2, Undo2, X,
 } from 'lucide-react';
 import { WorkTraySkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
-import { ASSIGNABLE_ROLES, ASSIGNING_HEADS, REVIEW_ROLES } from '../../roles';
+import { ASSIGNABLE_ROLES, REVIEW_ROLES, managedSlot } from '../../roles';
 import { EMPLOYMENT_TYPES, formatPeso } from '../applicationForm/options';
 import { fetchStaffNames } from '../loanFolder/api';
 import { fetchActiveReviewAssignments, fetchSignoffs } from '../review/api';
@@ -18,6 +18,7 @@ import { folderPath } from './paths';
 import { clearTrails } from '../../components/trailStore';
 import FilterSelect from './filterSelect';
 import { useCountUp } from './useCountUp';
+import TeamWorkload from './teamWorkload';
 import './workTray.css';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
@@ -105,27 +106,13 @@ const AvatarStack = ({ people, max = 3 }) => {
     );
 };
 
-// One AO or CO line in the "Assigned to" column: avatar + name. AOs / COs get Assign me / Release for their
-// own slot; the heads change people in the Manage dialog instead. Release takes two clicks (Release -> Confirm?),
-// and the confirm step resets after 3 s or when the button loses focus, so a stray click can't drop you.
-const AssigneeLine = ({ row, slotRole, myId, myRole, isHead, busy, onAssign, onUnassign }) => {
+// One AO or CO line in the "Assigned to" column: avatar + name. CATCH assigns both on submission; only that
+// team's Manager changes them (Manage dialog), so there are no claim / release buttons here.
+const AssigneeLine = ({ row, slotRole, myId }) => {
     const assigneeId = row[SLOT_ID[slotRole]];
     const assigneeName = row[SLOT_NAME[slotRole]];
     const isMine = assigneeId === myId;
     const name = isMine ? 'You' : assigneeName ?? 'Unknown';
-    const [confirming, setConfirming] = useState(false);
-
-    useEffect(() => {
-        if (!confirming) return undefined;
-        const t = setTimeout(() => setConfirming(false), 3000);
-        return () => clearTimeout(t);
-    }, [confirming]);
-
-    const onRelease = () => {
-        if (!confirming) { setConfirming(true); return; }
-        setConfirming(false);
-        onUnassign(row.application_id, slotRole);
-    };
 
     return (
         <div className='wt-slot'>
@@ -143,32 +130,15 @@ const AssigneeLine = ({ row, slotRole, myId, myRole, isHead, busy, onAssign, onU
                         <span className='nm'>Unassigned</span>
                     </span>
                 )}
-            {!isHead && myRole === slotRole && !assigneeId && (
-                <button className='wt-mini take' disabled={busy} onClick={() => onAssign(row.application_id, slotRole)}>
-                    <UserPlus size={13} strokeWidth={2.4} aria-hidden='true' />Assign me
-                </button>
-            )}
-            {!isHead && isMine && (
-                <button
-                    type='button'
-                    className={`wt-mini drop${confirming ? ' confirm' : ''}`}
-                    disabled={busy}
-                    onClick={onRelease}
-                    onBlur={() => setConfirming(false)}
-                    aria-label={confirming
-                        ? `Confirm: release yourself as ${SLOT_FULL_LABELS[slotRole]}`
-                        : `Release yourself as ${SLOT_FULL_LABELS[slotRole]}`}>
-                    <UserMinus size={13} strokeWidth={2.4} aria-hidden='true' />
-                    {confirming ? 'Confirm?' : 'Release'}
-                </button>
-            )}
         </div>
     );
 };
 
-// Heads change the AO / CO of one application here, so the table itself stays free of dropdowns.
-const ManageDialog = ({ row, staff, busy, error, onAssign, onUnassign, onClose }) => {
+// The AO / CO Manager overrides their team's slot on one application here, so the table stays free of dropdowns.
+// The picker shows each officer's workload (borrowers on open files) and whether they're available.
+const ManageDialog = ({ row, slotRole, staff, busy, error, onAssign, onUnassign, onClose }) => {
     const ref = useRef(null);
+    const assigneeId = row?.[SLOT_ID[slotRole]];
 
     useEffect(() => {
         const dialog = ref.current;
@@ -185,38 +155,30 @@ const ManageDialog = ({ row, staff, busy, error, onAssign, onUnassign, onClose }
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             {row && (
                 <div className='wt-dialog-body'>
-                    <h2 id='wt-dialog-title'>Assign people</h2>
+                    <h2 id='wt-dialog-title'>Reassign {SLOT_FULL_LABELS[slotRole]}</h2>
                     <p className='wt-sub'>{row.application_no} · {row.applicant_name ?? 'Applicant'}</p>
-                    {ASSIGNABLE_ROLES.map((slotRole) => {
-                        const assigneeId = row[SLOT_ID[slotRole]];
-                        const label = SLOT_FULL_LABELS[slotRole];
-                        return (
-                            <div key={slotRole} className='wt-field'>
-                                <label htmlFor={`wt-pick-${slotRole}`}>{label}</label>
-                                <div className='wt-field-row'>
-                                    <select
-                                        id={`wt-pick-${slotRole}`}
-                                        disabled={busy}
-                                        value={assigneeId ?? ''}
-                                        onChange={(e) => e.target.value
-                                            && onAssign(row.application_id, slotRole, e.target.value)}>
-                                        <option value=''>{assigneeId ? 'Reassign to...' : `Choose ${label}...`}</option>
-                                        {staff.filter((s) => s.role === slotRole).map((s) => (
-                                            <option key={s.user_id} value={s.user_id}>{s.name}</option>
-                                        ))}
-                                    </select>
-                                    {assigneeId && (
-                                        <button
-                                            type='button'
-                                            disabled={busy}
-                                            onClick={() => onUnassign(row.application_id, slotRole)}>
-                                            Unassign
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
+                    <div className='wt-field'>
+                        <label htmlFor='wt-pick'>{SLOT_FULL_LABELS[slotRole]}</label>
+                        <div className='wt-field-row'>
+                            <select
+                                id='wt-pick'
+                                disabled={busy}
+                                value={assigneeId ?? ''}
+                                onChange={(e) => e.target.value && onAssign(row.application_id, slotRole, e.target.value)}>
+                                <option value=''>{assigneeId ? 'Reassign to...' : `Choose ${SLOT_FULL_LABELS[slotRole]}...`}</option>
+                                {staff.filter((s) => s.role === slotRole).map((s) => (
+                                    <option key={s.user_id} value={s.user_id}>
+                                        {`${s.name} · ${s.workload} borrower${s.workload === 1 ? '' : 's'}${s.available ? '' : ' · unavailable'}`}
+                                    </option>
+                                ))}
+                            </select>
+                            {assigneeId && (
+                                <button type='button' disabled={busy} onClick={() => onUnassign(row.application_id, slotRole)}>
+                                    Unassign
+                                </button>
+                            )}
+                        </div>
+                    </div>
                     {error && <p className='wt-error-inline' role='alert'>{error}</p>}
                     <div className='wt-dialog-actions'>
                         <button type='button' onClick={onClose}>Done</button>
@@ -300,9 +262,11 @@ const DONUT_GAP = 4;  // visible gap between segments
 const WorkTray = () => {
     const tt = useTermTitle();
     useEffect(() => { clearTrails(); }, []); // a row opened from here starts a fresh breadcrumb trail
-    const { session, role } = UserAuth();
+    const { session, role, isManager } = UserAuth();
     const myId = session?.user?.id;
-    const isHead = ASSIGNING_HEADS.includes(role);
+    // AO / CO Manager: the slot they reassign and the team panel; everyone else only sees the assignments
+    const mySlot = managedSlot(role, isManager);
+    const isHead = Boolean(mySlot);
     const isAssignable = ASSIGNABLE_ROLES.includes(role);
     const navigate = useNavigate();
     const [tray, setTray] = useState({ rows: [], routing: {}, names: {} });
@@ -349,12 +313,18 @@ const WorkTray = () => {
         fetchAssignableStaff().then(setStaff).catch((err) => setError(err.message));
     }, [isHead]);
 
+    // After a Manager action: the tray and the team's workload both change
+    const reloadTeam = async () => {
+        await load();
+        try { setStaff(await fetchAssignableStaff()); } catch (err) { setError(err.message); }
+    };
+
     const runAction = async (applicationId, action) => {
         setBusyId(applicationId);
         try {
             setError(null);
             await action();
-            await load();
+            await (isHead ? reloadTeam() : load());
         } catch (err) {
             setError(err.message);
         } finally {
@@ -560,6 +530,12 @@ const WorkTray = () => {
                 </div>
             </section>
 
+            {isHead && (
+                <TeamWorkload
+                    slotRole={mySlot} staff={staff} onChanged={reloadTeam}
+                    unassigned={rows.filter((r) => r.stage !== 'DECIDED' && !r[SLOT_ID[mySlot]]).length} />
+            )}
+
             {/* ---------- table ---------- */}
             <section className='wt-card wt-tablecard' aria-labelledby='wt-table-title'>
                 {/* Two rows so nothing is squeezed: title + count with Refresh, then search (which stretches),
@@ -694,27 +670,18 @@ const WorkTray = () => {
                                         </td>
                                         <td className='wt-amt'>{r.loan_amount != null ? formatPeso(r.loan_amount) : '-'}</td>
                                         <td><TatCell row={r} /></td>
-                                        {/* Assign / release controls: don't open the folder when using them */}
+                                        {/* Manage button: don't open the folder when using it */}
                                         <td onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                             <div className='wt-slots'>
                                                 {ASSIGNABLE_ROLES.map((slotRole) => (
-                                                    <AssigneeLine
-                                                        key={slotRole}
-                                                        row={r}
-                                                        slotRole={slotRole}
-                                                        myId={myId}
-                                                        myRole={role}
-                                                        isHead={isHead}
-                                                        busy={busyId === r.application_id}
-                                                        onAssign={handleAssign}
-                                                        onUnassign={handleUnassign} />
+                                                    <AssigneeLine key={slotRole} row={r} slotRole={slotRole} myId={myId} />
                                                 ))}
                                                 {isHead && (
                                                     <button
                                                         type='button'
                                                         className='wt-mini manage'
-                                                        title='Manage assignment'
-                                                        aria-label={`Manage assignment for ${r.application_no}`}
+                                                        title={`Reassign ${SLOT_FULL_LABELS[mySlot]}`}
+                                                        aria-label={`Reassign ${SLOT_FULL_LABELS[mySlot]} for ${r.application_no}`}
                                                         onClick={() => setManagingId(r.application_id)}>
                                                         <Settings2 size={15} aria-hidden='true' />
                                                     </button>
@@ -738,6 +705,7 @@ const WorkTray = () => {
             {isHead && (
                 <ManageDialog
                     row={managingRow}
+                    slotRole={mySlot}
                     staff={staff}
                     busy={managingRow ? busyId === managingRow.application_id : false}
                     error={error}

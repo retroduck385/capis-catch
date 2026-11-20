@@ -8,11 +8,19 @@ export const STAFF_ROLES = ['ACCOUNT_OFFICER', 'CREDIT_INVESTIGATOR', 'DISPATCH_
 // (mirrors the "read mrac runs" policy in 20261111_decision_support.sql)
 export const DSS_ROLES = STAFF_ROLES.filter((r) => r !== 'CREDIT_INVESTIGATOR');
 
-// Can assign / reassign / unassign any AO or CO (mirrors is_assigning_head() in the DB)
-export const ASSIGNING_HEADS = ['DISPATCH_ADMIN', 'REVIEWER', 'APPROVER', 'DEPT_HEAD'];
-
-// Roles that are assigned to applications and may claim / release them themselves
+// Roles assigned to applications (one AO and one CO slot per file). CATCH auto-assigns both on submission,
+// balanced by workload (20261120_team_managers_auto_assignment.sql); nobody claims or releases files.
 export const ASSIGNABLE_ROLES = ['ACCOUNT_OFFICER', 'CREDIT_OFFICER'];
+
+// An AO or CO account marked Manager by the Dept Head manages that team: reassigns its slot, sets who's
+// available for new files and runs "Auto-assign unassigned" (mirrors managed_role() in the DB).
+// Returns the slot role they manage, or null.
+export const managedSlot = (role, isManager) => (isManager && ASSIGNABLE_ROLES.includes(role) ? role : null);
+
+export const MANAGER_LABELS = {
+    ACCOUNT_OFFICER: 'Account Officer Manager',
+    CREDIT_OFFICER: 'Credit Officer Manager',
+};
 
 // Picked by the CO in VII. Approval (review_assignments in 20261021_review_routing.sql)
 export const REVIEW_ROLES = ['REVIEWER', 'APPROVER'];

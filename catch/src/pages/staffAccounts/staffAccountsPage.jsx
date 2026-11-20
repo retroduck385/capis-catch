@@ -1,16 +1,17 @@
 // Department Head: staff accounts (list, add) and a design placeholder for in-depth role editing.
 // Approvers also get a position, which decides which approval authorities they're routed to
-// (see src/pages/review/approval.js).
+// (see src/pages/review/approval.js). Account / Credit Officers are Officer or Manager (runs that team's
+// auto-assignment; 20261120_team_managers_auto_assignment.sql).
 import { ListSkeleton } from '../../components/skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Plus, Search, X } from 'lucide-react';
 import { ROLE_LABELS, STAFF_ROLES } from '../../roles';
 import { APPROVAL_POSITIONS, positionLabel } from '../review/approval';
-import { fetchStaffAccounts, setApprovalPosition } from './api';
+import { fetchStaffAccounts, setApprovalPosition, setTeamManager } from './api';
 import AddAccountDialog from './addAccountDialog';
 import RoleAccessPreview from './roleAccessPreview';
-import { ROLE_INFO, initialsOf } from './options';
+import { OFFICER_POSITIONS, ROLE_INFO, TEAM_ROLES, initialsOf } from './options';
 import './staffAccounts.css';
 
 const TABS = [['accounts', 'Accounts'], ['roles', 'Roles & access']];
@@ -41,6 +42,20 @@ const StaffAccountsPage = () => {
         try {
             await setApprovalPosition(account.user_id, position);
             setNotice(`${account.email} is now ${positionLabel(position)}.`);
+            await loadAccounts();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const handleManager = async (account, manager) => {
+        setError(null);
+        setNotice(null);
+        try {
+            await setTeamManager(account.user_id, manager);
+            setNotice(manager
+                ? `${account.email} is now a ${ROLE_LABELS[account.role]} Manager. Their open files stay with them; they get no new ones.`
+                : `${account.email} is back to ${ROLE_LABELS[account.role]} and in the auto-assignment rotation again.`);
             await loadAccounts();
         } catch (err) {
             setError(err.message);
@@ -173,6 +188,11 @@ const StaffAccountsPage = () => {
                                                             onChange={(e) => handlePosition(a, e.target.value)}>
                                                             <option value="">Not set (not routed)</option>
                                                             {APPROVAL_POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                                                        </select>
+                                                    ) : TEAM_ROLES.includes(a.role) ? (
+                                                        <select aria-label={`Position for ${a.email}`} value={a.is_manager ? 'MANAGER' : ''}
+                                                            onChange={(e) => handleManager(a, e.target.value === 'MANAGER')}>
+                                                            {OFFICER_POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                                                         </select>
                                                     ) : '—'}
                                                 </td>
