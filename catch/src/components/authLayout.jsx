@@ -1,14 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BadgeCheck, Building2, ClipboardList, Eye, EyeOff, FileUp, Lock, Mail, Save, UserPlus } from 'lucide-react';
+import { Building2, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import '../auth.css';
-
-const STEPS = [
-    [UserPlus, 'Create an account', 'Sign up with your email.'],
-    [ClipboardList, 'Fill in your application', 'Loan details, personal information, address and employment.'],
-    [FileUp, 'Upload your documents', 'Add the requirements for each borrower.'],
-    [BadgeCheck, 'Review and submit', 'Check everything, then send it in.'],
-];
 
 // Stagger index for the entrance animation (consumed by CSS as --e).
 const e = (n) => ({ '--e': n });
@@ -68,36 +61,15 @@ export const AuthLayout = ({ children }) => (
     <div className="auth">
         <aside className="auth-aside">
             <HouseLines />
-            <Link to="/loginPage" className="auth-logo" style={e(0)}>
-                <span className="auth-logo-mark"><Building2 size={16} aria-hidden="true" /></span>
-                CATCH
-            </Link>
-
             <div className="auth-pitch">
-                <span className="auth-eyebrow" style={e(1)}>Housing loan applications</span>
-                <h1>
+                <Link to="/loginPage" className="auth-logo" style={e(0)}>
+                    <span className="auth-logo-mark"><Building2 size={16} aria-hidden="true" /></span>
+                    CATCH
+                </Link>
+                <h1 style={{ marginTop: '1rem' }}>
                     <span className="line"><span style={e(2)}>Home financing,</span></span>
                     <span className="line"><em><span style={e(3)}>made simple.</span></em></span>
                 </h1>
-                <p style={e(4)}>Apply online, upload your documents once, and follow your application from submission to decision.</p>
-
-                <ol className="auth-steps">
-                    {STEPS.map(([Icon, title, text], i) => (
-                        <li key={title} style={{ ...e(5 + i), '--i': i }}>
-                            <div className="top">
-                                <span className="tile"><Icon size={18} aria-hidden="true" /></span>
-                                <span className="num" aria-hidden="true">0{i + 1}</span>
-                            </div>
-                            <strong>{title}</strong>
-                            <span>{text}</span>
-                        </li>
-                    ))}
-                </ol>
-            </div>
-
-            <div className="auth-foot" style={e(9)}>
-                <Save size={16} aria-hidden="true" />
-                <span>Your progress is saved as you go, so you can finish later.</span>
             </div>
         </aside>
         <main className="auth-main">{children}</main>
