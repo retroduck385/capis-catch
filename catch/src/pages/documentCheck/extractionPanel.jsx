@@ -6,17 +6,30 @@
 // Look: .dc-* in documentCheck.css (inset field cards, Keep / Update pills, the table frame). Status chips use the
 // page's tones: a difference or an expired ID is amber (it needs a look), a wrong format is the form red.
 import { useEffect, useId, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock } from 'lucide-react';
 import SelectMenu from '../../components/selectMenu';
 import Byline from '../../components/byline';
 import { CI_RESULTS } from '../ciRequest/options';
 import { confirmCiExtraction, confirmExtraction } from './api';
+import { readIssues, SEVERITIES } from './issues';
 import {
     FORMAT_HINTS, LOW_CONFIDENCE, applicationValue, bankSummary, compareStatus, displayValue, isExpired, isValid,
     lowestConfidence, needsChoice, payslipSummary, percentOff, toNumber, tuSummary,
 } from './compare';
 import { formatMoney } from '../applicationForm/options';
 import { Term, Terms } from '../../components/term';
+
+// The word chip beside a note under "Check on the document": Major in red, Minor in yellow (documentCheck.css .dc-sev)
+// Hover shows the definition, so there is no separate legend.
+const SeverityChip = ({ severity }) => (
+    <span className={`dc-sev ${SEVERITIES[severity].tone}`} title={SEVERITIES[severity].hint}>
+        {SEVERITIES[severity].label}
+    </span>
+);
+
+// "These will be copied to the application": this many show at once, the rest open from a dropdown
+const COPY_SHOWN = 4;
+const CopyItem = ({ h }) => <li><b>{h.def.label}</b> → {displayValue(h.value, h.def.data_type)}</li>;
 
 const KIND_LABELS = {
     PASSPORT: 'Passport', DRIVERS_LICENSE: "Driver's License", UMID: 'UMID', PHILSYS_ID: 'PhilSys ID',
@@ -181,8 +194,11 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
     };
 
     const kind = run.output?.document_kind;
-    const issues = run.output?.issues ?? [];
+    const issues = readIssues(run.output);
     const lowLines = fields.filter((f) => (lowestConfidence(f.lines) ?? 1) < LOW_CONFIDENCE).length;
+    // the box's warning icon takes the worst severity in it
+    const worstTone = (issues.some((i) => i.severity === 'MAJOR') || UNEXPECTED_KINDS.has(kind)) ? 'dc-sev-major'
+        : (issues.some((i) => i.severity === 'MINOR') || lowLines > 0) ? 'dc-sev-minor' : '';
 
     let summary = null;
     if (doc.document_type === 'PAYSLIPS_REMITTANCES') {
@@ -330,7 +346,23 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                         <p>Nothing is copied to the application.</p>
                                     </>
                                 ) : toCopy.length > 0 ? (
-                                    <p>These will be <strong>copied to the application</strong>: {toCopy.map((h) => `${h.def.label} → ${displayValue(h.value, h.def.data_type)}`).join('; ')}.</p>
+                                    <>
+                                        <p>These {toCopy.length === 1 ? 'value' : 'values'} will be <strong>copied to the application</strong>:</p>
+                                        <ul className="dc-copylist">
+                                            {toCopy.slice(0, COPY_SHOWN).map((h) => <CopyItem key={h.field.id} h={h} />)}
+                                        </ul>
+                                        {toCopy.length > COPY_SHOWN + 1 && (
+                                            <details className="dc-more">
+                                                <summary>Show {toCopy.length - COPY_SHOWN} more <ChevronDown size={15} aria-hidden="true" /></summary>
+                                                <ul className="dc-copylist">
+                                                    {toCopy.slice(COPY_SHOWN).map((h) => <CopyItem key={h.field.id} h={h} />)}
+                                                </ul>
+                                            </details>
+                                        )}
+                                        {toCopy.length === COPY_SHOWN + 1 && (
+                                            <ul className="dc-copylist"><CopyItem h={toCopy[COPY_SHOWN]} /></ul>
+                                        )}
+                                    </>
                                 ) : <p>Nothing will be copied to the application.</p>}
                                 <p className="dc-muted">After this the values can&apos;t be changed. Changes are recorded in the change history.</p>
                                 <div className="dc-acts">
@@ -349,13 +381,17 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
             <div className="dc-scroll">
                 {(issues.length > 0 || UNEXPECTED_KINDS.has(kind) || lowLines > 0) && (
                     <div className="lf-warnnote dc-issues">
-                        <AlertTriangle size={16} aria-hidden="true" />
+                        <AlertTriangle size={16} aria-hidden="true" className={worstTone} />
                         <div>
                             <p>Check on the document</p>
                             <ul>
-                                {UNEXPECTED_KINDS.has(kind) && <li>The AI isn&apos;t sure this is the right kind of document (<Terms text={KIND_LABELS[kind]} />).</li>}
-                                {lowLines > 0 && <li>{lowLines} value(s) came from text the <Term k="OCR" /> found hard to read.</li>}
-                                {issues.map((issue) => <li key={issue}>{issue}</li>)}
+                                {UNEXPECTED_KINDS.has(kind) && (
+                                    <li><SeverityChip severity="MAJOR" /><span>The AI isn&apos;t sure this is the right kind of document (<Terms text={KIND_LABELS[kind]} />).</span></li>
+                                )}
+                                {issues.filter((i) => i.severity === 'MAJOR').map((i, n) => <li key={`major-${n}`}><SeverityChip severity="MAJOR" /><span>{i.text}</span></li>)}
+                                {lowLines > 0 && <li><SeverityChip severity="MINOR" /><span>{lowLines} value(s) came from text the <Term k="OCR" /> found hard to read.</span></li>}
+                                {issues.filter((i) => i.severity === 'MINOR').map((i, n) => <li key={`minor-${n}`}><SeverityChip severity="MINOR" /><span>{i.text}</span></li>)}
+                                {issues.filter((i) => !i.severity).map((i, n) => <li key={`plain-${n}`} className="plain"><span>{i.text}</span></li>)}
                             </ul>
                         </div>
                     </div>

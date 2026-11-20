@@ -72,8 +72,56 @@
 .fm-history li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin: 0; }
 .fm-history li .fm-comment { flex-basis: 100%; }
 
+/* "Needs a new copy" modal (newCopyDialog.jsx): a solid card over a dimmed page, same tokens as the panel */
+.fm-dialog {
+  position: fixed; inset: 0; width: min(36rem, calc(100vw - 2rem)); height: fit-content; max-height: calc(100vh - 2rem);
+  margin: auto; padding: 0; overflow-y: auto; border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08)); border-radius: 18px;
+  background: #fff; color: var(--ink, #0f1b33); box-shadow: 0 30px 70px -20px rgba(13, 20, 40, 0.5); text-align: left;
+}
+.fm-dialog::backdrop { background: rgba(13, 20, 40, 0.45); }
+.fm-dialog-body { display: grid; gap: 1rem; padding: 1.4rem 1.5rem 1.25rem; }
+.fm-dialog-head { display: flex; align-items: center; gap: 0.75rem; }
+.fm-dialog-head h2 { margin: 0; color: var(--navy, #14295f); font-size: 1.2rem; }
+.fm-dialog-ic {
+  display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: 12px;
+  background: var(--lf-warn-bg, #fff1e2); color: var(--lf-warn, #a8480b);
+}
+.fm-field { display: grid; gap: 0.4rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.ct .fm-dialog textarea.fm-input { min-height: 5rem; resize: vertical; }
+.fm-counter { margin: 0; color: var(--muted, #475569); font-size: 0.78rem; text-align: right; font-variant-numeric: tabular-nums; }
+.fm-dialog-strip {
+  margin: 0; padding: 0.6rem 0.8rem; border: 1px solid var(--lf-none-line, #d5dbe6); border-radius: 10px;
+  background: var(--lf-none-bg, #eef1f6); color: var(--ink, #0f1b33); font-size: 0.88rem;
+}
+/* the one document being asked for: fixed, not a choice */
+.fm-asking {
+  display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; margin: 0; padding: 0.4rem 0.75rem; border-radius: 10px;
+  border: 1px solid var(--lf-accent, #1e3f97); background: var(--lf-accent-bg, rgba(30, 63, 151, 0.08));
+}
+.fm-asking svg { flex: none; color: var(--lf-accent, #1e3f97); }
+.fm-pick-txt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; min-width: 0; font-size: 0.9rem; }
+.fm-party { color: var(--muted, #475569); font-size: 0.82rem; }
+.fm-channels { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; margin: 0; color: var(--muted, #475569); font-size: 0.8rem; }
+.fm-channels::before { content: 'Goes to the applicant by'; }
+.fm-channels span { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 600; }
+.fm-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; padding-top: 0.25rem; }
+.ct .fm-dbtn {
+  display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.6rem; margin: 0; padding: 0.4rem 1.1rem;
+  border: 1px solid var(--lf-block-line, #c9d3ea); border-radius: 999px; background: transparent; box-shadow: none;
+  color: var(--ink, #0f1b33); font: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+}
+.ct .fm-dbtn.quiet { border-color: transparent; color: var(--muted, #475569); }
+.ct .fm-dbtn.primary { border-color: var(--lf-orange, #c2410c); background: var(--lf-orange, #c2410c); color: #fff; }
+.ct .fm-dbtn:hover:not(:disabled) { background: var(--lf-wash, rgba(20, 41, 95, 0.06)); }
+.ct .fm-dbtn.primary:hover:not(:disabled) { background: #9a3412; border-color: #9a3412; }
+.ct .fm-dbtn:disabled { opacity: 0.55; cursor: not-allowed; }
+.ct .fm-dbtn:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+[data-theme='dark'] .lf-folder .fm-dialog { background: #131c38; border-color: rgba(255, 255, 255, 0.1); }
+[data-theme='dark'] .lf-folder .lf-paper .fm-dialog { background: #fff; border-color: rgba(20, 41, 95, 0.08); }
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes fm-in { from { opacity: 0; transform: translateY(-4px); } }
+  .fm-dialog[open] { animation: fm-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .fm-body { animation: fm-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .fm-chev { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .ct .fm-head, .ct .fm-btn { transition: background-color 0.18s, border-color 0.18s, color 0.18s; }

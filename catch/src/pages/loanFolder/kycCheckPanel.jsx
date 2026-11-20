@@ -1,9 +1,10 @@
 // AO's verification of one form section: Verified, or Needs clarification with remarks.
 // The choice starts on the section's latest recorded result, so the form matches the chip when you come back to it.
-// Recording a check calls onRecorded, which moves the loan folder on to the next section.
+// Recording a check calls onRecorded (the page reloads its checks) and stays on the section, so the AO sees the result,
+// the remarks and "Ask the applicant" for a Needs clarification. The Next button beside it moves on when the AO is ready.
 // In the loan folder it sits in a sticky rail beside the section's form (wide screens) or above it.
 import { useId, useState } from 'react';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { recordKycCheck } from './api';
 import { RESULT_LABELS } from './options';
 import Byline from '../../components/byline';
@@ -27,11 +28,13 @@ export const CheckChip = ({ check }) => (
 );
 
 // extra: shown under the latest result (the loan folder passes "Ask the applicant" for a Needs clarification)
-const KycCheckPanel = ({ applicationId, section, complete, latest, names, onRecorded, extra = null }) => {
+// onNext / nextLabel: the button that goes on to the next section (after the last one, to Request CI)
+const KycCheckPanel = ({ applicationId, section, complete, latest, names, onRecorded, onNext, nextLabel = 'Next', extra = null }) => {
     const [result, setResult] = useState(latest?.result ?? '');
     const [remarks, setRemarks] = useState('');
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [recorded, setRecorded] = useState(false);
     const remarksId = useId();
     const needsRemark = result === 'NEEDS_CLARIFICATION';
 
@@ -47,10 +50,12 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
         }
         setSaving(true);
         setError(null);
+        setRecorded(false);
         try {
             await recordKycCheck(applicationId, section, result, remarks);
             setRemarks('');
-            await onRecorded(); // the page moves on to the next section
+            await onRecorded(); // the page reloads its checks; this section stays open
+            setRecorded(true);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -95,12 +100,20 @@ const KycCheckPanel = ({ applicationId, section, complete, latest, names, onReco
             </label>
             <textarea id={remarksId} rows={3} aria-required={needsRemark}
                 placeholder={needsRemark ? 'What needs clarification' : 'Anything the next person should know'}
-                value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+                value={remarks} onChange={(e) => { setRemarks(e.target.value); setRecorded(false); }} />
+            {error && <p className="lf-err" role="alert">{error}</p>}
+            {recorded && !error && (
+                <p className="lf-check-done" role="status"><CheckCircle2 size={16} aria-hidden="true" />Check recorded. Go on when you are ready.</p>
+            )}
             <div className="lf-check-foot">
-                {error ? <p className="lf-err" role="alert">{error}</p> : <span />}
                 <button type="submit" className="lf-primary" disabled={saving}>
                     {saving ? 'Saving...' : 'Record check'}
                 </button>
+                {onNext && (
+                    <button type="button" className="lf-btn lf-check-next" onClick={onNext} disabled={saving}>
+                        {nextLabel}<ArrowRight size={16} aria-hidden="true" />
+                    </button>
+                )}
             </div>
         </form>
     );

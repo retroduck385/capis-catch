@@ -664,7 +664,17 @@
 .lf-fieldlabel { display: flex; align-items: baseline; gap: 0.35rem; margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--ink); }
 .lf-fieldlabel small { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
 .lf-folder .lf-check textarea { min-height: 5.5rem; margin: 0; border-radius: 14px; resize: vertical; }
-.lf-folder .lf-check-foot { margin: 0; }
+.lf-folder .lf-check-foot { margin: 0; flex-wrap: nowrap; gap: 0.6rem; }  /* Record check left, Next section right, side by side */
+.lf-folder .lf-check-foot > button { flex: 1 1 0; min-width: 0; padding-inline: 0.9rem; white-space: nowrap; }
+.lf-check-done { display: flex; align-items: center; gap: 0.4rem; margin: 0; color: var(--lf-ok); font-size: 0.88rem; font-weight: 600; }
+.lf-check-done svg { flex: none; }
+/* Next section: the orange pill (white text on it: 5.2:1), the same orange as the Document check's next-step button */
+.lf-folder .lf-check-foot .lf-check-next {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; min-height: 2.75rem; border: 0; border-radius: 999px;
+  background: var(--lf-orange); color: #fff; font-weight: 700; box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75);
+}
+.lf-folder .lf-check-foot .lf-check-next:hover:not(:disabled) { background: #9a3412; color: #fff; }
+.lf-folder .lf-check-foot .lf-check-next:disabled { opacity: 0.6; }
 
 /* primary: the blue pill (Record check, Send to the CI, the form's Save); the applicant theme's orange arrow disc is dropped */
 .lf-folder :is(.lf-primary, .ci-send button[type='submit'], .lf-formcard button[type='submit']) {

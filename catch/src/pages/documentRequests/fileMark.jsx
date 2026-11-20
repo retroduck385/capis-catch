@@ -1,7 +1,8 @@
 // A staff mark on one uploaded applicant document: Cleared or Needs a new copy, with a comment, and the history of
 // who marked what (document_file_marks in 20261116_findings_and_file_marks.sql). Only the assigned Account Officer
 // and the assigned Credit Officer can mark; everyone who can open the file reads. Applicants never see any of it.
-// "Needs a new copy" offers one click to put that document into a request to the applicant (ask.jsx).
+// "Needs a new copy" opens a modal (newCopyDialog.jsx): say what is wrong, and the assigned AO can send the
+// applicant a request for that file's category right there. A file marked earlier still offers ask.jsx.
 // Look (DESIGN.md, "Document check"): a compact disclosure. The summary row always shows the latest mark as a chip
 // with who / when; the rest (comment, Ask the applicant, marking, history) opens on demand. It starts open only when
 // the file still needs something from the viewer (not marked yet and they can mark, or a new copy is needed).
@@ -11,6 +12,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, History } from 
 import { ROLE_LABELS } from '../../roles';
 import { markFile } from './api';
 import AskApplicantButton from './ask';
+import NewCopyDialog from './newCopyDialog';
 import { Term } from '../../components/term';
 import Byline from '../../components/byline';
 import './fileMark.css';
@@ -40,6 +42,7 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
     const [comment, setComment] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
+    const [asking, setAsking] = useState(false);
     const rows = marks.byDoc[file.documentId] ?? [];
     const latest = rows.at(-1) ?? null;
     const askAgain = latest?.mark === 'NEEDS_NEW_COPY' || (unreadable && latest?.mark !== 'CLEARED');
@@ -49,15 +52,11 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
     const inputId = `file-mark-${file.documentId}`;
     const bodyId = `${id}-body`;
 
-    const save = async (mark) => {
-        if (mark === 'NEEDS_NEW_COPY' && !comment.trim()) {
-            setError('Say what is wrong with the file, so the applicant can be asked for a new copy.');
-            return;
-        }
+    const saveCleared = async () => {
         setBusy(true);
         setError(null);
         try {
-            await markFile(file.documentId, mark, comment);
+            await markFile(file.documentId, 'CLEARED', comment);
             setComment('');
             marks.reload();
         } catch (err) {
@@ -99,22 +98,28 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
                     {marks.canMark && (
                         <div className="fm-form">
                             <label htmlFor={inputId} className="fm-label">
-                                {latest ? 'Mark it again' : 'Mark this file'} <small>(a comment is required for a new copy)</small>
+                                {latest ? 'Mark it again' : 'Mark this file'} <small>(comment optional)</small>
                             </label>
                             <input id={inputId} className="fm-input" value={comment} maxLength={500}
                                 onChange={(e) => setComment(e.target.value)}
                                 placeholder="What you checked, or what is wrong with the file"
                                 aria-describedby={error ? `${inputId}-error` : undefined} aria-invalid={error ? true : undefined} />
                             <div className="fm-acts">
-                                <button type="button" className="fm-btn ok" disabled={busy} onClick={() => save('CLEARED')}>
+                                <button type="button" className="fm-btn ok" disabled={busy} onClick={saveCleared}>
                                     <CheckCircle2 size={16} aria-hidden="true" />Mark Cleared
                                 </button>
-                                <button type="button" className="fm-btn warn" disabled={busy} onClick={() => save('NEEDS_NEW_COPY')}>
+                                <button type="button" className="fm-btn warn" disabled={busy}
+                                    onClick={() => { setError(null); setAsking(true); }}>
                                     <AlertTriangle size={16} aria-hidden="true" />Needs a new copy
                                 </button>
                             </div>
                             {error && <p id={`${inputId}-error`} role="alert" className="fm-err">{error}</p>}
                         </div>
+                    )}
+                    {asking && (
+                        <NewCopyDialog applicationId={applicationId} file={file} initialComment={comment}
+                            onClose={() => setAsking(false)}
+                            onDone={() => { setAsking(false); setComment(''); marks.reload(); }} />
                     )}
 
                     {rows.length > 1 && (

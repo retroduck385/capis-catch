@@ -52,8 +52,30 @@ const APPLICATION_SELECT = `
     character_references ( * )
 `;
 
-export const fetchApplication = async (applicationId) =>
-    check(await supabase.from('loan_applications').select(APPLICATION_SELECT).eq('id', applicationId).single());
+// Files a new upload replaced (20261121_replace_documents.sql) are off their requirement, so requirement.documents holds
+// only the current files and every count stays right. They are loaded here as requirement.earlier_documents, each with
+// replaced_by (the current file that took its place), for the "Earlier versions" lists. If the migration is not run
+// yet the query fails and nothing is attached.
+const attachEarlierDocuments = async (app) => {
+    const { data, error } = await supabase.from('documents').select('*')
+        .eq('application_id', app.id).not('superseded_by', 'is', null).order('id');
+    if (error || !data?.length) return;
+    const parties = app.applicants ?? [];
+    const current = new Map(parties.flatMap((p) => (p.application_requirements ?? []).flatMap((r) => r.documents ?? []))
+        .map((d) => [d.id, d]));
+    for (const p of parties) {
+        for (const r of p.application_requirements ?? []) {
+            r.earlier_documents = data.filter((d) => d.replaced_requirement_id === r.id)
+                .map((d) => ({ ...d, replaced_by: current.get(d.superseded_by) ?? null }));
+        }
+    }
+};
+
+export const fetchApplication = async (applicationId) => {
+    const app = check(await supabase.from('loan_applications').select(APPLICATION_SELECT).eq('id', applicationId).single());
+    await attachEarlierDocuments(app);
+    return app;
+};
 
 // Re-derives the document checklist from employment types, then loads the whole record
 export const refreshApplication = async (applicationId) => {

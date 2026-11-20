@@ -1,10 +1,12 @@
 // Upload checklist. Required items per borrower come from the DB (required_documents() by
 // employment type), so "Self-Employed" or an OFW automatically get their extra requirements.
+// A file a new upload replaced is not counted; it is listed under "Earlier versions" and can still be opened.
 // Each requirement is a card: a status chip (amber until it has enough files, green after), the files as rows with
 // View / Remove, and a labelled upload. Shown in the applicant's wizard and the staff loan folder (styles in
 // applicantPages.css, written against the shared --lf-* tokens so they work in both).
 import { useState } from 'react';
 import { CheckCircle2, Eye, FileText, Paperclip, Trash2 } from 'lucide-react';
+import { formatDay, formatExact, fullWhen } from '../../../components/people';
 import { deleteDocument, getDocumentUrl, getParties, uploadDocument } from '../api';
 import { FormError, Section, StepButtons } from '../fields';
 import { BORROWER_ROLES, minFilesFor, partyLabel, REQUIREMENT_LABELS } from '../options';
@@ -107,7 +109,12 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                                                 {docs.map((doc) => (
                                                     <li key={doc.id}>
                                                         <FileText size={16} aria-hidden="true" />
-                                                        <span className="ap-file-name" title={doc.original_file_name ?? undefined}>{doc.file_name}</span>
+                                                        <span className="ap-file-name" title={doc.original_file_name ?? undefined}>
+                                                            {doc.file_name}
+                                                            <span className="ap-earlier-note">
+                                                                Uploaded <time dateTime={doc.uploaded_at} title={fullWhen(doc.uploaded_at)}>{formatExact(doc.uploaded_at)}</time>
+                                                            </span>
+                                                        </span>
                                                         <button type="button" className="ap-filebtn" onClick={() => handleView(doc)}>
                                                             <Eye size={15} aria-hidden="true" />View
                                                         </button>
@@ -118,6 +125,27 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                                                     </li>
                                                 ))}
                                             </ul>
+                                        )}
+                                        {(req.earlier_documents ?? []).length > 0 && (
+                                            <details className="ap-earlier">
+                                                <summary>Earlier versions ({req.earlier_documents.length})</summary>
+                                                <ul className="ap-files">
+                                                    {req.earlier_documents.map((doc) => (
+                                                        <li key={doc.id}>
+                                                            <FileText size={16} aria-hidden="true" />
+                                                            <span className="ap-file-name" title={doc.original_file_name ?? undefined}>
+                                                                {doc.file_name}
+                                                                <span className="ap-earlier-note">
+                                                                    Uploaded {formatExact(doc.uploaded_at)} · Replaced {formatDay(doc.superseded_at)}{doc.replaced_by ? ` by ${doc.replaced_by.file_name}` : ''}
+                                                                </span>
+                                                            </span>
+                                                            <button type="button" className="ap-filebtn" onClick={() => handleView(doc)}>
+                                                                <Eye size={15} aria-hidden="true" />View
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </details>
                                         )}
                                         <label className="ap-upload">
                                             <span className="sr-only">Upload {label}</span>

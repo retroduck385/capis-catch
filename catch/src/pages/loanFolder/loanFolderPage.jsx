@@ -186,11 +186,9 @@ const LoanFolderPage = () => {
         setSaved(false);
     };
 
-    // After a KYC check is recorded: reload the trail, then go to the next section (after the last one, Request CI)
+    // After a KYC check is recorded: reload the trail and stay on the section; the Next button in the check panel moves on
     const handleRecorded = async () => {
         await loadTrail();
-        const at = sections.findIndex((s) => s.key === currentKey);
-        open(sections[at + 1]?.key ?? REQUEST_CI);
     };
 
     // The AO keeps editing after the request (Intake -> Credit Investigation); just reload
@@ -435,7 +433,9 @@ const LoanFolderPage = () => {
                         latest={latestCheck(section.key)}
                         names={names}
                         extra={askFor(section, latestCheck(section.key))}
-                        onRecorded={handleRecorded} />
+                        onRecorded={handleRecorded}
+                        onNext={() => open(next?.key ?? REQUEST_CI)}
+                        nextLabel={next ? 'Next section' : 'Next: Request CI'} />
                 </aside>
                 <div className="lf-card lf-formcard lf-paper">
                     <p className="lf-formcard-head">

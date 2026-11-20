@@ -6,6 +6,7 @@
 //   formatWhen(iso, now)    short, relative while recent: "Just now", "12 min ago", "Today, 2:07 PM", "Yesterday, 4:48 PM",
 //                           "Mon, 2:07 PM" (this week), "Oct 26, 2:07 PM" (this year), "Oct 26, 2025" (older)
 //   formatDay(iso)          a date for a record fact: "Sep 29, 2026"
+//   formatExact(iso)        the exact moment, never relative: "Nov 20, 2026, 4:37 PM" (uploaded files)
 //   fullWhen(iso)           the exact moment, for the tooltip: "Monday, October 26, 2026 at 2:07 PM"
 import { ROLE_LABELS } from '../roles.js';
 
@@ -65,6 +66,11 @@ export const formatWhen = (iso, now = new Date()) => {
 export const formatDay = (iso) => {
     const d = toDate(iso);
     return d ? d.toLocaleDateString(LOCALE, { dateStyle: 'medium' }) : '—';
+};
+
+export const formatExact = (iso) => {
+    const d = toDate(iso);
+    return d ? d.toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 };
 
 export const fullWhen = (iso) => {

@@ -1,8 +1,7 @@
 /* Document check (documentCheckPage.jsx, documentViewer.jsx, extractionPanel.jsx). An .lf-folder page: the panel,
    cards, pills, header, tabs, tokens and dark mode come from loanFolder.css (DESIGN.md sections 7 and 11); this file adds the
-   workspace (two panes that stick and fill the screen on desktop), the document list, the viewer, the extraction
+   workspace (two cards of fixed height side by side on desktop), the document list, the viewer, the extraction
    panel, and two chip tones (info, err). Every colour is a --lf-* token, so dark mode follows. */
-.lf-doccheck { --dc-pane-h: calc(100vh - var(--ct-head, 0rem) - var(--ct-gap, 0rem) - 2rem); }
 
 /* chip tones the loan folder doesn't have: info (work in progress, Corrected) and err (a failed read, a wrong format:
    errors use the form red, never a TAT colour) */
@@ -41,20 +40,39 @@
 .dc-people .role { color: var(--muted); font-size: 0.86rem; font-weight: 500; }
 .lf-folder .dc-people b.all { background: var(--lf-ok-bg); color: var(--lf-ok); }
 
-/* ---------- workspace: document + viewer | extracted values ---------- */
-.dc-work { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; align-items: start; }
-.lf-folder .dc-pane { display: flex; flex-direction: column; gap: 1rem; min-width: 0; padding: 1.25rem 1.4rem 1.4rem; }
-.lf-folder .dc-pane > .lf-cardhead { margin: 0; }
+/* header: the human-in-the-loop notice is the subtitle; the progress chip sits beside the way back */
+.dc-hitl { display: flex; align-items: flex-start; gap: 0.45rem; margin: 0; color: var(--lf-text-2); font-size: 0.9rem; line-height: 1.45; }
+.dc-hitl svg { flex: none; margin-top: 0.15rem; color: var(--lf-accent); }
+.lf-folder .lf-actions .dc-progress { margin: 0; }
+.lf-folder.lf-doccheck > .lf-hero { align-items: center; }
+
+/* ---------- workspace: files + viewer | extracted values ----------
+   Desktop: two cards side by side, a fixed height (52rem on a laptop, up to 66rem on a tall screen) so the page stays
+   short; whatever does not fit scrolls inside its card (a long staff check or list of values). Both cards share one row
+   (same top, same bottom) and their heads are the same height, so the titles and chips sit on one line. */
+.dc-work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+.lf-folder .dc-pane { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; padding: 1.15rem 1.35rem 1.35rem; }
+.lf-folder .dc-pane > .lf-cardhead { flex: none; flex-wrap: nowrap; align-items: center; min-height: 2rem; margin: 0; }
+.lf-folder .dc-pane > .lf-cardhead :is(h2, .dc-headleft) { min-width: 0; }
+.lf-folder .dc-pane > .lf-cardhead h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lf-folder .dc-pane > .lf-cardhead .dc-took { flex: none; display: inline-flex; align-items: center; gap: 0.3rem; }
+.dc-took .dc-took-ic { display: none; flex: none; }
+.lf-folder .dc-pane > .lf-cardhead > .dc-headleft { flex-wrap: nowrap; }
 @media (min-width: 1101px) {
-  .lf-folder .dc-pane {
-    position: sticky; top: calc(var(--ct-head, 0rem) + var(--ct-gap, 0rem) + 1rem); height: var(--dc-pane-h); min-height: 34rem;
+  .lf-doccheck > .dc-work {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+    height: clamp(52rem, calc(100dvh - 12rem), 66rem);
   }
-  .lf-folder .dc-docs { overflow-y: auto; }  /* a long staff check can't push the viewer out of the card */
+  .lf-folder .dc-pane { min-height: 0; overflow: hidden; }
+  .lf-folder .dc-docs { overflow-y: auto; overscroll-behavior: contain; }
+  .dc-docs .dc-viewer-wrap { min-height: 22rem; }  /* an open staff check scrolls the card instead of squeezing the viewer */
+  .dc-docs .dc-doclist { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* the document list: inset cards with a left stripe in the status tone; the open one is outlined blue */
-.dc-doclist { flex: none; display: grid; gap: 0.5rem; max-height: 15rem; margin: 0; padding: 0 0.2rem 0 0; overflow-y: auto; list-style: none; }
-.dc-doclist li { margin: 0; }
+/* the files: compact inset cards in a grid (two across on desktop), a left stripe in the status tone; the open one is
+   outlined blue */
+.dc-doclist { flex: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.5rem), 1fr)); gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+.dc-doclist li { margin: 0; container-type: inline-size; }
 .lf-folder .dc-doc {
   display: grid; grid-template-columns: 1.25rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; width: 100%; min-height: 3.4rem;
   margin: 0; padding: 0.7rem 0.85rem 0.7rem 1rem; border: 1px solid var(--lf-inset-rim); border-radius: 14px;
@@ -63,7 +81,50 @@
 .lf-folder .dc-doc:hover { background: var(--lf-inset-hover); color: var(--ink); }
 .lf-folder .dc-doc[aria-current='true'] { background: var(--lf-selected); border-color: var(--lf-accent); box-shadow: inset 3px 0 0 var(--tone), 0 0 0 1px var(--lf-accent); }
 .dc-doc .ic { color: var(--lf-accent); }
-.dc-doc .txt { display: grid; gap: 0.1rem; min-width: 0; line-height: 1.3; }
+/* earlier versions: a tab beside the current files; the old file opens in the viewer (read only, not counted) */
+.dc-viewtabs { display: inline-flex; flex: none; gap: 0.25rem; margin: 0 0 0.6rem; padding: 0.25rem; border: 1px solid var(--lf-block-line, #c9d3ea); border-radius: 999px; background: var(--lf-inset, transparent); }
+.dc-viewtabs button {
+  min-height: 2.25rem; padding: 0.25rem 0.9rem; border: 0; border-radius: 999px; background: transparent; color: var(--lf-text-2, var(--ink));
+  font: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+}
+.dc-viewtabs button[aria-pressed='true'] { background: var(--lf-blue-grad, var(--blue)); color: #fff; }
+.dc-viewtabs button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.dc-headleft { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.6rem; min-width: 0; }
+.dc-headright { display: flex; flex: none; align-items: center; gap: 0.4rem; }
+/* chip-sized, so it doesn't make this card head taller than the other two */
+.lf-folder .dc-rerun-btn {
+  display: inline-flex; align-items: center; gap: 0.3rem; height: 1.75rem; min-height: 0; margin: 0; padding: 0 0.65rem;
+  border: 1px solid var(--lf-block-line, #c9d3ea); border-radius: 999px; background: transparent; box-shadow: none;
+  color: var(--lf-text-2, var(--muted)); font-size: 0.78rem; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap;
+}
+.lf-folder .dc-rerun-btn:hover:not(:disabled) { border-color: var(--lf-accent); background: var(--lf-accent-bg); color: var(--lf-accent); }
+.lf-folder .dc-rerun-btn:disabled { opacity: 0.55; cursor: default; }
+/* where the extracted-information head is tight, "Run again" is its icon and "Took" a clock (the text stays for screen
+   readers + hover) */
+@media (min-width: 1101px) and (max-width: 1399px) {
+  .lf-folder .dc-rerun-btn { width: 1.75rem; padding: 0; justify-content: center; }
+  .dc-took .dc-took-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .dc-took .dc-took-ic { display: inline-block; }
+  .dc-rerun-btn .dc-rerun-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+.lf-cardhead .dc-took { padding: 0.1rem 0.6rem; border: 1px solid var(--lf-block-line, #c9d3ea); border-radius: 999px; background: var(--lf-inset, transparent); color: var(--lf-text-2, var(--ink)); font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* a file card: icon, name and status on the first line; the file name and upload time sit under the name, on its left
+   edge. The status is a round icon badge (its label is screen-reader text and a tooltip) and becomes the labelled chip
+   once the card is wide enough (container query on the list item). */
+.lf-folder .dc-doc { align-items: start; gap: 0.05rem 0.6rem; min-height: 0; padding: 0.55rem 0.7rem 0.6rem 0.95rem; }
+.dc-doc .txt { display: contents; }
+.lf-folder .dc-doc .ic { margin-top: 0.1rem; }
+.dc-doc .txt > b { grid-column: 2; grid-row: 1; align-self: center; line-height: 1.3; }
+.lf-folder .dc-doc > .dc-chip {
+  grid-column: 3; grid-row: 1; justify-content: center; width: 1.65rem; height: 1.65rem; padding: 0; border-radius: 50%;
+}
+.dc-doc :is(.file, .note) { grid-column: 2 / -1; line-height: 1.4; }
+.dc-doc .dc-chip-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@container (min-width: 22rem) {
+  .lf-folder .dc-doc > .dc-chip { width: auto; height: auto; padding: 0.1rem 0.65rem; border-radius: 999px; }
+  .dc-doc .dc-chip-txt { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+}
+.dc-doc .note { overflow: hidden; color: var(--muted); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
 .dc-doc .txt b { font-size: 0.92rem; font-weight: 700; }
 .dc-doc .file { overflow: hidden; color: var(--muted); font-size: 0.82rem; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -73,7 +134,7 @@
 
 /* ---------- viewer ---------- */
 .dc-viewer-wrap { display: flex; flex: 1; min-height: 0; }
-.dc-viewer { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; min-height: 22rem; }
+.dc-viewer { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; min-height: 0; }
 .dc-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .dc-group { display: inline-flex; align-items: center; gap: 0.1rem; padding: 0.2rem; border-radius: 999px; background: var(--lf-wash); }
 .lf-folder .dc-tool {
@@ -85,8 +146,11 @@
 @media (pointer: coarse) { .lf-folder .dc-tool { width: 2.75rem; height: 2.75rem; } }
 .dc-zoom { min-width: 3.25rem; padding: 0 0.35rem; color: var(--lf-text-2); font-size: 0.85rem; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lf-folder .dc-open { margin-left: auto; min-height: 2.5rem; }
-.dc-stage { flex: 1; min-height: 18rem; overflow: auto; padding: 1rem; border: 1px solid var(--lf-hair); border-radius: 14px; background: var(--lf-wash); }
+.dc-stage { flex: 1; container-type: size; min-height: 12rem; overflow: auto; padding: 1rem; border: 1px solid var(--lf-hair); border-radius: 14px; background: var(--lf-wash); }
 .dc-page { position: relative; margin: 0 auto; }
+/* fitted: the whole page inside the stage, in both directions (the stage is a size container, so cqw / cqh are its box) */
+.dc-page.fit { width: fit-content; }
+.dc-page.fit :is(img, canvas) { width: auto; height: auto; max-width: 100cqw; max-height: 100cqh; }
 .dc-page :is(img, canvas) { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; box-shadow: 0 10px 24px -14px rgba(20, 41, 95, 0.45); }
 /* where the selected value was read: blue, like the ring on its field (a highlight, not a status) */
 .dc-box { position: absolute; border: 2px solid #2b52c4; border-radius: 4px; background: rgba(43, 82, 196, 0.16); pointer-events: none; }
@@ -111,11 +175,40 @@
 .dc-review { display: grid; gap: 0.45rem; padding: 0.85rem 1rem; border: 1px solid rgba(30, 63, 151, 0.2); border-radius: 14px; background: var(--lf-accent-bg); font-size: 0.92rem; }
 .dc-review p { margin: 0; }
 .dc-review ul { display: grid; gap: 0.2rem; margin: 0; padding-left: 1.15rem; list-style: disc; }  /* Tailwind removes list bullets */
+.dc-review .dc-copylist { gap: 0.3rem; overflow-wrap: anywhere; }
+.dc-review .dc-copylist b { color: var(--navy); font-weight: 700; }
+.dc-more > summary {
+  display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.25rem; padding: 0 0.25rem; border-radius: 8px;
+  color: var(--lf-accent); font-size: 0.88rem; font-weight: 600; list-style: none; cursor: pointer;
+}
+.dc-more > summary::-webkit-details-marker { display: none; }
+.dc-more > summary:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.dc-more > summary svg { transition: transform 0.2s; }
+.dc-more[open] > summary svg { transform: rotate(180deg); }
+.dc-more > .dc-copylist { margin-top: 0.15rem; }
 .dc-review-title { display: flex; align-items: center; gap: 0.4rem; color: var(--navy); font-weight: 700; }
 .dc-scroll { flex: 1; min-height: 0; display: grid; align-content: start; gap: 1.5rem; overflow-y: auto; overscroll-behavior: contain; padding-right: 0.25rem; }
 .dc-issues > div { min-width: 0; }
 .dc-issues p { margin: 0; font-weight: 700; }
-.dc-issues ul { margin: 0.25rem 0 0; padding-left: 1.1rem; font-weight: 500; list-style: disc; }
+.dc-issues ul { display: grid; gap: 0.4rem; margin: 0.4rem 0 0; padding: 0; font-weight: 500; list-style: none; }
+.dc-issues li { display: flex; align-items: baseline; gap: 0.55rem; margin: 0; }
+.dc-issues li.plain { padding-left: 0.4rem; }
+.dc-issues li.plain::before { content: '•'; color: var(--muted); }
+.dc-issues li > span:last-child { min-width: 0; }
+/* Major (red) and Minor (yellow): a word chip beside every issue, never colour alone; a legend below the list */
+.lf-warnnote.dc-issues { background: var(--lf-inset, #fafbfd); border-color: var(--lf-block-line, #c9d3ea); color: var(--ink); }
+.lf-doccheck .dc-sev { --sev: #b42318; --sev-bg: #fdecea; --sev-line: #f5c2bd; }
+.lf-doccheck .dc-sev.minor { --sev: #854d0e; --sev-bg: #fef3c7; --sev-line: #f0d58a; }
+.dc-sev {
+  flex: none; padding: 0 0.55rem; border: 1px solid var(--sev-line); border-radius: 999px; background: var(--sev-bg); color: var(--sev);
+  font-size: 0.74rem; font-weight: 700; line-height: 1.55; white-space: nowrap;
+}
+.dc-issues svg.dc-sev-major { color: #b42318; }
+.dc-issues svg.dc-sev-minor { color: #a16207; }
+[data-theme='dark'] .lf-doccheck .dc-sev { --sev: #fca5a5; --sev-bg: rgba(248, 113, 113, 0.14); --sev-line: rgba(248, 113, 113, 0.4); }
+[data-theme='dark'] .lf-doccheck .dc-sev.minor { --sev: #fde047; --sev-bg: rgba(250, 204, 21, 0.14); --sev-line: rgba(250, 204, 21, 0.4); }
+[data-theme='dark'] .dc-issues svg.dc-sev-major { color: #fca5a5; }
+[data-theme='dark'] .dc-issues svg.dc-sev-minor { color: #fde047; }
 .dc-h { margin: 0 0 0.75rem; color: var(--lf-text-3); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
 .dc-sub { display: grid; gap: 0.7rem; padding: 1rem 1.1rem 1.1rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg); }
 .dc-sub .dc-h { margin: 0; }
@@ -188,7 +281,6 @@
 
 /* ---------- smaller screens: panes stack, nothing sticks ---------- */
 @media (max-width: 1100px) {
-  .dc-work { grid-template-columns: minmax(0, 1fr); }
   .dc-viewer-wrap { height: 75vh; flex: none; }
   .dc-scroll { overflow: visible; }
 }

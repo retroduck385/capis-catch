@@ -13,7 +13,7 @@ export const fetchFieldDefs = async () =>
     check(await supabase.from('extraction_field_defs').select('*').order('sort_order')) ?? [];
 
 // Per document id: { ocr, run, fields, pages }. ci = true: the ids are ci_documents ids (CI reports).
-//   ocr    = latest OCR run of the document
+//   ocr    = latest OCR run of the document (created_at / started_at / finished_at: duration.js works out how long it took)
 //   run    = latest AI extraction run (the confirmed one, once locked: no later run can be made)
 //   fields = the run's fields, each with the OCR lines it was read from (`lines`)
 //   pages  = { [page_no]: { width, height, angle } } of the OCR run the extraction read
@@ -21,11 +21,11 @@ export const fetchDocumentChecks = async (documentIds, { ci = false } = {}) => {
     if (documentIds.length === 0) return {};
     const source = ci ? 'ci_document_id' : 'document_id';
     const ocrRuns = check(await supabase.from('ocr_runs')
-        .select(`id, ${source}, status, error, created_at`)
+        .select(`id, ${source}, status, error, created_at, started_at, finished_at`)
         .in(source, documentIds).order('id')) ?? [];
     const ocrIds = ocrRuns.map((r) => r.id);
     const runs = ocrIds.length === 0 ? [] : check(await supabase.from('extraction_runs')
-        .select('id, ocr_run_id, status, model, output, error, requested_by, created_at, finished_at, confirmed_by, confirmed_at')
+        .select('id, ocr_run_id, status, model, output, error, requested_by, created_at, started_at, finished_at, confirmed_by, confirmed_at')
         .in('ocr_run_id', ocrIds).order('id')) ?? [];
 
     const result = Object.fromEntries(documentIds.map((id) => [id, { ocr: null, run: null, fields: [], pages: {} }]));
@@ -87,6 +87,10 @@ export const UNREADABLE_TEXT = "We couldn't read this file. Ask the applicant fo
 // AO: confirm & lock. fields = [{ id, final_value, apply_to_record }] for every field of the run
 export const confirmExtraction = async (runId, fields) =>
     check(await supabase.rpc('confirm_extraction', { p_run_id: runId, p_fields: fields }));
+
+// Testing: queue a fresh AI extraction on the same OCR run (the worker picks it up within seconds)
+export const rerunExtraction = async (ocrRunId) =>
+    check(await supabase.rpc('request_rerun_extraction', { p_ocr_run_id: ocrRunId }));
 
 // Credit Investigator: confirm & lock a CI report and save the result + summary to the CI results.
 // fields = [{ id, final_value }] for every field of the run; result = NO_ADVERSE_FINDINGS | WITH_FINDINGS

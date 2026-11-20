@@ -302,9 +302,10 @@
 /* inputs and dropdowns: 12px corners (DESIGN.md scale) */
 .ct-e .ap :is(input:not([type='checkbox'], [type='radio'], [type='file']), textarea, .ct-select-btn) { border-radius: 12px; }
 
-/* Back | Save and continue: a glass pill that stays in view at the bottom while the form scrolls */
+/* Back, Save and continue: a glass pill that stays in view at the bottom while the form scrolls. Both buttons sit on the
+   right, Back immediately left of Save and continue (the empty spacer on the first step is hidden) */
 .ap .ct-actions {
-  position: sticky; bottom: 0.75rem; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem;
+  position: sticky; bottom: 0.75rem; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.6rem;
   margin: 1.25rem 0 0; padding: 0.5rem; border: 1px solid var(--lf-block-line); border-radius: 999px; background: var(--lf-glass-hi);
   -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: var(--lf-glass-shadow), var(--lf-shadow-lift);
 }
@@ -313,7 +314,8 @@
   background: var(--lf-control); color: var(--navy); font-weight: 600; box-shadow: none;
 }
 .ap .ct-actions button:not([type='submit']):hover:not(:disabled) { background: var(--lf-control-hover); border-color: var(--lf-block-line); color: var(--navy); }
-.ap .ct-actions button[type='submit'] { margin: 0 0 0 auto; padding-inline: 1.6rem; }
+.ap .ct-actions > span:empty { display: none; }
+.ap .ct-actions button[type='submit'] { margin: 0; padding-inline: 1.6rem; }
 
 /* ---------- document cards (wizard Documents step; the staff loan folder's edit card shows them too) ---------- */
 :is(.ap, .lf-formcard) .ap-docs { grid-column: 1 / -1; min-width: 0; display: grid; gap: 0.75rem; margin: 0.25rem 0; padding: 0; list-style: none; }
@@ -350,6 +352,12 @@
 .ct :is(.ap, .lf-formcard) .ap-filebtn:disabled { opacity: 0.55; cursor: not-allowed; }
 .ct :is(.ap, .lf-formcard) .ap-filebtn:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
 @media (pointer: coarse) { .ct :is(.ap, .lf-formcard) .ap-filebtn { min-height: 2.75rem; } }
+/* earlier versions: files a new upload replaced (not counted), collapsed, still openable */
+:is(.ap, .lf-formcard) .ap-earlier { margin: 0; padding-left: 2.5rem; }
+:is(.ap, .lf-formcard) .ap-earlier > summary { color: var(--muted); font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+:is(.ap, .lf-formcard) .ap-earlier > summary:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; border-radius: 6px; }
+:is(.ap, .lf-formcard) .ap-earlier .ap-files { margin-top: 0.5rem; }
+:is(.ap, .lf-formcard) .ap-earlier-note { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 400; }
 :is(.ap, .lf-formcard) .ap-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0; padding-left: 2.5rem; }
 :is(.ap, .lf-formcard) .ap-doc { grid-template-columns: minmax(0, 1fr); min-width: 0; }  /* the file picker can't widen the card */
 :is(.ap, .lf-formcard) .ap-upload input[type='file'] { min-width: 0; max-width: 100%; margin: 0; }
@@ -495,7 +503,7 @@
   .ct-e .ap .ct-section { grid-template-columns: minmax(0, 1fr); min-width: 0; padding: 0.9rem 0.95rem 0.8rem; }
   .ap .ct-actions { flex-wrap: nowrap; gap: 0.5rem; border-radius: 22px; }
   .ap .ct-actions button:not([type='submit']) { flex: none; padding-inline: 1rem; }
-  .ap .ct-actions button[type='submit'] { min-width: 0; padding-inline: 1.1rem; white-space: normal; text-align: center; line-height: 1.25; }
+  .ap .ct-actions button[type='submit'] { flex: 1; min-width: 0; padding-inline: 1.1rem; white-space: normal; text-align: center; line-height: 1.25; }
   .ap-viewhead { grid-template-columns: auto minmax(0, 1fr); }
   .ap-viewhead > .ct-badge { grid-column: 2; justify-self: start; margin: 0; }
   :is(.ap, .lf-formcard) .ap-doc-head { grid-template-columns: 1.75rem minmax(0, 1fr); }

@@ -1,4 +1,4 @@
-import { Bell, BellRing, FileText, MessageSquare, Sparkles, Users } from 'lucide-react';
+import { Bell, BellRing, FileText, MessageSquare, ScanText, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
@@ -22,6 +22,7 @@ const KindIcon = ({ kind }) => {
     if (kind === 'APPROVAL_ROUTED' || kind === 'NEW_APPLICATION') return <Users size={15} aria-hidden='true' />;
     if (kind === 'DOCUMENT_REQUEST_OVERDUE' || kind === 'APPLICANT_DOCUMENTS_REMINDER') return <BellRing size={15} aria-hidden='true' />;
     if (kind === 'AI_SUGGESTION_READY') return <Sparkles size={15} aria-hidden='true' />;
+    if (kind === 'DOCUMENTS_READ') return <ScanText size={15} aria-hidden='true' />;
     if (kind?.startsWith('STAGE_') || kind === 'DONE_REVERTED' || kind === 'DEFERRED_ACCOUNT_UPDATED')
         return <FileText size={15} aria-hidden='true' />;
     return <Bell size={15} aria-hidden='true' />;

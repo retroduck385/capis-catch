@@ -625,16 +625,18 @@ export const DocumentCheckSkeleton = () => (
             <div className="lf-hero-main">
                 <p className="lf-eyebrow"><T>Document check (AI)</T><span className="lf-mode read sk-btn">Read-only</span></p>
                 <h1><T>{`Application ${APP_NO}`}</T></h1>
-                <ul className="lf-meta"><li><T>0 of 6 documents confirmed</T></li></ul>
+                <p className="dc-hitl"><T>The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.</T></p>
             </div>
-            <div className="lf-actions"><span className="lf-btn sk-btn">Loan folder</span></div>
+            <div className="lf-actions">
+                <ul className="lf-meta dc-progress"><li><T>0 of 6 documents confirmed</T></li></ul>
+                <span className="lf-btn sk-btn">Loan folder</span>
+            </div>
         </header>
-        <p className="lf-note" aria-hidden="true"><T>The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.</T></p>
         <nav className="lf-tabs dc-people" aria-hidden="true"><span className="sk-btn" style={{ padding: '0.6rem 1rem', borderRadius: 10 }}>{BORROWERS} · Principal Borrower</span></nav>
         <div className="dc-work" aria-hidden="true">
-            <section className="lf-card dc-pane">
+            <section className="lf-card dc-pane dc-docs">
                 <div className="lf-cardhead"><h2><T>Documents for {BORROWERS}</T></h2></div>
-                <ul className="dc-doclist">{stack(3, (i) => <li key={i}><Box h="3rem" style={{ borderRadius: 14 }} /></li>)}</ul>
+                <ul className="dc-doclist">{stack(4, (i) => <li key={i}><Box h="4.25rem" style={{ borderRadius: 14 }} /></li>)}</ul>
                 <div className="dc-viewer-wrap"><Box h="100%" style={{ minHeight: '16rem', borderRadius: 14 }} /></div>
             </section>
             <section className="lf-card dc-pane">

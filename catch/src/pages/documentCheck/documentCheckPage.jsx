@@ -7,20 +7,22 @@
 // Once every document here is confirmed, a banner points at the next step: the loan folder's KYC verification (AO)
 // or the CI request's results + Mark CI Done (CI).
 // Look (DESIGN.md, "Document check"): an .lf-folder page (panel, glass cards, tokens, dark mode) with a header, the
-// borrowers as tabs, and a two-pane workspace (document + viewer | extracted values) that fills the screen on desktop.
+// borrowers as tabs, and a two-pane workspace (files + staff check + viewer | extracted values) of fixed height; each card scrolls inside itself.
 // Styles: documentCheck.css.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, Eye, FileText, Loader2, Lock, ScanText, ShieldCheck, UserRound,
+    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, Eye, FileText, Loader2, Lock, RotateCcw, ScanText, ShieldCheck, UserRound,
 } from 'lucide-react';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
+import { formatDay, formatExact, fullWhen } from '../../components/people';
+import { readingTime } from './duration';
 import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
 import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
-import { fetchDocumentChecks, fetchFieldDefs, UNREADABLE_TEXT } from './api';
+import { fetchDocumentChecks, fetchFieldDefs, rerunExtraction, UNREADABLE_TEXT } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
@@ -54,10 +56,11 @@ const docStatus = (c) => {
 };
 const stillWorking = (c) => ['OCR', 'AI', 'WAITING'].includes(docStatus(c).key);
 
+// the narrow file list on desktop shows only the icon (documentCheck.css); the label stays for screen readers + hover
 const StatusChip = ({ status }) => (
-    <span className={`lf-chip dc-chip ${status.tone}`}>
+    <span className={`lf-chip dc-chip ${status.tone}`} title={status.label}>
         <status.Icon size={13} className={status.spin ? 'dc-spin' : undefined} aria-hidden="true" />
-        {status.label}
+        <span className="dc-chip-txt">{status.label}</span>
     </span>
 );
 
@@ -81,6 +84,9 @@ const DocumentCheckPage = () => {
     const [docId, setDocId] = useState(docParam);
     const [focused, setFocused] = useState(null);
     const [page, setPage] = useState(1);
+    const [view, setView] = useState('current');   // 'current' files, or the 'earlier' versions a new upload replaced
+    const [earlierId, setEarlierId] = useState(null);
+    const [rerunning, setRerunning] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const dirtyRef = useRef(false);
@@ -101,6 +107,9 @@ const DocumentCheckPage = () => {
                 .filter((d) => types.has(d.document_type))
                 .sort((a, b) => TYPE_ORDER.indexOf(a.document_type) - TYPE_ORDER.indexOf(b.document_type)
                     || a.uploaded_at.localeCompare(b.uploaded_at)),
+            // files a new upload replaced: not counted or confirmed here, but still openable
+            earlier: ciMode ? [] : (party.application_requirements ?? []).flatMap((r) => r.earlier_documents ?? [])
+                .filter((d) => types.has(d.document_type)).sort((a, b) => a.superseded_at.localeCompare(b.superseded_at)),
         }))
         .filter((p) => p.docs.length > 0), [app, types, ciMode, ciData.documents]);
     const docIds = useMemo(() => parties.flatMap((p) => p.docs.map((d) => d.id)), [parties]);
@@ -180,7 +189,11 @@ const DocumentCheckPage = () => {
     const selectedParty = parties.find((p) => p.docs.some((d) => d.id === docId))
         ?? parties.find((p) => p.party.id === partyId) ?? parties[0] ?? null;
     const doc = selectedParty?.docs.find((d) => d.id === docId) ?? selectedParty?.docs[0] ?? null;
+    const showEarlier = view === 'earlier' && (selectedParty?.earlier.length ?? 0) > 0;
+    const earlierDoc = showEarlier ? selectedParty.earlier.find((d) => d.id === earlierId) ?? selectedParty.earlier[0] : null;
+    const viewDoc = showEarlier ? earlierDoc : doc;
     const check = doc ? checks[doc.id] : null;
+    const took = readingTime(check);
     const status = docStatus(check);
     const unreadable = ['OCR_FAILED', 'AI_FAILED'].includes(status.key); // final: the worker already retried once
     const principal = getParties(app, ['PRINCIPAL'])[0] ?? null;
@@ -226,6 +239,19 @@ const DocumentCheckPage = () => {
         await loadChecks(docIds);
     };
 
+    const handleRunAgain = async () => {
+        if (!check?.ocr?.id || rerunning) return;
+        setRerunning(true);
+        try {
+            await rerunExtraction(check.ocr.id);
+            await loadChecks(docIds);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setRerunning(false);
+        }
+    };
+
     const docDefs = doc ? defs.filter((d) => d.document_type === doc.document_type) : [];
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
     const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
@@ -248,27 +274,27 @@ const DocumentCheckPage = () => {
                         </span>
                     </p>
                     <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
+                    <p className="dc-hitl">
+                        <ShieldCheck size={15} aria-hidden="true" />
+                        <span><Terms text={ciMode
+                            ? 'The AI only proposes values and a draft result. Nothing is saved to the CI results until a Credit Investigator confirms. The application record is never changed here.'
+                            : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} /></span>
+                    </p>
+                </div>
+                <div className="lf-actions">
                     {docIds.length > 0 && (
-                        <ul className="lf-meta">
+                        <ul className="lf-meta dc-progress">
                             <li className={allConfirmed ? 'dc-meta-done' : undefined}>
                                 <CheckCircle2 size={15} aria-hidden="true" />
                                 <span><b>{confirmedCount}</b> of {docIds.length} {ciMode ? 'reports' : 'documents'} confirmed</span>
                             </li>
                         </ul>
                     )}
-                </div>
-                <div className="lf-actions">
                     <Link to={backTo.to} className="lf-btn" onClick={guardLink}>
                         <ArrowLeft size={16} aria-hidden="true" />{backTo.label}
                     </Link>
                 </div>
             </header>
-            <p className="lf-note">
-                <ShieldCheck size={16} aria-hidden="true" />
-                <span><Terms text={ciMode
-                    ? 'The AI only proposes values and a draft result. Nothing is saved to the CI results until a Credit Investigator confirms. The application record is never changed here.'
-                    : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} /></span>
-            </p>
 
             {error && <p className="lf-err" role="alert">{error}</p>}
 
@@ -320,8 +346,42 @@ const DocumentCheckPage = () => {
                         <section className="lf-card dc-pane dc-docs" aria-labelledby="dc-docs-title">
                             <div className="lf-cardhead">
                                 <h2 id="dc-docs-title">{ciMode ? <><Term k="CI" /> reports</> : 'Documents'} for {nameOf(selectedParty.party)}</h2>
-                                <span>{selectedParty.docs.length} {selectedParty.docs.length === 1 ? 'file' : 'files'}</span>
+                                <span>{showEarlier ? selectedParty.earlier.length : selectedParty.docs.length}{' '}
+                                    {(showEarlier ? selectedParty.earlier.length : selectedParty.docs.length) === 1 ? 'file' : 'files'}</span>
                             </div>
+                            {selectedParty.earlier.length > 0 && (
+                                <div className="dc-viewtabs" role="group" aria-label="Which files to show">
+                                    <button type="button" aria-pressed={!showEarlier} onClick={() => setView('current')}>
+                                        Current ({selectedParty.docs.length})
+                                    </button>
+                                    <button type="button" aria-pressed={showEarlier} onClick={() => { setView('earlier'); setPage(1); }}>
+                                        Earlier versions ({selectedParty.earlier.length})
+                                    </button>
+                                </div>
+                            )}
+                            {showEarlier ? (
+                                <>
+                                    <ul className="dc-doclist">
+                                        {selectedParty.earlier.map((d) => (
+                                            <li key={d.id}>
+                                                <button type="button" className="dc-doc" aria-current={d.id === earlierDoc.id ? 'true' : undefined}
+                                                    onClick={() => { setEarlierId(d.id); setPage(1); }}>
+                                                    <FileText size={18} className="ic" aria-hidden="true" />
+                                                    <span className="txt">
+                                                        <b>{docLabel(d.document_type)}</b>
+                                                        <span className="file">{d.file_name}</span>
+                                                        <span className="note">
+                                                            Uploaded <time dateTime={d.uploaded_at} title={fullWhen(d.uploaded_at)}>{formatExact(d.uploaded_at)}</time>
+                                                            {' · '}Replaced {formatDay(d.superseded_at)}{d.replaced_by ? ` by ${d.replaced_by.file_name}` : ''}
+                                                        </span>
+                                                    </span>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </>
+                            ) : (
+                                <>
                             <ul className="dc-doclist">
                                 {selectedParty.docs.map((d) => {
                                     const s = docStatus(checks[d.id]);
@@ -329,11 +389,13 @@ const DocumentCheckPage = () => {
                                     return (
                                         <li key={d.id}>
                                             <button type="button" onClick={() => openDoc(d.id)} aria-current={active ? 'true' : undefined}
-                                                className={`dc-doc ${s.tone}`}>
+                                                className={`dc-doc ${s.tone}`} title={d.file_name}>
                                                 <FileText size={18} className="ic" aria-hidden="true" />
                                                 <span className="txt">
                                                     <b>{docLabel(d.document_type)}</b>
-                                                    <span className="file">{d.file_name}</span>
+                                                    <span className="note">
+                                                        Uploaded <time dateTime={d.uploaded_at} title={fullWhen(d.uploaded_at)}>{formatExact(d.uploaded_at)}</time>
+                                                    </span>
                                                 </span>
                                                 <StatusChip status={s} />
                                             </button>
@@ -343,25 +405,53 @@ const DocumentCheckPage = () => {
                             </ul>
                             {doc && !ciMode && (
                                 <div className="dc-filemark">
-                                    <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks}
+                                    <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks} autoOpen={false}
                                         unreadable={unreadable} confirmLeave={leaveEdits}
                                         file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
                                 </div>
                             )}
-                            {doc && (
+                                </>
+                            )}
+                            {viewDoc && (
                                 <div className="dc-viewer-wrap">
-                                    <DocumentViewer key={doc.id} doc={doc} pageSizes={check?.pages} highlights={highlights}
-                                        page={page} onPageChange={setPage} />
+                                    {showEarlier
+                                        ? <DocumentViewer key={viewDoc.id} doc={viewDoc} highlights={[]} page={page} onPageChange={setPage} />
+                                        : <DocumentViewer key={viewDoc.id} doc={viewDoc} pageSizes={check?.pages} highlights={highlights}
+                                            page={page} onPageChange={setPage} />}
                                 </div>
                             )}
                         </section>
 
                         <section className="lf-card dc-pane dc-fields" aria-labelledby="dc-fields-title">
                             <div className="lf-cardhead">
-                                <h2 id="dc-fields-title">Extracted information</h2>
-                                {doc && <StatusChip status={status} />}
+                                <div className="dc-headleft">
+                                    <h2 id="dc-fields-title">Extracted information</h2>
+                                    {!showEarlier && took && (
+                                        <span className="dc-took" title={`Took ${took}, from the start of the OCR to the end of the AI extraction`}>
+                                            <Clock size={13} className="dc-took-ic" aria-hidden="true" />
+                                            <span className="dc-took-word">Took </span>{took}
+                                        </span>
+                                    )}
+                                </div>
+                                {doc && !showEarlier && (
+                                    <div className="dc-headright">
+                                        <StatusChip status={status} />
+                                        {!ciMode && check?.ocr?.status === 'DONE' && !['AI', 'WAITING'].includes(status.key) && (
+                                            <button type="button" className="dc-rerun-btn" disabled={rerunning} onClick={handleRunAgain}
+                                                title="Run again: queue a fresh AI extraction on the same OCR scan (testing)">
+                                                <RotateCcw size={13} aria-hidden="true" className={rerunning ? 'dc-spin' : undefined} />
+                                                <span className="dc-rerun-txt">{rerunning ? 'Queuing...' : 'Run again'}</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            {!doc ? <p className="lf-empty">Pick a document on the left.</p>
+                            {showEarlier ? (
+                                <p className="lf-empty">
+                                    This is an earlier version. A new file replaced it, so it is not counted or confirmed.
+                                    Switch back to Current to read and confirm the files that count.
+                                </p>
+                            ) : !doc ? <p className="lf-empty">Pick a document on the left.</p>
                                 : status.key === 'READY' || status.key === 'CONFIRMED' ? (
                                     <div className="dc-fields-body">
                                         <ExtractionPanel key={`${check.run.id}-${check.run.confirmed_at ?? ''}`}

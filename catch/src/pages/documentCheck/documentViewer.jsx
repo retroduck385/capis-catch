@@ -1,6 +1,8 @@
 // Shows one uploaded document (image or PDF) with zoom, page buttons and highlight boxes over the OCR lines
 // the selected field was read from. Boxes come from ocr_lines.bbox, in pixels of the page image PaddleOCR
 // read (pageSizes), so they are drawn as percentages and line up at any zoom.
+// It opens fitted: the whole page inside the viewer, so a portrait page is read without scrolling. Zooming in
+// (or out) leaves the fit; the reset button brings it back.
 // Styles: .dc-toolbar / .dc-stage in documentCheck.css (pill controls, a rounded stage, blue location boxes).
 import { ViewerSkeleton } from '../../components/skeleton';
 import { useEffect, useRef, useState } from 'react';
@@ -117,11 +119,11 @@ const DocumentViewer = ({ doc, pageSizes, highlights, page, onPageChange }) => {
                     <button type="button" className="dc-tool" onClick={() => setZoomClamped(zoom - ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} aria-label="Zoom out">
                         <Minus size={16} aria-hidden="true" />
                     </button>
-                    <span className="dc-zoom" aria-live="polite">{Math.round(zoom * 100)}%</span>
+                    <span className="dc-zoom" aria-live="polite">{zoom === 1 ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
                     <button type="button" className="dc-tool" onClick={() => setZoomClamped(zoom + ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in">
                         <Plus size={16} aria-hidden="true" />
                     </button>
-                    <button type="button" className="dc-tool" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label="Reset zoom" title="Reset zoom">
+                    <button type="button" className="dc-tool" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label="Fit the page" title="Fit the page">
                         <RotateCcw size={15} aria-hidden="true" />
                     </button>
                 </div>
@@ -152,7 +154,7 @@ const DocumentViewer = ({ doc, pageSizes, highlights, page, onPageChange }) => {
             )}
 
             <div className="dc-stage">
-                <div className="dc-page" style={{ width: `${zoom * 100}%` }}>
+                <div className={`dc-page${zoom === 1 ? ' fit' : ''}`} style={zoom === 1 ? undefined : { width: `${zoom * 100}%` }}>
                     {!url && !error && <ViewerSkeleton />}
                     {url && !pdfFile && <img src={url} alt={doc.file_name} />}
                     {pdfFile && <canvas ref={canvasRef} />}
