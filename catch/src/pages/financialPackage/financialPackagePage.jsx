@@ -53,6 +53,8 @@ import { useTermTitle } from '../../components/useTermTitle';
 import FinalReportButton from '../finalReport/finalReportButton';
 import SuggestionPanel from '../aiSuggestion/suggestionPanel';
 import { withHiddenCleared } from './creditResultFields';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -151,6 +153,7 @@ const PAGE_IDS = { 1: idsOfPage(1), 2: idsOfPage(2), 3: idsOfPage(3) }; // stabl
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 const FinancialPackagePage = () => {
+    const sidePanel = useSidePanel('fp');   // the side panel can be hidden (item 38)
     const { role } = UserAuth();
     const tt = useTermTitle();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -527,9 +530,17 @@ const FinancialPackagePage = () => {
                 ))}
             </div>
 
-            <div ref={bodyRef} className="lf-body edit">
+            <div ref={bodyRef} className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? (
+                <PanelRail panel={sidePanel} label="sections">
+                    <button type="button" className="sp-rail-btn" aria-haspopup="dialog" onClick={openMrac} title="Policy check (MRAC)">
+                        <ShieldCheck size={18} aria-hidden="true" /><span className="sr-only">Policy check (MRAC)</span>
+                    </button>
+                </PanelRail>
+                ) : (
                 <div className="fp-side">
                     <nav className="lf-card lf-nav fp-nav" aria-label="Financial Package sections">
+                        <PanelHide panel={sidePanel} label="sections" />
                         <div>
                             <p className="fp-navgroup fp-navstep">{page === 3 ? 'Step 3: Credit result' : 'Step 1: Financial Package'}</p>
                         </div>
@@ -568,6 +579,7 @@ const FinancialPackagePage = () => {
                         </div>
                     )}
                 </div>
+                )}
 
                 <dialog ref={mracRef} className="fp-dialog" aria-label="Policy check (MRAC)"
                     onClick={(e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }}>

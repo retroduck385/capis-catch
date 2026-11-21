@@ -49,6 +49,8 @@ import { approvalProgress, splitRouting, tierLabel } from './approval';
 import { ApprovalForm, ApprovalProgress, RoutingPeople } from './approvalParts';
 import { isReviewedChange, policyFlags, reviewFlags, reviewState } from './reviewChecks';
 import { clearDraft, draftKey } from './reviewDraft';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 import { FlagList, IncomeEvidence, MyWorkProgress, ReviewForm, ReviewProgress } from './reviewParts';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
@@ -119,6 +121,7 @@ const loadReview = async (applicationId) => {
 };
 
 const ReviewSummaryPage = () => {
+    const sidePanel = useSidePanel('review-summary');   // the side panel can be hidden (item 38)
     const { session, role } = UserAuth();
     const [searchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
@@ -559,8 +562,10 @@ const ReviewSummaryPage = () => {
                 ))}
             </section>
 
-            <div className="lf-body edit">
+            <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
                 <nav className="lf-card lf-nav fp-nav" aria-label="Review summary sections">
+                    <PanelHide panel={sidePanel} label="sections" />
                     <ul>
                         {nav.map(([id, label]) => (
                             <li key={id}>
@@ -569,6 +574,7 @@ const ReviewSummaryPage = () => {
                         ))}
                     </ul>
                 </nav>
+                )}
 
                 <div className="lf-main fp-main">
                     {nav.map(([id]) => <Fragment key={id}>{sections[id]}</Fragment>)}

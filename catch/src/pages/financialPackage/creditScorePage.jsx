@@ -24,6 +24,8 @@ import CoSteps, { CoOptionalView } from './coSteps';
 import Byline from '../../components/byline';
 import { scoreHistory } from './scoreHistory';
 import { ReturnNotice } from '../review/returnNotice';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 import { fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveCreditScore } from './api';
 import { computeFp } from './compute';
 import { suggestCreditScore, totalCreditScore } from './creditScore';
@@ -49,6 +51,7 @@ const TOC_IDS = TOC.map(([id]) => id);
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 
 const CreditScorePage = () => {
+    const sidePanel = useSidePanel('credit-score');   // the side panel can be hidden (item 38)
     const { role } = UserAuth();
     const [searchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
@@ -295,8 +298,10 @@ const CreditScorePage = () => {
                 </span>
             </p>
 
-            <div className="lf-body edit">
+            <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
                 <nav className="lf-card lf-nav fp-nav" aria-label="Credit score sections">
+                    <PanelHide panel={sidePanel} label="sections" />
                     <div><p className="fp-navgroup fp-navstep">Step 2: Credit score</p></div>
                     <ul>
                         {TOC.map(([id, label]) => (
@@ -306,6 +311,7 @@ const CreditScorePage = () => {
                         ))}
                     </ul>
                 </nav>
+                )}
 
                 <div className="lf-main fp-main">
                     <CreditScoreSection rules={rules} suggestions={suggestions} scores={scores} totals={totals}

@@ -38,6 +38,8 @@ import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import AskApplicantButton from '../documentRequests/ask';
 import { kycFileRequest } from './kycAsk';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 import './loanFolder.css';
 import { Term } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
@@ -59,6 +61,8 @@ const revealHistory = (el) => {
 };
 
 const LoanFolderPage = () => {
+    const kycRail = useSidePanel('folder-kyc');   // the side panel can be hidden (item 38)
+    const sidePanel = useSidePanel('folder-nav');   // the side panel can be hidden (item 38)
     const { session, role } = UserAuth();
     const tt = useTermTitle();
     const [searchParams] = useSearchParams();
@@ -419,8 +423,10 @@ const LoanFolderPage = () => {
                     </button>
                 </div>
             </header>
-            <div className="lf-secgrid">
+            <div className={`lf-secgrid${kycRail.hidden ? ' side-hidden' : ''}`}>
+                {kycRail.hidden ? <PanelRail panel={kycRail} label="KYC check" side="right" /> : (
                 <aside className="lf-rail" aria-label="KYC check">
+                    <PanelHide panel={kycRail} label="KYC check" side="right" />
                     <KycCheckPanel
                         key={`check-${section.key}`}
                         applicationId={app.id}
@@ -433,6 +439,7 @@ const LoanFolderPage = () => {
                         onNext={() => open(next?.key ?? REQUEST_CI)}
                         nextLabel={next ? 'Next section' : 'Next: Request CI'} />
                 </aside>
+                )}
                 <div className="lf-card lf-formcard lf-paper">
                     <p className="lf-formcard-head">
                         <PencilLine size={15} aria-hidden="true" />
@@ -461,8 +468,10 @@ const LoanFolderPage = () => {
             {header}
             {dashboard}
             {panels(checks)}
-            <div className="lf-body edit">
+            <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
                 <nav className="lf-card lf-nav" aria-label="Loan folder sections">
+                    <PanelHide panel={sidePanel} label="sections" />
                     <ol>
                         <li>
                             <button type="button" onClick={() => open(OVERVIEW)} aria-current={currentKey === OVERVIEW}>
@@ -513,6 +522,7 @@ const LoanFolderPage = () => {
                         </li>
                     </ol>
                 </nav>
+                )}
 
                 <main className="lf-main">
                     {error && <p className="lf-err" role="alert">{error}</p>}
