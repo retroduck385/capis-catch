@@ -64,7 +64,7 @@ const MracResult = ({ run, onAddException, onAddTerm, reviews, names, canEdit = 
         <div aria-live="polite">
             <Recommendations run={run} reviews={reviews} names={names} canEdit={canEdit && Boolean(onAddException)}
                 onAddException={onAddException} onAddTerm={onAddTerm} onReviewed={onReviewed} />
-            {result.recommendations && <h3 className="mrac-rules-title">Rule checks</h3>}
+            <RuleChecks wrap={Boolean(result.recommendations)} label={overallLabel} tone={overallTone}>
             <div className={`mrac-banner ${overallTone}`}>
                 <div className="top">
                     <b><Terms text={overallLabel} /></b>
@@ -196,8 +196,20 @@ const MracResult = ({ run, onAddException, onAddTerm, reviews, names, canEdit = 
             )}
 
             {reasoning?.disclaimer && <p className="mrac-disclaimer">{reasoning.disclaimer}</p>}
+            </RuleChecks>
         </div>
     );
 };
+
+// With the policy recommender's findings above, the rule checks fold into one dropdown; alone they show as they are
+const RuleChecks = ({ wrap, label, tone, children }) => (wrap ? (
+    <details className={`mrac-rec-group mrac-rules ${tone}`}>
+        <summary>
+            <span className="title">Rule checks and figures used</span>
+            <span className={`mrac-chip ${tone}`}><Terms text={label} /></span>
+        </summary>
+        <div className="mrac-rec-groupbody">{children}</div>
+    </details>
+) : children);
 
 export default MracResult;

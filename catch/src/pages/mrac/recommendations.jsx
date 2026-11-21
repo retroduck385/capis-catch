@@ -109,12 +109,19 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
     });
     const acceptLabel = { exception: '+ Add to V. Exception/s', condition: '+ Add to terms and conditions', obtain: 'Noted, will follow up' }[group];
 
+    const [decisionLabel, decisionTone] = review ? DECISIONS[review.decision] ?? [review.decision, 'plain'] : [];
     return (
         <li className="mrac-rec">
-            <div className="mrac-rec-head">
-                <strong><Terms text={f.requirement || f.heading_path} /></strong>
-                {f.rule_codes?.length > 0 && <span className="mrac-chip plain" title="A deterministic rule checked this too">Rule {f.rule_codes.join(', ')}</span>}
-            </div>
+            <details>
+            <summary className="mrac-rec-sum">
+                <span className="title"><Terms text={f.requirement || f.heading_path} /></span>
+                <span className="chips">
+                    {f.rule_codes?.length > 0 && <span className="mrac-chip plain" title="A deterministic rule checked this too">Rule {f.rule_codes.join(', ')}</span>}
+                    {review && <span className={`mrac-chip ${decisionTone}`}>{decisionLabel}</span>}
+                    {!review && canEdit && <span className="mrac-chip warn">To decide</span>}
+                </span>
+            </summary>
+            <div className="mrac-rec-body">
             <p className="mrac-rec-text"><Terms text={f.finding} /></p>
             {f.suggested_action && <p className="mrac-rec-next"><span>Next:</span> <Terms text={f.suggested_action} /></p>}
             {f.exception && (f.exception.recommendation || f.exception.mitigant) && (
@@ -167,9 +174,26 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
                     onClick={() => decide('UNDO')}>Undo decision</button>
             )}
             {error && <p className="mrac-err" role="alert">{error}</p>}
+            </div>
+            </details>
         </li>
     );
 };
+
+// One collapsible group (title, count, how many still to decide)
+const Group = ({ title, tone, count, toDecide, note, defaultOpen = false, children }) => (
+    <details className={`mrac-rec-group ${tone}`} open={defaultOpen || undefined}>
+        <summary>
+            <span className="title">{title}</span>
+            <span className={`mrac-chip ${tone}`}>{count}</span>
+            {toDecide > 0 && <span className="meta">{toDecide} to decide</span>}
+        </summary>
+        <div className="mrac-rec-groupbody">
+            {note && <p className="fp-note">{note}</p>}
+            {children}
+        </div>
+    </details>
+);
 
 const Recommendations = ({ run, reviews = {}, names = {}, canEdit = false, onAddException, onAddTerm, onReviewed }) => {
     const rec = run?.result?.recommendations;
@@ -203,57 +227,60 @@ const Recommendations = ({ run, reviews = {}, names = {}, canEdit = false, onAdd
                 </p>
             </div>
 
-            {GROUPS.map((g) => (rec.groups[g.key] ?? []).length > 0 && (
-                <section key={g.key} className={`mrac-block mrac-rec-group ${g.tone}`}>
-                    <h3>
-                        {g.title} <span className={`mrac-chip ${g.tone}`}>{rec.groups[g.key].length}</span>
-                        {canEdit && open(g.key) > 0 && <span className="meta"> {open(g.key)} to decide</span>}
-                    </h3>
-                    <p className="fp-note">{g.note}</p>
-                    <ul className="mrac-rec-list">
-                        {rec.groups[g.key].map((f) => (
-                            <Finding key={f.chunk_key} f={f} group={g.key} review={reviews[f.chunk_key]} {...props} />
-                        ))}
-                    </ul>
-                </section>
-            ))}
+            <div className="mrac-rec-groups">
+                {GROUPS.map((g) => (rec.groups[g.key] ?? []).length > 0 && (
+                    <Group key={g.key} title={g.title} tone={g.tone} count={rec.groups[g.key].length}
+                        toDecide={canEdit ? open(g.key) : 0} note={g.note} defaultOpen={g.key === 'exception'}>
+                        <ul className="mrac-rec-list">
+                            {rec.groups[g.key].map((f) => (
+                                <Finding key={f.chunk_key} f={f} group={g.key} review={reviews[f.chunk_key]} {...props} />
+                            ))}
+                        </ul>
+                    </Group>
+                ))}
 
-            {(rec.groups.met ?? []).length > 0 && (
-                <details className="mrac-facts">
-                    <summary>Met ({rec.groups.met.length})</summary>
-                    <ul className="mrac-rec-list">
-                        {rec.groups.met.map((f) => (
-                            <li key={f.chunk_key} className="mrac-rec compact">
-                                <strong><Terms text={f.requirement || f.heading_path} /></strong>
-                                <p className="mrac-rec-text"><Terms text={f.finding} /></p>
-                                <Clause f={f} />
-                            </li>
-                        ))}
-                    </ul>
-                </details>
-            )}
-            {(rec.not_applicable ?? []).length > 0 && (
-                <details className="mrac-facts">
-                    <summary>Checked, not applicable ({rec.not_applicable.length})</summary>
-                    <ul className="mrac-list">
-                        {rec.not_applicable.map((x) => <li key={x.chunk_key}>{x.heading_path || x.chunk_key} <span className="ref">{x.document}</span></li>)}
-                    </ul>
-                </details>
-            )}
-            {(rec.unverified ?? []).length > 0 && (
-                <details className="mrac-facts">
-                    <summary>Held back by CATCH&apos;s checks ({rec.unverified.length})</summary>
-                    <p className="fp-note">These findings failed a check (the quote is not in the clause, a figure is not in the file, …), so they are not shown above. Read them only as leads.</p>
-                    <ul className="mrac-list">
-                        {rec.unverified.map((u) => (
-                            <li key={`${u.chunk_key}-${u.problems?.[0]}`}>
-                                <strong>{u.requirement || u.heading_path || u.chunk_key}</strong>: {u.finding}
-                                <div className="ref">{(u.problems ?? []).join('; ')}</div>
-                            </li>
-                        ))}
-                    </ul>
-                </details>
-            )}
+                {(rec.groups.met ?? []).length > 0 && (
+                    <Group title="Met" tone="ok" count={rec.groups.met.length} note="The file meets these.">
+                        <ul className="mrac-rec-list">
+                            {rec.groups.met.map((f) => (
+                                <li key={f.chunk_key} className="mrac-rec">
+                                    <details>
+                                        <summary className="mrac-rec-sum">
+                                            <span className="title"><Terms text={f.requirement || f.heading_path} /></span>
+                                        </summary>
+                                        <div className="mrac-rec-body">
+                                            <p className="mrac-rec-text"><Terms text={f.finding} /></p>
+                                            <Clause f={f} />
+                                        </div>
+                                    </details>
+                                </li>
+                            ))}
+                        </ul>
+                    </Group>
+                )}
+                {(rec.not_applicable ?? []).length > 0 && (
+                    <Group title="Checked, not applicable" tone="plain" count={rec.not_applicable.length}
+                        note="Clauses read for this file that do not concern it.">
+                        <ul className="mrac-list">
+                            {rec.not_applicable.map((x) => <li key={x.chunk_key}>{x.heading_path || x.chunk_key} <span className="ref">{x.document}</span></li>)}
+                        </ul>
+                    </Group>
+                )}
+                {(rec.unverified ?? []).length > 0 && (
+                    <Group title="Held back by CATCH's checks" tone="plain" count={rec.unverified.length}
+                        note="These failed a check (the quote is not in the clause, a figure is not in the file, …), so they are not shown above. Read them only as leads.">
+                        <ul className="mrac-list">
+                            {rec.unverified.map((u) => (
+                                <li key={`${u.chunk_key}-${u.problems?.[0]}`}>
+                                    <strong>{u.requirement || u.heading_path || u.chunk_key}</strong>: {u.finding}
+                                    <div className="ref">{(u.problems ?? []).join('; ')}</div>
+                                </li>
+                            ))}
+                        </ul>
+                    </Group>
+                )}
+            </div>
+
             <p className="mrac-disclaimer">
                 Civil status is used only to find document requirements, never as a reason. These findings are a reading of
                 the bank&apos;s written policy, not a credit decision: only the approving authority approves or declines.

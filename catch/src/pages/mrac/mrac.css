@@ -138,3 +138,30 @@
 .mrac-rec-decision .why { flex-basis: 100%; color: var(--muted); font-size: 0.85rem; }
 .mrac-rec + .mrac-more, .mrac-rec .mrac-more { margin: 0.4rem 0 0; }
 .mrac-rules-title { margin: 1.6rem 0 0; font-size: 1rem; }
+
+/* dropdowns: groups (Exceptions needed, To obtain, ...) and each finding inside them */
+.mrac-rec-groups { display: grid; gap: 0.6rem; margin-top: 1rem; }
+.mrac-rec-group { border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--line-strong)); border-radius: 8px; background: var(--surface, #fff); }
+.mrac-rec-group > summary, .mrac-rec-sum {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; cursor: pointer; list-style: none;
+}
+.mrac-rec-group > summary::-webkit-details-marker, .mrac-rec-sum::-webkit-details-marker { display: none; }
+.mrac-rec-group > summary { padding: 0.7rem 0.9rem; font-weight: 700; font-size: 0.98rem; }
+.mrac-rec-group > summary .title, .mrac-rec-sum .title { flex: 1 1 14rem; min-width: 0; }
+.mrac-rec-group > summary::before, .mrac-rec-sum::before {
+  content: ''; flex: none; width: 0.45rem; height: 0.45rem; margin-right: 0.15rem;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform 0.15s;
+}
+.mrac-rec-group[open] > summary::before, details[open] > .mrac-rec-sum::before { transform: rotate(45deg); }
+.mrac-rec-group > summary:hover, .mrac-rec-sum:hover { background: #fafbfd; }
+.mrac-rec-group > summary:focus-visible, .mrac-rec-sum:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.35); outline-offset: -3px; }
+.mrac-rec-groupbody { padding: 0 0.9rem 0.85rem; }
+.mrac-rec-groupbody > .fp-note { margin: 0 0 0.6rem; }
+.mrac-rec-groupbody > .mrac-banner:first-child { margin-top: 0; }
+.mrac-rec-list > .mrac-rec { padding: 0; border-left-width: 1px; }
+.mrac-rec-sum { padding: 0.55rem 0.8rem; border-radius: 8px; }
+.mrac-rec-sum .title { font-weight: 600; font-size: 0.93rem; }
+.mrac-rec-sum .chips { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+.mrac-rec-body { padding: 0 0.8rem 0.75rem 1.65rem; }
+.mrac-rec-body > .mrac-rec-text:first-child { margin-top: 0; }
+.mrac-rules { margin-top: 1rem; }
