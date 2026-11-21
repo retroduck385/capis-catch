@@ -37,10 +37,12 @@ import MessagesPanel from '../messages/messagesPanel';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import AskApplicantButton from '../documentRequests/ask';
+import { kycFileRequest } from './kycAsk';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 import './loanFolder.css';
 import { Term } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
-import FinalReportButton from '../finalReport/finalReportButton';
 
 const OVERVIEW = 'overview';
 const REQUEST_CI = 'request-ci';
@@ -59,6 +61,8 @@ const revealHistory = (el) => {
 };
 
 const LoanFolderPage = () => {
+    const kycRail = useSidePanel('folder-kyc');   // the side panel can be hidden (item 38)
+    const sidePanel = useSidePanel('folder-nav');   // the side panel can be hidden (item 38)
     const { session, role } = UserAuth();
     const tt = useTermTitle();
     const [searchParams] = useSearchParams();
@@ -153,19 +157,14 @@ const LoanFolderPage = () => {
     const verifiedCount = counts.VERIFIED;
     const section = sections.find((s) => s.key === currentKey) ?? null;
 
-    // "Ask the applicant" on a section marked Needs clarification: the AO's remark becomes the note and that
-    // borrower's still-missing documents are ticked (everyone's, for a section that isn't about one borrower)
-    const borrowerOf = (key) => {
-        const coBorrower = key.match(/^coBorrower-([0-9]+)$/);
-        if (key.startsWith('principal')) return getParties(app, ['PRINCIPAL'])[0]?.id ?? null;
-        if (key === 'spouse') return getParties(app, ['SPOUSE'])[0]?.id ?? null;
-        if (coBorrower) return getParties(app, ['CO_BORROWER']).find((p) => p.party_no === Number(coBorrower[1]))?.id ?? null;
-        return null;
-    };
+    // "Request a file" on a section marked Needs clarification: a document request with that section's documents
+    // ticked (kycAsk.js); the AO's remark is shown to them only, never sent
     const askFor = (s, check) => (check?.result === 'NEEDS_CLARIFICATION' ? (
         <p className="lf-kyc-meta lf-ask">
             <AskApplicantButton applicationId={app.id} plain className="lf-ask-btn"
-                ask={{ missingFor: borrowerOf(s.key), note: check.remarks ?? '', from: `the KYC check of "${s.title}" (Needs clarification)` }} />
+                ask={{ ...kycFileRequest(s.key, getParties(app), s.title), remark: check.remarks ?? '' }}>
+                Request a file
+            </AskApplicantButton>
         </p>
     ) : null);
 
@@ -284,9 +283,9 @@ const LoanFolderPage = () => {
                             <ScanText size={16} aria-hidden="true" />Document check (AI)
                         </Link>
                     )}
-                    {!isAo && decisionLink}
-                    {!isAo && packageLink}
-                    <FinalReportButton applicationId={app.id} />
+                    {/* the Credit Investigator opens neither Decision Support nor the Financial Package */}
+                    {!isAo && role !== 'CREDIT_INVESTIGATOR' && decisionLink}
+                    {!isAo && role !== 'CREDIT_INVESTIGATOR' && packageLink}
                 </div>
             </header>
             {!canEdit && (
@@ -424,8 +423,10 @@ const LoanFolderPage = () => {
                     </button>
                 </div>
             </header>
-            <div className="lf-secgrid">
+            <div className={`lf-secgrid${kycRail.hidden ? ' side-hidden' : ''}`}>
+                {kycRail.hidden ? <PanelRail panel={kycRail} label="KYC check" side="right" /> : (
                 <aside className="lf-rail" aria-label="KYC check">
+                    <PanelHide panel={kycRail} label="KYC check" side="right" />
                     <KycCheckPanel
                         key={`check-${section.key}`}
                         applicationId={app.id}
@@ -438,6 +439,7 @@ const LoanFolderPage = () => {
                         onNext={() => open(next?.key ?? REQUEST_CI)}
                         nextLabel={next ? 'Next section' : 'Next: Request CI'} />
                 </aside>
+                )}
                 <div className="lf-card lf-formcard lf-paper">
                     <p className="lf-formcard-head">
                         <PencilLine size={15} aria-hidden="true" />
@@ -454,6 +456,7 @@ const LoanFolderPage = () => {
                         onSaved={handleSaved}
                         onRefresh={refresh}
                         onBack={null}
+                        viewOnly={section.key === 'documents'}
                     />
                 </div>
             </div>
@@ -465,8 +468,10 @@ const LoanFolderPage = () => {
             {header}
             {dashboard}
             {panels(checks)}
-            <div className="lf-body edit">
+            <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
                 <nav className="lf-card lf-nav" aria-label="Loan folder sections">
+                    <PanelHide panel={sidePanel} label="sections" />
                     <ol>
                         <li>
                             <button type="button" onClick={() => open(OVERVIEW)} aria-current={currentKey === OVERVIEW}>
@@ -517,6 +522,7 @@ const LoanFolderPage = () => {
                         </li>
                     </ol>
                 </nav>
+                )}
 
                 <main className="lf-main">
                     {error && <p className="lf-err" role="alert">{error}</p>}

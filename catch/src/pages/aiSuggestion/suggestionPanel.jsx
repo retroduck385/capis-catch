@@ -3,7 +3,7 @@
 // cite a policy passage, a draft justification and missing data. The AI never sets the credit result: the CO may copy
 // the draft into the justification, edits it and saves the FP as usual. Every suggestion is kept, with who asked,
 // when and the figures used. Everyone who can open the FP reads them.
-// SYNTHETIC TEST FILES ONLY until the data privacy question (Q-04) is cleared.
+// The data privacy question (Q-04) was cleared by the bank on 2026-11-20; what is sent stays filtered (buildInput.js).
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Bot, Clock, Copy, Sparkles } from 'lucide-react';
 import { Section } from '../applicationForm/fields';
@@ -138,10 +138,6 @@ const SuggestionPanel = ({ applicationId, canEdit, dirty, justification, onUseDr
 
     return (
         <Section id="fp-ai" title="AI suggestion for the credit result" className="ai-panel">
-            <p className="lf-note warn">
-                <AlertTriangle size={16} aria-hidden="true" />
-                <span><Terms text="Synthetic test files only: the figures and short policy excerpts go to the Claude API. Don't use this on real applicant files until the data privacy question (Q-04) is cleared." /></span>
-            </p>
             <p className="fp-note">
                 <Terms text="The AI gets the saved figures (borrowers by role, no names, addresses or contact details; the Condition score as a sub-total only), the CI results, V. Exceptions as typed (don't put names there) and the latest policy check with its passages. It suggests; it never sets the credit result." />
             </p>

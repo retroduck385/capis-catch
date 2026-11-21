@@ -397,6 +397,13 @@
 /* flags next to the reference: icon + word; only "Your turn to review" is a (square-cornered) tag */
 .wt-flag { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #5b6880; white-space: nowrap; }
 .wt-flag.info { color: var(--wt-info); }
+/* the assigned AO's "Final report" on a Decided row */
+.wt-report {
+    display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.35rem; padding: 0.15rem 0.6rem; border: 1px solid currentColor;
+    border-radius: 999px; color: var(--wt-info, #1e3f97); font-size: 0.75rem; font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.wt-report:hover { background: rgba(30, 63, 151, 0.08); }
+.wt-report:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
 .wt-flag.turn { padding: 0.1rem 0.45rem; border-radius: 6px; background: var(--wt-orange); color: #fff; }
 
 /* stage: name, then the status as a coloured icon + word (replaces the pill) */

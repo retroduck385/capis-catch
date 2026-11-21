@@ -49,6 +49,8 @@ import { approvalProgress, splitRouting, tierLabel } from './approval';
 import { ApprovalForm, ApprovalProgress, RoutingPeople } from './approvalParts';
 import { isReviewedChange, policyFlags, reviewFlags, reviewState } from './reviewChecks';
 import { clearDraft, draftKey } from './reviewDraft';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 import { FlagList, IncomeEvidence, MyWorkProgress, ReviewForm, ReviewProgress } from './reviewParts';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
@@ -119,6 +121,7 @@ const loadReview = async (applicationId) => {
 };
 
 const ReviewSummaryPage = () => {
+    const sidePanel = useSidePanel('review-summary');   // the side panel can be hidden (item 38)
     const { session, role } = UserAuth();
     const [searchParams] = useSearchParams();
     const applicationId = Number(searchParams.get('id'));
@@ -430,7 +433,8 @@ const ReviewSummaryPage = () => {
             <Section id="rv-review" title={`Your review (reviewer ${current.seq} of ${reviewers.length})`}>
                 <ReviewForm checkItems={checkItems} flags={flags} nextLabel={nextLabel}
                     onSubmit={handleSubmit} busy={busy} error={submitError} onProgress={setMyWork}
-                    draftKey={reviewDraftKey} appId={app.id} onJump={jumpFromCheck} />
+                    draftKey={reviewDraftKey} appId={app.id} onJump={jumpFromCheck}
+                    lastReturn={decisions.filter((d) => d.assignment_id === current?.id).at(-1) ?? null} />
             </Section>
         ),
         'rv-decision': canApprove && (
@@ -468,8 +472,12 @@ const ReviewSummaryPage = () => {
     const linkClass = `lf-btn${reviewRole ? ' quiet' : ''}`;
     const pageLinks = (
         <>
-            <Link to={`/financialPackagePage?id=${app.id}`} className={linkClass}>Financial Package</Link>
-            <Link to={`/creditScorePage?id=${app.id}`} className={linkClass}>Credit scoring</Link>
+            {role !== 'CREDIT_INVESTIGATOR' && (
+                <>
+                    <Link to={`/financialPackagePage?id=${app.id}`} className={linkClass}>Financial Package</Link>
+                    <Link to={`/creditScorePage?id=${app.id}`} className={linkClass}>Credit scoring</Link>
+                </>
+            )}
             <Link to={`/loanFolderPage?id=${app.id}`} className={linkClass}>
                 Loan folder<ArrowRight size={16} aria-hidden="true" />
             </Link>
@@ -512,7 +520,7 @@ const ReviewSummaryPage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
-                    <FinalReportButton applicationId={app.id} />
+                    {role === 'APPROVER' && <FinalReportButton applicationId={app.id} />}
                     {!reviewRole && pageLinks}
                 </div>
             </header>
@@ -554,8 +562,10 @@ const ReviewSummaryPage = () => {
                 ))}
             </section>
 
-            <div className="lf-body edit">
+            <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
                 <nav className="lf-card lf-nav fp-nav" aria-label="Review summary sections">
+                    <PanelHide panel={sidePanel} label="sections" />
                     <ul>
                         {nav.map(([id, label]) => (
                             <li key={id}>
@@ -564,6 +574,7 @@ const ReviewSummaryPage = () => {
                         ))}
                     </ul>
                 </nav>
+                )}
 
                 <div className="lf-main fp-main">
                     {nav.map(([id]) => <Fragment key={id}>{sections[id]}</Fragment>)}

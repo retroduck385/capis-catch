@@ -70,6 +70,31 @@ export const tatDetail = (days, limit) => {
     ].join('\n');
 };
 
+// ---- Work tray order (most urgent first) ----
+// Beyond TAT, then Near TAT, then On track, then files with no TAT (Decided); inside each group the file that has used
+// the largest share of its stage's target comes first. Array sort is stable, so equal files keep their arrival order.
+const TAT_ORDER = { BEYOND: 0, NEAR: 1, ON_TRACK: 2 };
+const usedShare = (r) => {
+    const share = Number(r.days_in_stage) / Number(r.tat_days);
+    return Number.isFinite(share) ? share : 0;
+};
+export const byUrgency = (a, b) => ((TAT_ORDER[a.tat_state] ?? 3) - (TAT_ORDER[b.tat_state] ?? 3)) || (usedShare(b) - usedShare(a));
+// The "TAT position" column: application id -> place in the urgency order over every file the user can see (1 = most
+// urgent), so a filter doesn't renumber the rows
+export const urgencyRanks = (rows) => new Map([...rows].sort(byUrgency).map((r, i) => [r.application_id, i + 1]));
+const ordinal = (n) => {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+};
+// Its hover: the rank, then the arrival order (FIFO by submission)
+export const positionHint = (rank, arrival, total) =>
+    `Position ${rank} of ${total} by urgency (1 = most urgent).\nArrived ${ordinal(arrival)} (order of submission).`;
+
+// The hover on the TAT cell's "4d / 10d": what the two numbers are, then tatDetail()
+export const tatSlashHint = (days, limit) =>
+    `"${Number(days)}d / ${Number(limit)}d": days in this stage so far / this stage's target.\n${tatDetail(days, limit)}`;
+
 // Time in the current stage against its target, the same rule as the tray's TAT column (for pages that only have
 // the stage and when it was entered). null when the stage has no target (Decided) or the entry time is unknown.
 export const stageTat = (stage, enteredAt, now = Date.now()) => {

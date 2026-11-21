@@ -32,11 +32,13 @@ import '../financialPackage/financialPackage.css';
 import '../review/review.css';
 import { Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
-import FinalReportButton from '../finalReport/finalReportButton';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 
 const DecisionSupportPage = () => {
+    const sidePanel = useSidePanel('decision-support');   // the side panel can be hidden (item 38)
     const { session } = UserAuth();
     const tt = useTermTitle();
     const [searchParams] = useSearchParams();
@@ -159,7 +161,6 @@ const DecisionSupportPage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
-                    <FinalReportButton applicationId={app.id} />
                     <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">Financial Package</Link>
                     <Link to={`/reviewSummaryPage?id=${app.id}`} className="lf-btn">Review summary</Link>
                     <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">
@@ -195,8 +196,10 @@ const DecisionSupportPage = () => {
                 })}
             </section>
 
-            <div className="lf-body edit">
+            <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
                 <nav className="lf-card lf-nav fp-nav" aria-label="Decision support sections">
+                    <PanelHide panel={sidePanel} label="sections" />
                     <ul>
                         {visible.map((s) => (
                             <li key={s.id}>
@@ -207,6 +210,7 @@ const DecisionSupportPage = () => {
                         ))}
                     </ul>
                 </nav>
+                )}
 
                 <div className="lf-main fp-main">
                     {visible.map(({ id, Component }) => <Fragment key={id}><Component ctx={ctx} /></Fragment>)}

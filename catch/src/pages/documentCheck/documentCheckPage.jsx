@@ -18,6 +18,8 @@ import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
 import { formatDay, formatExact, fullWhen } from '../../components/people';
 import { readingTime } from './duration';
+import { isExpired } from './compare';
+import { docHasProblem } from './severity';
 import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
@@ -25,6 +27,7 @@ import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
 import { fetchDocumentChecks, fetchFieldDefs, rerunExtraction, UNREADABLE_TEXT } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
+import ManualValuesCard from './manualValuesCard';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
 import Breadcrumbs from '../../components/breadcrumbs';
 import AskApplicantButton from '../documentRequests/ask';
@@ -254,7 +257,6 @@ const DocumentCheckPage = () => {
 
     const docDefs = doc ? defs.filter((d) => d.document_type === doc.document_type) : [];
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
-    const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
         ? { to: `/ciRequestPage?id=${app.id}&step=reports`, label: 'CI request' }
         : { to: `/loanFolderPage?id=${app.id}`, label: 'Loan folder' };
@@ -386,11 +388,16 @@ const DocumentCheckPage = () => {
                                 {selectedParty.docs.map((d) => {
                                     const s = docStatus(checks[d.id]);
                                     const active = d.id === doc?.id;
+                                    const problem = docHasProblem(checks[d.id], isExpired);
                                     return (
                                         <li key={d.id}>
                                             <button type="button" onClick={() => openDoc(d.id)} aria-current={active ? 'true' : undefined}
-                                                className={`dc-doc ${s.tone}`} title={d.file_name}>
-                                                <FileText size={18} className="ic" aria-hidden="true" />
+                                                className={`dc-doc ${s.tone}`} title={problem ? `${d.file_name}: the AI flagged a problem` : d.file_name}>
+                                                <span className="ic-wrap">
+                                                    <FileText size={18} className="ic" aria-hidden="true" />
+                                                    {problem && <span className="dc-probdot" aria-hidden="true" />}
+                                                </span>
+                                                {problem && <span className="sr-only">The AI flagged a problem. </span>}
                                                 <span className="txt">
                                                     <b>{docLabel(d.document_type)}</b>
                                                     <span className="note">
@@ -465,7 +472,6 @@ const DocumentCheckPage = () => {
                                             <status.Icon size={22} className={status.spin ? 'dc-spin' : undefined} aria-hidden="true" />
                                         </span>
                                         <p className="dc-wait-title">{unreadable ? (ciMode ? "We couldn't read this file." : UNREADABLE_TEXT) : status.label}</p>
-                                        {['OCR', 'AI', 'WAITING'].includes(status.key) && <p className="dc-muted"><Terms text={workerHint} /></p>}
                                         {/* the worker already tried twice: the AO asks for a clearer copy, the CI uploads it again */}
                                         {unreadable && !ciMode && (
                                             <AskApplicantButton applicationId={app.id} confirmLeave={leaveEdits} plain className="lf-ask-btn"
@@ -491,6 +497,9 @@ const DocumentCheckPage = () => {
                     </div>
                 </>
             )}
+
+            {/* SPA, SEC / DTI / Mayor's permit and Other files: typed by hand, no AI (not for the CI's reports) */}
+            {!ciMode && app && <ManualValuesCard app={app} />}
         </div>
     );
 };

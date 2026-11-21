@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchNoticeContext, previewNotice, sendNotice } from './api';
-import { smsSegments } from './sms';
+import MessagePreview from './messagePreview';
 import { Terms } from '../../components/term';
 
 // "Send notice to applicant" (the bank's answer to Q-42): the assigned Account Officer tells the applicant the outcome
@@ -140,20 +140,7 @@ const SendNoticePanel = ({ applicationId }) => {
                     <p id='notice-reason-count' className='text-sm text-gray-700'>{reason.length} / {ctx.max_length}</p>
                     {problem && reason.trim() && <p role='alert' className='font-semibold text-red-800'>{problem}</p>}
 
-                    {preview && (
-                        <div className='mt-3 rounded border border-gray-300 bg-gray-50 p-3 text-gray-900'>
-                            <h4 className='font-semibold text-gray-900'>What the applicant will receive</h4>
-                            <p className='mt-1 text-sm font-semibold text-gray-800'>In the app</p>
-                            <p className='text-gray-900'>{preview.in_app_title}</p>
-                            <p className='text-gray-900'>{preview.in_app_body}</p>
-                            <p className='mt-2 text-sm font-semibold text-gray-800'>
-                                SMS ({preview.sms_text.length} characters, {smsSegments(preview.sms_text)} SMS)
-                            </p>
-                            <p className='whitespace-pre-wrap break-words text-gray-900'>{preview.sms_text}</p>
-                            <p className='mt-2 text-sm font-semibold text-gray-800'>Email: {preview.email_subject}</p>
-                            <p className='whitespace-pre-wrap break-words text-gray-900'>{preview.email_body}</p>
-                        </div>
-                    )}
+                    <MessagePreview preview={preview} />
 
                     {error && <p role='alert' className='mt-2 text-red-800'>{error}</p>}
 

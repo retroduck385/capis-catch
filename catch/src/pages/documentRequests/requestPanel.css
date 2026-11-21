@@ -161,16 +161,7 @@
 .ct .dr-other-who .ct-select-btn { min-height: 2.75rem; border-radius: 12px; }
 @media (max-width: 640px) { .dr-other { grid-template-columns: minmax(0, 1fr); } }
 
-/* preview: one card per channel */
-.dr-preview { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 0.6rem; }
-.dr-msg {
-  display: grid; align-content: start; gap: 0.35rem; margin: 0; padding: 0.8rem 0.9rem; border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.09));
-  border-radius: 14px; background: var(--lf-sub-bg, rgba(20, 41, 95, 0.035)); color: var(--ink, #0f1b33); font-size: 0.88rem;
-}
-.dr-msg p { margin: 0; }
-.dr-msg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; color: var(--lf-accent, #1e3f97); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-.dr-msg-meta { color: var(--muted, #475569); font-size: 0.76rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
-.dr-msg-title { font-weight: 700; }
+/* preview: applicantNotices/messagePreview.jsx (In the app / SMS / Email tabs) */
 
 /* earlier requests: a section under a divider, then one closed card per request. The summary row says what was asked,
    when, how many files came back and how it ended; the stripe and icon repeat the outcome (green received, slate

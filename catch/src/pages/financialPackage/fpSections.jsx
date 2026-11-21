@@ -1,6 +1,7 @@
 // Sections of the Financial Package & Credit Recommendation (KYC-FP "FP" tab, pages 1 and 2).
 // Values copied from the KYC are shown read-only from the record; the CO's inputs come in through
 // `form` / `on*` props and are disabled when the viewer can't edit.
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAddress, getParties, one } from '../applicationForm/api';
 import { joinAddress, presentAddressOf, tenure, wholeYears } from '../applicationForm/derived';
@@ -11,9 +12,9 @@ import {
 import { CiResultsView } from '../ciRequest/ciResults';
 import RoutingSummary from '../review/routingSummary';
 import { percent } from './compute';
-import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS } from './options';
+import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS, withBasisLine } from './options';
+import { FIELD_LABELS, fieldsToRemove, shownFields, undoResultFor } from './creditResultFields';
 import { Term, Terms } from '../../components/term';
-import { useTermTitle } from '../../components/useTermTitle';
 import { personName } from '../../components/people';
 
 const blank = (v) => v === null || v === undefined || v === '';
@@ -36,16 +37,17 @@ const Info = ({ rows }) => (
 const Cell = ({ children, className = '' }) => <td className={className}>{children}</td>;
 const Head = ({ children }) => <th><Terms>{children}</Terms></th>;
 
-const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required }) => {
-    const tt = useTermTitle();
-    return (
+// optional: a quiet "optional" tag after the label
+const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required, optional }) => (
     <div className="ct-field fp-textarea">
-        <label htmlFor={name} title={tt(label)}>{label}{required && <span className="text-red-600"> *</span>}</label>
+        <label htmlFor={name}>
+            <Terms text={label} />{required && <span className="text-red-600"> *</span>}
+            {optional && <small className="fp-opt"> optional</small>}
+        </label>
         <textarea id={name} rows={rows} value={value ?? ''} disabled={disabled}
             onChange={(e) => onChange(name, e.target.value)} />
     </div>
-    );
-};
+);
 
 const KycNote = () => <p className="fp-note">Copied from the <Term k="KYC" /> (read-only). The <Term k="AO" /> corrects these in the loan folder.</p>;
 
@@ -171,9 +173,9 @@ export const CollateralSection = ({ app, form, onPkg, disabled }) => {
                         onChange={onPkg} disabled={disabled} />
                 </div>
             </div>
-            <TextArea name="other_information" label="Other Information" value={form.other_information}
+            <TextArea name="other_information" label="Other Information" optional value={form.other_information}
                 onChange={onPkg} disabled={disabled} />
-            <TextArea name="statement_of_account" label="Statement of Account" value={form.statement_of_account}
+            <TextArea name="statement_of_account" label="Statement of Account" optional value={form.statement_of_account}
                 onChange={onPkg} disabled={disabled} />
         </Section>
     );
@@ -282,7 +284,9 @@ export const CashFlowSection = ({ computed, details, onParty, disabled }) => (
                         {declared > 0 && (
                             <Field name={`income_basis-${party.id}`} label="Income Basis" options={INCOME_BASES} required
                                 value={details[party.id]?.income_basis} disabled={disabled}
-                                onChange={(_, v) => onParty(party.id, 'income_basis', v)} />
+                                onChange={(_, v) => onParty(party.id, {
+                                    income_basis: v, cash_flow_remarks: withBasisLine(details[party.id]?.cash_flow_remarks, v),
+                                })} />
                         )}
                         <Field name={`other_income-${party.id}`} label="Other Income (B) (PHP)" type="money"
                             value={details[party.id]?.other_income} disabled={disabled}
@@ -386,16 +390,52 @@ export const CustomerSection = ({ app, details, onParty, disabled }) => {
 };
 
 // ---------- Credit result ----------
-export const CreditResultSection = ({ form, onPkg, disabled }) => (
-    <Section id="fp-result" title="Credit Result">
-        <Field name="credit_result" label="Credit Result" options={CREDIT_RESULTS} value={form.credit_result}
-            onChange={onPkg} disabled={disabled} />
-        <TextArea name="justification" label={form.credit_result === 'DEFERRED' ? 'Justification and Remarks (reason for deferral)' : 'Justification and Remarks'}
-            required={!blank(form.credit_result)} value={form.justification} onChange={onPkg} disabled={disabled} />
-        <TextArea name="amendment" label="Amendment" rows={2} value={form.amendment} onChange={onPkg} disabled={disabled} />
-        <TextArea name="waiver_and_acceptance" label="Waiver and Acceptance" rows={2} value={form.waiver_and_acceptance}
-            onChange={onPkg} disabled={disabled} />
-        <TextArea name="deferrals" label="Deferral(s)" rows={2} value={form.deferrals} onChange={onPkg} disabled={disabled} />
-        <p className="fp-note"><Terms>Saved on the FP. To send it to the reviewers and approvers, save the FP, then open VII. Approval.</Terms></p>
-    </Section>
-);
+// An optional box (Amendment, Waiver and acceptance): a closed section tagged "optional", open when it holds text
+const OptionalBox = ({ name, value, onChange, disabled }) => {
+    const id = useId();
+    const [open, setOpen] = useState(() => !blank(value?.trim?.() ?? value));
+    return (
+        <details className="fp-optbox" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+            <summary>{FIELD_LABELS[name]} <small className="fp-opt">optional</small></summary>
+            <label htmlFor={`${id}-${name}`} className="sr-only">{FIELD_LABELS[name]}</label>
+            <textarea id={`${id}-${name}`} rows={3} value={value ?? ''} disabled={disabled}
+                onChange={(e) => onChange(name, e.target.value)} />
+        </details>
+    );
+};
+
+// Only the boxes the chosen result needs (creditResultFields.js); a box the result hides that still holds text is
+// emptied on save, said here first with an Undo
+export const CreditResultSection = ({ form, onPkg, disabled }) => {
+    const shown = shownFields(form.credit_result);
+    const removing = fieldsToRemove(form);
+    const undo = undoResultFor(form);
+    const keptHidden = !form.credit_result && ['justification', 'amendment', 'waiver_and_acceptance', 'deferrals']
+        .some((k) => !blank(form[k]?.trim?.() ?? form[k]));
+    return (
+        <Section id="fp-result" title="Credit Result">
+            <Field name="credit_result" label="Credit Result" options={CREDIT_RESULTS} value={form.credit_result}
+                onChange={onPkg} disabled={disabled} />
+            {shown.includes('justification') && (
+                <TextArea name="justification" label={form.credit_result === 'DEFERRED' ? 'Justification and Remarks (reason for deferral)' : 'Justification and Remarks'}
+                    required value={form.justification} onChange={onPkg} disabled={disabled} />
+            )}
+            {shown.includes('deferrals') && (
+                <TextArea name="deferrals" label="Deferral(s): what is needed before it can go on" rows={3} value={form.deferrals}
+                    onChange={onPkg} disabled={disabled} />
+            )}
+            {shown.includes('amendment') && <OptionalBox name="amendment" value={form.amendment} onChange={onPkg} disabled={disabled} />}
+            {shown.includes('waiver_and_acceptance') && (
+                <OptionalBox name="waiver_and_acceptance" value={form.waiver_and_acceptance} onChange={onPkg} disabled={disabled} />
+            )}
+            {removing.length > 0 && !disabled && (
+                <p className="fp-removing" role="status">
+                    {removing.map((k) => FIELD_LABELS[k]).join(', ')} will be removed when you save (not used for this result).
+                    {undo && <>{' '}<button type="button" className="lf-linkbtn" onClick={() => onPkg('credit_result', undo)}>Undo</button></>}
+                </p>
+            )}
+            {keptHidden && <p className="fp-note">Pick a result to see its remarks. What was typed before is kept.</p>}
+            <p className="fp-note"><Terms>Saved on the FP. To send it to the reviewers and approvers, save the FP, then open VII. Approval.</Terms></p>
+        </Section>
+    );
+};

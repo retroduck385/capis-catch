@@ -21,7 +21,7 @@ import DocumentCheckPage from "./pages/documentCheck/documentCheckPage";
 import DecisionSupportPage from "./pages/decisionSupport/decisionSupportPage";
 import FinalReportPage from "./pages/finalReport/finalReportPage";
 import PolicySearchPage from "./pages/mrac/policySearchPage";
-import { DSS_ROLES, STAFF_ROLES } from "./roles";
+import { DSS_ROLES, FP_ROLES, REPORT_PAGE_ROLES, STAFF_ROLES } from "./roles";
 import RootLayout from "./components/scrollToTop";
 
 export const router = createBrowserRouter([
@@ -36,13 +36,13 @@ export const router = createBrowserRouter([
     { path: "/loanFolderPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><LoanFolderPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/documentCheckPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><DocumentCheckPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/ciRequestPage", element: <PrivateRoute roles={["CREDIT_INVESTIGATOR"]}><StaffProfileGate><CiRequestPage /></StaffProfileGate> </PrivateRoute>},
-    { path: "/financialPackagePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><FinancialPackagePage /></StaffProfileGate> </PrivateRoute>},
-    { path: "/creditScorePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><CreditScorePage /></StaffProfileGate> </PrivateRoute>},
-    { path: "/approvalRoutingPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><ApprovalRoutingPage /></StaffProfileGate> </PrivateRoute>},
+    { path: "/financialPackagePage", element: <PrivateRoute roles={FP_ROLES}><StaffProfileGate><FinancialPackagePage /></StaffProfileGate> </PrivateRoute>},
+    { path: "/creditScorePage", element: <PrivateRoute roles={FP_ROLES}><StaffProfileGate><CreditScorePage /></StaffProfileGate> </PrivateRoute>},
+    { path: "/approvalRoutingPage", element: <PrivateRoute roles={FP_ROLES}><StaffProfileGate><ApprovalRoutingPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/reviewSummaryPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><ReviewSummaryPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/policySearchPage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfileGate><PolicySearchPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/decisionSupportPage", element: <PrivateRoute roles={DSS_ROLES}><StaffProfileGate><DecisionSupportPage /></StaffProfileGate> </PrivateRoute>},
-    { path: "/finalReportPage", element: <PrivateRoute roles={DSS_ROLES}><StaffProfileGate><FinalReportPage /></StaffProfileGate> </PrivateRoute>},
+    { path: "/finalReportPage", element: <PrivateRoute roles={REPORT_PAGE_ROLES}><StaffProfileGate><FinalReportPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/staffAccountsPage", element: <PrivateRoute roles={["DEPT_HEAD"]}><StaffProfileGate><StaffAccountsPage /></StaffProfileGate> </PrivateRoute>},
     { path: "/staffProfilePage", element: <PrivateRoute roles={STAFF_ROLES}><StaffProfilePage /> </PrivateRoute>},
     { path: "/accountOfficerApplicationInputPage", element: <PrivateRoute roles={["ACCOUNT_OFFICER"]}><StaffProfileGate><AccountOfficerApplicationInputPage /></StaffProfileGate> </PrivateRoute>},

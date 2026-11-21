@@ -43,6 +43,8 @@ import '../financialPackage/financialPackage.css';
 import './review.css';
 import { scrollToSection, useActiveSection } from './useActiveSection';
 import { Terms } from '../../components/term';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 
 const SEND_STAGES = ['CREDIT_INVESTIGATION', 'CREDIT_EVALUATION'];
 const UPDATE_STAGES = ['REVIEW', 'APPROVAL'];
@@ -153,6 +155,7 @@ const PeoplePicker = ({ title, role, ordered, staff, value, onChange, disabled }
 };
 
 const ApprovalRoutingPage = () => {
+    const sidePanel = useSidePanel('approval-routing');   // the side panel can be hidden (item 38)
     const { session, role } = UserAuth();
     const myId = session?.user?.id;
     const [searchParams] = useSearchParams();
@@ -359,8 +362,10 @@ const ApprovalRoutingPage = () => {
                 ))}
             </section>
 
-            <div className="lf-body edit">
+            <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
                 <nav className="lf-card lf-nav fp-nav" aria-label="Approval routing sections">
+                    <PanelHide panel={sidePanel} label="sections" />
                     <div><p className="fp-navgroup fp-navstep">Step 4: Approval routing</p></div>
                     <ul>
                         {TOC.map(([id, label]) => (
@@ -370,6 +375,7 @@ const ApprovalRoutingPage = () => {
                         ))}
                     </ul>
                 </nav>
+                )}
 
                 <div className="lf-main fp-main">
                     <Section id="ar-prepared" title="Prepared by">

@@ -107,15 +107,16 @@
 
 /* text block */
 .nb-text { flex: 1; min-width: 0; }
+/* title and body wrap in full (no "..."), so every alert can be read in the list */
 .nb-title {
     display: block; font-size: 0.82rem; font-weight: 600; color: var(--ink, #0c1929);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: normal; overflow-wrap: anywhere;
     line-height: 1.4;
 }
 .nb-item:not(.unread) .nb-title { font-weight: 500; color: var(--muted, #5b6b82); }
 .nb-body {
     display: block; margin-top: 0.1rem; font-size: 0.78rem; color: var(--muted, #5b6b82);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: normal; overflow-wrap: anywhere;
     line-height: 1.4;
 }
 .nb-time {

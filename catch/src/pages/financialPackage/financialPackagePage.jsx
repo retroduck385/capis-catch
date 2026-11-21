@@ -52,6 +52,9 @@ import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 import FinalReportButton from '../finalReport/finalReportButton';
 import SuggestionPanel from '../aiSuggestion/suggestionPanel';
+import { withHiddenCleared } from './creditResultFields';
+import { PanelHide, PanelRail } from '../../components/sidePanel';
+import { useSidePanel } from '../../components/useSidePanel';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -150,6 +153,7 @@ const PAGE_IDS = { 1: idsOfPage(1), 2: idsOfPage(2), 3: idsOfPage(3) }; // stabl
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 const FinancialPackagePage = () => {
+    const sidePanel = useSidePanel('fp');   // the side panel can be hidden (item 38)
     const { role } = UserAuth();
     const tt = useTermTitle();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -248,6 +252,8 @@ const FinancialPackagePage = () => {
     // (Switching the tab rewrites the query string and drops the hash, so the section id is kept in a ref.)
     const { hash } = useLocation();
     const pendingId = useRef(null);
+    const [jump, setJump] = useState(0);   // bumped by jumpTo(): the effect below runs again even for the same section
+    const jumpTo = (id) => { pendingId.current = id; setJump((n) => n + 1); };
     useEffect(() => {
         if (hash) pendingId.current = decodeURIComponent(hash.slice(1));
     }, [hash]);
@@ -278,7 +284,14 @@ const FinancialPackagePage = () => {
         pendingId.current = null;
         if (target instanceof HTMLDetailsElement) target.open = true;
         target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-    }, [hash, ready, page, setSearchParams]);
+        // a short amber outline on the section reached (not for reduced motion)
+        if (!prefersReducedMotion()) {
+            target.classList.remove('fp-flash');
+            void target.offsetWidth; // restart the animation when the same section is reached again
+            target.classList.add('fp-flash');
+            setTimeout(() => target.classList.remove('fp-flash'), 2200);
+        }
+    }, [hash, ready, page, setSearchParams, jump]);
 
     if (loading) return <FinancialPackageSkeleton />;
     if (error && !form) {
@@ -298,8 +311,11 @@ const FinancialPackagePage = () => {
     };
     const onPkg = (field, value) => change({ ...form, pkg: { ...form.pkg, [field]: value } });
     const onPricing = (field, value) => change({ ...form, pricing: { ...form.pricing, [field]: value } });
-    const onParty = (id, field, value) =>
-        change({ ...form, parties: { ...form.parties, [id]: { ...form.parties[id], [field]: value } } });
+    // onParty(id, field, value), or onParty(id, { field: value, ... }) for several fields in one change
+    const onParty = (id, field, value) => {
+        const fields = typeof field === 'object' ? field : { [field]: value };
+        change({ ...form, parties: { ...form.parties, [id]: { ...form.parties[id], ...fields } } });
+    };
     const onList = (key) => (rows) => change({ ...form, [key]: rows });
     const onTitle = (kind, field, value) =>
         change({ ...form, titles: { ...form.titles, [kind]: { ...form.titles[kind], [field]: value } } });
@@ -319,7 +335,8 @@ const FinancialPackagePage = () => {
         setSaving(true);
         try {
             setError(null);
-            await saveFinancialPackage(app.id, buildPayload(form));
+            // boxes the chosen credit result hides are emptied (creditResultFields.js; the page said so first)
+            await saveFinancialPackage(app.id, buildPayload({ ...form, pkg: withHiddenCleared(form.pkg) }));
             // Interest rate / fixing period live on loan_applications, so refetch it or the form reverts to the old values
             const record = await fetchApplication(app.id);
             setApp(record);
@@ -477,7 +494,7 @@ const FinancialPackagePage = () => {
             )}
 
             <div className="fp-return">
-                <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
+                <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} onGoTo={jumpTo} />
             </div>
 
             <section className="fp-tiles" aria-label="Key figures">
@@ -513,9 +530,17 @@ const FinancialPackagePage = () => {
                 ))}
             </div>
 
-            <div ref={bodyRef} className="lf-body edit">
+            <div ref={bodyRef} className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
+                {sidePanel.hidden ? (
+                <PanelRail panel={sidePanel} label="sections">
+                    <button type="button" className="sp-rail-btn" aria-haspopup="dialog" onClick={openMrac} title="Policy check (MRAC)">
+                        <ShieldCheck size={18} aria-hidden="true" /><span className="sr-only">Policy check (MRAC)</span>
+                    </button>
+                </PanelRail>
+                ) : (
                 <div className="fp-side">
                     <nav className="lf-card lf-nav fp-nav" aria-label="Financial Package sections">
+                        <PanelHide panel={sidePanel} label="sections" />
                         <div>
                             <p className="fp-navgroup fp-navstep">{page === 3 ? 'Step 3: Credit result' : 'Step 1: Financial Package'}</p>
                         </div>
@@ -554,6 +579,7 @@ const FinancialPackagePage = () => {
                         </div>
                     )}
                 </div>
+                )}
 
                 <dialog ref={mracRef} className="fp-dialog" aria-label="Policy check (MRAC)"
                     onClick={(e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }}>
@@ -596,7 +622,10 @@ const FinancialPackagePage = () => {
                         <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
                         <CreditCheckingSection app={app} />
                         <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
-                            onChange={onList('exceptions')} disabled={disabled} />
+                            onChange={onList('exceptions')} disabled={disabled}>
+                            <p className="fp-note">List each policy this file doesn&apos;t meet, what you recommend, and what
+                                lowers the risk. Any exception moves the approval authority one step up.</p>
+                        </RowsSection>
                         <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
                         <div className="fp-pagenav">
                             <button type="button" className="fp-next" onClick={() => showPage(2)}>
