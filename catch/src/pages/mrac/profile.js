@@ -4,12 +4,18 @@
 // since the check" compares; this is the wider picture.
 //
 // Pure (no React, no Supabase) so tests/mracProfile.test.mjs can check it. Same privacy rule as the AI suggestion
-// (aiSuggestion/buildInput.js): borrowers by ROLE only; never names, birth dates, gender, civil status, dependents,
-// addresses, contact details, employer / bank / lender names, ID / TIN / account / title numbers, the application
-// number or the CI's free-text summaries. The database refuses a profile with a personal key (mrac_profile_problem).
+// (aiSuggestion/buildInput.js): borrowers by ROLE only; never names, birth dates, gender, dependents, addresses,
+// contact details, employer / bank / lender names, ID / TIN / account / title numbers, the application number or the
+// CI's free-text summaries. The database refuses a profile with a personal key (mrac_profile_problem).
+// One exception (Josh, 2026-11-22): civil status as a category (SINGLE / MARRIED / WIDOWED / SEPARATED), ONLY so the
+// recommender can find document rules (marriage certificate, CENOMAR, spousal consent). The recommender is told never
+// to use it as a judgment of the borrower, and the database accepts it only as borrowers[].civil_status with one of
+// those values.
 import { roleOf, yearsBetween } from '../aiSuggestion/buildInput.js';
 
 const BORROWERS = ['PRINCIPAL', 'SPOUSE', 'CO_BORROWER'];
+// The civil_status_type values; anything else is sent as null
+const CIVIL_STATUSES = new Set(['SINGLE', 'MARRIED', 'WIDOWED', 'SEPARATED']);
 const num = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
 const text = (v) => (v === null || v === undefined || String(v).trim() === '' ? null : String(v).trim());
 const one = (x) => (Array.isArray(x) ? x[0] ?? null : x ?? null);
@@ -63,6 +69,8 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
                 role: roleOf(party),
                 relationship_to_principal: party.role === 'CO_BORROWER' ? text(party.relationship_to_principal) : null,
                 filipino_citizen: filipino(party.citizenship),
+                // document rules only (see the top of this file); the spouse form has no civil status, so it stays null
+                civil_status: CIVIL_STATUSES.has(party.civil_status) ? party.civil_status : null,
                 lives_abroad: address && address.living_in_ph === false ? true : address ? false : null,
                 employment_type: job?.employment_type ?? null,
                 tenure_years: job && job.employment_type !== 'UNEMPLOYED' ? yearsBetween(job.employment_date, app.submitted_at) : null,
@@ -115,6 +123,9 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
         })),
     };
 };
+
+// The one key that matches PERSONAL_KEY but is allowed, only on a borrower and only as a CIVIL_STATUSES value
+export const DOCUMENT_ONLY_KEYS = ['civil_status'];
 
 // Same pattern the database refuses (mrac_profile_problem / credit_suggestion_input_problem)
 export const PERSONAL_KEY = /((^|_)name$|address|email|mobile|phone|birth|gender|civil|dependent|residence|length_of_stay|^tin$|account_number|^tct|application_no)/i;

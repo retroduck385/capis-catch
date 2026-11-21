@@ -11,6 +11,8 @@
 --   * claim_mrac_runs also returns run_profile to the worker.
 --
 -- The profile goes to the Claude API (an external model) through mrac-service: de-identified, borrowers by role only.
+-- One exception (Josh, 2026-11-22): borrowers[].civil_status as a category (SINGLE / MARRIED / WIDOWED / SEPARATED),
+-- only for document rules (marriage certificate, CENOMAR, spousal consent). Accepted nowhere else, with no other value.
 do $$
 begin
   if to_regclass('public.mrac_runs') is null then
@@ -43,8 +45,23 @@ begin
   from jsonb_path_query(p_profile, 'strict $.**') v, lateral (
     select jsonb_object_keys(v) k where jsonb_typeof(v) = 'object') x
   where k ~* '((^|_)name$|address|email|mobile|phone|birth|gender|civil|dependent|residence|length_of_stay|^tin$|account_number|^tct|application_no)'
+    and k <> 'civil_status'
   limit 1;
   if v_key is not null then return 'The profile contains a personal field: ' || v_key; end if;
+  -- civil_status: only on a borrower, only as a category
+  if (select count(*) from jsonb_path_query(p_profile, 'strict $.**') v, lateral (
+        select 1 from jsonb_object_keys(v) k where jsonb_typeof(v) = 'object' and k = 'civil_status') x)
+     > (select count(*) from jsonb_array_elements(case when jsonb_typeof(p_profile->'borrowers') = 'array'
+                                                    then p_profile->'borrowers' else '[]' end) b
+        where jsonb_typeof(b) = 'object' and b ? 'civil_status') then
+    return 'civil_status is accepted only on a borrower';
+  end if;
+  if exists (select 1 from jsonb_array_elements(case when jsonb_typeof(p_profile->'borrowers') = 'array'
+                                                     then p_profile->'borrowers' else '[]' end) b
+             where jsonb_typeof(b) = 'object' and b ? 'civil_status' and jsonb_typeof(b->'civil_status') <> 'null'
+               and (b->>'civil_status') not in ('SINGLE', 'MARRIED', 'WIDOWED', 'SEPARATED')) then
+    return 'civil_status must be SINGLE, MARRIED, WIDOWED or SEPARATED';
+  end if;
   return null;
 end $$;
 revoke execute on function public.mrac_profile_problem(jsonb) from public, anon, authenticated;

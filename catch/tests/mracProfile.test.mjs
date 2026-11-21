@@ -1,7 +1,7 @@
 // Policy-check profile (src/pages/mrac/profile.js): the wider picture for the recommender, by role only, never personal
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPolicyProfile, PERSONAL_KEY } from '../src/pages/mrac/profile.js';
+import { buildPolicyProfile, DOCUMENT_ONLY_KEYS, PERSONAL_KEY } from '../src/pages/mrac/profile.js';
 
 const party = (id, role, extra = {}) => ({
     id, role, party_no: extra.party_no ?? 1, first_name: 'Ana', middle_name: 'Santos', last_name: 'Dela Cruz',
@@ -61,7 +61,7 @@ test('nothing personal goes out: names, birth date, contacts, addresses, IDs, em
     for (const secret of ['Ana', 'Santos', 'Dela Cruz', 'Ramon', '1988-04-12', '09175550101', 'ana.sample@mail.test', '123-456-789',
         '34-0000000-1', 'Sampaguita', 'Abroad Rd', 'Synthetic Manufacturing', 'Overseas Co', 'Synthetic Savings', 'Synthetic Bank',
         '0001-2345', '02 8555 0101', 'HL-2026-000123', 'Lot 7 Block 3', '004-2026000123', 'Synthetic Land', 'Synthetic Developers',
-        'Juan Referrer', 'past due', 'has no record', 'blurry', 'ana_coe.pdf', 'FEMALE', 'MARRIED', 'OWNED', 'American']) {
+        'Juan Referrer', 'past due', 'has no record', 'blurry', 'ana_coe.pdf', 'FEMALE', 'OWNED', 'American', 'dependents']) {
         assert.ok(!sent.includes(secret), `"${secret}" must not be sent`);
     }
 });
@@ -73,7 +73,8 @@ test('no key the database refuses (mrac_profile_problem)', () => {
         else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.push(k); walk(x); }
     };
     walk(profile);
-    assert.deepEqual(keys.filter((k) => PERSONAL_KEY.test(k)), []);
+    assert.deepEqual(keys.filter((k) => PERSONAL_KEY.test(k) && !DOCUMENT_ONLY_KEYS.includes(k)), []);
+    assert.ok(!keys.includes('gender') && !keys.includes('dependents'));
     assert.deepEqual(Object.keys(profile).sort(),
         ['borrowers', 'ci', 'credit_score', 'documents', 'exceptions', 'loan', 'other_parties', 'schema', 'totals']);
 });
@@ -84,12 +85,14 @@ test('borrowers by role, with what policies turn on: citizenship, abroad, employ
     assert.equal(p.filipino_citizen, true);
     assert.equal(p.lives_abroad, false);
     assert.equal(p.tenure_years, 10);
+    assert.equal(p.civil_status, 'MARRIED', 'civil status as a category, for document rules only');
     assert.deepEqual(p.existing_loans, [{ type: 'Auto loan', monthly_payment: 12000, over_6_months: true }]);
     assert.equal(c.role, 'Co-borrower 2');
     assert.equal(c.relationship_to_principal, 'Brother');
     assert.equal(c.filipino_citizen, false);
     assert.equal(c.lives_abroad, true);
     assert.equal(c.employment_type, 'OFW');
+    assert.equal(c.civil_status, 'MARRIED');
     assert.equal(profile.borrowers.length, 2, 'the attorney-in-fact is not a borrower');
     assert.deepEqual(profile.other_parties, { mortgagor: false, attorney_in_fact: true });
 });
@@ -124,4 +127,10 @@ test('missing pieces stay null, never guessed', () => {
     assert.equal(bare.loan.from_developer, false);
     assert.equal(bare.borrowers.length, 0);
     assert.equal(bare.credit_score.total, null);
+});
+
+test('civil status: only the four CATCH values, anything else null', () => {
+    const odd = party(21, 'PRINCIPAL', { civil_status: 'complicated' });
+    const out = buildPolicyProfile({ app: { applicants: [odd] }, computed: { incomes: [{ party: odd }] } });
+    assert.equal(out.borrowers[0].civil_status, null);
 });
