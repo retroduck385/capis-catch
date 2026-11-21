@@ -15,14 +15,14 @@ import json
 BATCH = 40
 
 
-def to_row(chunk: dict, embedding: list[float]) -> dict:
+def to_row(chunk: dict, embedding: list[float], model: str | None = None) -> dict:
     return {
         "document": chunk["source_doc"], "chunk_key": chunk["id"], "section": chunk.get("section"),
         "heading_path": chunk.get("heading_path"), "revision_date": chunk.get("version"),
         "effective_from": chunk.get("effective_from"), "effective_to": chunk.get("effective_to"),
         "manual_pages": chunk.get("manual_pages") or [], "pdf_pages": chunk.get("pdf_pages") or [],
         "tags": chunk.get("tags") or [], "products": chunk.get("products") or [],
-        "status": "draft", "body": chunk["text"], "embedding": embedding,
+        "status": "draft", "body": chunk["text"], "embedding": embedding, "embedding_model": model,
     }
 
 
@@ -40,7 +40,7 @@ def main() -> None:
 
     from supabase import create_client            # imported here so the helpers above work without it
     from mrac.config import get_settings
-    from mrac.embeddings import get_embedder
+    from mrac.embeddings import get_embedder, passage_text
 
     s = get_settings()
     if not s.supabase_url or not s.service_key:
@@ -57,10 +57,11 @@ def main() -> None:
     print(f"{len(chunks) - len(todo)} already reviewed (left untouched), loading {len(todo)}")
     for i in range(0, len(todo), BATCH):
         part = todo[i:i + BATCH]
-        rows = [to_row(c, e) for c, e in zip(part, embedder.embed([c["text"] for c in part]))]
+        vectors = embedder.embed([passage_text(c.get("heading_path"), c["text"]) for c in part])
+        rows = [to_row(c, e, embedder.name) for c, e in zip(part, vectors)]
         client.table("policy_chunks").upsert(rows, on_conflict="document,chunk_key").execute()
         print(f"  {min(i + BATCH, len(todo))}/{len(todo)}", flush=True)
-    print("done")
+    print("done (if the other chunks use a different model, run python -m mrac.ingest.reembed)")
 
 
 if __name__ == "__main__":

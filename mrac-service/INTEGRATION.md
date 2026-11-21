@@ -90,10 +90,15 @@ python -m mrac.ingest.load_chunks out/red/draft_chunks.jsonl
 ```
 Check: `select document, count(*) from policy_chunks group by 1;`
 
-**Switch to real embeddings first** (`pip install sentence-transformers`, `EMBEDDING_PROVIDER=local` in `.env`). The hash stub is not
-semantic and a database must not mix providers: re-load the RAAC chunks with the same provider (re-running `load_chunks`
-refreshes draft rows). Load everything (about 970 chunks): it is small, and the product filter keeps auto, consumer and
-business-only clauses out of housing results. Do not commit `out/`: it holds the bank's policy text.
+**Embeddings and reranking.** The index uses `BAAI/bge-small-en-v1.5` (384 dimensions, `EMBEDDING_PROVIDER=local`), and searches are
+re-ordered by the cross-encoder `cross-encoder/ms-marco-MiniLM-L-6-v2` (`RERANK_MODEL`; about 0.7 s per search). Each chunk is
+embedded with its heading path in front of the text. `policy_chunks.embedding_model` (migration `20261122_mrac_embedding_model.sql`)
+records the model of every vector, and the worker **refuses to start** if any chunk was embedded with another model: vectors from
+two models are not comparable. To switch models: stop every worker, change `EMBEDDING_MODEL`, run `python -m mrac.ingest.reembed`
+(re-embeds from the text in the database, no source files needed). Compare retrieval before and after with
+`python tools/retrieval_snapshot.py save <label>` / `compare <a> <b>`. Load everything (about 970 chunks): it is small, and the
+product filter keeps auto, consumer and business-only clauses out of housing results. Do not commit `out/`: it holds the bank's
+policy text.
 
 After credit policy reviews a document: `update policy_chunks set status = 'approved' where document = '<file name>';`
 

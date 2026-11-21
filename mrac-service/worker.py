@@ -31,12 +31,22 @@ def load_criteria(client) -> list[dict]:
     return [normalize(r) for r in rows]
 
 
-def process(client, job: dict, retriever, engine: str) -> None:
+def process(client, job: dict, retriever, engine: str, judge=None) -> None:
     run_id = job["run_id"]
     print(f"run {run_id}: {job['run_kind']} ...", flush=True)
     try:
         if job["run_kind"] == "CHECK":
-            result = check(job["run_facts"] or {}, load_criteria(client), retriever, on=now()[:10])
+            def progress(text: str) -> None:            # shown in the FP panel while the check runs
+                try:
+                    client.table("mrac_runs").update({"progress": text}).eq("id", run_id).execute()
+                except Exception:  # noqa: BLE001  progress is a nicety (column missing before 20261122_mrac_reviews.sql)
+                    pass
+            progress("Checking the figures against the rules")
+            result = check(job["run_facts"] or {}, load_criteria(client), retriever, on=now()[:10],
+                           profile=job.get("run_profile"), judge=judge, progress=progress)
+            rec = result.get("recommendations") or {}
+            print(f"run {run_id}: recommender {rec.get('status')}"
+                  + (f", {rec.get('counts')}" if rec.get("status") == "DONE" else f": {rec.get('reason')}"), flush=True)
         else:
             result = ask(job["run_question"] or "", retriever, on=now()[:10])
         client.table("mrac_runs").update({"status": "DONE", "result": result, "engine": engine,
@@ -52,19 +62,28 @@ def work(once: bool, interval: float) -> None:
     from supabase import create_client
     from mrac.config import get_settings
     from mrac.embeddings import get_embedder
-    from mrac.retrieval import SupabaseRetriever
+    from mrac.retrieval import IndexMismatch, SupabaseRetriever, check_index, get_reranker
 
     s = get_settings()
     if not s.supabase_url or not s.service_key:
         raise SystemExit("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in mrac-service/.env")
     client, embedder = create_client(s.supabase_url, s.service_key), get_embedder(s)
-    retriever = SupabaseRetriever(client, embedder, s.include_draft)
-    engine = f"mrac-rag/{ENGINE_VERSION}; embeddings={embedder.name}"
+    try:
+        chunks = check_index(client, embedder)      # never search an index built with another model
+    except IndexMismatch as e:
+        raise SystemExit(f"MRAC worker not started: {e}")
+    reranker = get_reranker(s)
+    retriever = SupabaseRetriever(client, embedder, s.include_draft, reranker=reranker)
+    from mrac.judge import get_judge
+    judge = get_judge()
+    engine = (f"mrac-rag/{ENGINE_VERSION}; embeddings={embedder.name}; rerank={reranker.name if reranker else 'off'}; "
+              f"judge={judge.name if judge else 'off'}")
+    print(f"{chunks} policy chunks, {engine}", flush=True)
     print("MRAC worker started" + ("" if once else f", polling every {interval}s"), flush=True)
     while True:
         jobs = client.rpc("claim_mrac_runs", {"p_limit": 1}).execute().data or []
         for job in jobs:
-            process(client, job, retriever, engine)
+            process(client, job, retriever, engine, judge)
         if not jobs:
             if once:
                 return

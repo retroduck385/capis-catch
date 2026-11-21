@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from . import reasoning
 from .explain import explain
+from .recommender import recommend
 from .retrieval import _tok
 from .rules_engine import evaluate, overall
 
-ENGINE_VERSION = "0.1.0"
+ENGINE_VERSION = "0.2.0"
 # Always shown with a check, even before any MRAC criteria are enabled: proves retrieval over the manual.
 DEFAULT_CONTEXT_QUERIES = [
     "housing loan approving authority limits",
@@ -44,7 +45,9 @@ def cite(hit: dict, max_chars: int = 2500) -> dict:
 
 
 def check(facts: dict, criteria: list[dict], retriever, *, on: str | None = None,
-          context_queries: list[str] | None = None) -> dict:
+          context_queries: list[str] | None = None, profile: dict | None = None, judge=None,
+          triggers: dict | None = None, progress=None) -> dict:
+    """Rule results + policy passages, and (with a judge) the policy recommender's findings in `recommendations`."""
     pairs = [(c, evaluate(c, facts)) for c in criteria]
     not_applicable = [r["code"] for _, r in pairs if r["status"] == "not_applicable"]
     live = [(c, r) for c, r in pairs if r["status"] != "not_applicable"]
@@ -97,6 +100,11 @@ def check(facts: dict, criteria: list[dict], retriever, *, on: str | None = None
            "policy_context": context, "notes": notes, "engine": ENGINE_VERSION}
     out["reasoning"] = reasoning.build(results, manual, approval)
     out["explanation"] = explain(out)
+    out["recommendations"] = recommend(profile, facts, pairs, results, retriever, judge, approval, on=on, triggers=triggers,
+                                       progress=progress)
+    if profile is None and judge is not None:
+        notes.append("No application profile came with this check (run 20261122_mrac_profile.sql and check again): "
+                     "the recommender saw the figures only.")
     return out
 
 

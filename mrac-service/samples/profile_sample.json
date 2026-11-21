@@ -1,0 +1,39 @@
+{
+  "_about": "Fictional application profile (shape of catch/src/pages/mrac/profile.js) for tools/recommend_dryrun.py. Not a real borrower.",
+  "facts": {"schema": 1, "loan_amount": 4850000, "loan_term_years": 20, "interest_rate": 7.25, "amortization": 38333.24,
+            "total_gross_income": 130000, "existing_monthly_debt": 21500, "dbr": 0.46, "dbr_standalone": 0.70,
+            "collateral_value": 6000000, "lcr": 0.81, "age": 38, "age_at_maturity": 58, "tenure_years": 10,
+            "employment_type": "LOCALLY_EMPLOYED", "borrower_count": 2, "property_type": "House and Lot",
+            "scorecard_total": 61, "scorecard_complete": true, "existing_exception_count": 0},
+  "profile": {
+    "schema": 1,
+    "loan": {"amount": 4850000, "term_years": 20, "interest_rate": 7.25, "fixing_period": "3 years",
+             "purpose": "Purchase of a house and lot", "property_type": "House and Lot", "collateral_value": 6000000,
+             "collateral_basis": "APPRAISED_VALUE", "lcr": 0.81, "from_developer": true, "referral_channel": "DEVELOPER"},
+    "borrowers": [
+      {"role": "Principal", "relationship_to_principal": null, "filipino_citizen": true, "civil_status": "MARRIED",
+       "lives_abroad": false, "employment_type": "LOCALLY_EMPLOYED", "tenure_years": 10, "income_basis": "PAYSLIP",
+       "gross_income": 86000, "existing_loans": [{"type": "Auto loan", "monthly_payment": 21500, "over_6_months": true}]},
+      {"role": "Co-borrower 2", "relationship_to_principal": "Brother", "filipino_citizen": true, "civil_status": "SINGLE",
+       "lives_abroad": true, "employment_type": "OFW", "tenure_years": 3, "income_basis": "COE", "gross_income": 44000,
+       "existing_loans": []}
+    ],
+    "other_parties": {"mortgagor": false, "attorney_in_fact": true},
+    "totals": {"existing_monthly_amortization": 21500, "total_gross_income": 130000, "new_monthly_amortization": 38333.24,
+               "dbr": 0.46, "dbr_principal_only": 0.70, "principal_age_at_maturity": 58},
+    "credit_score": {"total": 61, "complete": true, "risk_rating": "Moderate", "recommendation": "Acceptable per RAAC"},
+    "ci": {"borrowers": [{"role": "Principal", "nfis": "NO_ADVERSE_FINDINGS", "tu": "WITH_FINDINGS", "bras": "NO_ADVERSE_FINDINGS"},
+                         {"role": "Co-borrower 2", "nfis": "NO_ADVERSE_FINDINGS", "tu": null, "bras": null}],
+           "findings_flagged": false},
+    "documents": {"borrowers": [
+      {"role": "Principal", "required": [{"requirement": "VALID_ID_PASSPORT", "files": 2, "cleared": 2, "needs_new_copy": 0},
+                                         {"requirement": "COE_ITR", "files": 1, "cleared": 1, "needs_new_copy": 0},
+                                         {"requirement": "PAYSLIPS_REMITTANCES", "files": 3, "cleared": 2, "needs_new_copy": 1}]},
+      {"role": "Co-borrower 2", "required": [{"requirement": "VALID_ID_PASSPORT", "files": 1, "cleared": 1, "needs_new_copy": 0},
+                                             {"requirement": "SPA", "files": 0, "cleared": 0, "needs_new_copy": 0},
+                                             {"requirement": "COE_ITR", "files": 1, "cleared": 0, "needs_new_copy": 0},
+                                             {"requirement": "PAYSLIPS_REMITTANCES", "files": 0, "cleared": 0, "needs_new_copy": 0}]}],
+      "open_request_to_applicant": true},
+    "exceptions": []
+  }
+}

@@ -195,13 +195,13 @@ export const ExceptionHighlights = ({ ctx }) => {
 
 // ---- Policy check (RAG) ----
 export const PolicyCheck = ({ ctx }) => {
-    const { mrac, mracChanges } = ctx;
+    const { mrac, mracChanges, findingReviews = {}, names } = ctx;
     return (
         <Section id="ds-policy" title="Policy check (MRAC / policy RAG)" className="mrac">
             <p className="fp-note">
-                The latest check the Credit Officer ran against the bank's credit policy. These are suggestions with the
-                policy clause each one comes from; read the clause before relying on it. Only the assigned Credit Officer
-                can run a new check (in the Financial Package).
+                The latest check the Credit Officer ran against the bank's credit policy: the policies this file triggers,
+                each with the clause it comes from, and what the Credit Officer decided on each one (accepted, edited or
+                dismissed with a reason). Only the assigned Credit Officer can run a new check (in the Financial Package).
             </p>
             {!mrac && <p className="fp-empty">No policy check has been run for this application yet.</p>}
             {mrac && ['PENDING', 'RUNNING'].includes(mrac.status) && (
@@ -217,7 +217,7 @@ export const PolicyCheck = ({ ctx }) => {
                     </span>
                 </p>
             )}
-            {mrac?.status === 'DONE' && <MracResult key={mrac.id} run={mrac} />}
+            {mrac?.status === 'DONE' && <MracResult key={mrac.id} run={mrac} reviews={findingReviews} names={names} />}
         </Section>
     );
 };

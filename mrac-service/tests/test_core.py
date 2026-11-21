@@ -185,16 +185,18 @@ class WorkerTests(unittest.TestCase):
         rows = [{"code": "DBR", "label": "DBR", "field": "dbr", "op": "<=", "threshold": 0.4, "enabled": True}]
         client = FakeClient(rows)
         process(client, {"run_id": 7, "run_kind": "CHECK", "run_facts": {"dbr": 0.5}, "run_question": None}, RETR, "test")
-        table, payload, col, val = client.updates[0]
+        self.assertEqual(client.updates[0][1], {"progress": "Checking the figures against the rules"})
+        table, payload, col, val = client.updates[-1]
         self.assertEqual((table, payload["status"], col, val), ("mrac_runs", "DONE", "id", 7))
         self.assertEqual(payload["result"]["overall"], "FAIL")
+        self.assertEqual(payload["result"]["recommendations"]["status"], "UNAVAILABLE")      # no judge: rules still saved
 
     def test_database_style_rows_with_json_columns_work(self):
         rows = [{"code": "I", "label": "Income", "check_type": "auto", "field": "total_gross_income", "op": ">=", "threshold": 40000,
                  "applies_when": [{"field": "loan_amount", "op": ">=", "value": 1000000}], "options": {}, "enabled": True}]
         client = FakeClient(rows)
         process(client, {"run_id": 3, "run_kind": "CHECK", "run_facts": {"loan_amount": 2000000, "total_gross_income": 10000}, "run_question": None}, RETR, "test")
-        self.assertEqual(client.updates[0][1]["result"]["overall"], "FAIL")
+        self.assertEqual(client.updates[-1][1]["result"]["overall"], "FAIL")
 
     def test_ask_run_is_saved_as_done(self):
         client = FakeClient()

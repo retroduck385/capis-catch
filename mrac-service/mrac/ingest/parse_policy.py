@@ -14,9 +14,12 @@ Design
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
+
+from .. import config  # noqa: F401  (loads mrac-service/.env: HEADER_NOISE_WORDS)
 
 
 HEADER_BOTTOM = 160          # pt; the boxed page header ends ~158pt on letter pages
@@ -40,8 +43,19 @@ TAGS = {                                                    # cheap keyword tags
 
 DATE_RX = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
 FRONT_MATTER = {"SUMMARY OF REVISIONS": "REV", "LIST OF EXHIBITS": "EXH"}      # kept: circular history, exhibit titles
-NOISE = re.compile(r"ISSUE DATE|REVISION DATE|PAGE NO\.?|\d{2}\.\d{2}\.\d{4}|Bank of|Makati|"
-                   r"CREDIT POLICY MANUAL|CONSUMER CREDIT DEPARTMENT|RED OPERATIONS MANUAL|OPERATIONS MANUAL")
+BASE_NOISE = (r"ISSUE DATE|REVISION DATE|PAGE NO\.?|\d{2}\.\d{2}\.\d{4}|Bank of|"
+              r"CREDIT POLICY MANUAL|CONSUMER CREDIT DEPARTMENT|RED OPERATIONS MANUAL|OPERATIONS MANUAL")
+
+
+def header_noise(words: str | None = None) -> re.Pattern:
+    """Words removed from the page-header strip before the section title is read. The bank's own name is never
+    written in code: put the words of it that appear in the header in HEADER_NOISE_WORDS (.env, separated by |)."""
+    words = os.getenv("HEADER_NOISE_WORDS", "") if words is None else words
+    extra = [re.escape(w.strip()) for w in words.split("|") if w.strip()]
+    return re.compile("|".join([BASE_NOISE, *extra]))
+
+
+NOISE = header_noise()
 
 
 def parse_header(text: str, extra: str = "") -> dict:

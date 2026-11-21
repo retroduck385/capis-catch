@@ -8,7 +8,7 @@ import { fetchCiDone } from '../ciRequest/api';
 import { fetchOpenRequest } from '../documentRequests/api';
 import { fetchKycChecks, fetchStaffNames } from '../loanFolder/api';
 import { fetchAssignee, fetchCreditScoreRules, fetchFinancialPackage } from '../financialPackage/api';
-import { fetchLatestMracCheck } from '../mrac/api';
+import { fetchFindingReviews, fetchLatestMracCheck } from '../mrac/api';
 import { fetchLatestSuggestion } from '../aiSuggestion/latest';
 import {
     fetchApprovalDecisions, fetchCurrentStage, fetchReviewAssignments, fetchReviewCheckItems, fetchReviewDecisions,
@@ -77,11 +77,14 @@ export const fetchDecisionSupport = async (applicationId) => {
         .map((d) => ({ id: d.id, type: d.document_type, file: d.file_name, partyId: p.id })));
     const docStates = await optional(fetchDocumentStates(docs.map((d) => d.id)), {});
 
+    // The CO's decisions on the policy recommender's findings (20261122_mrac_reviews.sql)
+    const findingReviews = mrac?.status === 'DONE' ? await optional(fetchFindingReviews(mrac.id), {}) : {};
+
     const positions = Object.fromEntries(staff.map((s) => [s.user_id, s.approval_position]));
     const names = await fetchStaffNames([coId, aoId, ...rows.flatMap((r) => [r.user_id, r.assigned_by]),
-        ...reviews.map((d) => d.responded_by)]);
+        ...reviews.map((d) => d.responded_by), ...Object.values(findingReviews).map((r) => r.reviewed_by)]);
     return {
         app, fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, positions, names,
-        kycChecks, docs, docStates, docRequest, aiSuggestion,
+        kycChecks, docs, docStates, docRequest, aiSuggestion, findingReviews,
     };
 };

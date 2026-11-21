@@ -13,7 +13,7 @@ const one = (x) => (Array.isArray(x) ? x[0] ?? null : x ?? null);
 export const roleOf = (party) => (party.role === 'PRINCIPAL' ? 'Principal' : party.role === 'SPOUSE' ? 'Spouse'
     : party.role === 'CO_BORROWER' ? `Co-borrower ${party.party_no ?? 1}` : 'Borrower');
 
-const yearsBetween = (from, asOf) => {
+export const yearsBetween = (from, asOf) => {
     if (!from || !asOf) return null;
     const a = new Date(from);
     const b = new Date(asOf);
