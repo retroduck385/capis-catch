@@ -27,6 +27,7 @@ import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
 import { fetchDocumentChecks, fetchFieldDefs, rerunExtraction, UNREADABLE_TEXT } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
+import ManualValuesCard from './manualValuesCard';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
 import Breadcrumbs from '../../components/breadcrumbs';
 import AskApplicantButton from '../documentRequests/ask';
@@ -496,6 +497,9 @@ const DocumentCheckPage = () => {
                     </div>
                 </>
             )}
+
+            {/* SPA, SEC / DTI / Mayor's permit and Other files: typed by hand, no AI (not for the CI's reports) */}
+            {!ciMode && app && <ManualValuesCard app={app} />}
         </div>
     );
 };

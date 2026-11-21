@@ -326,3 +326,49 @@
 [data-theme='dark'] .lf-doccheck .dc-select .ct-select li.hi { background: rgba(126, 162, 255, 0.16); color: #dbe5ff; }
 [data-theme='dark'] .lf-doccheck .dc-select .ct-select li[aria-selected='true'] { color: #b9ccff; }
 [data-theme='dark'] .lf-doccheck .dc-select .ct-select li svg { color: #fdba74; }
+
+/* ---------- Other documents (typed by hand): manualValuesCard.jsx ----------
+   Files on the left (the page's .dc-doc rows), the viewer in the middle, the label / value form on the right; one
+   column under 1100px. On the --lf-* tokens, so it follows dark mode like the rest of the page. */
+.mv { margin-top: 1.25rem; }
+.mv .lf-cardhead h2 { display: inline-flex; align-items: center; gap: 0.45rem; }
+.mv-intro { margin: 0 0 0.9rem; color: var(--lf-text-3, #4c5a73); font-size: 0.9rem; }
+.mv-grid { display: grid; grid-template-columns: minmax(14rem, 17rem) minmax(0, 1.2fr) minmax(18rem, 1fr); gap: 1rem; align-items: start; }
+.mv-files { margin: 0; }
+.mv-view { display: grid; gap: 0.6rem; min-width: 0; }
+.mv-ocr summary { cursor: pointer; color: var(--lf-accent, #1e3f97); font-size: 0.85rem; font-weight: 600; }
+.mv-ocr pre {
+  max-height: 16rem; overflow: auto; margin: 0.5rem 0 0; padding: 0.7rem 0.85rem; border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.12));
+  border-radius: 12px; background: var(--lf-sub-bg, #f8fafc); color: var(--ink, #0f1b33); font: 0.82rem/1.45 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.mv-form { display: grid; gap: 0.6rem; min-width: 0; }
+.mv-rows { display: grid; gap: 0.45rem; }
+.mv-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) auto; gap: 0.4rem; align-items: center; }
+.mv-row input {
+  min-width: 0; min-height: 2.5rem; padding: 0.4rem 0.65rem; border: 1px solid var(--lf-control-rim, #d5dbe6); border-radius: 12px;
+  background: var(--lf-control, #fff); color: var(--ink, #0f1b33); font-size: 0.9rem;
+}
+.mv-row input:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 1px; }
+.mv-remove {
+  display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border: 1px solid transparent; border-radius: 999px;
+  background: transparent; color: var(--lf-text-3, #4c5a73); cursor: pointer;
+}
+.mv-remove:hover { background: var(--lf-wash, rgba(20, 41, 95, 0.05)); color: var(--ink, #0f1b33); }
+.mv-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: space-between; }
+.mv-add {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.25rem; padding: 0.3rem 0.85rem; border: 1px dashed var(--lf-hollow, #8b97ab);
+  border-radius: 999px; background: transparent; color: var(--lf-accent, #1e3f97); font-weight: 600; cursor: pointer;
+}
+.mv-add:disabled { opacity: 0.5; cursor: not-allowed; }
+.mv-save { display: inline-flex; align-items: center; gap: 0.35rem; }
+.mv-hint, .mv-by { margin: 0; color: var(--lf-text-3, #4c5a73); font-size: 0.8rem; }
+.mv-saved { display: grid; gap: 0.4rem; margin: 0; }
+.mv-saved > div { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); gap: 0.5rem; padding: 0.45rem 0.65rem;
+  border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.12)); border-radius: 10px; background: var(--lf-sub-bg, #f8fafc); }
+.mv-saved dt { color: var(--lf-text-3, #4c5a73); font-size: 0.82rem; font-weight: 600; }
+.mv-saved dd { margin: 0; color: var(--ink, #0f1b33); font-size: 0.9rem; overflow-wrap: anywhere; }
+.mv-history summary { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--lf-accent, #1e3f97); font-size: 0.85rem; font-weight: 600; }
+.mv-history ol { display: grid; gap: 0.75rem; margin: 0.6rem 0 0; padding: 0; list-style: none; }
+@media (max-width: 1100px) { .mv-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .mv-row { grid-template-columns: minmax(0, 1fr) auto; } .mv-row input:first-of-type { grid-column: 1 / -1; } }
