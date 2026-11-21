@@ -3,8 +3,10 @@
 //   <Term k="DBR" />                 one term
 //   <Terms text="DBR / LCR" />       a text: every known term in it gets the hover
 //   <Terms>NFIS and TU ...</Terms>   the same for the plain-text children (nested elements are left as they are)
-// Inside a button, a link or a form label use a title attribute instead (useTermTitle.js): the term is focusable
-// itself, so it must not be nested in another control.
+//   <Hint text="...">4d / 10d</Hint> the same hover with any explanation (not only a glossary term); staff and applicants
+// Inside a button or a link use a title attribute instead (useTermTitle.js): the term is focusable itself, so it must
+// not be nested in another control. Inside a form label it is fine: clicking the term shows the tip and doesn't open
+// or focus the field.
 // Staff only: for an applicant (or signed out) everything renders as plain text.
 //
 // The tip is rendered into document.body (a portal), so a card, a table, an overflow box or the Messages drawer
@@ -41,7 +43,7 @@ const place = (word, tip) => {
     tip.style.visibility = 'visible';
 };
 
-const Tip = ({ k, children }) => {
+const Tip = ({ k, text, children }) => {
     const id = useId();
     const wordRef = useRef(null);
     const tipRef = useRef(null);
@@ -68,17 +70,24 @@ const Tip = ({ k, children }) => {
 
     const show = () => setOpen(true);
     const hide = () => setOpen(false);
+    // A tap on a term inside a form label shows the tip only (it doesn't open or focus the field). A Hint (text) is
+    // also kept from the clickable row around it (the work tray), so tapping it on a phone doesn't open the file.
+    const onClick = (e) => {
+        if (e.currentTarget.closest('label')) e.preventDefault();
+        if (text) e.stopPropagation();
+        show();
+    };
 
     return (
         <span ref={wordRef} tabIndex={0} aria-describedby={open ? id : undefined}
-            onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide} onClick={show}
+            onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide} onClick={onClick}
             className='cursor-help rounded-sm underline decoration-dotted decoration-1 underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
             {children ?? k}
             {open && createPortal(
                 <span ref={tipRef} id={id} role='tooltip'
                     style={{ position: 'fixed', left: 0, top: 0, width: 'max-content', maxWidth: WIDTH, visibility: 'hidden', zIndex: 1000 }}
-                    className='pointer-events-none block whitespace-normal break-words rounded border border-gray-700 bg-gray-900 px-2.5 py-1.5 text-left text-sm font-normal normal-case not-italic leading-snug tracking-normal text-white shadow-lg'>
-                    <b className='font-semibold text-white'>{k}</b>: {explain(k)}
+                    className='pointer-events-none block whitespace-pre-line break-words rounded border border-gray-700 bg-gray-900 px-2.5 py-1.5 text-left text-sm font-normal normal-case not-italic leading-snug tracking-normal text-white shadow-lg'>
+                    {text ?? <><b className='font-semibold text-white'>{k}</b>: {explain(k)}</>}
                 </span>,
                 document.body,
             )}
@@ -87,6 +96,9 @@ const Tip = ({ k, children }) => {
 };
 
 const isStaff = (role) => STAFF_ROLES.includes(role);
+
+// Any short explanation on hover / focus / tap, in the same look as a term (text may hold line breaks)
+export const Hint = ({ text, children }) => (text ? <Tip text={text}>{children}</Tip> : children);
 
 const split = (text) => splitTerms(text).map((p, i) => (
     // the index is a fine key here: the parts of one fixed text never reorder

@@ -263,7 +263,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
         const chips = [];
         if (status) {
             const [text, tone] = STATUS_CHIPS[status];
-            chips.push(<Chip key="s" tone={tone}>{def.compare_with === 'PRESENT_ADDRESS' && status === 'MATCH' ? 'Looks like application' : text}</Chip>);
+            chips.push(<Chip key="s" tone={tone}>{text}</Chip>);
         }
         const conf = lowestConfidence(field.lines);
         if (conf !== null && conf < LOW_CONFIDENCE) {

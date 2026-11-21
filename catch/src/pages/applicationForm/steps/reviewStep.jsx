@@ -21,7 +21,10 @@ const ReviewStep = ({ app, onRefresh, onBack }) => {
             // Server re-checks completeness; it only moves to SUBMITTED when nothing is missing
             const result = await submitApplication(app.id);
             setMissing(result ?? []);
-            if (!result?.length) await onRefresh();
+            if (!result?.length) {
+                await onRefresh();
+                window.scrollTo(0, 0); // the submitted view starts at the top
+            }
         } catch (err) {
             setError(err.message);
         } finally {

@@ -229,7 +229,7 @@ export const AiSuggestionGiven = ({ ctx }) => {
         <Section id="ds-ai" title="AI suggestion given to the CO" className="mrac">
             {!s ? <p className="fp-empty">The Credit Officer has not asked for an AI suggestion on this file.</p> : (
                 <>
-                    <p className="fp-note">What the AI suggested to the Credit Officer, for comparison with the credit result they set. A suggestion only; synthetic test files only until Q-04 is cleared.</p>
+                    <p className="fp-note">What the AI suggested to the Credit Officer, for comparison with the credit result they set. A suggestion only.</p>
                     <SuggestionView row={s} names={{ [s.requested_by]: s.requestedByName }} canEdit={false} />
                 </>
             )}

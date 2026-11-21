@@ -11,9 +11,8 @@ import {
 import { CiResultsView } from '../ciRequest/ciResults';
 import RoutingSummary from '../review/routingSummary';
 import { percent } from './compute';
-import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS } from './options';
+import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS, withBasisLine } from './options';
 import { Term, Terms } from '../../components/term';
-import { useTermTitle } from '../../components/useTermTitle';
 import { personName } from '../../components/people';
 
 const blank = (v) => v === null || v === undefined || v === '';
@@ -36,16 +35,17 @@ const Info = ({ rows }) => (
 const Cell = ({ children, className = '' }) => <td className={className}>{children}</td>;
 const Head = ({ children }) => <th><Terms>{children}</Terms></th>;
 
-const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required }) => {
-    const tt = useTermTitle();
-    return (
+// optional: a quiet "optional" tag after the label
+const TextArea = ({ name, label, value, onChange, disabled, rows = 3, required, optional }) => (
     <div className="ct-field fp-textarea">
-        <label htmlFor={name} title={tt(label)}>{label}{required && <span className="text-red-600"> *</span>}</label>
+        <label htmlFor={name}>
+            <Terms text={label} />{required && <span className="text-red-600"> *</span>}
+            {optional && <small className="fp-opt"> optional</small>}
+        </label>
         <textarea id={name} rows={rows} value={value ?? ''} disabled={disabled}
             onChange={(e) => onChange(name, e.target.value)} />
     </div>
-    );
-};
+);
 
 const KycNote = () => <p className="fp-note">Copied from the <Term k="KYC" /> (read-only). The <Term k="AO" /> corrects these in the loan folder.</p>;
 
@@ -171,9 +171,9 @@ export const CollateralSection = ({ app, form, onPkg, disabled }) => {
                         onChange={onPkg} disabled={disabled} />
                 </div>
             </div>
-            <TextArea name="other_information" label="Other Information" value={form.other_information}
+            <TextArea name="other_information" label="Other Information" optional value={form.other_information}
                 onChange={onPkg} disabled={disabled} />
-            <TextArea name="statement_of_account" label="Statement of Account" value={form.statement_of_account}
+            <TextArea name="statement_of_account" label="Statement of Account" optional value={form.statement_of_account}
                 onChange={onPkg} disabled={disabled} />
         </Section>
     );
@@ -282,7 +282,9 @@ export const CashFlowSection = ({ computed, details, onParty, disabled }) => (
                         {declared > 0 && (
                             <Field name={`income_basis-${party.id}`} label="Income Basis" options={INCOME_BASES} required
                                 value={details[party.id]?.income_basis} disabled={disabled}
-                                onChange={(_, v) => onParty(party.id, 'income_basis', v)} />
+                                onChange={(_, v) => onParty(party.id, {
+                                    income_basis: v, cash_flow_remarks: withBasisLine(details[party.id]?.cash_flow_remarks, v),
+                                })} />
                         )}
                         <Field name={`other_income-${party.id}`} label="Other Income (B) (PHP)" type="money"
                             value={details[party.id]?.other_income} disabled={disabled}

@@ -9,7 +9,6 @@ import {
 } from './options';
 import CommentButton from '../messages/commentButton';
 import { Terms } from '../../components/term';
-import { useTermTitle } from '../../components/useTermTitle';
 
 // Shows commas while typing (1,500,000.5) and always 2 decimals once you leave the box (1,500,000.50).
 // The value passed to onChange has no commas, so validators and Postgres get a plain number.
@@ -24,14 +23,14 @@ const MoneyInput = ({ id, value, onChange, placeholder, disabled, ...aria }) => 
 };
 
 export const Field = ({ name, label, value, onChange, error, required, type = 'text', options, placeholder, disabled, hint }) => {
-    const tt = useTermTitle();   // staff only: explains a short term in the label (DOSRI / RPT, HGC, AMD ...)
-    const title = typeof label === 'string' ? tt(label) : undefined;
+    // staff only: a short term in the label (DOSRI / RPT, HGC, AMD ...) gets its hover
+    const text = typeof label === 'string' ? <Terms text={label} /> : label;
     if (type === 'checkbox') {
         return (
-            <label className="ct-check" title={title}>
+            <label className="ct-check">
                 <input type="checkbox" checked={!!value} disabled={disabled}
                     onChange={(e) => onChange(name, e.target.checked)} />
-                {label}
+                {text}
             </label>
         );
     }
@@ -43,9 +42,9 @@ export const Field = ({ name, label, value, onChange, error, required, type = 't
     const aria = { ...(error ? { 'aria-invalid': true } : {}), ...(describedBy ? { 'aria-describedby': describedBy } : {}) };
     return (
         <div className="ct-field">
-            <label htmlFor={options ? id : name} id={`${id}-label`} title={title}>
+            <label htmlFor={options ? id : name} id={`${id}-label`}>
                 {/* a no-break space keeps the * on the label's last line */}
-                {label}{required && <span className="text-red-600">{' '}*</span>}
+                {text}{required && <span className="text-red-600">{' '}*</span>}
             </label>
             {options ? (
                 <SelectMenu id={id} labelId={`${id}-label`} value={value} options={options} disabled={disabled} {...aria}

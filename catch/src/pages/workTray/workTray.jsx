@@ -12,7 +12,7 @@ import { fetchActiveReviewAssignments, fetchSignoffs } from '../review/api';
 import { assignApplication, fetchAssignableStaff, fetchWorkTray, unassignApplication } from './api';
 import {
     AVATAR_TONES, SLOT_LABELS, STAGES, STAGE_COLORS, STAGE_STATUS_LABELS, STATUS_TONES, TAT_LABELS, TAT_RULE, TAT_STATE_RULES,
-    TAT_TARGETS_TEXT, TAT_TONES, stageLabel, tatDetail,
+    TAT_TARGETS_TEXT, TAT_TONES, stageLabel, tatSlashHint,
 } from './options';
 import { folderPath } from './paths';
 import { clearTrails } from '../../components/trailStore';
@@ -20,7 +20,7 @@ import FilterSelect from './filterSelect';
 import { useCountUp } from './useCountUp';
 import TeamWorkload from './teamWorkload';
 import './workTray.css';
-import { Term, Terms } from '../../components/term';
+import { Hint, Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 
 // A title of several lines, skipping the empty ones (tt() is undefined for a text without known terms)
@@ -226,12 +226,11 @@ const TatCell = ({ row }) => {
     const days = Number(row.days_in_stage);
     const limit = Number(row.tat_days);
     const pct = limit > 0 ? Math.min(100, Math.round((days / limit) * 100)) : 100;
-    const detail = tatDetail(days, limit);
     return (
-        <div className={`wt-tat ${TAT_TONES[row.tat_state] ?? 'plain'}`} title={detail}>
+        <div className={`wt-tat ${TAT_TONES[row.tat_state] ?? 'plain'}`}>
             <div className='wt-tat-top'>
                 <span className='wt-tatlabel'><Terms text={TAT_LABELS[row.tat_state]} /></span>
-                <span>{days}d / {limit}d</span>
+                <Hint text={tatSlashHint(days, limit)}><span>{days}d / {limit}d</span></Hint>
             </div>
             <div className='wt-bar' role='img' aria-label={`${pct}% of the turnaround time used`}>
                 <span style={{ width: `${pct}%` }} />

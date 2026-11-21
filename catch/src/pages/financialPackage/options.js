@@ -8,11 +8,26 @@ export const CREDIT_RESULTS = [
 ];
 
 // BPMN (Credit Officer lane): income from a COE counts at 80%, from payslips at 90%
+// The dropdown shows only the percent (label); the source word (name) goes into that borrower's IX. Remarks.
 export const INCOME_BASES = [
-    { value: 'COE', label: 'COE (80%)', factor: 0.8 },
-    { value: 'PAYSLIP', label: 'Payslip (90%)', factor: 0.9 },
-    { value: 'DECLARED', label: 'As declared (100%)', factor: 1 },
+    { value: 'COE', label: '80%', name: 'COE', factor: 0.8 },
+    { value: 'PAYSLIP', label: '90%', name: 'payslip', factor: 0.9 },
+    { value: 'DECLARED', label: '100%', name: 'as declared', factor: 1 },
 ];
+
+// "payslip (90%)": the basis in words, for the report and the remarks line
+export const basisText = (basis) => (basis ? `${basis.name} (${basis.label})` : '');
+
+// IX. Remarks after picking an income basis: a first line "Income basis: payslip (90%)." is added, or the earlier
+// one of those replaced; the CO's own text is kept as it is. No basis: the line is taken out.
+const BASIS_LINE = /^Income basis: .* \(\d+%\)\.(\n|$)/;
+export const withBasisLine = (remarks, value) => {
+    const rest = String(remarks ?? '').replace(BASIS_LINE, '');
+    const basis = INCOME_BASES.find((b) => b.value === value);
+    if (!basis) return rest;
+    const line = `Income basis: ${basisText(basis)}.`;
+    return rest ? `${line}\n${rest}` : line;
+};
 
 export const PACKAGE_DEFAULTS = { manner_of_repayment: 'ADA or PDC' };
 

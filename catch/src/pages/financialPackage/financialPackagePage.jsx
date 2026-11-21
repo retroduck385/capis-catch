@@ -298,8 +298,11 @@ const FinancialPackagePage = () => {
     };
     const onPkg = (field, value) => change({ ...form, pkg: { ...form.pkg, [field]: value } });
     const onPricing = (field, value) => change({ ...form, pricing: { ...form.pricing, [field]: value } });
-    const onParty = (id, field, value) =>
-        change({ ...form, parties: { ...form.parties, [id]: { ...form.parties[id], [field]: value } } });
+    // onParty(id, field, value), or onParty(id, { field: value, ... }) for several fields in one change
+    const onParty = (id, field, value) => {
+        const fields = typeof field === 'object' ? field : { [field]: value };
+        change({ ...form, parties: { ...form.parties, [id]: { ...form.parties[id], ...fields } } });
+    };
     const onList = (key) => (rows) => change({ ...form, [key]: rows });
     const onTitle = (kind, field, value) =>
         change({ ...form, titles: { ...form.titles, [kind]: { ...form.titles[kind], [field]: value } } });
@@ -594,7 +597,10 @@ const FinancialPackagePage = () => {
                         <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
                         <CreditCheckingSection app={app} />
                         <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
-                            onChange={onList('exceptions')} disabled={disabled} />
+                            onChange={onList('exceptions')} disabled={disabled}>
+                            <p className="fp-note">List each policy this file doesn&apos;t meet, what you recommend, and what
+                                lowers the risk. Any exception moves the approval authority one step up.</p>
+                        </RowsSection>
                         <TermsSection form={form.pkg} onPkg={onPkg} onReset={resetTerms} disabled={disabled} />
                         <div className="fp-pagenav">
                             <button type="button" className="fp-next" onClick={() => showPage(2)}>

@@ -15,7 +15,7 @@ import { CI_CHECKS, CI_RESULTS } from '../ciRequest/options';
 import { percent } from '../financialPackage/compute';
 import { CATEGORIES } from '../financialPackage/creditScore';
 import {
-    CREDIT_RESULTS, DEPOSIT_CHECK_FIELDS, LOAN_CHECK_FIELDS, TITLE_FIELDS, TITLE_KINDS, TRADE_CHECK_FIELDS,
+    CREDIT_RESULTS, DEPOSIT_CHECK_FIELDS, LOAN_CHECK_FIELDS, TITLE_FIELDS, TITLE_KINDS, TRADE_CHECK_FIELDS, basisText,
 } from '../financialPackage/options';
 import { OVERALL, STATUS, showFact, showRequirement } from '../mrac/labels';
 import { positionLabel, tierLabel } from '../review/approval';
@@ -265,7 +265,7 @@ export const FpPageTwo = ({ r }) => {
                         <tbody>
                             {computed.incomes.map(({ party, basis, basic, other, gross }) => (
                                 <tr key={party.id}>
-                                    <td>{show(fullName(party))}<div className="fr-sub">{partyLabel(party)}{basis ? ` · ${basis.label}` : ''}</div></td>
+                                    <td>{show(fullName(party))}<div className="fr-sub">{partyLabel(party)}{basis ? ` · ${basisText(basis)}` : ''}</div></td>
                                     <td className="num">{show(peso(basic))}</td>
                                     <td className="num">{show(peso(other))}</td>
                                     <td className="num">{show(peso(gross))}</td>
@@ -449,7 +449,7 @@ export const DecisionPage = ({ r }) => {
                         </ul>
                     )}
                     {ai.output?.missing_data?.length > 0 && <KV rows={[['Missing or to verify', ai.output.missing_data.join('; ')]]} />}
-                    <p className="fr-sub">A suggestion only: the AI never sets the credit result. Synthetic test files only until Q-04 is cleared.</p>
+                    <p className="fr-sub">A suggestion only: the AI never sets the credit result.</p>
                 </>
             )}
 

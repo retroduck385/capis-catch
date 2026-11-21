@@ -4,7 +4,7 @@
 // birth dates, addresses, contact details, employer and bank names, ID / TIN / account / title numbers, the
 // application number, the CI's free-text summaries, and the Condition criteria (gender, civil status, dependents,
 // residence type, length of stay, age bands): only their sub-total is sent.
-// SYNTHETIC TEST FILES ONLY until the data privacy question (Q-04) is cleared.
+// The data privacy question (Q-04) was cleared by the bank on 2026-11-20; the filters here stay as they are.
 
 const num = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
 const text = (v) => (v === null || v === undefined || String(v).trim() === '' ? null : String(v).trim());

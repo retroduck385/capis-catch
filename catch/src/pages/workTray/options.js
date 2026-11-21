@@ -70,6 +70,10 @@ export const tatDetail = (days, limit) => {
     ].join('\n');
 };
 
+// The hover on the TAT cell's "4d / 10d": what the two numbers are, then tatDetail()
+export const tatSlashHint = (days, limit) =>
+    `"${Number(days)}d / ${Number(limit)}d": days in this stage so far / this stage's target.\n${tatDetail(days, limit)}`;
+
 // Time in the current stage against its target, the same rule as the tray's TAT column (for pages that only have
 // the stage and when it was entered). null when the stage has no target (Decided) or the entry time is unknown.
 export const stageTat = (stage, enteredAt, now = Date.now()) => {

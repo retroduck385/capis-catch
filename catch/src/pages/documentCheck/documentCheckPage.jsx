@@ -254,7 +254,6 @@ const DocumentCheckPage = () => {
 
     const docDefs = doc ? defs.filter((d) => d.document_type === doc.document_type) : [];
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
-    const workerHint = 'This usually takes under a minute. If it stays here, the OCR worker (ocr-service) may not be running, or has no ANTHROPIC_API_KEY.';
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
         ? { to: `/ciRequestPage?id=${app.id}&step=reports`, label: 'CI request' }
         : { to: `/loanFolderPage?id=${app.id}`, label: 'Loan folder' };
@@ -465,7 +464,6 @@ const DocumentCheckPage = () => {
                                             <status.Icon size={22} className={status.spin ? 'dc-spin' : undefined} aria-hidden="true" />
                                         </span>
                                         <p className="dc-wait-title">{unreadable ? (ciMode ? "We couldn't read this file." : UNREADABLE_TEXT) : status.label}</p>
-                                        {['OCR', 'AI', 'WAITING'].includes(status.key) && <p className="dc-muted"><Terms text={workerHint} /></p>}
                                         {/* the worker already tried twice: the AO asks for a clearer copy, the CI uploads it again */}
                                         {unreadable && !ciMode && (
                                             <AskApplicantButton applicationId={app.id} confirmLeave={leaveEdits} plain className="lf-ask-btn"
