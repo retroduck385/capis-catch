@@ -47,6 +47,11 @@ class LocalRetriever:
         return [{**{k: c.get(k) for k in ("chunk_key", "heading_path", "manual_pages", "revision_date", "status", "document")},
                  "text": c.get("text") or c.get("body", ""), "score": None} for c in self.chunks if c["chunk_key"] in set(keys)]
 
+    def fetch_prefixed(self, prefixes: list[str]) -> list[dict]:
+        """Chunks whose chunk_key starts with any prefix (e.g. every RAAC criterion), in file order."""
+        keys = [c["chunk_key"] for c in self.chunks if any(c["chunk_key"].startswith(p) for p in prefixes)]
+        return self.fetch(keys)
+
     def search(self, query: str, top_k: int = 5, tags: list[str] | None = None, on: str | None = None,
                products: list[str] | None = None) -> list[dict]:
         """products: keep clauses written for these products AND general clauses (no product named); drop clauses that
@@ -124,6 +129,16 @@ class SupabaseRetriever:
         rows = (self.client.table("policy_chunks")
                 .select("chunk_key,document,heading_path,manual_pages,revision_date,status,body")
                 .in_("chunk_key", keys).execute().data or [])
+        return [{**{k: r.get(k) for k in ("chunk_key", "heading_path", "manual_pages", "revision_date", "status", "document")},
+                 "text": r.get("body", ""), "score": None} for r in rows]
+
+    def fetch_prefixed(self, prefixes: list[str]) -> list[dict]:
+        """Chunks whose chunk_key starts with any prefix (e.g. every RAAC criterion), in id order. Retired ones left out."""
+        rows = []
+        for prefix in prefixes:
+            rows += (self.client.table("policy_chunks")
+                     .select("chunk_key,document,heading_path,manual_pages,revision_date,status,body")
+                     .like("chunk_key", f"{prefix}%").neq("status", "retired").order("id").execute().data or [])
         return [{**{k: r.get(k) for k in ("chunk_key", "heading_path", "manual_pages", "revision_date", "status", "document")},
                  "text": r.get("body", ""), "score": None} for r in rows]
 

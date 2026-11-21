@@ -6,3 +6,5 @@ pdfplumber>=0.11
 # Local embeddings + reranker (policy text only; the models download on first use).
 # Needs a Python version PyTorch supports: use a 3.13 venv, like ocr-service.
 sentence-transformers>=2.7
+# Policy recommender judge (mrac/judge.py): Claude API
+anthropic>=2.7,<3
