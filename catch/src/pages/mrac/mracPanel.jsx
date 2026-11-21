@@ -5,8 +5,9 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Section } from '../applicationForm/fields';
-import { fetchLatestMracCheck, requestMracCheck, waitForMracRun } from './api';
+import { fetchLatestMracCheck, fetchProfileInputs, requestMracCheck, waitForMracRun } from './api';
 import { buildMracFacts } from './facts';
+import { buildPolicyProfile } from './profile';
 import MracResult from './mracResult';
 import './mrac.css';
 import { Term } from '../../components/term';
@@ -31,8 +32,10 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
         setBusy(true);
         setError(null);
         try {
-            // Uses the figures on screen now, including unsaved edits (the result stores the facts it was run on)
-            const id = await requestMracCheck(app.id, buildMracFacts({ app, computed, score, pricing, exceptions }));
+            // Uses the figures on screen now, including unsaved edits (the run stores the facts and profile it was run on)
+            const facts = buildMracFacts({ app, computed, score, pricing, exceptions });
+            const profile = buildPolicyProfile({ app, computed, score, exceptions, facts, ...await fetchProfileInputs(app) });
+            const id = await requestMracCheck(app.id, facts, profile);
             setRun(await waitForMracRun(id));
         } catch (err) {
             setError(err.message);
