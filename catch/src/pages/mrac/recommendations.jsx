@@ -8,7 +8,6 @@
 import { useState } from 'react';
 import { formatWhen, fullWhen, personName } from '../../components/people';
 import { Terms } from '../../components/term';
-import { APPROVAL_TIERS, suggestApprovalTier } from '../review/approval';
 import { reviewFinding } from './api';
 import Excerpt from './excerpt';
 
@@ -172,26 +171,6 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
     );
 };
 
-const Approval = ({ run, rec }) => {
-    const amount = run.facts?.loan_amount;
-    const tier = suggestApprovalTier(amount, rec.approval?.with_exception);
-    const t = APPROVAL_TIERS.find((x) => x.value === tier);
-    if (!t) return null;
-    return (
-        <div className="mrac-rec-approval">
-            <h3>Approving authority</h3>
-            <p>
-                <strong>{t.label}</strong> <span className="meta">({t.rule})</span>
-                <br />
-                {rec.approval?.with_exception
-                    ? 'With exception, because: ' + rec.approval.reasons.join('; ')
-                    : 'Without exception: no policy exception was found.'}
-            </p>
-            <p className="fp-note">From the loan amount and the bank&apos;s approval ladder (VII. Approval). The CO picks the tier.</p>
-        </div>
-    );
-};
-
 const Recommendations = ({ run, reviews = {}, names = {}, canEdit = false, onAddException, onAddTerm, onReviewed }) => {
     const rec = run?.result?.recommendations;
     if (!rec) return null;
@@ -223,8 +202,6 @@ const Recommendations = ({ run, reviews = {}, names = {}, canEdit = false, onAdd
                     You decide: accept, edit or dismiss each one. Nothing is added to the Financial Package until you do and save.
                 </p>
             </div>
-
-            <Approval run={run} rec={rec} />
 
             {GROUPS.map((g) => (rec.groups[g.key] ?? []).length > 0 && (
                 <section key={g.key} className={`mrac-block mrac-rec-group ${g.tone}`}>

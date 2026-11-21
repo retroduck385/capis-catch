@@ -105,10 +105,6 @@
 
 /* ---------- policy recommender findings (recommendations.jsx) ---------- */
 .mrac-recs > .mrac-banner .fp-note { margin: 0.45rem 0 0; }
-.mrac-rec-approval { margin-top: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--line); border-radius: 8px; background: #fafbfd; }
-.mrac-rec-approval h3 { margin: 0 0 0.3rem; font-size: 0.95rem; }
-.mrac-rec-approval p { margin: 0; line-height: 1.5; }
-.mrac-rec-approval .fp-note { margin-top: 0.35rem; }
 .mrac .meta { color: var(--muted); font-size: 0.82rem; font-weight: 500; }
 .mrac-rec-group > h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .mrac-rec-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.7rem; }

@@ -1,5 +1,5 @@
 // One finished MRAC / policy-RAG check: overall verdict, criteria, reasoning with citations, suggested exceptions,
-// manual checks, approval path and related policy. Shared by the Financial Package's MracPanel (where the assigned CO
+// manual checks and related policy (the approving authority is in VII. Approval). Shared by the Financial Package's MracPanel (where the assigned CO
 // can add a suggested exception) and the Decision Support page (read only). Everything shown is a SUGGESTION.
 // Pass `onAddException` to show the "+ Add to V. Exception/s" buttons; leave it out for a read-only view.
 // Give it key={run.id} so the "added" marks reset when a new check comes in.
@@ -59,7 +59,6 @@ const MracResult = ({ run, onAddException, onAddTerm, reviews, names, canEdit = 
     const criteria = result.criteria ?? [];
     const suggested = result.suggested_exceptions ?? [];
     const policyContext = result.policy_context ?? [];
-    const approvalPassages = reasoning?.approval_path?.passages ?? [];
 
     return (
         <div aria-live="polite">
@@ -175,14 +174,6 @@ const MracResult = ({ run, onAddException, onAddTerm, reviews, names, canEdit = 
                             </li>
                         ))}
                     </ul>
-                </div>
-            )}
-
-            {approvalPassages.length > 0 && (
-                <div className="mrac-block">
-                    <h3>Approval authority in the policy (newest first)</h3>
-                    {reasoning.approval_path.note && <p className="fp-note">{reasoning.approval_path.note}</p>}
-                    <Citations items={approvalPassages} limit={RESULT_PASSAGES} />
                 </div>
             )}
 
