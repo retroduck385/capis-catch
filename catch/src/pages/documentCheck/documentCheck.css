@@ -223,6 +223,19 @@
 .dc-field { display: grid; gap: 0.5rem; padding: 0.9rem 1rem 1rem; border: 1px solid var(--lf-inset-rim); border-radius: 14px; background: var(--lf-inset); cursor: pointer; }
 .dc-field:hover { background: var(--lf-inset-hover); }
 .dc-field.on { border-color: var(--lf-accent); box-shadow: 0 0 0 1px var(--lf-accent); }
+/* severity (severity.js): a left stripe in the field's worst tone, red = a problem, amber = worth a look */
+.dc-field.sev-bad { box-shadow: inset 4px 0 0 #b42318; }
+.dc-field.sev-check { box-shadow: inset 4px 0 0 #a16207; }
+.dc-field.sev-bad.on { box-shadow: inset 4px 0 0 #b42318, 0 0 0 1px var(--lf-accent); }
+.dc-field.sev-check.on { box-shadow: inset 4px 0 0 #a16207, 0 0 0 1px var(--lf-accent); }
+[data-theme='dark'] .dc-field.sev-bad { box-shadow: inset 4px 0 0 #fca5a5; }
+[data-theme='dark'] .dc-field.sev-check { box-shadow: inset 4px 0 0 #fde047; }
+[data-theme='dark'] .dc-field.sev-bad.on { box-shadow: inset 4px 0 0 #fca5a5, 0 0 0 1px var(--lf-accent); }
+[data-theme='dark'] .dc-field.sev-check.on { box-shadow: inset 4px 0 0 #fde047, 0 0 0 1px var(--lf-accent); }
+/* a document the AI flagged on its own (wrong kind, a Major note, expired): a red dot on its file icon */
+.dc-doc .ic-wrap { position: relative; display: inline-grid; }
+.dc-doc .dc-probdot { position: absolute; top: -3px; right: -4px; width: 9px; height: 9px; border-radius: 999px; background: #b42318; box-shadow: 0 0 0 2px var(--lf-card, #fff); }
+[data-theme='dark'] .dc-doc .dc-probdot { background: #fca5a5; }
 .dc-field-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.45rem; }
 .dc-field-label { margin-right: 0.15rem; color: var(--ink); font-size: 0.92rem; font-weight: 700; }
 .dc-app { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; color: var(--ink); font-size: 0.9rem; }

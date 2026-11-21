@@ -18,6 +18,8 @@ import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
 import { formatDay, formatExact, fullWhen } from '../../components/people';
 import { readingTime } from './duration';
+import { isExpired } from './compare';
+import { docHasProblem } from './severity';
 import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
@@ -385,11 +387,16 @@ const DocumentCheckPage = () => {
                                 {selectedParty.docs.map((d) => {
                                     const s = docStatus(checks[d.id]);
                                     const active = d.id === doc?.id;
+                                    const problem = docHasProblem(checks[d.id], isExpired);
                                     return (
                                         <li key={d.id}>
                                             <button type="button" onClick={() => openDoc(d.id)} aria-current={active ? 'true' : undefined}
-                                                className={`dc-doc ${s.tone}`} title={d.file_name}>
-                                                <FileText size={18} className="ic" aria-hidden="true" />
+                                                className={`dc-doc ${s.tone}`} title={problem ? `${d.file_name}: the AI flagged a problem` : d.file_name}>
+                                                <span className="ic-wrap">
+                                                    <FileText size={18} className="ic" aria-hidden="true" />
+                                                    {problem && <span className="dc-probdot" aria-hidden="true" />}
+                                                </span>
+                                                {problem && <span className="sr-only">The AI flagged a problem. </span>}
                                                 <span className="txt">
                                                     <b>{docLabel(d.document_type)}</b>
                                                     <span className="note">

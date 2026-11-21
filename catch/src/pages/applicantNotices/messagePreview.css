@@ -1,0 +1,25 @@
+/* "What the applicant will receive" (messagePreview.jsx): a title, three pill tabs, one message card.
+   On the --lf-* tokens with light fallbacks, so it follows the loan folder's dark mode and stays light elsewhere. */
+.mp { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+.mp-title {
+  margin: 0; color: var(--lf-text-3, #4c5a73); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.mp-tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.mp-tabs button {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.25rem; padding: 0.3rem 0.85rem;
+  border: 1px solid var(--lf-control-rim, #d5dbe6); border-radius: 999px; background: var(--lf-control, #fff);
+  color: var(--lf-text-2, #2b3a5c); font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.mp-tabs button:hover { background: var(--lf-control-hover, #f4f6fa); }
+.mp-tabs button[aria-selected='true'] {
+  border-color: var(--lf-accent, #1e3f97); background: var(--lf-accent-bg, rgba(30, 63, 151, 0.1)); color: var(--lf-accent, #1e3f97);
+}
+.mp-tabs button:focus-visible, .mp-panel:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+.mp-panel {
+  display: grid; gap: 0.35rem; padding: 0.85rem 1rem; border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.12));
+  border-radius: 14px; background: var(--lf-sub-bg, #f8fafc); color: var(--ink, #0f1b33); font-size: 0.9rem;
+}
+.mp-panel p { margin: 0; }
+.mp-head { font-weight: 700; }
+.mp-meta { color: var(--muted, #475569); font-size: 0.78rem; }
+.mp-body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }

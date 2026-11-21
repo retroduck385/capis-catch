@@ -4,6 +4,9 @@
 // Each requirement is a card: a status chip (amber until it has enough files, green after), the files as rows with
 // View / Remove, and a labelled upload. Shown in the applicant's wizard and the staff loan folder (styles in
 // applicantPages.css, written against the shared --lf-* tokens so they work in both).
+// viewOnly (the AO's KYC check in the loan folder): View and Earlier versions only, no upload, no Remove; a new or
+// different file is asked for with "Request a file" (a document request). The buttons are hidden here only: the
+// storage permissions are unchanged (group notes, item 16).
 import { useState } from 'react';
 import { CheckCircle2, Eye, FileText, Paperclip, Trash2 } from 'lucide-react';
 import { formatDay, formatExact, fullWhen } from '../../../components/people';
@@ -18,7 +21,7 @@ const ACCEPTED_IDS = [
     'Passport', "Driver's License", 'UMID', 'PhilSys ID (National ID)', 'PRC ID', 'Postal ID', "Voter's ID", 'SSS ID', 'TIN ID',
 ];
 
-const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
+const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack, viewOnly = false }) => {
     const [busy, setBusy] = useState(null); // requirement id or doc id being worked on
     const [error, setError] = useState(null);
 
@@ -74,8 +77,13 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
 
     return (
         <form onSubmit={handleSubmit} noValidate>
-            <p className="ct-intro">Accepted: JPG, PNG or PDF, up to 10 MB each. Use clear, readable scans.
-                Files are renamed automatically when uploaded.</p>
+            {viewOnly ? (
+                <p className="ct-intro">The applicant&apos;s files, view only. To get a new or different file, use Request a file
+                    (Ask the applicant for documents).</p>
+            ) : (
+                <p className="ct-intro">Accepted: JPG, PNG or PDF, up to 10 MB each. Use clear, readable scans.
+                    Files are renamed automatically when uploaded.</p>
+            )}
             {borrowers.map((party) => (
                 <Section key={party.id} title={`${partyLabel(party)}: ${party.first_name ?? ''} ${party.last_name ?? ''}`}>
                     {(party.application_requirements ?? []).length === 0 && (
@@ -118,10 +126,12 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                                                         <button type="button" className="ap-filebtn" onClick={() => handleView(doc)}>
                                                             <Eye size={15} aria-hidden="true" />View
                                                         </button>
-                                                        <button type="button" className="ap-filebtn quiet" disabled={busy === doc.id}
-                                                            onClick={() => handleDelete(doc)}>
-                                                            <Trash2 size={15} aria-hidden="true" />{busy === doc.id ? 'Removing...' : 'Remove'}
-                                                        </button>
+                                                        {!viewOnly && (
+                                                            <button type="button" className="ap-filebtn quiet" disabled={busy === doc.id}
+                                                                onClick={() => handleDelete(doc)}>
+                                                                <Trash2 size={15} aria-hidden="true" />{busy === doc.id ? 'Removing...' : 'Remove'}
+                                                            </button>
+                                                        )}
                                                     </li>
                                                 ))}
                                             </ul>
@@ -147,7 +157,7 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                                                 </ul>
                                             </details>
                                         )}
-                                        <label className="ap-upload">
+                                        {!viewOnly && <label className="ap-upload">
                                             <span className="sr-only">Upload {label}</span>
                                             <input type="file" multiple accept="image/jpeg,image/png,application/pdf"
                                                 disabled={busy === req.id}
@@ -157,7 +167,7 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                                                     if (files.length) handleUpload(party, req, files);
                                                 }} />
                                             {busy === req.id && <span className="ap-uploading" role="status">Uploading...</span>}
-                                        </label>
+                                        </label>}
                                     </li>
                                 );
                             })}
@@ -166,7 +176,7 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack }) => {
                 </Section>
             ))}
             <FormError error={error} />
-            <StepButtons onBack={onBack} saving={false} nextLabel="Continue" />
+            {!viewOnly && <StepButtons onBack={onBack} saving={false} nextLabel="Continue" />}
         </form>
     );
 };

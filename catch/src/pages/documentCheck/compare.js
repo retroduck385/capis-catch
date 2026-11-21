@@ -120,9 +120,11 @@ export const compareStatus = (def, docValue, appValue, ctx) => {
     return same ? 'MATCH' : 'DIFFERS';
 };
 
-// The AO must pick "keep application" or "update application" before confirming
+// The AO must pick "keep application" or "update application" before confirming. For "Not found on document"
+// (e.g. no TIN on the COE): Keep leaves the application as it is; Update needs the value typed from the document first
+// (an empty value is never copied: confirm_extraction() refuses it too).
 export const needsChoice = (def, status) =>
-    Boolean(def.target_column) && (status === 'DIFFERS' || status === 'NOT_IN_APPLICATION');
+    Boolean(def.target_column) && ['DIFFERS', 'NOT_IN_APPLICATION', 'NOT_ON_DOCUMENT'].includes(status);
 
 export const lowestConfidence = (lines) =>
     (lines?.length ? Math.min(...lines.map((l) => Number(l.confidence))) : null);

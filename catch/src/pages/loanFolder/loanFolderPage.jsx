@@ -37,6 +37,7 @@ import MessagesPanel from '../messages/messagesPanel';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import AskApplicantButton from '../documentRequests/ask';
+import { kycFileRequest } from './kycAsk';
 import './loanFolder.css';
 import { Term } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
@@ -153,19 +154,14 @@ const LoanFolderPage = () => {
     const verifiedCount = counts.VERIFIED;
     const section = sections.find((s) => s.key === currentKey) ?? null;
 
-    // "Ask the applicant" on a section marked Needs clarification: the AO's remark becomes the note and that
-    // borrower's still-missing documents are ticked (everyone's, for a section that isn't about one borrower)
-    const borrowerOf = (key) => {
-        const coBorrower = key.match(/^coBorrower-([0-9]+)$/);
-        if (key.startsWith('principal')) return getParties(app, ['PRINCIPAL'])[0]?.id ?? null;
-        if (key === 'spouse') return getParties(app, ['SPOUSE'])[0]?.id ?? null;
-        if (coBorrower) return getParties(app, ['CO_BORROWER']).find((p) => p.party_no === Number(coBorrower[1]))?.id ?? null;
-        return null;
-    };
+    // "Request a file" on a section marked Needs clarification: a document request with that section's documents
+    // ticked (kycAsk.js); the AO's remark is shown to them only, never sent
     const askFor = (s, check) => (check?.result === 'NEEDS_CLARIFICATION' ? (
         <p className="lf-kyc-meta lf-ask">
             <AskApplicantButton applicationId={app.id} plain className="lf-ask-btn"
-                ask={{ missingFor: borrowerOf(s.key), note: check.remarks ?? '', from: `the KYC check of "${s.title}" (Needs clarification)` }} />
+                ask={{ ...kycFileRequest(s.key, getParties(app), s.title), remark: check.remarks ?? '' }}>
+                Request a file
+            </AskApplicantButton>
         </p>
     ) : null);
 
@@ -454,6 +450,7 @@ const LoanFolderPage = () => {
                         onSaved={handleSaved}
                         onRefresh={refresh}
                         onBack={null}
+                        viewOnly={section.key === 'documents'}
                     />
                 </div>
             </div>

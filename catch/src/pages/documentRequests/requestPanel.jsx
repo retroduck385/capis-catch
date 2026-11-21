@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import {
     AlertTriangle, Bell, CheckCircle2, ChevronDown, Clock, FileText, History, Mail, MailQuestion, Plus, RefreshCw, Send, Smartphone, Undo2, X,
 } from 'lucide-react';
-import { smsSegments } from '../applicantNotices/sms';
+import MessagePreview from '../applicantNotices/messagePreview';
 import { closeRequest, fetchReminderStatus, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
 import Reminders from './reminders';
 import { refreshCanAsk } from './askStore';
@@ -174,18 +174,27 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         const wanted = ask.items?.length ? ask.items
             : checklist.filter((r) => r.uploaded < r.needed && (ask.missingFor == null || r.applicant_id === ask.missingFor));
         setPicked(new Set(wanted.filter(onList).map(keyOf)));
-        setOthers(wanted.filter((i) => !onList(i) && i.label).map((i) => ({ applicant_id: i.applicant_id, label: String(i.label).slice(0, 80) })));
+        const blankOther = ask.blankOtherFor === undefined ? []
+            : [{ applicant_id: ask.blankOtherFor ?? ctx.suggestions?.parties?.[0]?.applicant_id, label: '' }];
+        setOthers([...wanted.filter((i) => !onList(i) && i.label).map((i) => ({ applicant_id: i.applicant_id, label: String(i.label).slice(0, 80) })),
+            ...blankOther]);
         setMessage((ask.note ?? '').slice(0, ctx.max_length));
         setConfirming(false);
         setDone(null);
         setExpanded(true);
     }
     // ...then bring the box into view
+    const askKind = ask?.kind;
     useEffect(() => {
         if (!askSeen) return;
         boxRef.current?.scrollIntoView({ block: 'start' });
-        boxRef.current?.querySelector('textarea')?.focus({ preventScroll: true });
-    }, [askSeen]);
+        // a file request (KYC "Request a file") starts on the documents; anything else on the note
+        const box = boxRef.current;
+        const target = askKind === 'file'
+            ? box?.querySelector('.dr-picks input:checked') ?? box?.querySelector('.dr-other input[type="text"]') ?? box?.querySelector('.dr-picks input')
+            : box?.querySelector('textarea');
+        target?.focus({ preventScroll: true });
+    }, [askSeen, askKind]);
 
     useEffect(() => {
         if (!formVisible) return;
@@ -319,6 +328,11 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                                     applicant, then click Send request. Nothing has been sent yet.</span>
                             </p>
                         )}
+                        {askSeen && ask?.at === askSeen && ask.remark?.trim() && (
+                            <p className="dr-strip info dr-remark">
+                                <span><b>Your KYC note (staff only, not sent):</b> {ask.remark}</span>
+                            </p>
+                        )}
 
                         {/* where it goes: three channels, any that can't be used say so */}
                         <div className="dr-channels">
@@ -400,24 +414,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
 
                         {preview && !problem && (
                             <div className="dr-group">
-                                <h4 className="dr-h">What the applicant will receive</h4>
-                                <div className="dr-preview">
-                                    <article className="dr-msg">
-                                        <p className="dr-msg-head"><Bell size={14} aria-hidden="true" />In the app</p>
-                                        <p className="dr-msg-title">{preview.in_app_title}</p>
-                                        <p>{preview.in_app_body}</p>
-                                    </article>
-                                    <article className="dr-msg">
-                                        <p className="dr-msg-head"><Smartphone size={14} aria-hidden="true" />SMS
-                                            <span className="dr-msg-meta">{preview.sms_text.length} characters · {smsSegments(preview.sms_text)} SMS</span></p>
-                                        <p className="dr-pre">{preview.sms_text}</p>
-                                    </article>
-                                    <article className="dr-msg">
-                                        <p className="dr-msg-head"><Mail size={14} aria-hidden="true" />Email</p>
-                                        <p className="dr-msg-title">{preview.email_subject}</p>
-                                        <p className="dr-pre">{preview.email_body}</p>
-                                    </article>
-                                </div>
+                                <MessagePreview preview={preview} />
                             </div>
                         )}
 
