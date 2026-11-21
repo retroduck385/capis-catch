@@ -3,73 +3,287 @@
     "Which policy clauses the recommender gives Claude to judge, and why. Reviewable by credit policy: every clause in a",
     "result says which entry below brought it in. `pin` clauses go to every check; each trigger runs its searches only when",
     "its `when` trait holds for the application (traits are computed in mrac/recommender.py from the profile and facts).",
-    "Searches are housing-filtered and reranked; `top_k` hits per query. Clause keys are the stable chunk_key values."
+    "Searches are housing-filtered and reranked. The searches share the slots left after the pinned clauses by taking",
+    "turns (each search's best hit, then each one's second best, ...), so no trait crowds out another. A search hit is",
+    "skipped when its clause is in an `exclude_prefixes` section (not about evaluating a housing application), shorter",
+    "than `min_chars` (a bare heading), or scored below `min_rerank_score` by the reranker. Pinned clauses are never",
+    "filtered. More than `batch_size` clauses are judged in parallel Claude calls of about that size."
   ],
   "pin": {
     "label": "Housing loan risk acceptance criteria and housing section (always checked)",
-    "prefixes": ["RAAC-HL-"],
-    "keys": ["CCD-VII-0003", "CCD-VII-0004", "CCD-VII-0005", "CCD-VII-0006", "CCD-VII-0007", "CCD-VII-0008",
-             "CCD-VII-0009", "CCD-VII-0010"]
+    "prefixes": [
+      "RAAC-HL-"
+    ],
+    "keys": [
+      "CCD-VII-0003",
+      "CCD-VII-0004",
+      "CCD-VII-0005",
+      "CCD-VII-0006",
+      "CCD-VII-0007",
+      "CCD-VII-0008",
+      "CCD-VII-0009",
+      "CCD-VII-0010"
+    ]
   },
-  "max_candidates": 34,
+  "max_candidates": 60,
   "top_k": 3,
+  "min_rerank_score": -1.0,
+  "min_chars": 80,
+  "batch_size": 30,
+  "exclude_prefixes": [
+    "CPM-REV-",
+    "CPM-EXH-",
+    "CCD-REV-",
+    "RED-REV-",
+    "RED-EXH-",
+    "CPM-I-",
+    "CPM-II-",
+    "CPM-III-",
+    "CPM-IV-",
+    "CPM-V-",
+    "CPM-XV-",
+    "CCD-I-",
+    "CCD-II-",
+    "CCD-III-",
+    "RED-I-",
+    "RED-II-",
+    "CPM-X-",
+    "CPM-XI-",
+    "CPM-XIII-",
+    "CPM-XIV-",
+    "CPM-XVI-",
+    "CPM-XVII-",
+    "CPM-XVIII-",
+    "CPM-XX-",
+    "CPM-XXI-",
+    "RED-IX-",
+    "CCD-V-",
+    "CCD-VI-",
+    "CCD-VIII-",
+    "CCD-IX-"
+  ],
+  "_exclude_why": {
+    "CPM-REV/EXH, CCD-REV, RED-REV/EXH": "revision logs and exhibit lists",
+    "CPM-I..V, CPM-XV, CCD-I..III, RED-I..II": "introduction, philosophy, strategy, risk spectrum, organisation, glossaries",
+    "CPM-X, CPM-XI, CPM-XIII, RED-IX": "portfolio limits, credit monitoring / past due, workout and remedial: after the loan",
+    "CPM-XIV, CPM-XVI": "manual maintenance, service level agreements",
+    "CPM-XVII, CPM-XVIII, CPM-XX, CPM-XXI": "business-loan risk rating, Ready Credit, environmental risk (ESRMS)",
+    "CCD-V, CCD-VI, CCD-VIII, CCD-IX": "auto, consumer, motor loans, service level agreement"
+  },
   "triggers": [
-    {"id": "mri", "when": "always", "label": "Mortgage redemption insurance",
-     "queries": ["mortgage redemption insurance requirement for housing loan borrowers"]},
-    {"id": "ci-validity", "when": "always", "label": "Validity of the credit investigation report",
-     "queries": ["the credit investigation report must not be older than six months"]},
-    {"id": "approval-validity", "when": "always", "label": "Validity of an approved loan",
-     "queries": ["validity period of approved credit facilities from approval to loan release"]},
-    {"id": "signatures", "when": "always", "label": "Signature and ID verification at origination",
-     "queries": ["authentication of borrower signature and identification documents housing loan"]},
-
-    {"id": "itr", "when": "loan_over_3m", "label": "Loan above PHP 3 million",
-     "queries": ["income tax return required for loans above 3 million"]},
-    {"id": "large-loan", "when": "loan_over_10m", "label": "Loan above PHP 10 million",
-     "queries": ["housing loan more than 10 million approving authority with exception"]},
-
-    {"id": "ofw", "when": "employment:OFW", "label": "OFW borrower",
-     "queries": ["OFW borrower income computation and proof of remittance", "special power of attorney for OFW borrowers"]},
-    {"id": "seafarer", "when": "employment:SEAFARER", "label": "Seafarer borrower",
-     "queries": ["seafarer income computation number of contracts", "seafarer manning agency certificate POEA contract"]},
-    {"id": "self-employed", "when": "employment:SELF_EMPLOYED", "label": "Self-employed borrower",
-     "queries": ["income computation for self-employed borrowers average monthly deposits",
-                 "business registration DTI SEC mayor's permit self-employed"]},
-    {"id": "professional", "when": "employment:LICENSED_PROFESSIONAL", "label": "Licensed professional",
-     "queries": ["income computation for licensed professionals"]},
-    {"id": "commission", "when": "employment:COMMISSION_BASED", "label": "Commission-based income",
-     "queries": ["commission-based income computation"]},
-    {"id": "va", "when": "employment:VIRTUAL_ASSISTANT", "label": "Virtual assistant / freelancer",
-     "queries": ["income computation for freelancers virtual assistants bank transfers"]},
-    {"id": "rental", "when": "employment:RENTAL_BUSINESS", "label": "Rental income",
-     "queries": ["rental business income computation lease contract"]},
-    {"id": "puv", "when": "employment:PUV_OPERATOR", "label": "PUV operator",
-     "queries": ["jeepney taxi UV express operator income franchise"]},
-    {"id": "pensioner", "when": "employment:PENSIONER", "label": "Pensioner",
-     "queries": ["pensioner income computation pension notice"]},
-    {"id": "employed", "when": "employment:LOCALLY_EMPLOYED", "label": "Locally employed",
-     "queries": ["income computation for employed borrowers payslips certificate of employment"]},
-
-    {"id": "abroad", "when": "lives_abroad", "label": "A borrower lives abroad",
-     "queries": ["borrower residing abroad special power of attorney attorney-in-fact"]},
-    {"id": "aif", "when": "attorney_in_fact", "label": "Attorney-in-fact on the file",
-     "queries": ["special power of attorney consularized attorney-in-fact"]},
-    {"id": "mortgagor", "when": "mortgagor", "label": "Third-party mortgagor",
-     "queries": ["third party mortgagor accommodation mortgage"]},
-    {"id": "foreign", "when": "non_filipino", "label": "A borrower is not a Filipino citizen",
-     "queries": ["foreign national borrower citizenship requirement real estate ownership"]},
-    {"id": "married", "when": "married", "label": "Married borrower (document rules only)",
-     "queries": ["marriage certificate spousal consent marital conformity housing loan documents"]},
-    {"id": "developer", "when": "from_developer", "label": "Referred by a developer",
-     "queries": ["accredited developer project housing loan", "contract to sell developer buyer documents"]},
-    {"id": "condo", "when": "property:condominium", "label": "Condominium unit",
-     "queries": ["condominium certificate of title collateral requirements"]},
-
-    {"id": "ci-findings", "when": "ci_findings", "label": "CI found adverse records",
-     "queries": ["acceptable negative NFIS records exception", "adverse credit findings TransUnion past due accounts"]},
-    {"id": "docs", "when": "documents_incomplete", "label": "Required documents missing or need a new copy",
-     "queries": ["deferral or waiver of documentary requirements", "deficiency in loan documents before approval"]},
-    {"id": "exceptions", "when": "rule_failed", "label": "A risk acceptance criterion is not met",
-     "queries": ["exception to credit policy approved by the higher approving authority with justification and mitigant"]}
+    {
+      "id": "mri",
+      "when": "always",
+      "label": "Mortgage redemption insurance",
+      "queries": [
+        "mortgage redemption insurance requirement for housing loan borrowers"
+      ]
+    },
+    {
+      "id": "ci-validity",
+      "when": "always",
+      "label": "Validity of the credit investigation report",
+      "queries": [
+        "the credit investigation report must not be older than six months"
+      ]
+    },
+    {
+      "id": "approval-validity",
+      "when": "always",
+      "label": "Validity of an approved loan",
+      "queries": [
+        "validity period of approved credit facilities from approval to loan release"
+      ]
+    },
+    {
+      "id": "signatures",
+      "when": "always",
+      "label": "Signature and ID verification at origination",
+      "queries": [
+        "authentication of borrower signature and identification documents housing loan"
+      ]
+    },
+    {
+      "id": "itr",
+      "when": "loan_over_3m",
+      "label": "Loan above PHP 3 million",
+      "queries": [
+        "income tax return required for loans above 3 million"
+      ]
+    },
+    {
+      "id": "large-loan",
+      "when": "loan_over_10m",
+      "label": "Loan above PHP 10 million",
+      "queries": [
+        "housing loan more than 10 million approving authority with exception"
+      ]
+    },
+    {
+      "id": "ofw",
+      "when": "employment:OFW",
+      "label": "OFW borrower",
+      "queries": [
+        "OFW borrower income computation and proof of remittance",
+        "special power of attorney for OFW borrowers"
+      ]
+    },
+    {
+      "id": "seafarer",
+      "when": "employment:SEAFARER",
+      "label": "Seafarer borrower",
+      "queries": [
+        "seafarer income computation number of contracts",
+        "seafarer manning agency certificate POEA contract"
+      ]
+    },
+    {
+      "id": "self-employed",
+      "when": "employment:SELF_EMPLOYED",
+      "label": "Self-employed borrower",
+      "queries": [
+        "income computation for self-employed borrowers average monthly deposits",
+        "business registration DTI SEC mayor's permit self-employed"
+      ]
+    },
+    {
+      "id": "professional",
+      "when": "employment:LICENSED_PROFESSIONAL",
+      "label": "Licensed professional",
+      "queries": [
+        "income computation for licensed professionals"
+      ]
+    },
+    {
+      "id": "commission",
+      "when": "employment:COMMISSION_BASED",
+      "label": "Commission-based income",
+      "queries": [
+        "commission-based income computation"
+      ]
+    },
+    {
+      "id": "va",
+      "when": "employment:VIRTUAL_ASSISTANT",
+      "label": "Virtual assistant / freelancer",
+      "queries": [
+        "income computation for freelancers virtual assistants bank transfers"
+      ]
+    },
+    {
+      "id": "rental",
+      "when": "employment:RENTAL_BUSINESS",
+      "label": "Rental income",
+      "queries": [
+        "rental business income computation lease contract"
+      ]
+    },
+    {
+      "id": "puv",
+      "when": "employment:PUV_OPERATOR",
+      "label": "PUV operator",
+      "queries": [
+        "jeepney taxi UV express operator income franchise"
+      ]
+    },
+    {
+      "id": "pensioner",
+      "when": "employment:PENSIONER",
+      "label": "Pensioner",
+      "queries": [
+        "pensioner income computation pension notice"
+      ]
+    },
+    {
+      "id": "employed",
+      "when": "employment:LOCALLY_EMPLOYED",
+      "label": "Locally employed",
+      "queries": [
+        "income computation for employed borrowers payslips certificate of employment"
+      ]
+    },
+    {
+      "id": "abroad",
+      "when": "lives_abroad",
+      "label": "A borrower lives abroad",
+      "queries": [
+        "borrower residing abroad special power of attorney attorney-in-fact"
+      ]
+    },
+    {
+      "id": "aif",
+      "when": "attorney_in_fact",
+      "label": "Attorney-in-fact on the file",
+      "queries": [
+        "special power of attorney consularized attorney-in-fact"
+      ]
+    },
+    {
+      "id": "mortgagor",
+      "when": "mortgagor",
+      "label": "Third-party mortgagor",
+      "queries": [
+        "third party mortgagor accommodation mortgage"
+      ]
+    },
+    {
+      "id": "foreign",
+      "when": "non_filipino",
+      "label": "A borrower is not a Filipino citizen",
+      "queries": [
+        "foreign national borrower citizenship requirement real estate ownership"
+      ]
+    },
+    {
+      "id": "married",
+      "when": "married",
+      "label": "Married borrower (document rules only)",
+      "queries": [
+        "marriage certificate spousal consent marital conformity housing loan documents"
+      ]
+    },
+    {
+      "id": "developer",
+      "when": "from_developer",
+      "label": "Referred by a developer",
+      "queries": [
+        "accredited developer project housing loan",
+        "contract to sell developer buyer documents"
+      ]
+    },
+    {
+      "id": "condo",
+      "when": "property:condominium",
+      "label": "Condominium unit",
+      "queries": [
+        "condominium certificate of title collateral requirements"
+      ]
+    },
+    {
+      "id": "ci-findings",
+      "when": "ci_findings",
+      "label": "CI found adverse records",
+      "queries": [
+        "acceptable negative NFIS records exception",
+        "adverse credit findings TransUnion past due accounts"
+      ]
+    },
+    {
+      "id": "docs",
+      "when": "documents_incomplete",
+      "label": "Required documents missing or need a new copy",
+      "queries": [
+        "deferral or waiver of documentary requirements",
+        "deficiency in loan documents before approval"
+      ]
+    },
+    {
+      "id": "exceptions",
+      "when": "rule_failed",
+      "label": "A risk acceptance criterion is not met",
+      "queries": [
+        "exception to credit policy approved by the higher approving authority with justification and mitigant"
+      ]
+    }
   ]
 }

@@ -101,9 +101,21 @@ def _candidate(hit: dict, why: str) -> dict:
             "status": hit.get("status"), "text": hit.get("text") or "", "brought_in_by": [why]}
 
 
+def _usable(hit: dict, triggers: dict) -> bool:
+    """A search hit worth a slot: not in an excluded section, not a bare heading, not a weak reranker match."""
+    key = hit.get("chunk_key") or ""
+    if any(key.startswith(p) for p in triggers.get("exclude_prefixes") or []):
+        return False
+    if len((hit.get("text") or "").strip()) < int(triggers.get("min_chars") or 0):
+        return False
+    floor, score = triggers.get("min_rerank_score"), hit.get("rerank_score")
+    return floor is None or score is None or score >= floor
+
+
 def gather(retriever, triggers: dict, trait_map: dict[str, str], pairs: list[tuple[dict, dict]],
            on: str | None = None) -> list[dict]:
-    """Pinned clauses first, then the clauses the evaluated rules come from, then trait searches until the cap."""
+    """Pinned clauses first, then the clauses the evaluated rules come from (never filtered), then the trait searches
+    taking turns for the remaining slots: every search's best usable hit, then every search's second best, ..."""
     found: dict[str, dict] = {}
 
     def add(hit: dict, why: str) -> bool:
@@ -128,17 +140,20 @@ def gather(retriever, triggers: dict, trait_map: dict[str, str], pairs: list[tup
     for h in retriever.fetch(list(wanted)) if wanted else []:
         add(h, wanted[h["chunk_key"]])
 
-    cap = int(triggers.get("max_candidates") or 34)
+    cap = int(triggers.get("max_candidates") or 60)
     top_k = int(triggers.get("top_k") or 3)
+    lanes = []                                       # one per (trigger, query): its usable hits, best first
     for t in triggers.get("triggers") or []:
         if t.get("when") not in trait_map:
             continue
         why = f"{t['label']} ({trait_map[t['when']]})"
         for q in t.get("queries") or []:
-            for h in retriever.search(q, top_k=top_k, on=on, products=HOUSING):
-                if len(found) >= cap and h.get("chunk_key") not in found:
-                    break
-                add(h, why)
+            hits = [h for h in retriever.search(q, top_k=top_k * 2, on=on, products=HOUSING) if _usable(h, triggers)]
+            lanes.append((why, hits[:top_k]))
+    for rank in range(top_k):                        # take turns
+        for why, hits in lanes:
+            if rank < len(hits) and (len(found) < cap or hits[rank].get("chunk_key") in found):
+                add(hits[rank], why)
     return list(found.values())
 
 
@@ -261,8 +276,9 @@ def _known_numbers(profile: dict, facts: dict, results: list[dict], text: str, p
     for r in results:
         for k in ("value", "threshold"):
             walk(r.get("field") or "", r.get(k))
-            for n, _ in numbers_in(str(r.get(k) or "")):
-                vals.append(n)
+            for raw in re.findall(r"-?\d[\d,]*(?:\.\d+)?", str(r.get(k) or "")):   # "<= 0.4" -> 0.4 and 40
+                v = float(raw.replace(",", ""))
+                vals += [v, v * 100] if (r.get("field") in ("dbr", "lcr", "dbr_standalone") or 0 < abs(v) < 1.5) else [v]
     vals += [n for n, _ in numbers_in(text)]
     vals += [float(p) for p in pages if str(p).isdigit()]
     return vals
@@ -318,10 +334,12 @@ def verify(raw: list[dict], candidates: list[dict], profile: dict | None, facts:
         bad_paths = [p for p in used if not resolve(p, profile, facts)[0]]
         if bad_paths:
             problems.append(f"facts not in the application: {', '.join(bad_paths)}")
-        known = _known_numbers(profile, facts, results, c["text"], c["manual_pages"])
         exc = f.get("exception") or {}
         prose = " ".join(str(x or "") for x in (f.get("finding"), f.get("suggested_action"), exc.get("policy"),
                                                  exc.get("recommendation"), exc.get("mitigant")))
+        # a finding may compare with another clause it was given ("conflicts with CCD-IV-0029's 90%"): its figures count
+        cited = " ".join(by_key[k]["text"] for k in set(_KEY.findall(prose)) if k in by_key and k != key)
+        known = _known_numbers(profile, facts, results, f"{c['text']} {cited}", c["manual_pages"])
         show = lambda v, kind: f"₱{v:,.2f}" if kind == "money" else f"{v:g}%" if kind == "percent" else f"{v:g}"
         stray = [show(v, kind) for v, kind in numbers_in(prose) if not _matches(v, kind, known)]
         if stray:
@@ -387,35 +405,69 @@ def unavailable(reason: str, trait_map: dict[str, str] | None = None, checked: i
             "checked": checked}
 
 
+def summarize(groups: dict) -> str:
+    """The headline, written by code from the verified findings (no figure in it that was not checked)."""
+    exc = groups.get("exception") or []
+    parts = [f"{len(exc)} exception{'s' if len(exc) != 1 else ''} needed: "
+             + "; ".join(f["requirement"] or f["heading_path"] for f in exc[:3])
+             + (f"; and {len(exc) - 3} more" if len(exc) > 3 else "")
+             if exc else "No policy exception found"]
+    for key, one, many in (("obtain", "item to obtain or verify", "items to obtain or verify"),
+                           ("condition", "condition for the terms", "conditions for the terms"),
+                           ("met", "requirement met", "requirements met")):
+        n = len(groups.get(key) or [])
+        if n:
+            parts.append(f"{n} {one if n == 1 else many}")
+    return ". ".join(parts) + "."
+
+
+def _batches(items: list, size: int) -> list[list]:
+    """Even batches of at most `size` (34 clauses with size 30 -> 17 + 17, not 30 + 4)."""
+    n = max(1, -(-len(items) // max(1, size)))
+    step = -(-len(items) // n)
+    return [items[i:i + step] for i in range(0, len(items), step)]
+
+
+def _judge_all(judge, profile, facts, results, candidates, trait_map, size: int) -> dict:
+    """One judge call, or parallel calls over even batches of clauses with the same application data, merged."""
+    batches = _batches(candidates, size)
+    payloads = [judge_payload(profile, facts, results, b, trait_map) for b in batches]
+    if len(payloads) == 1:
+        answers = [judge(payloads[0])]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=len(payloads)) as pool:
+            answers = list(pool.map(judge, payloads))      # any failure raises: never a half-checked file
+    tokens = lambda k: (sum(a.get(k) or 0 for a in answers) if all(a.get(k) is not None for a in answers) else None)
+    return {"model": answers[0].get("model"), "findings": [f for a in answers for f in a.get("findings") or []],
+            "input_tokens": tokens("input_tokens"), "output_tokens": tokens("output_tokens"), "calls": len(answers)}
+
+
 def recommend(profile: dict | None, facts: dict, pairs: list[tuple[dict, dict]], results: list[dict], retriever,
               judge, approval_clauses: list[dict], on: str | None = None, triggers: dict | None = None,
               progress=None) -> dict:
     """progress(text): called at each step (the worker shows it to the CO while the check runs)."""
     step = progress or (lambda _text: None)
+    triggers = triggers or load_triggers()
     trait_map = traits(profile, facts, results)
     if judge is None:
         return unavailable("Recommendations are off: set ANTHROPIC_API_KEY in mrac-service/.env.", trait_map)
     step("Finding the policy clauses that apply to this file")
-    candidates = gather(retriever, triggers or load_triggers(), trait_map, pairs, on=on)
+    candidates = gather(retriever, triggers, trait_map, pairs, on=on)
     if not candidates:
         return unavailable("No policy clauses were found to check.", trait_map)
-    payload = judge_payload(profile, facts, results, candidates, trait_map)
-    step(f"Claude is reading {len(candidates)} policy clauses against the file (about a minute)")
+    size = int(triggers.get("batch_size") or 30)
+    parts = len(_batches(candidates, size))
+    step(f"Claude is reading {len(candidates)} policy clauses against the file"
+         + (f" in {parts} parts at once" if parts > 1 else "") + " (about a minute)")
     try:
-        answer = judge(payload)
+        answer = _judge_all(judge, profile, facts, results, candidates, trait_map, size)
     except Exception as e:  # noqa: BLE001  the rule results are still saved; this part says why it is missing
         return unavailable(f"The policy recommender could not run: {str(e)[:300]}", trait_map, len(candidates))
     step("Checking every finding against its clause and the figures")
     kept, unverified = verify(answer.get("findings") or [], candidates, profile, facts, results)
     meta = {"model": answer.get("model"), "input_tokens": answer.get("input_tokens"),
-            "output_tokens": answer.get("output_tokens"), "summary": ""}
+            "output_tokens": answer.get("output_tokens"), "judge_calls": answer.get("calls")}
     out = assemble(kept, unverified, candidates, trait_map, profile, approval_clauses, meta)
-    summary = (answer.get("summary") or "").strip()
-    known = _known_numbers(profile or {}, facts, results, " ".join(c["text"] for c in candidates), [])
-    known += [float(n) for n in (*out["counts"].values(), out["checked"], len(kept))]
-    stray = [f"{v:g}" for v, kind in numbers_in(summary) if not _matches(v, kind, known)]
-    if stray:                                         # a figure the code cannot trace: the UI shows the counts instead
-        out["summary_dropped"] = {"text": summary, "problem": f"numbers not traced: {', '.join(stray)}"}
-    else:
-        out["summary"] = summary
+    out["summary"] = summarize(out["groups"])
     return out

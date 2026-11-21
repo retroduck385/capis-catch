@@ -24,7 +24,7 @@ You get, as JSON:
 - facts: the flat figures the bank's rules test.
 - rule_results: the bank's deterministic rule checks. They are authoritative: never contradict a pass or fail. A rule result names the passage (clause) it comes from.
 - application_traits: what about this application brought passages in.
-- passages: the policy clauses to judge, each with a chunk_key.
+- passages: the policy clauses to judge, each with a chunk_key. The file's other clauses may be judged in a separate call: judge only the passages you are given.
 
 For EVERY passage, return one finding with:
 - chunk_key: the passage's chunk_key, exactly.
@@ -36,8 +36,6 @@ For EVERY passage, return one finding with:
 - facts_used: the application fields the finding relies on, as paths, e.g. "loan.amount", "borrowers[1].employment_type", "documents.borrowers[0].required", "facts.dbr". Empty when not applicable.
 - suggested_action: what the Credit Officer should do next, in one sentence. Empty when not applicable or met.
 - exception: only for action exception, a draft row for the Financial Package's Exceptions table: policy (the policy that is not met, with its requirement), recommendation (what exception to request), mitigant (a mitigating factor that is actually in the application, or empty if there is none). Empty strings otherwise.
-
-Also return summary: one or two sentences on the overall picture for the Credit Officer (how many passages need an exception, what to obtain). No credit decision.
 
 Rules:
 - Civil status is given ONLY so you can identify document requirements (marriage certificate, CENOMAR, spousal consent or conformity). Never use civil status, or any personal circumstance, as a reason that the application meets or fails a policy, as a risk factor, or in a mitigant.
@@ -71,8 +69,8 @@ FINDING_SCHEMA = {
 SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["summary", "findings"],
-    "properties": {"summary": {"type": "string"}, "findings": {"type": "array", "items": FINDING_SCHEMA}},
+    "required": ["findings"],
+    "properties": {"findings": {"type": "array", "items": FINDING_SCHEMA}},
 }
 
 
@@ -133,7 +131,6 @@ class ClaudeJudge:
         usage = message.usage
         return {
             "model": message.model,            # the model that answered (differs after a fallback)
-            "summary": output.get("summary") or "",
             "findings": output.get("findings") or [],
             "input_tokens": (usage.input_tokens + (usage.cache_creation_input_tokens or 0)
                              + (usage.cache_read_input_tokens or 0)) if usage else None,

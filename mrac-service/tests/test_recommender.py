@@ -1,7 +1,7 @@
 """Policy recommender, offline: synthetic clauses (not bank policy), a fake judge, the real verification and grouping."""
 import unittest
 
-from mrac.recommender import gather, judge_payload, numbers_in, quote_in, recommend, resolve, traits, verify
+from mrac.recommender import _batches, gather, judge_payload, numbers_in, quote_in, recommend, resolve, summarize, traits, verify
 from mrac.retrieval import LocalRetriever
 from mrac.rules_engine import evaluate, normalize
 
@@ -159,6 +159,15 @@ class VerifyTests(unittest.TestCase):
         self.assertIn("₱5,900,000.00", problems["CCD-VII-0004"])
         self.assertIn("date_of_birth", problems["RAAC-HL-01-AGE"])
 
+    def test_figures_from_a_named_clause_and_rule_thresholds_count(self):
+        raw = [finding("CPM-IX-0200", "needs_info", "obtain", "OFW borrowers shall submit proof of remittance",
+                       "Unlike RAAC-HL-11-DBR's 40% limit, this clause has no figure.", ["borrowers[1].employment_type"]),
+               finding("RAAC-HL-01-AGE", "met", "note", "not more than 65 years old at loan maturity",
+                       "Age is fine; DBR must stay at 40% or below.", ["facts.age_at_maturity"])]
+        kept, unverified = verify(raw, self.cands, PROFILE, FACTS, RESULTS)
+        self.assertEqual(unverified, [])
+        self.assertEqual(len(kept), 2)
+
     def test_the_rules_win_over_the_judge(self):
         raw = [finding("RAAC-HL-11-DBR", "met", "note", "shall not exceed 40% of the gross monthly income",
                        "DBR is 46%.", ["facts.dbr"])]
@@ -192,15 +201,17 @@ class RecommendTests(unittest.TestCase):
         self.assertEqual(out["counts"]["condition"], 1)
         self.assertEqual(out["counts"]["met"], 1)
         self.assertTrue(out["approval"]["with_exception"])
-        self.assertEqual(out["summary"], "One exception (DBR 46%) and one document to obtain.")
+        self.assertEqual(out["summary"], "1 exception needed: r. 1 item to obtain or verify. 1 condition for the terms. 1 requirement met.")
+        self.assertEqual(out["judge_calls"], 1)
         self.assertEqual(out["groups"]["exception"][0]["exception"]["policy"], "DBR at most 40%")
         self.assertIn("passages", judge.payload)
 
-    def test_a_summary_with_an_untraceable_figure_is_dropped(self):
-        judge = FakeJudge([], summary="DBR is 52%.")
-        out = recommend(PROFILE, FACTS, PAIRS, RESULTS, RETR, judge, approval_clauses=[], triggers=TRIGGERS)
-        self.assertEqual(out["summary"], "")
-        self.assertIn("52", out["summary_dropped"]["problem"])
+    def test_summary_is_written_by_code(self):
+        f = lambda req: {"requirement": req, "heading_path": "h"}
+        self.assertEqual(summarize({"exception": [], "obtain": [], "condition": [], "met": [f("x")]}),
+                         "No policy exception found. 1 requirement met.")
+        self.assertEqual(summarize({"exception": [f("a"), f("b"), f("c"), f("d")], "obtain": [f("x")] * 2}),
+                         "4 exceptions needed: a; b; c; and 1 more. 2 items to obtain or verify.")
 
     def test_no_judge_or_a_failing_judge_never_breaks_the_check(self):
         off = recommend(PROFILE, FACTS, PAIRS, RESULTS, RETR, None, approval_clauses=[], triggers=TRIGGERS)
@@ -213,6 +224,72 @@ class RecommendTests(unittest.TestCase):
         self.assertEqual(failed["status"], "UNAVAILABLE")
         self.assertIn("busy", failed["reason"])
         self.assertGreater(failed["checked"], 0)
+
+
+class StubRetriever:
+    """Search hits with reranker scores, per query; pinned / fetch return nothing."""
+    def __init__(self, by_query):
+        self.by_query, self.queries = by_query, []
+
+    def fetch(self, keys):
+        return []
+
+    def fetch_prefixed(self, prefixes):
+        return []
+
+    def search(self, query, top_k=5, **_):
+        self.queries.append(query)
+        return self.by_query.get(query, [])[:top_k]
+
+
+def hit(key, score=5.0, text="A clause long enough to count as a real policy clause, not a bare heading at all."):
+    return {"chunk_key": key, "heading_path": key, "text": text, "rerank_score": score, "document": "d"}
+
+
+class FairShareTests(unittest.TestCase):
+    TRIG = {"pin": {}, "max_candidates": 4, "top_k": 3, "min_rerank_score": -1.0, "min_chars": 80,
+            "exclude_prefixes": ["CPM-XI-", "CPM-REV-"],
+            "triggers": [{"id": "a", "when": "always", "label": "A", "queries": ["qa"]},
+                         {"id": "b", "when": "always", "label": "B", "queries": ["qb"]},
+                         {"id": "c", "when": "married", "label": "C", "queries": ["qc"]}]}
+
+    def test_searches_take_turns_so_the_last_trait_is_not_starved(self):
+        r = StubRetriever({"qa": [hit("A1"), hit("A2"), hit("A3")], "qb": [hit("B1"), hit("B2"), hit("B3")],
+                           "qc": [hit("C1"), hit("C2"), hit("C3")]})
+        keys = [c["chunk_key"] for c in gather(r, self.TRIG, {"always": "x", "married": "y"}, [])]
+        self.assertEqual(keys, ["A1", "B1", "C1", "A2"])          # first-come would have been A1, A2, A3, B1
+
+    def test_excluded_sections_bare_headings_and_weak_matches_are_skipped(self):
+        r = StubRetriever({"qa": [hit("CPM-XI-0068"), hit("CPM-REV-0004"), hit("SHORT", text="VII"), hit("WEAK", -3.6),
+                                  hit("GOOD", -0.5)]})
+        keys = [c["chunk_key"] for c in gather(r, {**self.TRIG, "max_candidates": 10}, {"always": "x"}, [])]
+        self.assertEqual(keys, ["GOOD"])
+
+    def test_batches_are_even(self):
+        self.assertEqual([len(b) for b in _batches(list(range(34)), 30)], [17, 17])
+        self.assertEqual([len(b) for b in _batches(list(range(60)), 30)], [30, 30])
+        self.assertEqual([len(b) for b in _batches(list(range(12)), 30)], [12])
+
+    def test_parallel_calls_give_the_same_findings_as_one_call(self):
+        judge_findings = lambda payload: {"model": "fake", "input_tokens": 10, "output_tokens": 5, "findings": [
+            finding(p["chunk_key"], "not_applicable", "none", "") for p in payload["passages"]]}
+        one = recommend(PROFILE, FACTS, PAIRS, RESULTS, RETR, judge_findings, [], triggers={**TRIGGERS, "batch_size": 50})
+        two = recommend(PROFILE, FACTS, PAIRS, RESULTS, RETR, judge_findings, [], triggers={**TRIGGERS, "batch_size": 2})
+        self.assertEqual(one["judge_calls"], 1)
+        self.assertGreater(two["judge_calls"], 1)
+        self.assertEqual(sorted(x["chunk_key"] for x in one["not_applicable"]), sorted(x["chunk_key"] for x in two["not_applicable"]))
+        self.assertEqual(two["input_tokens"], 10 * two["judge_calls"])
+
+    def test_one_failing_part_fails_the_recommendations_not_half_of_them(self):
+        calls = []
+
+        def flaky(payload):
+            calls.append(1)
+            if len(calls) == 2:
+                raise RuntimeError("Claude API busy")
+            return {"model": "fake", "findings": []}
+        out = recommend(PROFILE, FACTS, PAIRS, RESULTS, RETR, flaky, [], triggers={**TRIGGERS, "batch_size": 2})
+        self.assertEqual(out["status"], "UNAVAILABLE")
 
 
 if __name__ == "__main__":
