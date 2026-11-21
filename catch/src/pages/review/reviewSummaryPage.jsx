@@ -430,7 +430,8 @@ const ReviewSummaryPage = () => {
             <Section id="rv-review" title={`Your review (reviewer ${current.seq} of ${reviewers.length})`}>
                 <ReviewForm checkItems={checkItems} flags={flags} nextLabel={nextLabel}
                     onSubmit={handleSubmit} busy={busy} error={submitError} onProgress={setMyWork}
-                    draftKey={reviewDraftKey} appId={app.id} onJump={jumpFromCheck} />
+                    draftKey={reviewDraftKey} appId={app.id} onJump={jumpFromCheck}
+                    lastReturn={decisions.filter((d) => d.assignment_id === current?.id).at(-1) ?? null} />
             </Section>
         ),
         'rv-decision': canApprove && (
@@ -468,8 +469,12 @@ const ReviewSummaryPage = () => {
     const linkClass = `lf-btn${reviewRole ? ' quiet' : ''}`;
     const pageLinks = (
         <>
-            <Link to={`/financialPackagePage?id=${app.id}`} className={linkClass}>Financial Package</Link>
-            <Link to={`/creditScorePage?id=${app.id}`} className={linkClass}>Credit scoring</Link>
+            {role !== 'CREDIT_INVESTIGATOR' && (
+                <>
+                    <Link to={`/financialPackagePage?id=${app.id}`} className={linkClass}>Financial Package</Link>
+                    <Link to={`/creditScorePage?id=${app.id}`} className={linkClass}>Credit scoring</Link>
+                </>
+            )}
             <Link to={`/loanFolderPage?id=${app.id}`} className={linkClass}>
                 Loan folder<ArrowRight size={16} aria-hidden="true" />
             </Link>
@@ -512,7 +517,7 @@ const ReviewSummaryPage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
-                    <FinalReportButton applicationId={app.id} />
+                    {role === 'APPROVER' && <FinalReportButton applicationId={app.id} />}
                     {!reviewRole && pageLinks}
                 </div>
             </header>

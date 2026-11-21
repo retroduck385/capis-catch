@@ -1,9 +1,9 @@
 import {
-    Check, CheckCheck, ChevronRight, Eye, Hourglass, Info, Lock, Play, RefreshCw, Send, Settings2, Undo2, X,
+    Check, CheckCheck, ChevronRight, Eye, FileText, Hourglass, Info, Lock, Play, RefreshCw, Send, Settings2, Undo2, X,
 } from 'lucide-react';
 import { WorkTraySkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { UserAuth } from '../../context/authContext';
 import { ASSIGNABLE_ROLES, REVIEW_ROLES, managedSlot } from '../../roles';
 import { EMPLOYMENT_TYPES, formatPeso } from '../applicationForm/options';
@@ -664,6 +664,13 @@ const WorkTray = () => {
                                                     );
                                                 })()}
                                             </div>
+                                            {/* the assigned Account Officer's final report (group notes item 36) */}
+                                            {r.stage === 'DECIDED' && role === 'ACCOUNT_OFFICER' && r.ao_id === myId && (
+                                                <Link to={`/finalReportPage?id=${r.application_id}`} className='wt-report'
+                                                    onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                                                    <FileText size={13} aria-hidden='true' />Final report
+                                                </Link>
+                                            )}
                                         </td>
                                         <td className='wt-amt'>{r.loan_amount != null ? formatPeso(r.loan_amount) : '-'}</td>
                                         <td><TatCell row={r} /></td>

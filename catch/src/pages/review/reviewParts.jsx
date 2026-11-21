@@ -18,6 +18,7 @@ import {
     sourceHref,
 } from './reviewChecks';
 import { clearDraft, formFromDraft, isBlankForm, loadDraft, saveDraft } from './reviewDraft';
+import { isNotEndorsedReturn, seedFromReturn, toSubmission } from './reviewSubmit';
 import { Term, Terms } from '../../components/term';
 
 const money = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
@@ -206,7 +207,7 @@ export const IncomeEvidence = ({ app, computed, fp, onError }) => {
 // The three decisions as cards: tone, icon and what each one does
 const ACTION_CARDS = {
     ENDORSED: { tone: 'ok', Icon: ThumbsUp, desc: 'Sign off and recommend it to the approvers.' },
-    NOT_ENDORSED: { tone: 'warn', Icon: Ban, desc: 'Sign off and recommend against it.' },
+    NOT_ENDORSED: { tone: 'warn', Icon: Ban, desc: 'Recommend against it. It goes back to the Credit Officer as a Major revision, with your justification; it reaches the approvers only once every reviewer endorses it.' },
     RETURNED: { tone: 'none', Icon: CornerUpLeft, desc: 'Send it back to fix what you marked Needs revision.' },
 };
 
@@ -264,9 +265,11 @@ const DraftStatus = ({ saved, onClear, busy }) => {
 // Laid out as one card per checklist item (number, what to check, OK / Needs revision, remark) and the decision as
 // described cards; the ids rv-check-<code> are where "Back to your review" returns to.
 // onProgress({ kind: 'review', marked, total, action, actionLabel, isReturn, hasRemarks, ready }): for the header bar
-export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error, onProgress, draftKey, appId, onJump }) => {
+// lastReturn: this reviewer's latest decision on the file when it was a return: the form starts from its OK items
+export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error, onProgress, draftKey, appId, onJump, lastReturn = null }) => {
     const [restored] = useState(() => loadDraft(draftKey));
-    const [form, setForm] = useState(() => formFromDraft(restored, checkItems));
+    const [seeded] = useState(() => (restored ? null : seedFromReturn(lastReturn)));
+    const [form, setForm] = useState(() => formFromDraft(restored ?? seeded, checkItems));
     const [saved, setSaved] = useState(() => ({ at: restored?.savedAt ?? null, restored: Boolean(restored?.savedAt), failed: false }));
     const { checks, action, remarks, severity } = form;
 
@@ -310,7 +313,8 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
         isReturn && !severity && 'Pick Minor or Major.',
         !remarks.trim() && (isReturn ? 'Say what the Credit Officer needs to revise.' : 'Write the justification.'),
     ].filter(Boolean);
-    const signingOffWithFlags = !isReturn && action && flagged.length > 0;
+    // only an endorsement signs off with items still flagged ("Doesn't endorse" goes back to the CO anyway)
+    const signingOffWithFlags = action === 'ENDORSED' && flagged.length > 0;
     const ready = blockers.length === 0;
     const hasRemarks = remarks.trim() !== '';
     const actionLabel = REVIEW_ACTIONS.find((a) => a.value === action)?.label ?? null;
@@ -321,15 +325,11 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
     const handleSubmit = (e) => {
         e.preventDefault();
         const label = REVIEW_ACTIONS.find((a) => a.value === action)?.label;
-        const after = isReturn ? 'It goes back to the Credit Officer, who is notified.' : nextLabel;
+        const after = isReturn ? 'It goes back to the Credit Officer, who is notified.'
+            : action === 'NOT_ENDORSED' ? 'It goes back to the Credit Officer as a Major revision, with your justification.'
+                : nextLabel;
         if (!window.confirm(`${label}? ${after} This can't be undone.`)) return;
-        onSubmit({
-            action,
-            remarks: remarks.trim(),
-            severity: isReturn ? severity : null,
-            items: checkItems.filter((i) => checks[i.code].result)
-                .map((i) => ({ code: i.code, result: checks[i.code].result, remark: checks[i.code].remark.trim() || null })),
-        });
+        onSubmit(toSubmission(form, checkItems));
     };
 
     return (
@@ -339,6 +339,14 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                 that needs fixing goes back to the Credit Officer. Your answers are kept as a draft in this browser
                 until you submit.
             </p>
+            {seeded && (
+                <p className="lf-note">
+                    <span>
+                        The file is back after your {isNotEndorsedReturn(lastReturn) ? '"Doesn\'t endorse"' : 'return'}. The items you
+                        marked OK are filled in; check the ones you marked Needs revision again, then decide.
+                    </span>
+                </p>
+            )}
 
             <div className="rv-checks-head">
                 <h3 className="fp-subhead"><ListChecks size={18} aria-hidden="true" />Checklist</h3>

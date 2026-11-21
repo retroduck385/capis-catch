@@ -32,7 +32,6 @@ import '../financialPackage/financialPackage.css';
 import '../review/review.css';
 import { Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
-import FinalReportButton from '../finalReport/finalReportButton';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 
@@ -159,7 +158,6 @@ const DecisionSupportPage = () => {
                 </div>
                 <div className="lf-actions">
                     <MessagesPanel applicationId={app.id} inline />
-                    <FinalReportButton applicationId={app.id} />
                     <Link to={`/financialPackagePage?id=${app.id}`} className="lf-btn">Financial Package</Link>
                     <Link to={`/reviewSummaryPage?id=${app.id}`} className="lf-btn">Review summary</Link>
                     <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn">

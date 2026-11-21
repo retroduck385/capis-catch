@@ -41,7 +41,6 @@ import { kycFileRequest } from './kycAsk';
 import './loanFolder.css';
 import { Term } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
-import FinalReportButton from '../finalReport/finalReportButton';
 
 const OVERVIEW = 'overview';
 const REQUEST_CI = 'request-ci';
@@ -280,9 +279,9 @@ const LoanFolderPage = () => {
                             <ScanText size={16} aria-hidden="true" />Document check (AI)
                         </Link>
                     )}
-                    {!isAo && decisionLink}
-                    {!isAo && packageLink}
-                    <FinalReportButton applicationId={app.id} />
+                    {/* the Credit Investigator opens neither Decision Support nor the Financial Package */}
+                    {!isAo && role !== 'CREDIT_INVESTIGATOR' && decisionLink}
+                    {!isAo && role !== 'CREDIT_INVESTIGATOR' && packageLink}
                 </div>
             </header>
             {!canEdit && (

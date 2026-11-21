@@ -1,6 +1,6 @@
 // Final report (the panel's "final artifact"): the file's Financial Package (both pages), credit scoring sheet,
 // decision support and sign-offs as one printable document. /finalReportPage?id=<application id>
-// Every staff role except the Credit Investigator (DSS_ROLES, like Decision Support), once the file is Decided.
+// The Account Officer and the Approvers, once the file is Decided (group notes item 36).
 // The assigned Credit Officer can preview it as a DRAFT while editing in Credit Evaluation (also after a reviewer
 // return). "Download PDF" opens the browser's print dialog ("Save as PDF"): A4 portrait, each part on a new page
 // (finalReport.css). For print the sheets are rendered a second time through a portal straight into <body>
@@ -89,7 +89,7 @@ const FinalReportPage = () => {
                 <Breadcrumbs current="report" appId={app.id} appNo={app.application_no} />
                 <section className="lf-card fr-locked">
                     <Lock size={20} aria-hidden="true" />
-                    <p>The final report is available once the file is decided. The assigned Credit Officer can preview a draft while working on the Financial Package.</p>
+                    <p>The final report opens for the Account Officer and the Approvers once the file is decided. The assigned Credit Officer can preview a draft while working on the Financial Package.</p>
                     {back}
                 </section>
             </div>

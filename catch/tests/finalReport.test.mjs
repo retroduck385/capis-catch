@@ -3,9 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSignoffs, reportMode, scoreSheet, whenPH } from '../src/pages/finalReport/signoffs.js';
 
-test('reportMode: final once Decided, draft only for the assigned CO in Credit Evaluation', () => {
+test('reportMode: final once Decided for the AO and Approvers only, draft only for the assigned CO in Credit Evaluation', () => {
     assert.equal(reportMode({ stage: { stage: 'DECIDED' }, role: 'ACCOUNT_OFFICER', coCanEdit: false }), 'FINAL');
-    assert.equal(reportMode({ stage: { stage: 'DECIDED' }, role: 'CREDIT_OFFICER', coCanEdit: false }), 'FINAL');
+    assert.equal(reportMode({ stage: { stage: 'DECIDED' }, role: 'APPROVER', coCanEdit: false }), 'FINAL');
+    for (const role of ['CREDIT_OFFICER', 'REVIEWER', 'DISPATCH_ADMIN', 'DEPT_HEAD', 'CREDIT_INVESTIGATOR']) {
+        assert.equal(reportMode({ stage: { stage: 'DECIDED' }, role, coCanEdit: false }), null, `no final report for ${role}`);
+    }
     assert.equal(reportMode({ stage: { stage: 'CREDIT_EVALUATION', status: 'IN_PROGRESS' }, role: 'CREDIT_OFFICER', coCanEdit: true }), 'DRAFT');
     assert.equal(reportMode({ stage: { stage: 'CREDIT_EVALUATION', status: 'RETURNED' }, role: 'CREDIT_OFFICER', coCanEdit: true }), 'DRAFT',
         'after a reviewer return');

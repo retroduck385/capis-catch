@@ -9,11 +9,12 @@ export const whenPH = (iso) => (iso ? new Date(iso).toLocaleString('en-PH', {
     timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
 }) : null);
 
-// FINAL once the file is Decided (every role that can open Decision Support). DRAFT only for the assigned Credit
-// Officer while they can edit the Financial Package in Credit Evaluation (still editing, or after a reviewer return).
-// null = not available yet (the page says so).
+// FINAL once the file is Decided, for the Account Officer and the Approvers only (group notes item 36; FINAL_REPORT_ROLES
+// in roles.js). DRAFT only for the assigned Credit Officer while they can edit the Financial Package in Credit
+// Evaluation (still editing, or after a reviewer return). null = not available (the page says so).
+const FINAL_ROLES = ['ACCOUNT_OFFICER', 'APPROVER'];
 export const reportMode = ({ stage, role, coCanEdit }) => {
-    if (stage?.stage === 'DECIDED') return 'FINAL';
+    if (stage?.stage === 'DECIDED') return FINAL_ROLES.includes(role) ? 'FINAL' : null;
     if (role === 'CREDIT_OFFICER' && coCanEdit && stage?.stage === 'CREDIT_EVALUATION') return 'DRAFT';
     return null;
 };
