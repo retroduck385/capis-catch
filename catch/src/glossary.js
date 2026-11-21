@@ -40,7 +40,7 @@ export const GLOSSARY = {
 
     // ---- Documents ----
     FP: ['Financial Package', 'The summary of the borrower and the loan that credit uses to decide.'],
-    COE: ['Certificate of Employment', 'The employer\'s letter confirming the job, position and start date.'],
+    COE: ['Certificate of Employment', 'The employer\'s letter stating the job, position and start date.'],
     COEC: ['Certificate of Employment with Compensation'],
     ITR: ['Income Tax Return', 'The yearly return filed with the BIR, showing declared income.'],
     SPA: ['Special Power of Attorney'],
