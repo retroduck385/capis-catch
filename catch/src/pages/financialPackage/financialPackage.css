@@ -130,9 +130,9 @@
   .fp-pagetabs button { transition: none; }
 }
 
-/* ---------- key sections: Policy check (MRAC), VI. Terms and conditions, VII. Approval ----------
-   The decision rests on these three. In the navigator they sit in their own tinted block with an icon each; on the page
-   the card gets a heavier top edge, a tinted heading and a "Key to the decision" tag. Not colour alone: icon + label. */
+/* ---------- key to the decision: the policy check (MRAC) ----------
+   In the navigator (both pages) a tinted block holds the button that opens the check as a modal; the check's card gets a
+   heavier top edge, a tinted heading and a "Key to the decision" tag. Not colour alone: icon + label. */
 .fp-navkey {
   margin: 0.7rem 0.1rem 0.2rem; padding: 0.55rem 0.4rem 0.45rem; border: 1px solid var(--blue-200);
   border-left: 4px solid var(--blue-700); border-radius: 8px; background: var(--blue-50);
@@ -201,6 +201,8 @@
 
 /* the two pages: big tabs with a number disc; the open one is white with a blue outline and a filled disc */
 .lf-folder.lf-fp .fp-pagetabs { gap: 0.75rem; margin: 0; scroll-margin-top: var(--fp-top); }
+.lf-folder.lf-fp .fp-pagetabs[hidden] { display: none; }  /* page 3 (step 3) shows no tabs */
+.lf-folder.lf-fp .lf-body.edit { scroll-margin-top: var(--fp-top); }
 .lf-folder.lf-fp .fp-pagetabs button {
   display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.85rem; min-height: 4.25rem; margin: 0;
   padding: 0.8rem 1.1rem; border: 1px solid var(--lf-inset-rim); border-radius: 18px; background: var(--lf-inset);
@@ -226,6 +228,8 @@
 .lf-folder.lf-fp .fp-nav { top: var(--fp-top); padding: 0.55rem; max-height: calc(100vh - var(--fp-top) - 1rem); }
 .lf-folder.lf-fp .fp-navgroup { margin: 0.85rem 0.65rem 0.3rem; color: var(--lf-text-3); font-size: 0.72rem; letter-spacing: 0.07em; }
 .lf-folder.lf-fp .fp-nav > div:first-child .fp-navgroup { margin-top: 0.35rem; }
+/* the step this page is (Step 1 to 4 of the CO's work): navy, over a hairline, above the page's own groups */
+.lf-folder.lf-fp .fp-nav .fp-navstep { margin-bottom: 0.2rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--lf-hair); color: var(--navy); }
 .lf-folder.lf-fp .fp-nav a {
   position: relative; display: flex; align-items: center; gap: 0.5rem; min-height: 2.4rem; padding: 0.45rem 0.75rem; border-radius: 12px;
   color: var(--ink); font-size: 0.92rem; font-weight: 500; text-decoration: none;
@@ -246,6 +250,60 @@
 .lf-folder.lf-fp .fp-nav .fp-navkey a[aria-current='true'] { background: var(--lf-blue-grad); color: #fff; }
 .lf-folder.lf-fp .fp-nav .fp-navkey a[aria-current='true'] svg { color: #fff; }
 .lf-folder.lf-fp .fp-nav .fp-navkey a::before { content: none; }
+.lf-folder.lf-fp .fp-navkey-btn {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 2.4rem; margin: 0; padding: 0.45rem 0.75rem;
+  border: 0; border-radius: 12px; background: var(--lf-accent-bg);
+  color: var(--navy); font: inherit; font-size: 0.92rem; font-weight: 600; text-align: left; cursor: pointer;
+}
+.lf-folder.lf-fp .fp-navkey-btn svg { flex: none; color: var(--lf-accent); }
+.lf-folder.lf-fp .fp-navkey-btn:hover { background: var(--lf-inset-hover); }
+.lf-folder.lf-fp .fp-navkey-btn:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+
+/* the policy check modal: a solid card over a dimmed page; the body scrolls inside, the close button stays put */
+.lf-folder.lf-fp .fp-dialog {
+  width: min(60rem, calc(100vw - 2rem)); max-height: calc(100dvh - 3rem); margin: auto; padding: 0; overflow: hidden;
+  border: 1px solid var(--lf-glass-rim); border-radius: 22px; background: #fff; color: var(--ink);
+  box-shadow: 0 24px 60px -20px rgba(13, 20, 40, 0.5);
+}
+.lf-folder.lf-fp .fp-dialog::backdrop { background: rgba(13, 20, 40, 0.45); }
+.lf-folder.lf-fp .fp-dialogbody { max-height: calc(100dvh - 3rem); overflow-y: auto; overscroll-behavior: contain; }
+.lf-folder.lf-fp .fp-dialogbody > .ct-section {
+  border: 0; border-radius: 0; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 3px 0 var(--lf-accent);
+}
+.lf-folder.lf-fp .fp-dialogbody > .ct-section > legend { padding-right: 4rem; border-radius: 0; }
+.lf-folder.lf-fp .fp-dialogclose {
+  position: absolute; top: 0.75rem; right: 1.6rem; z-index: 1; display: grid; place-items: center; width: 2.25rem; height: 2.25rem;
+  margin: 0; padding: 0; border: 1px solid var(--lf-inset-rim); border-radius: 50%; background: var(--lf-inset); color: var(--ink); cursor: pointer;
+}
+/* the change history modal: a heading row, then the history list */
+.lf-folder.lf-fp .fp-histbody { padding: 1rem 1.4rem 1.4rem; }
+.lf-folder.lf-fp .fp-dialoghead {
+  display: flex; align-items: center; gap: 0.6rem; margin: 0 0 1rem; padding: 0.2rem 3rem 0.9rem 0; border-bottom: 1px solid var(--lf-hair);
+  color: var(--navy);
+}
+.lf-folder.lf-fp .fp-dialoghead h2 { margin: 0; color: var(--navy); font-size: 1.1rem; font-weight: 700; }
+.lf-folder.lf-fp .fp-dialogclose:hover { background: var(--lf-inset-hover); }
+.lf-folder.lf-fp .fp-dialogclose:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+
+/* page 3 (step 3, not in the tabs): its heading and a one-line note */
+.lf-folder.lf-fp .fp-page3head { display: grid; gap: 0.35rem; }
+.lf-folder.lf-fp .fp-page3head .fp-note { margin: 0; }
+
+/* the left column: the navigator with the page switch under it, kept in view together */
+.lf-folder.lf-fp .fp-side { position: sticky; top: var(--fp-top); display: grid; gap: 0.75rem; align-content: start; min-width: 0; }
+.lf-folder.lf-fp .fp-side > .fp-nav { position: static; max-height: calc(100vh - var(--fp-top) - 4.25rem); }
+
+/* page switch under the navigator: small numbered squares, centred; the open page in the page's blue */
+.lf-folder.lf-fp .fp-navpages { display: flex; justify-content: center; gap: 0.35rem; }
+.lf-folder.lf-fp .fp-navpages button {
+  display: grid; place-items: center; width: 1.9rem; height: 1.9rem; margin: 0; padding: 0; border: 1px solid var(--lf-inset-rim);
+  border-radius: 8px; background: var(--lf-inset); box-shadow: var(--lf-shadow-sm); color: var(--lf-text-3); font: inherit;
+  font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.lf-folder.lf-fp .fp-navpages button:hover { background: var(--lf-inset-hover); color: var(--navy); }
+.lf-folder.lf-fp .fp-navpages button[aria-pressed='true'] { border-color: transparent; background: var(--lf-blue-grad); color: #fff; cursor: default; }
+.lf-folder.lf-fp .fp-navpages button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
 
 /* section cards: glass, a navy heading over a hairline. A focused card sits above its neighbours, so an open dropdown
    isn't covered by the next card (each glass card is its own stacking layer) */
@@ -312,6 +370,12 @@
   background: var(--lf-control); box-shadow: var(--lf-shadow-sm); color: var(--navy);
 }
 .lf-folder.lf-fp .fp-btn:hover { background: var(--lf-control-hover); color: var(--navy); }
+/* a button that moves the work on (Open Approval): orange, like the page footers' Next */
+.lf-folder.lf-fp .fp-btn.fp-go {
+  border-color: transparent; background: var(--lf-orange); color: #fff; font-weight: 700; box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75);
+}
+.lf-folder.lf-fp .fp-btn.fp-go:hover { background: #9a3412; color: #fff; }
+.lf-folder.lf-fp .fp-btn.fp-go:focus-visible { outline: 3px solid rgba(194, 65, 12, 0.35); outline-offset: 2px; }
 .lf-folder.lf-fp .mrac .mrac-btn {
   min-height: 2.75rem; padding: 0.5rem 1.35rem; border: 0; border-radius: 999px; background: var(--lf-blue-grad); color: #fff;
   font-weight: 700; box-shadow: 0 10px 20px -12px rgba(20, 41, 95, 0.8);
@@ -322,7 +386,7 @@
 .lf-folder.lf-fp .fp-pagenav { margin-top: 0.25rem; }
 .lf-folder.lf-fp .fp-pagenav .fp-next {
   display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.45rem 1.25rem; border: 0; border-radius: 999px;
-  background: var(--lf-orange); color: #fff; font-weight: 700; box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75);
+  background: var(--lf-orange); color: #fff; font-weight: 700; text-decoration: none; box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75);
 }
 .lf-folder.lf-fp .fp-pagenav .fp-next:hover { background: #9a3412; color: #fff; }
 .lf-folder.lf-fp .fp-pagenav .fp-next:focus-visible { outline: 3px solid rgba(194, 65, 12, 0.35); outline-offset: 2px; }
@@ -347,14 +411,16 @@
 @media (max-width: 1300px) { .lf-fp .fp-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 960px) {
   .lf-folder.lf-fp .lf-body.edit { grid-template-columns: minmax(0, 1fr); }
-  .lf-folder.lf-fp .fp-nav { position: static; max-height: none; overflow: visible; }
+  .lf-folder.lf-fp :is(.fp-side, .fp-nav) { position: static; }
+  .lf-folder.lf-fp .fp-nav, .lf-folder.lf-fp .fp-side > .fp-nav { max-height: none; overflow: visible; }
   .lf-folder.lf-fp .ct-section { padding: 0 1.1rem 1.1rem; }
   .lf-folder.lf-fp .ct-section > legend { width: calc(100% + 2.2rem); margin: 0 -1.1rem 1rem; padding: 0.9rem 1.1rem 0.8rem; }
 }
 @media (max-width: 760px) { .lf-fp .fp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .lf-folder.lf-fp .fp-savebar { border-radius: 18px; }
-  .lf-folder.lf-fp .fp-pagenav > button { flex: 1 1 100%; justify-content: center; white-space: normal; }
+  .lf-folder.lf-fp .fp-pagenav { flex-wrap: wrap; gap: 0.6rem; }
+  .lf-folder.lf-fp .fp-pagenav > :is(button, a) { flex: 1 1 100%; justify-content: center; white-space: normal; }
 }
 /* phones: two across, the risk rating full width on top, tighter tiles */
 @media (max-width: 480px) {
@@ -368,6 +434,7 @@
 /* ---------- motion (none under reduced motion) ---------- */
 @media (prefers-reduced-motion: no-preference) {
   .lf-folder.lf-fp .fp-page:not([hidden]) { animation: lf-fade 0.35s var(--lf-ease) both; }
+  .lf-folder.lf-fp .fp-dialog[open] { animation: lf-fade 0.25s var(--lf-ease) both; }
   .lf-folder.lf-fp .fp-tiles > * { animation: lf-fade 0.4s var(--lf-ease) both; }
   .lf-folder.lf-fp .fp-tiles > :nth-child(2) { animation-delay: 0.04s; }
   .lf-folder.lf-fp .fp-tiles > :nth-child(3) { animation-delay: 0.08s; }
@@ -408,6 +475,8 @@
 [data-theme='dark'] .lf-folder.lf-fp .fp-remove:hover:not(:disabled) { background: rgba(248, 113, 113, 0.12); border-color: rgba(252, 165, 165, 0.4); color: #fca5a5; }
 [data-theme='dark'] .lf-folder.lf-fp .ct-section.fp-key { border-color: rgba(126, 162, 255, 0.28); }
 [data-theme='dark'] .lf-folder.lf-fp .fp-navkey { border-color: rgba(126, 162, 255, 0.25); }
+[data-theme='dark'] .lf-folder.lf-fp .fp-dialog { background: #131c38; border-color: rgba(255, 255, 255, 0.1); }
+[data-theme='dark'] .lf-folder.lf-fp .fp-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 [data-theme='dark'] .lf-folder.lf-fp .mrac {
   --mrac-ok: #4ade80;   --mrac-ok-bg: rgba(74, 222, 128, 0.12);   --mrac-ok-line: rgba(74, 222, 128, 0.35);
   --mrac-warn: #fdba74; --mrac-warn-bg: rgba(251, 146, 60, 0.14); --mrac-warn-line: rgba(251, 146, 60, 0.4);

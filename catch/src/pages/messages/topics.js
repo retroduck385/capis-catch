@@ -19,7 +19,7 @@ const PAGES = {
 const LABELS = {
     'fp-general': 'General information', 'fp-i': 'I. Borrower/s highlight', 'fp-ii': 'II. Facility',
     'fp-iii': 'III. Collateral', 'fp-iv': 'IV. Credit checking', 'fp-v': 'V. Exceptions',
-    'fp-mrac': 'Policy check (MRAC)', 'fp-vi': 'VI. Terms and conditions', 'fp-vii': 'VII. Approval',
+    'fp-mrac': 'Policy check (MRAC)', 'fp-vi': 'VI. Terms and conditions', 'fp-vii': 'Approval',
     'fp-viii': 'VIII. Employment', 'fp-ix': 'IX. Cash flow', 'fp-x': 'X. Deposit checking',
     'fp-xi': 'XI. Loan verification', 'fp-xii': 'XII. Trade checking', 'fp-xiii': 'XIII. Title',
     'fp-xiv': 'XIV. Customer information', 'fp-result': 'Credit result',

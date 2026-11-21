@@ -400,7 +400,6 @@ const WorkTray = () => {
     const { byTat } = stats;
     // Bar chart covers the open stages only; Decided keeps growing, so it sits below as a plain count
     const openStages = STAGES.filter((s) => s.value !== 'DECIDED');
-    const maxOpenStage = Math.max(1, ...openStages.map((s) => stats.byStage[s.value]));
     const lateTotal = openStages.reduce((n, s) => n + stats.lateByStage[s.value], 0);
     // Ring segments in on track -> near -> beyond order. With several segments each dash is shortened by the
     // round caps plus a small gap, so neighbours don't touch; a single segment is drawn as the full ring.
@@ -470,15 +469,15 @@ const WorkTray = () => {
 
                 <article className='wt-card wt-widget'>
                     <h2 className='wt-wtitle'>Applications by stage</h2>
-                    {/* Process arrows: one chevron per open stage, in order, all the same width. The count is the
-                        size; the fill gets stronger for busier stages (12-40% of the stage colour, capped so navy
-                        text stays 4.5:1+). A white tag shows how many are beyond TAT. Each chevron filters. */}
+                    {/* Process arrows: one chevron per open stage, in order, all the same width. The fill deepens
+                        step by step along the flow (10-34% of the stage colour, so navy text stays 4.5:1+); the count
+                        takes the stage colour. A tag shows how many are beyond TAT. Each chevron filters. */}
                     <ol className='wt-flow' aria-label='Filter by stage'>
                         {openStages.map((s, i) => {
                             const count = stats.byStage[s.value];
                             const late = stats.lateByStage[s.value];
                             const pressed = stage === s.value;
-                            const mix = Math.round(12 + (count / maxOpenStage) * 28);
+                            const mix = 10 + i * 6;
                             const summary = `${s.label}: ${count} application${count === 1 ? '' : 's'}`
                                 + `${late ? `, ${late} beyond TAT` : ''}`;
                             return (

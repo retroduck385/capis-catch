@@ -27,6 +27,7 @@ export const useActiveSection = (ids, ready) => {
         const unlockEvents = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
         let frame = 0;
         const onScroll = (e) => {
+            if (e.target instanceof Element && e.target.closest('dialog')) return; // scrolling inside a modal
             cancelAnimationFrame(frame);
             frame = requestAnimationFrame(() => update(e));
         };

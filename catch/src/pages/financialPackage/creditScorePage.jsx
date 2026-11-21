@@ -288,6 +288,7 @@ const CreditScorePage = () => {
 
             <div className="lf-body edit">
                 <nav className="lf-card lf-nav fp-nav" aria-label="Credit score sections">
+                    <div><p className="fp-navgroup fp-navstep">Step 2: Credit score</p></div>
                     <ul>
                         {TOC.map(([id, label]) => (
                             <li key={id}>

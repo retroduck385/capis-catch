@@ -1,8 +1,8 @@
 // Frame for every signed-in page (applicant and staff): a rounded blue top bar (brand, role-specific nav as a pill
-// group, bell + profile picture, sign out) above the page content, so pages get the full width.
-// The profile picture and the sign-out door are compact; on hover or keyboard focus each slides open to show the
-// user's name and role, or "Sign out". Styled by applicantTheme.css (.ct-e).
-import { BookOpen, FileText, Layers, LogOut, Moon, Plus, Sun, Users } from 'lucide-react';
+// group, bell + profile chip) above the page content, so pages get the full width.
+// The profile chip always shows the user's name and role; pressing it opens a menu card: who is signed in, View
+// profile, a Dark mode switch (flips in place, the menu stays open), Sign out (which still asks first). Styled by applicantTheme.css (.ct-e).
+import { BookOpen, Building2, ChevronDown, ChevronRight, FileText, Layers, LogOut, Moon, Plus, Sun, UserRound, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
@@ -83,6 +83,26 @@ const AppLayout = ({ children }) => {
     const dialogRef = useRef(null);
     const [signingOut, setSigningOut] = useState(false);
 
+    // Profile menu: closes on a click outside, on Escape (focus back on the chip) and after picking an item
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
+    const menuBtnRef = useRef(null);
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+        const onDown = (e) => { if (!menuRef.current?.contains(e.target)) setMenuOpen(false); };
+        const onKey = (e) => {
+            if (e.key !== 'Escape') return;
+            setMenuOpen(false);
+            menuBtnRef.current?.focus();
+        };
+        document.addEventListener('pointerdown', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('pointerdown', onDown);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [menuOpen]);
+
     const openConfirm = () => dialogRef.current?.showModal();
     const closeConfirm = () => dialogRef.current?.close();
 
@@ -102,7 +122,8 @@ const AppLayout = ({ children }) => {
             <SkylineBackdrop />
             <header className={`ct-topnav${compact ? ' compact' : ''}`}>
                 <Link to={homePathFor(role)} className="ct-topnav-brand">
-                    <span className="ct-topnav-mark" aria-hidden="true" /><span className="ct-topnav-word">CATCH</span>
+                    <span className="ct-topnav-mark" aria-hidden="true"><Building2 size={16} /></span>
+                    <span className="ct-topnav-word">CATCH</span>
                 </Link>
                 {/* Icon-first links: the label slides out on hover / focus (the current page too; its white pill
                     marks it).
@@ -119,34 +140,55 @@ const AppLayout = ({ children }) => {
                     <div className="ct-topnav-user">
                         <NotificationBell onDark />
                         <span className="ct-topnav-divider" aria-hidden="true" />
-                        {/* Profile picture: slides open on hover / focus to show name and role */}
-                        <Link to={profilePath} className="ct-topnav-avatar ct-expand" aria-label={`My profile (${who})`}>
-                            <span className="ct-avatar" aria-hidden="true">{initialsOf(staffName && displayName, email)}</span>
-                            <span className="ct-expand-text" aria-hidden="true">
-                                <span>
+                        {/* Profile chip: name and role always shown; opens the profile menu */}
+                        <div ref={menuRef} className="ct-usermenu">
+                            <button ref={menuBtnRef} type="button" className="ct-topnav-avatar" aria-haspopup="true"
+                                aria-expanded={menuOpen} aria-controls="ct-usermenu-list" aria-label={`Account menu (${who})`}
+                                onClick={() => setMenuOpen((o) => !o)}>
+                                <span className="ct-avatar" aria-hidden="true">{initialsOf(staffName && displayName, email)}</span>
+                                <span className="ct-usermenu-who" aria-hidden="true">
                                     <b>{displayName}</b>
                                     {roleLabel && <small>{roleLabel}</small>}
                                 </span>
-                            </span>
-                        </Link>
+                                <ChevronDown size={16} className="ct-usermenu-chev" aria-hidden="true" />
+                            </button>
+                            {menuOpen && (
+                                <div id="ct-usermenu-list" className="ct-usermenu-list">
+                                    {/* Who is signed in */}
+                                    <div className="ct-um-head">
+                                        <span className="ct-avatar" aria-hidden="true">{initialsOf(staffName && displayName, email)}</span>
+                                        <span className="ct-um-who">
+                                            <b>{displayName}</b>
+                                            {roleLabel && <span className="ct-um-role">{roleLabel}</span>}
+                                            {email && email !== displayName && <small>{email}</small>}
+                                        </span>
+                                    </div>
+                                    <div className="ct-um-group">
+                                        <Link to={profilePath} className="ct-um-item" onClick={() => setMenuOpen(false)}>
+                                            <span className="ct-um-ic" aria-hidden="true"><UserRound size={17} /></span>
+                                            <span className="ct-um-label">View profile</span>
+                                            <ChevronRight size={16} className="ct-um-go" aria-hidden="true" />
+                                        </Link>
+                                        {/* A switch: flips the theme in place and keeps the menu open */}
+                                        <button type="button" role="switch" aria-checked={theme === 'dark'} className="ct-um-item"
+                                            onClick={toggleTheme}>
+                                            <span className="ct-um-ic" aria-hidden="true">
+                                                {theme === 'dark' ? <Moon size={17} /> : <Sun size={17} />}
+                                            </span>
+                                            <span className="ct-um-label">Dark mode</span>
+                                            <span className="ct-um-switch" aria-hidden="true"><span /></span>
+                                        </button>
+                                    </div>
+                                    <div className="ct-um-group">
+                                        <button type="button" className="ct-um-item danger" onClick={() => { setMenuOpen(false); openConfirm(); }}>
+                                            <span className="ct-um-ic" aria-hidden="true"><LogOut size={17} /></span>
+                                            <span className="ct-um-label">Sign out</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    {/* Sign out: the door icon, sliding open to "Sign out" on hover / focus */}
-                    {/* Theme switch: moon / sun, sliding open to its label like the others */}
-                    <button
-                        type="button"
-                        className="ct-themebtn ct-expand"
-                        onClick={toggleTheme}
-                        aria-pressed={theme === 'dark'}
-                        aria-label="Dark mode">
-                        {theme === 'dark' ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-                        <span className="ct-expand-text" aria-hidden="true">
-                            <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-                        </span>
-                    </button>
-                    <button type="button" className="ct-signout ct-expand" onClick={openConfirm} aria-label="Sign out">
-                        <LogOut size={18} aria-hidden="true" />
-                        <span className="ct-expand-text" aria-hidden="true"><span>Sign out</span></span>
-                    </button>
                 </div>
             </header>
 

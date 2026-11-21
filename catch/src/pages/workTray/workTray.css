@@ -751,7 +751,7 @@
 /* ======================================================================================================
    Applications by stage as process arrows (replaces the bars). Five equal chevrons that interlock; the shape is a
    clipped ::before layer so the button itself keeps a normal focus ring. Fill = stage colour mixed with white at
-   --mix (12-40%, set per stage from its share). The selected stage turns solid navy. Narrow widths stack them.
+   --mix (10-34%, deepening along the flow), the count in a dark shade of it. Empty stages go grey. The selected stage turns solid navy. Narrow widths stack them.
    ====================================================================================================== */
 .wt-flow { --notch: 0.85rem; list-style: none; margin: 0; padding: 0; display: flex; flex: 1; align-items: stretch; }
 .wt-flow li { flex: 1 1 0; min-width: 0; margin: 0; }
@@ -766,7 +766,7 @@
 .wt-flow li:first-child button { padding-left: 1rem; }
 .wt .wt-flow button::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
-  background: color-mix(in srgb, var(--st) var(--mix, 12%), #fff);
+  background-color: color-mix(in srgb, var(--st) var(--mix, 12%), #fff);
   clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%, var(--notch) 50%);
   transition: background-color 0.2s, filter 0.2s;
 }
@@ -776,16 +776,22 @@
 }
 .wt-flow li:last-child button::before { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, var(--notch) 50%); }
 .wt-flow .name { font-size: 0.78rem; font-weight: 600; line-height: 1.2; color: #2b3a5c; }
-.wt-flow .num { font-size: 1.75rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.wt-flow .late {
-  padding: 0.1rem 0.4rem; border-radius: 6px; background: #fff; color: var(--wt-bad);
-  font-size: 0.7rem; font-weight: 700; line-height: 1.4; box-shadow: 0 1px 2px rgba(20, 41, 95, 0.12);
+.wt-flow .num {
+  color: color-mix(in srgb, var(--st) 72%, #0b1a40); font-size: 1.75rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
-.wt-flow .zero button { color: #5b6880; }
+.wt-flow .late {
+  padding: 0.1rem 0.45rem; border: 1px solid rgba(180, 35, 24, 0.2); border-radius: 999px; background: #fff; color: var(--wt-bad);
+  font-size: 0.7rem; font-weight: 700; line-height: 1.4;
+}
+.wt-flow .zero button { color: #6b768a; }
 .wt-flow .zero .name { color: #6b768a; }
+.wt-flow .zero .num { color: #8a94a8; }
+.wt .wt-flow .zero button::before { background-color: #f1f4f9; }
 .wt .wt-flow button:hover:not(:disabled)::before { filter: brightness(0.95) saturate(1.15); }
 .wt .wt-flow button[aria-pressed='true'] { color: #fff; }
 .wt .wt-flow button[aria-pressed='true'] .name { color: #dbe5ff; }
+.wt .wt-flow button[aria-pressed='true'] .num { color: #fff; }
 .wt .wt-flow button[aria-pressed='true']::before { background: linear-gradient(135deg, #14295f, #1e3f97 65%, #2b52c4); }
 .wt .wt-flow button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; z-index: 1; }
 
@@ -816,9 +822,17 @@
 /* dark mode: mix the stage colour into dark glass instead of white, light text */
 [data-theme='dark'] .wt .wt-flow button { color: #e6ecff; }
 [data-theme='dark'] .wt-flow .name { color: #b9c6e4; }
-[data-theme='dark'] .wt .wt-flow button::before { background: color-mix(in srgb, var(--st) calc(var(--mix, 12%) + 15%), #121c38); filter: brightness(1.35); }
+[data-theme='dark'] .wt .wt-flow button::before {
+  background-color: color-mix(in srgb, var(--st) calc(var(--mix, 12%) + 15%), #121c38);
+  filter: brightness(1.35);
+}
+[data-theme='dark'] .wt-flow .num { color: color-mix(in srgb, var(--st) 25%, #fff); }
+[data-theme='dark'] .wt .wt-flow .zero button::before { background-color: rgba(255, 255, 255, 0.05); filter: none; }
+[data-theme='dark'] .wt-flow .zero .num { color: #8f9cba; }
+[data-theme='dark'] .wt .wt-flow button[aria-pressed='true']::before { background: linear-gradient(135deg, #2b52c4, #4f74e0); filter: none; }
+[data-theme='dark'] .wt .wt-flow button[aria-pressed='true'] :is(.num, .name) { color: #fff; }
 [data-theme='dark'] .wt-flow .zero button, [data-theme='dark'] .wt-flow .zero .name { color: #8f9cba; }
-[data-theme='dark'] .wt-flow .late { background: rgba(248, 113, 113, 0.18); color: #fecaca; box-shadow: none; }
+[data-theme='dark'] .wt-flow .late { border-color: rgba(252, 165, 165, 0.3); background: rgba(248, 113, 113, 0.18); color: #fecaca; }
 
 /* ======================================================================================================
    Process arrows: motion. The chevron outline lives in --shape so a second layer (::after, the sheen) can share
@@ -836,7 +850,7 @@
 .wt .wt-flow button::before { clip-path: var(--shape); }
 .wt .wt-flow button::after {
   content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; clip-path: var(--shape);
-  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.65) 50%, transparent 100%) no-repeat;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.35) 50%, transparent 100%) no-repeat;
   background-size: 40% 100%; background-position: -100% 0; opacity: 0;
 }
 [data-theme='dark'] .wt .wt-flow button::after { background-image: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%); }

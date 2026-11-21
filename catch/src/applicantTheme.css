@@ -65,9 +65,10 @@
     display: flex; align-items: center; gap: 0.6rem; flex: none;
     color: #fff; text-decoration: none; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.06em;
   }
+  /* the brand mark: the sign-in page's logo (a navy building on an orange tile) */
   .ct.ct-e .ct-topnav-mark {
-    width: 1.35rem; height: 1.35rem; border-radius: 6px; flex: none;
-    background: linear-gradient(135deg, #f58a4f, #c2410c); box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.35);
+    display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 8px; flex: none; color: #14295f;
+    background: linear-gradient(135deg, #f58a4f, #e0662a); box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.35);
   }
   .ct.ct-e .ct-topnav nav {
     display: flex; align-items: center; gap: 0.2rem; flex: 0 1 auto; min-width: 0; padding: 0.3rem;
@@ -107,25 +108,12 @@
     opacity: 1; transform: none; transition: opacity 0.2s 0.08s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) 0.06s;
   }
 
-  /* Profile picture: opens to name (white) and role (light blue), linking to the profile page */
-  .ct.ct-e .ct-topnav-avatar { border-radius: 999px; color: #fff; }
-  .ct.ct-e .ct-topnav-avatar:is(:hover, :focus-visible) { background: rgba(255, 255, 255, 0.12); }
-  .ct.ct-e .ct-topnav-avatar b { display: block; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; font-weight: 600; line-height: 1.2; }
-  .ct.ct-e .ct-topnav-avatar small { display: block; font-size: 0.72rem; color: #c9d4f0; line-height: 1.2; }
+  /* Profile chip: the picture, name and role (always shown); styled with the menu, unlayered, near the end */
   .ct.ct-e .ct-topnav .ct-avatar {
     width: 2.35rem; height: 2.35rem; font-size: 0.82rem; color: #fff; background: linear-gradient(135deg, #f58a4f, #c2410c);
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55); transition: box-shadow 0.15s;
   }
   .ct.ct-e .ct-topnav-avatar:hover .ct-avatar { box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgba(255, 255, 255, 0.25); }
-
-  /* Sign out: a round translucent door button that opens to "Sign out", white with orange on hover */
-  .ct.ct-e .ct-topnav .ct-signout {
-    height: 2.75rem; min-height: 0; width: auto; padding: 0 0.75rem; border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: none;
-    font-size: 0.88rem; font-weight: 600;
-  }
-  .ct.ct-e .ct-topnav .ct-signout .ct-expand-text > span { padding: 0 0.15rem 0 0.45rem; }
-  .ct.ct-e .ct-topnav .ct-signout:is(:hover, :focus-visible):not(:disabled) { background: #fff; color: #c2410c; border-color: #fff; }
 
   /* Nav links, icon first: a round icon button whose label slides out on hover / focus (the current page too; its
      white pill marks it). Touch screens (no hover) and the small-screen layout always show labels. */
@@ -401,25 +389,25 @@ html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 5.75rem; }
 
 /* 3D skyline (components/skylineBackdrop.jsx): big isometric glass towers spanning the viewport behind all
    content. The frame isolates its own stacking context so the drawing (z -1) sits above the canvas gradient but
-   below everything else, without changing how the top bar, dropdowns and drawers layer. Dark navy edges; faces are
-   translucent (lit left, shaded right, bright top) so back towers show faintly through the front ones and the
-   coloured canvas still reaches the glass cards. Window grid lines are fainter than the edges. */
+   below everything else, without changing how the top bar, dropdowns and drawers layer. Kept faint: light navy
+   edges, see-through faces (lit left, shaded right, bright top) and window lines fainter still, so the page reads
+   clearly over it. */
 .ct.ct-e.ct-e-app { isolation: isolate; }
 .ct.ct-e .ct-skyline {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: -1; width: 100%; height: 100vh; pointer-events: none;
 }
 .ct.ct-e .ct-skyline * { vector-effect: non-scaling-stroke; }
-.ct.ct-e .ct-skyline .edge { stroke: #14295f; stroke-opacity: 0.42; }
-.ct.ct-e .ct-skyline .grid { stroke: #14295f; stroke-opacity: 0.13; }
-.ct.ct-e .ct-skyline .face-l { fill: rgba(255, 255, 255, 0.42); }
-.ct.ct-e .ct-skyline .face-r { fill: rgba(196, 212, 245, 0.42); }
-.ct.ct-e .ct-skyline .face-t { fill: rgba(255, 255, 255, 0.6); }
-.ct.ct-e .ct-skyline .back .edge { stroke-opacity: 0.2; }
-.ct.ct-e .ct-skyline .back .grid { stroke-opacity: 0.07; }
-.ct.ct-e .ct-skyline .back :is(.face-l, .face-r, .face-t) { fill-opacity: 0.6; }
+.ct.ct-e .ct-skyline .edge { stroke: #14295f; stroke-opacity: 0.22; }
+.ct.ct-e .ct-skyline .grid { stroke: #14295f; stroke-opacity: 0.06; }
+.ct.ct-e .ct-skyline .face-l { fill: rgba(255, 255, 255, 0.3); }
+.ct.ct-e .ct-skyline .face-r { fill: rgba(196, 212, 245, 0.28); }
+.ct.ct-e .ct-skyline .face-t { fill: rgba(255, 255, 255, 0.4); }
+.ct.ct-e .ct-skyline .back .edge { stroke-opacity: 0.1; }
+.ct.ct-e .ct-skyline .back .grid { stroke-opacity: 0.03; }
+.ct.ct-e .ct-skyline .back :is(.face-l, .face-r, .face-t) { fill-opacity: 0.5; }
 @media (max-width: 960px) {
-  .ct.ct-e .ct-skyline .edge { stroke-opacity: 0.28; }
-  .ct.ct-e .ct-skyline .grid { stroke-opacity: 0.08; }
+  .ct.ct-e .ct-skyline .edge { stroke-opacity: 0.15; }
+  .ct.ct-e .ct-skyline .grid { stroke-opacity: 0.04; }
 }
 
 /* ---------- top bar collapses to the logo while scrolled (appLayout.jsx adds .compact past ~80px) ----------
@@ -440,7 +428,7 @@ html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 5.75rem; }
   .ct.ct-e .ct-topnav > nav, .ct.ct-e .ct-topnav > .ct-topnav-end { transition: opacity 0.25s 0.12s; }
 
   .ct.ct-e .ct-topnav.compact:not(:hover, :has(:focus-visible), :has([aria-expanded='true'])) {
-    max-width: var(--ct-head); padding: 0 0 0 calc((var(--ct-head) - 1.35rem) / 2); gap: 0; overflow: hidden;
+    max-width: var(--ct-head); padding: 0 0 0 calc((var(--ct-head) - 1.9rem) / 2); gap: 0; overflow: hidden;
     box-shadow: 0 12px 26px -12px rgba(20, 41, 95, 0.75);
   }
   .ct.ct-e .ct-topnav.compact:not(:hover, :has(:focus-visible), :has([aria-expanded='true'])) .ct-topnav-word { max-width: 0; opacity: 0; }
@@ -452,14 +440,97 @@ html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 5.75rem; }
   .ct.ct-e .ct-topnav, .ct.ct-e .ct-topnav-word, .ct.ct-e .ct-topnav > nav, .ct.ct-e .ct-topnav > .ct-topnav-end { transition: none; }
 }
 
-/* ---------- theme switch button (moon / sun) in the top bar, styled like sign out ---------- */
-.ct.ct-e .ct-topnav .ct-themebtn {
-  height: 2.75rem; min-height: 0; width: auto; padding: 0 0.75rem; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: none;
-  font-size: 0.88rem; font-weight: 600;
+/* ---------- profile chip + menu in the top bar (appLayout.jsx) ----------
+   The chip (picture, name, role, chevron) is a button; its menu holds View profile, Dark / Light mode and Sign out.
+   Unlayered, so it wins over the generic .ct button styles. */
+.ct.ct-e .ct-usermenu { position: relative; }
+.ct.ct-e .ct-topnav .ct-topnav-avatar {
+  display: inline-flex; align-items: center; gap: 0.55rem; height: auto; min-height: 0; margin: 0; padding: 0.15rem 0.65rem 0.15rem 0.15rem;
+  border: 0; border-radius: 999px; background: transparent; box-shadow: none; color: #fff; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color 0.15s;
 }
-.ct.ct-e .ct-topnav .ct-themebtn .ct-expand-text > span { padding: 0 0.15rem 0 0.45rem; }
-.ct.ct-e .ct-topnav .ct-themebtn:is(:hover, :focus-visible):not(:disabled) { background: #fff; color: var(--navy); border-color: #fff; }
+.ct.ct-e .ct-topnav .ct-topnav-avatar:hover:not(:disabled),
+.ct.ct-e .ct-topnav .ct-topnav-avatar[aria-expanded='true'] { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.ct.ct-e .ct-usermenu-who { display: grid; min-width: 0; }
+.ct.ct-e .ct-usermenu-who b { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; font-weight: 600; line-height: 1.2; }
+.ct.ct-e .ct-usermenu-who small { color: #c9d4f0; font-size: 0.72rem; line-height: 1.2; white-space: nowrap; }
+.ct.ct-e .ct-usermenu-chev { flex: none; opacity: 0.8; transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ct.ct-e .ct-topnav-avatar[aria-expanded='true'] .ct-usermenu-chev { transform: rotate(180deg); }
+
+/* the menu card: who is signed in (tinted head), then View profile + the Dark mode switch, then Sign out.
+   Rows are 44px tall; each has an icon tile; the switch flips the theme without closing the menu. */
+.ct.ct-e .ct-usermenu-list {
+  position: absolute; top: calc(100% + 0.7rem); right: 0; z-index: 60; width: 18.5rem; max-width: calc(100vw - 1.5rem); padding: 0.45rem;
+  border: 1px solid rgba(20, 41, 95, 0.1); border-radius: 20px; background: #fff; color: var(--navy, #14295f);
+  box-shadow: 0 2px 6px rgba(20, 41, 95, 0.06), 0 24px 48px -18px rgba(20, 41, 95, 0.45);
+}
+.ct.ct-e .ct-um-head {
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 0.75rem; border-radius: 14px;
+  background: linear-gradient(135deg, #eef2fb, #f7f9fe);
+}
+.ct.ct-e .ct-usermenu-list .ct-avatar { flex: none; width: 2.6rem; height: 2.6rem; font-size: 0.9rem; box-shadow: none; }
+.ct.ct-e .ct-um-who { display: grid; justify-items: start; gap: 0.2rem; min-width: 0; }
+.ct.ct-e .ct-um-who b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--navy, #14295f); font-size: 0.95rem; font-weight: 700; line-height: 1.2; }
+.ct.ct-e .ct-um-role {
+  padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(30, 63, 151, 0.1); color: #1e3f97;
+  font-size: 0.72rem; font-weight: 700; line-height: 1.5;
+}
+.ct.ct-e .ct-um-who small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #5b6b8c; font-size: 0.78rem; }
+.ct.ct-e .ct-um-group { display: grid; gap: 0.1rem; padding-top: 0.4rem; }
+.ct.ct-e .ct-um-group + .ct-um-group { margin-top: 0.4rem; border-top: 1px solid rgba(20, 41, 95, 0.08); }
+.ct.ct-e .ct-usermenu-list .ct-um-item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.7rem; width: 100%; min-height: 2.75rem;
+  margin: 0; padding: 0.35rem 0.55rem 0.35rem 0.4rem; border: 0; border-radius: 12px; background: transparent; box-shadow: none;
+  color: var(--navy, #14295f); font: inherit; font-size: 0.92rem; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer;
+  transition: background-color 0.15s;
+}
+.ct.ct-e .ct-usermenu-list .ct-um-item:hover:not(:disabled) { background: #f2f5fc; color: var(--navy, #14295f); }
+.ct.ct-e .ct-usermenu-list .ct-um-item:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 0; }
+.ct.ct-e .ct-um-ic {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 10px; background: #eef2fb; color: #1e3f97;
+}
+.ct.ct-e .ct-um-go { color: #8a97b3; transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ct.ct-e .ct-um-item:hover .ct-um-go { transform: translateX(3px); }
+/* the switch: a track with a sliding thumb; on (dark) the track is navy-blue */
+.ct.ct-e .ct-um-switch {
+  position: relative; width: 2.6rem; height: 1.5rem; border-radius: 999px; background: #cfd7e6; transition: background-color 0.2s;
+}
+.ct.ct-e .ct-um-switch > span {
+  position: absolute; top: 0.2rem; left: 0.2rem; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(13, 20, 40, 0.3); transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ct.ct-e .ct-um-item[aria-checked='true'] .ct-um-switch { background: linear-gradient(135deg, #1e3f97, #3b62d9); }
+.ct.ct-e .ct-um-item[aria-checked='true'] .ct-um-switch > span { transform: translateX(1.1rem); }
+.ct.ct-e .ct-usermenu-list .ct-um-item.danger, .ct.ct-e .ct-usermenu-list .ct-um-item.danger:hover:not(:disabled) { color: #c2410c; }
+.ct.ct-e .ct-usermenu-list .ct-um-item.danger:hover:not(:disabled) { background: #fff4ed; }
+.ct.ct-e .ct-um-item.danger .ct-um-ic { background: #ffede2; color: #c2410c; }
+
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-usermenu-list {
+  border-color: rgba(255, 255, 255, 0.1); background: #131c38; color: #e6ecff; box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.75);
+}
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-head { background: linear-gradient(135deg, rgba(126, 162, 255, 0.14), rgba(255, 255, 255, 0.04)); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-who b { color: #e6ecff; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-role { background: rgba(126, 162, 255, 0.18); color: #c7d6ff; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-who small { color: #a3b0cc; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-group + .ct-um-group { border-top-color: rgba(255, 255, 255, 0.08); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-usermenu-list .ct-um-item { color: #e6ecff; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-usermenu-list .ct-um-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-usermenu-list .ct-um-item:focus-visible { outline-color: rgba(126, 162, 255, 0.5); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-ic { background: rgba(126, 162, 255, 0.12); color: #a9c0ff; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-go { color: #7f8bab; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-switch { background: rgba(255, 255, 255, 0.2); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-item[aria-checked='true'] .ct-um-switch { background: linear-gradient(135deg, #5b82f0, #7ea2ff); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-usermenu-list .ct-um-item.danger { color: #fdba74; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-usermenu-list .ct-um-item.danger:hover:not(:disabled) { background: rgba(251, 146, 60, 0.1); color: #fdba74; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-um-item.danger .ct-um-ic { background: rgba(251, 146, 60, 0.14); color: #fdba74; }
+@media (prefers-reduced-motion: no-preference) {
+  .ct.ct-e .ct-usermenu-list { animation: ct-menu-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: top right; }
+  @keyframes ct-menu-in { from { opacity: 0; transform: translateY(-6px) scale(0.98); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ct.ct-e :is(.ct-um-switch, .ct-um-switch > span, .ct-um-go, .ct-usermenu-list .ct-um-item) { transition: none; }
+}
+@media (max-width: 480px) { .ct.ct-e .ct-usermenu-who small { display: none; } }
 
 /* ==========================================================================================================
    Dark mode (opt-in from the top bar; light stays the default). Covers the frame: a deep navy canvas, a darker
@@ -479,13 +550,13 @@ html:has(.ct.ct-e .ct-topnav) { scroll-padding-top: 5.75rem; }
   background: linear-gradient(90deg, rgba(9, 16, 36, 0.92), rgba(18, 32, 74, 0.9) 60%, rgba(30, 50, 110, 0.88));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 14px 34px -20px rgba(0, 0, 0, 0.85);
 }
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .edge { stroke: #9db7f2; stroke-opacity: 0.32; }
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .grid { stroke: #9db7f2; stroke-opacity: 0.1; }
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-l { fill: rgba(40, 62, 125, 0.32); }
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-r { fill: rgba(22, 36, 82, 0.42); }
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-t { fill: rgba(70, 100, 180, 0.3); }
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .edge { stroke-opacity: 0.16; }
-.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .grid { stroke-opacity: 0.05; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .edge { stroke: #9db7f2; stroke-opacity: 0.18; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .grid { stroke: #9db7f2; stroke-opacity: 0.05; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-l { fill: rgba(40, 62, 125, 0.2); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-r { fill: rgba(22, 36, 82, 0.26); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .face-t { fill: rgba(70, 100, 180, 0.18); }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .edge { stroke-opacity: 0.09; }
+.ct.ct-e.ct-e-app[data-theme='dark'] .ct-skyline .back .grid { stroke-opacity: 0.03; }
 /* not-yet-dark pages: a light sheet on the dark canvas (the work tray, the loan folder and the applicant pages (.ap,
    applicationForm/applicantPages.css) have their own dark rules) */
 .ct.ct-e.ct-e-app[data-theme='dark'] .ct-main > :not(.wt-page, .lf-folder, .ap) {

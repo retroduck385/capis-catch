@@ -360,7 +360,8 @@ const ApprovalRoutingPage = () => {
             </section>
 
             <div className="lf-body edit">
-                <nav className="lf-card lf-nav fp-nav" aria-label="VII. Approval sections">
+                <nav className="lf-card lf-nav fp-nav" aria-label="Approval routing sections">
+                    <div><p className="fp-navgroup fp-navstep">Step 4: Approval routing</p></div>
                     <ul>
                         {TOC.map(([id, label]) => (
                             <li key={id}>

@@ -13,7 +13,7 @@ export const STAGES = [
 // application moves along, so the page stays blue / white. Kept clear of green / amber / red (on track / near /
 // beyond TAT). Each is at least 3:1 on white.
 export const STAGE_COLORS = {
-    INTAKE: '#0284c7',                // sky
+    INTAKE: '#3b82f6',                // light blue (same hue as the rest of the flow)
     CREDIT_INVESTIGATION: '#2563eb',  // blue
     CREDIT_EVALUATION: '#1d4ed8',     // royal
     REVIEW: '#1e40af',                // deep blue

@@ -1,9 +1,10 @@
 // The applicant's home: a welcome banner with the one main action (start or continue an application), any documents
-// the Account Officer asked for, three counts, and the applicant's applications as rows. Beside them: the same identity
-// card as the profile page (staffProfile.css .sp-id) and "How it works", ticked off as the applicant goes.
+// the Account Officer asked for, three counts, and the applicant's applications as rows. Beside them: a short
+// "Before you start" guide (what to prepare, from the requirement list) and "How it works", ticked off as the
+// applicant goes. The profile is reached from the top bar's menu.
 // Styled by applicationForm/applicantPages.css (.ap), the same glass look as the staff pages; the columns fill the panel.
 import { useEffect, useState } from 'react';
-import { ArrowRight, Check, CircleAlert, FilePen, FileText, House, Send, UserRound } from 'lucide-react';
+import { ArrowRight, Bell, Check, FilePen, FileText, FileUp, House, IdCard, Send, UserRound, Wallet } from 'lucide-react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchProfile, listMyApplications } from './applicationForm/api';
@@ -14,9 +15,7 @@ import ApplicantRequestCard from './documentRequests/applicantRequestCard';
 import { Ghost, RegisterSkeleton } from '../components/skeleton';
 import { formatDay } from '../components/people';
 import { useCountUp } from './workTray/useCountUp';
-import { initialsOf } from './staffAccounts/options';
 import './applicationForm/applicantPages.css';
-import './staffProfile.css';
 
 // What happens, in order; each step's `done` is worked out from the profile and the applications below
 const HOW_IT_WORKS = [
@@ -25,6 +24,14 @@ const HOW_IT_WORKS = [
     ['Upload your documents', 'Clear scans or photos: JPG, PNG or PDF, up to 10 MB each.'],
     ['Submit it for review', 'Your Account Officer checks it and may ask for more documents.'],
     ['Get your notice', 'Your Account Officer sends you the decision.'],
+];
+
+// Before you start: what to have ready (REQUIREMENT_LABELS in applicationForm/options.js; two ID files are required)
+const GUIDE = [
+    [IdCard, 'Two valid IDs', 'Passport, driver’s license, UMID or another government ID. Not expired, every detail readable.'],
+    [Wallet, 'Proof of income', 'COE or ITR, plus your last 3 months of payslips or remittances. Self-employed: SEC, DTI or Mayor’s permit and bank statements.'],
+    [FileUp, 'Clear files', 'JPG, PNG or PDF, up to 10 MB each. Someone signing for you? Add a Special Power of Attorney.'],
+    [Bell, 'After you submit', 'If your Account Officer needs anything, the request shows on this page and in your notifications.'],
 ];
 
 // One count tile; the number counts up once the list has loaded (straight to the value under reduced motion)
@@ -77,8 +84,6 @@ const ApplicantHomePage = () => {
     const submitted = applications.length - draftCount > 0;
     const doneSteps = [profileComplete === true, submitted, submitted, submitted, false];
     const currentStep = loaded && profileComplete !== null ? doneSteps.indexOf(false) : null;
-    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ');
-    const email = session?.user?.email;
 
     return (
         <div className="ap ap-home">
@@ -159,26 +164,16 @@ const ApplicantHomePage = () => {
                     </section>
                 </div>
 
-                <aside className="ap-home-side" aria-label="Your profile and how it works">
-                    <section className="sp-card sp-id" aria-label="Your profile">
-                        <span className="sp-avatar" style={{ '--hue': '#1e3f97' }} aria-hidden="true">{initialsOf(fullName, email)}</span>
-                        <h2>{fullName || 'Your name'}</h2>
-                        <span className="sp-role" style={{ '--hue': '#1e3f97' }}>Loan Applicant</span>
-                        <p className="sp-email" title={email}>{email}</p>
-                        {profileComplete !== null && (
-                            <p className={`ap-me-status ${profileComplete ? 'ok' : 'warn'}`}>
-                                {profileComplete ? <Check size={16} aria-hidden="true" /> : <CircleAlert size={16} aria-hidden="true" />}
-                                {profileComplete ? 'Profile complete' : 'Profile not complete yet'}
-                            </p>
-                        )}
-                        <ul className="sp-links">
-                            <li>
-                                <Link to="/profilePage">
-                                    <UserRound size={18} aria-hidden="true" />
-                                    <span><b>My profile</b><small>Your details for every application</small></span>
-                                    <ArrowRight size={16} aria-hidden="true" />
-                                </Link>
-                            </li>
+                <aside className="ap-home-side" aria-label="Before you start and how it works">
+                    <section className="ap-card ap-guide" aria-labelledby="ap-guide-title">
+                        <header className="ap-card-head"><h2 id="ap-guide-title">Before you start</h2></header>
+                        <ul className="ap-guide-list">
+                            {GUIDE.map(([Icon, title, text]) => (
+                                <li key={title}>
+                                    <span className="ap-guide-ic" aria-hidden="true"><Icon size={18} /></span>
+                                    <span><b>{title}</b><small>{text}</small></span>
+                                </li>
+                            ))}
                         </ul>
                     </section>
 

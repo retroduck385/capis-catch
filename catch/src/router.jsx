@@ -22,9 +22,10 @@ import DecisionSupportPage from "./pages/decisionSupport/decisionSupportPage";
 import FinalReportPage from "./pages/finalReport/finalReportPage";
 import PolicySearchPage from "./pages/mrac/policySearchPage";
 import { DSS_ROLES, STAFF_ROLES } from "./roles";
-
+import RootLayout from "./components/scrollToTop";
 
 export const router = createBrowserRouter([
+  { element: <RootLayout />, children: [
     { path: "/", element: <Navigate to="/LoginPage" replace /> },
     { path: "/signUpPage", element: <SignUpPage /> },
     { path: "/loginPage", element: <LoginPage /> },
@@ -48,5 +49,5 @@ export const router = createBrowserRouter([
     { path: "/applicantHomePage", element: <PrivateRoute roles={["APPLICANT"]}><ApplicantHomePage /> </PrivateRoute>},
     { path: "/applicationFormPage", element: <PrivateRoute roles={["APPLICANT"]}><ApplicationFormPage /> </PrivateRoute>},
     { path: "/profilePage", element: <PrivateRoute roles={["APPLICANT"]}><ProfilePage /> </PrivateRoute>},
-
+  ]},
 ]);
