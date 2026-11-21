@@ -9,6 +9,14 @@ def page(no, sec, body, rev="2024-11-12", mp="1"):
 
 
 class IngestionTests(unittest.TestCase):
+    def setUp(self):              # a made-up bank name: the real one stays out of the code (HEADER_NOISE_WORDS in .env)
+        import mrac.ingest.parse_policy as pp
+        self._noise, pp.NOISE = pp.NOISE, pp.header_noise("Sampleville")
+
+    def tearDown(self):
+        import mrac.ingest.parse_policy as pp
+        pp.NOISE = self._noise
+
     def test_header_parsing(self):
         h = parse_header("CREDIT POLICY MANUAL\nSECTION VII – CREDIT INITIATION AND\nFINANCIAL PACKAGING",
                          "ISSUE DATE\n08.09.2004\nREVISION DATE\n07.12.2017\nPAGE NO.\n59")
@@ -16,11 +24,11 @@ class IngestionTests(unittest.TestCase):
         self.assertEqual(h["section_title"], "CREDIT INITIATION AND FINANCIAL PACKAGING")
 
     def test_header_layouts_seen_in_the_other_manuals(self):
-        ccd = parse_header("ISSUE DATE CONSUMER CREDIT DEPARTMENT 03.08.2016 Bank of REVISION DATE OPERATIONS MANUAL 02.19.2020 Makati PAGE NO. SECTION V – AUTO AND LUXURY BIKE LOANS 14")
+        ccd = parse_header("ISSUE DATE CONSUMER CREDIT DEPARTMENT 03.08.2016 Bank of REVISION DATE OPERATIONS MANUAL 02.19.2020 Sampleville PAGE NO. SECTION V – AUTO AND LUXURY BIKE LOANS 14")
         self.assertEqual((ccd["section_no"], ccd["section_title"], ccd["revision_date"], ccd["manual_page"]), ("V", "AUTO AND LUXURY BIKE LOANS", "2020-02-19", "14"))
-        red = parse_header("ISSUE DATE 05.10.2016 RED OPERATIONS MANUAL Bank of REVISION DATE 01.11.2022 Makati SECTION X – HOME GUARANTY CORPORATION PAGE NO. (HGC) GUARANTY PROGRAM 49")
+        red = parse_header("ISSUE DATE 05.10.2016 RED OPERATIONS MANUAL Bank of REVISION DATE 01.11.2022 Sampleville SECTION X – HOME GUARANTY CORPORATION PAGE NO. (HGC) GUARANTY PROGRAM 49")
         self.assertEqual((red["section_no"], red["section_title"], red["manual_page"]), ("X", "HOME GUARANTY CORPORATION (HGC) GUARANTY PROGRAM", "49"))
-        rev = parse_header("ISSUE DATE 05.10.2016 RED OPERATIONS MANUAL Bank of REVISION DATE 01.13.2026 Makati PAGE NO. SUMMARY OF REVISIONS 53")
+        rev = parse_header("ISSUE DATE 05.10.2016 RED OPERATIONS MANUAL Bank of REVISION DATE 01.13.2026 Sampleville PAGE NO. SUMMARY OF REVISIONS 53")
         self.assertEqual((rev["section_no"], rev["revision_date"]), ("REV", "2026-01-13"))
 
     def test_products_follow_the_section_title_and_ids_the_document_code(self):

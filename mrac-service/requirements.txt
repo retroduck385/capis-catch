@@ -3,6 +3,6 @@ supabase>=2.10
 python-dotenv>=1.0
 # Policy PDF ingestion (python -m mrac.ingest.parse_policy):
 pdfplumber>=0.11
-# Local embeddings (policy text only). Optional: EMBEDDING_PROVIDER=hash works without it, but is NOT semantic.
+# Local embeddings + reranker (policy text only; the models download on first use).
 # Needs a Python version PyTorch supports: use a 3.13 venv, like ocr-service.
-# sentence-transformers>=2.7
+sentence-transformers>=2.7

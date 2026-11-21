@@ -52,14 +52,20 @@ def work(once: bool, interval: float) -> None:
     from supabase import create_client
     from mrac.config import get_settings
     from mrac.embeddings import get_embedder
-    from mrac.retrieval import SupabaseRetriever
+    from mrac.retrieval import IndexMismatch, SupabaseRetriever, check_index, get_reranker
 
     s = get_settings()
     if not s.supabase_url or not s.service_key:
         raise SystemExit("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in mrac-service/.env")
     client, embedder = create_client(s.supabase_url, s.service_key), get_embedder(s)
-    retriever = SupabaseRetriever(client, embedder, s.include_draft)
-    engine = f"mrac-rag/{ENGINE_VERSION}; embeddings={embedder.name}"
+    try:
+        chunks = check_index(client, embedder)      # never search an index built with another model
+    except IndexMismatch as e:
+        raise SystemExit(f"MRAC worker not started: {e}")
+    reranker = get_reranker(s)
+    retriever = SupabaseRetriever(client, embedder, s.include_draft, reranker=reranker)
+    engine = f"mrac-rag/{ENGINE_VERSION}; embeddings={embedder.name}; rerank={reranker.name if reranker else 'off'}"
+    print(f"{chunks} policy chunks, {engine}", flush=True)
     print("MRAC worker started" + ("" if once else f", polling every {interval}s"), flush=True)
     while True:
         jobs = client.rpc("claim_mrac_runs", {"p_limit": 1}).execute().data or []

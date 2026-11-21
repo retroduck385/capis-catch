@@ -58,4 +58,4 @@ The offline run uses synthetic policy text (`samples/policy_chunks_synthetic.jso
 ## Not verified yet
 The Python and rules are unit-tested. The SQL migration, the live Supabase calls (RPC argument passing for the vector,
 RLS) and the React files have **not** been run against a real project or browser. Expect small fixes on first contact.
-Embeddings default to a non-semantic stub; for real vector search use `EMBEDDING_PROVIDER=local` and reload the chunks.
+Embeddings: `BAAI/bge-small-en-v1.5` plus a cross-encoder reranker (see `INTEGRATION.md` 4b). The hash stub (`EMBEDDING_PROVIDER=hash`) is for offline tests only; the worker refuses an index built with another model.
