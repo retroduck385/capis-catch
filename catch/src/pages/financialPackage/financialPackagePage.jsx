@@ -52,6 +52,7 @@ import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 import FinalReportButton from '../finalReport/finalReportButton';
 import SuggestionPanel from '../aiSuggestion/suggestionPanel';
+import { withHiddenCleared } from './creditResultFields';
 
 const PACKAGE_KEYS = ['date_prepared', 'dosri_rpt', 'variant', 'manner_of_repayment', 'hgc_eligibility',
     'date_of_enrollment', 'appraised_value', 'date_of_appraisal', 'other_information', 'statement_of_account',
@@ -248,6 +249,8 @@ const FinancialPackagePage = () => {
     // (Switching the tab rewrites the query string and drops the hash, so the section id is kept in a ref.)
     const { hash } = useLocation();
     const pendingId = useRef(null);
+    const [jump, setJump] = useState(0);   // bumped by jumpTo(): the effect below runs again even for the same section
+    const jumpTo = (id) => { pendingId.current = id; setJump((n) => n + 1); };
     useEffect(() => {
         if (hash) pendingId.current = decodeURIComponent(hash.slice(1));
     }, [hash]);
@@ -278,7 +281,14 @@ const FinancialPackagePage = () => {
         pendingId.current = null;
         if (target instanceof HTMLDetailsElement) target.open = true;
         target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-    }, [hash, ready, page, setSearchParams]);
+        // a short amber outline on the section reached (not for reduced motion)
+        if (!prefersReducedMotion()) {
+            target.classList.remove('fp-flash');
+            void target.offsetWidth; // restart the animation when the same section is reached again
+            target.classList.add('fp-flash');
+            setTimeout(() => target.classList.remove('fp-flash'), 2200);
+        }
+    }, [hash, ready, page, setSearchParams, jump]);
 
     if (loading) return <FinancialPackageSkeleton />;
     if (error && !form) {
@@ -322,7 +332,8 @@ const FinancialPackagePage = () => {
         setSaving(true);
         try {
             setError(null);
-            await saveFinancialPackage(app.id, buildPayload(form));
+            // boxes the chosen credit result hides are emptied (creditResultFields.js; the page said so first)
+            await saveFinancialPackage(app.id, buildPayload({ ...form, pkg: withHiddenCleared(form.pkg) }));
             // Interest rate / fixing period live on loan_applications, so refetch it or the form reverts to the old values
             const record = await fetchApplication(app.id);
             setApp(record);
@@ -480,7 +491,7 @@ const FinancialPackagePage = () => {
             )}
 
             <div className="fp-return">
-                <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} />
+                <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} onOpen={confirmLeave} onGoTo={jumpTo} />
             </div>
 
             <section className="fp-tiles" aria-label="Key figures">

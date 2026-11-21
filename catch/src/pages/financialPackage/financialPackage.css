@@ -45,6 +45,31 @@
 .fp-info dt { margin: 0; padding: 0; color: var(--muted); font-size: 0.9rem; }
 .fp-info dd { margin: 0; padding: 0; font-weight: 600; overflow-wrap: anywhere; }
 .fp-opt { font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+/* a section reached from the return banner's "Go to" (item 33) */
+@keyframes fp-flash { 0%, 60% { box-shadow: 0 0 0 3px #f59e0b; } 100% { box-shadow: 0 0 0 3px transparent; } }
+.fp-flash { animation: fp-flash 2.2s ease-out; border-radius: 16px; }
+/* the return banner's "Where to fix it" list (review/returnNotice.jsx) */
+.rv-fixlist { margin: 0.5rem 0; padding: 0.6rem 0.8rem; border: 1px solid #f7cfa4; border-radius: 12px; background: #fff8f1; }
+.rv-fixlist-h { margin: 0 0 0.35rem; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #a8480b; }
+.rv-fixlist ul { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.rv-fixlist li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.3rem 0.75rem; }
+.rv-fixlist-what { min-width: 0; color: #1f2937; font-size: 0.9rem; overflow-wrap: anywhere; }
+.rv-fixlist-go {
+  display: inline-flex; align-items: center; min-height: 2rem; padding: 0.2rem 0.8rem; border: 1px solid #c2410c; border-radius: 999px;
+  background: #fff; color: #c2410c; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.rv-fixlist-go:hover { background: #fff1e2; }
+.rv-fixlist-here { color: #6b7280; font-size: 0.85rem; }
+[data-theme='dark'] .rv-fixlist { border-color: rgba(251, 146, 60, 0.45); background: rgba(251, 146, 60, 0.08); }
+[data-theme='dark'] .rv-fixlist-what { color: #e5e7eb; }
+[data-theme='dark'] .rv-fixlist-go { background: transparent; color: #fdba74; border-color: #fdba74; }
+/* Credit result: Amendment / Waiver and acceptance as closed "optional" sections; the "will be removed" line */
+.fp-optbox { margin: 0.4rem 0; padding: 0.55rem 0.8rem; border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.12)); border-radius: 12px; background: var(--lf-sub-bg, #f8fafc); }
+.fp-optbox > summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.fp-optbox[open] > summary { margin-bottom: 0.45rem; }
+.fp-optbox textarea { width: 100%; }
+.fp-removing { margin: 0.5rem 0; padding: 0.5rem 0.75rem; border: 1px solid #f7cfa4; border-radius: 10px; background: #fff1e2; color: #7c2d12; font-size: 0.88rem; }
+[data-theme='dark'] .fp-removing { border-color: rgba(251, 146, 60, 0.45); background: rgba(251, 146, 60, 0.12); color: #fed7aa; }
 .fp-note { margin: 0.1rem 0 0.7rem; color: var(--muted); font-size: 0.88rem; line-height: 1.45; }
 .fp-empty { margin: 0; padding: 0.4rem 0 0.6rem; color: var(--muted); }
 .fp-pending { color: var(--muted); font-style: italic; }

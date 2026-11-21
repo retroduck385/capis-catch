@@ -2,12 +2,12 @@
 // total (`cs-total`). Laid out like the Financial Package page (.lf-fp, see credit score page).
 // The page suggests a band where the record allows it (see creditScore.js); the CO accepts, changes or
 // leaves each one. Only the CO's picks count toward the total.
-// Each criterion is a card (not a table row): what the record says, the suggestion, then the score (SelectMenu) and
-// remarks. Cards need no sideways-scrolling frame, which would clip the dropdown, and they stack on a phone.
+// Each criterion is a card (not a table row): what the record says, the suggestion, then the score and remarks.
+// The score is a rating form (group notes item 32): one choice per band with its points, the suggested band tagged,
+// a radio group per criterion (arrow keys move, like any radio group); "Clear" un-scores it. Cards stack on a phone.
 // Styles: creditScore.css (.cs-*).
 import { Check } from 'lucide-react';
 import { Section } from '../applicationForm/fields';
-import SelectMenu from '../../components/selectMenu';
 import { CATEGORIES } from './creditScore';
 import { Terms } from '../../components/term';
 
@@ -50,9 +50,23 @@ const CriterionCard = ({ criterion, bands, suggestion, entry, onScore, onRemarks
                 </div>
                 <div className="cs-col cs-score">
                     <p className="cs-label">Score</p>
-                    <SelectMenu id={`${id}-band`} aria-label={`${criterion.label} score`} value={entry?.band ?? ''}
-                        placeholder="Not scored" disabled={disabled} onChange={(v) => onScore(criterion.code, v)}
-                        options={bands.map((b) => ({ value: b.code, label: `${b.label} (${pts(b.points)})` }))} />
+                    <div className="cs-bands" role="radiogroup" aria-label={`${criterion.label} score`}>
+                        {bands.map((b) => {
+                            const on = entry?.band === b.code;
+                            return (
+                                <label key={b.code} className={`cs-band${on ? ' on' : ''}${disabled ? ' off' : ''}`}>
+                                    <input type="radio" name={`${id}-band`} value={b.code} checked={on} disabled={disabled}
+                                        onChange={() => onScore(criterion.code, b.code)} />
+                                    <span className="cs-band-txt"><Terms text={b.label} /></span>
+                                    <span className="cs-band-pts">{pts(b.points)}</span>
+                                    {suggested === b.code && <span className="cs-band-sug">Suggested</span>}
+                                </label>
+                            );
+                        })}
+                    </div>
+                    {picked && !disabled && (
+                        <button type="button" className="lf-linkbtn cs-clear" onClick={() => onScore(criterion.code, '')}>Clear score</button>
+                    )}
                     {!picked && suggested && <p className="cs-flag">Suggestion not confirmed yet</p>}
                     {changedSince && <p className="cs-flag">The record changed since this was scored</p>}
                     {differs && !changedSince && <p className="cs-flag quiet">Differs from the suggestion</p>}

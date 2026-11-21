@@ -45,7 +45,34 @@
 .cs-val { margin: 0; color: var(--ink); font-size: 0.95rem; overflow-wrap: anywhere; }
 .cs-val b { font-weight: 700; }
 .cs-crit .cs-source { margin: 0; font-size: 0.82rem; }
-.cs-score input { width: 100%; margin-top: 0.35rem; }
+.cs-score input:not([type='radio']) { width: 100%; margin-top: 0.35rem; }
+/* the rating form: one choice per band (item 32) */
+.cs-bands { display: grid; gap: 0.35rem; }
+.cs-band {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.2rem 0.55rem;
+  padding: 0.45rem 0.65rem; border: 1px solid var(--lf-control-rim, #d5dbe6); border-radius: 12px; background: var(--lf-control, #fff);
+  color: var(--ink); font-size: 0.88rem; cursor: pointer;
+}
+.cs-band:hover { background: var(--lf-control-hover, #f4f6fa); }
+.cs-band.off { cursor: default; }
+.cs-band input { width: auto; margin: 0; accent-color: var(--lf-accent, #1e3f97); }
+.cs-band:has(input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 1px; }
+.cs-band.on { border-color: var(--lf-accent, #1e3f97); background: var(--lf-accent-bg, rgba(30, 63, 151, 0.1)); font-weight: 600; }
+.cs-band-pts { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cs-band.on .cs-band-pts { color: var(--lf-accent, #1e3f97); }
+.cs-band-sug {
+  grid-column: 2 / -1; justify-self: start; padding: 0.05rem 0.45rem; border-radius: 999px; background: #fff1e2; color: #a8480b;
+  font-size: 0.72rem; font-weight: 700;
+}
+[data-theme='dark'] .cs-band-sug { background: rgba(251, 146, 60, 0.15); color: #fdba74; }
+.cs-clear { justify-self: start; font-size: 0.82rem; }
+/* score history: plain lines, newest first, always open (item 32) */
+.cs-hist { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.cs-hist-item { padding: 0.5rem 0.75rem; border-left: 3px solid var(--lf-accent, #1e3f97); border-radius: 0 10px 10px 0; background: var(--lf-sub-bg, #f8fafc); }
+.cs-hist-item.cleared { border-left-color: var(--lf-hollow, #8b97ab); }
+.cs-hist-item.remarks { border-left-color: var(--lf-hollow, #8b97ab); }
+.cs-hist-text { margin: 0; color: var(--ink); font-weight: 600; font-size: 0.9rem; }
+.cs-hist-remarks { margin: 0.2rem 0 0; color: var(--lf-text-3, #4c5a73); font-size: 0.85rem; white-space: pre-wrap; }
 .cs-flag { margin: 0.1rem 0 0; color: var(--lf-warn); font-size: 0.84rem; font-weight: 600; }
 .cs-flag.quiet { color: var(--muted); font-weight: 500; }
 /* "Use suggestion": a small accent pill */

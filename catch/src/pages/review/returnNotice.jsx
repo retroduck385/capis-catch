@@ -1,12 +1,16 @@
 // Credit Officer side of a reviewer's return (20261108_reviewer_signoff.sql):
-//   ReturnNotice — banner on the Financial Package while a return is open (what to fix, link to VII. Approval)
+//   ReturnNotice — banner on the Financial Package (and the credit scoring page) while a return is open: what to fix,
+//                  a "Go to" button per item marked Needs revision (returnTargets.js), link to VII. Approval.
+//                  here: the page it is on ('/financialPackagePage' or '/creditScorePage'); onGoTo(hash): the FP jumps
+//                  to one of its own sections (other pages open by link, guarded by onOpen)
 //   ResendPanel  — on VII. Approval: the return(s), and for the assigned CO "what you changed" + send it back
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Section } from '../applicationForm/fields';
 import { fetchStaffNames } from '../loanFolder/api';
 import { fetchReviewAssignments, fetchReviewCheckItems, fetchReviewDecisions, resendForReview } from './api';
-import { reviewState } from './reviewChecks';
+import { CHECK_SOURCES, reviewState } from './reviewChecks';
+import { returnTargets } from './returnTargets';
 import { ReturnCard } from './reviewParts';
 
 // Returns + who's who, or null while loading
@@ -30,16 +34,39 @@ const useReturns = (applicationId, version = 0) => {
     return { data, error };
 };
 
-export const ReturnNotice = ({ applicationId, link, onOpen }) => {
+export const ReturnNotice = ({ applicationId, link, onOpen, here = '/financialPackagePage', onGoTo }) => {
     const { data, error } = useReturns(applicationId);
     if (error) return <p className="ct-error">{error}</p>;
     const open = data?.state.openReturn;
     if (!open) return null;
+    const targets = returnTargets(open, data.checkItems, CHECK_SOURCES);
+    const hrefOf = (t) => `${t.path}?id=${applicationId}${t.hash ? `#${t.hash}` : ''}`;
     return (
         <div className="my-3">
             <p className="font-semibold text-red-700">A reviewer returned this for revision.</p>
             <ReturnCard decision={open} rows={data.rows} names={data.names} checkItems={data.checkItems}
                 round={data.state.roundOf(open)} />
+            {targets.length > 0 && (
+                <div className="rv-fixlist">
+                    <p className="rv-fixlist-h">Where to fix it</p>
+                    <ul>
+                        {targets.map((t) => (
+                            <li key={t.code}>
+                                <span className="rv-fixlist-what"><b>{t.label}</b>{t.remark && <>: {t.remark}</>}</span>
+                                {!t.path ? null : t.path === here && !t.hash ? (
+                                    <span className="rv-fixlist-here">On this page</span>
+                                ) : t.path === here && onGoTo ? (
+                                    <button type="button" className="rv-fixlist-go" onClick={() => onGoTo(t.hash)}>Go to {t.place}</button>
+                                ) : (
+                                    <Link to={hrefOf(t)} onClick={onOpen} className="rv-fixlist-go">
+                                        {t.canFix ? `Go to ${t.place}` : `Open the ${t.place} (the Account Officer fixes this)`}
+                                    </Link>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
             <p>Fix it here and save, then{' '}
                 <Link to={link} onClick={onOpen} className="underline">open VII. Approval</Link> to send it back to the reviewer.</p>
         </div>

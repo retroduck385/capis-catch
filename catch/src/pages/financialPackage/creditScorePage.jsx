@@ -21,7 +21,9 @@ import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
 import { fetchReviewAssignments } from '../review/api';
 import { splitRouting } from '../review/approval';
 import CoSteps, { CoOptionalView } from './coSteps';
-import ChangeHistory from '../loanFolder/changeHistory';
+import Byline from '../../components/byline';
+import { scoreHistory } from './scoreHistory';
+import { ReturnNotice } from '../review/returnNotice';
 import { fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveCreditScore } from './api';
 import { computeFp } from './compute';
 import { suggestCreditScore, totalCreditScore } from './creditScore';
@@ -58,6 +60,7 @@ const CreditScorePage = () => {
     const [canEdit, setCanEdit] = useState(false);
     const [sent, setSent] = useState(false); // sent for review (the CO's step 3)
     const [audit, setAudit] = useState([]);
+    const [scoreRows, setScoreRows] = useState([]);   // saved credit_score_entries (ids -> criterion for the history)
     const [names, setNames] = useState({});
     const [dirty, setDirty] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -90,6 +93,7 @@ const CreditScorePage = () => {
         setFp(savedFp);
         setScores(Object.fromEntries(savedFp.creditScore.map((r) => [r.criterion, formOf(r)])));
         setAudit(scoreLog);
+        setScoreRows(savedFp.creditScore);
         setNames(await fetchStaffNames(scoreLog.map((e) => e.changed_by)));
         setDirty(false);
     }, []);
@@ -267,6 +271,11 @@ const CreditScorePage = () => {
                 </section>
             )}
 
+            {canEdit && (
+                <ReturnNotice applicationId={app.id} link={`/approvalRoutingPage?id=${app.id}`} here="/creditScorePage"
+                    onOpen={(e) => { if (!leaveOk()) e.preventDefault(); }} />
+            )}
+
             <section className="fp-tiles" aria-label="Score figures">
                 {metrics.map(({ key, Icon, label, value, sub, tone }) => (
                     <div key={key} className={`lf-tile fp-tile ${tone}`}>
@@ -303,8 +312,20 @@ const CreditScorePage = () => {
                         onScore={onScore} onRemarks={onRemarks} onUseAll={acceptAll} disabled={!canEdit || saving} />
 
                     <Section id="cs-history" title="Credit score change history">
-                        {audit.length === 0 ? <p className="fp-empty">No changes yet.</p>
-                            : <ChangeHistory app={app} entries={audit} names={names} />}
+                        {(() => {
+                            const lines = scoreHistory(audit, rules, scoreRows);
+                            return lines.length === 0 ? <p className="fp-empty">No changes yet.</p> : (
+                                <ol className="cs-hist">
+                                    {lines.map((l) => (
+                                        <li key={l.id} className={`cs-hist-item ${l.kind.toLowerCase()}`}>
+                                            <p className="cs-hist-text"><Terms text={l.text} /></p>
+                                            <Byline layout="inline" name={names[l.by]} fallback="unknown" at={l.at} />
+                                            {l.remarks && <p className="cs-hist-remarks">{l.remarks}</p>}
+                                        </li>
+                                    ))}
+                                </ol>
+                            );
+                        })()}
                     </Section>
 
                     {canEdit && (
