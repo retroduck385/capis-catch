@@ -36,8 +36,14 @@ def process(client, job: dict, retriever, engine: str, judge=None) -> None:
     print(f"run {run_id}: {job['run_kind']} ...", flush=True)
     try:
         if job["run_kind"] == "CHECK":
+            def progress(text: str) -> None:            # shown in the FP panel while the check runs
+                try:
+                    client.table("mrac_runs").update({"progress": text}).eq("id", run_id).execute()
+                except Exception:  # noqa: BLE001  progress is a nicety (column missing before 20261122_mrac_reviews.sql)
+                    pass
+            progress("Checking the figures against the rules")
             result = check(job["run_facts"] or {}, load_criteria(client), retriever, on=now()[:10],
-                           profile=job.get("run_profile"), judge=judge)
+                           profile=job.get("run_profile"), judge=judge, progress=progress)
             rec = result.get("recommendations") or {}
             print(f"run {run_id}: recommender {rec.get('status')}"
                   + (f", {rec.get('counts')}" if rec.get("status") == "DONE" else f": {rec.get('reason')}"), flush=True)

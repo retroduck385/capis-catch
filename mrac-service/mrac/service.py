@@ -46,7 +46,7 @@ def cite(hit: dict, max_chars: int = 2500) -> dict:
 
 def check(facts: dict, criteria: list[dict], retriever, *, on: str | None = None,
           context_queries: list[str] | None = None, profile: dict | None = None, judge=None,
-          triggers: dict | None = None) -> dict:
+          triggers: dict | None = None, progress=None) -> dict:
     """Rule results + policy passages, and (with a judge) the policy recommender's findings in `recommendations`."""
     pairs = [(c, evaluate(c, facts)) for c in criteria]
     not_applicable = [r["code"] for _, r in pairs if r["status"] == "not_applicable"]
@@ -100,7 +100,8 @@ def check(facts: dict, criteria: list[dict], retriever, *, on: str | None = None
            "policy_context": context, "notes": notes, "engine": ENGINE_VERSION}
     out["reasoning"] = reasoning.build(results, manual, approval)
     out["explanation"] = explain(out)
-    out["recommendations"] = recommend(profile, facts, pairs, results, retriever, judge, approval, on=on, triggers=triggers)
+    out["recommendations"] = recommend(profile, facts, pairs, results, retriever, judge, approval, on=on, triggers=triggers,
+                                       progress=progress)
     if profile is None and judge is not None:
         notes.append("No application profile came with this check (run 20261122_mrac_profile.sql and check again): "
                      "the recommender saw the figures only.")

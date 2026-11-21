@@ -5,6 +5,7 @@
 // Give it key={run.id} so the "added" marks reset when a new check comes in.
 import { useState } from 'react';
 import Excerpt from './excerpt';
+import Recommendations from './recommendations';
 import { OVERALL, showFact, showRequirement, STATUS } from './labels';
 import './mrac.css';
 import { Terms } from '../../components/term';
@@ -47,10 +48,12 @@ export const Citations = ({ items, preview, limit }) => {
 // Passages shown per rule or section in a policy check result before "Show more"
 const RESULT_PASSAGES = 2;
 
-const MracResult = ({ run, onAddException }) => {
+// reviews / names / canEdit / onAddTerm / onReviewed: for the policy recommender's findings (recommendations.jsx)
+const MracResult = ({ run, onAddException, onAddTerm, reviews, names, canEdit = false, onReviewed }) => {
     const [added, setAdded] = useState([]);
     const result = run?.status === 'DONE' ? run.result : null;
     if (!result) return null;
+    const recommended = result.recommendations?.status === 'DONE';
     const [overallLabel, overallTone] = OVERALL[result.overall] ?? [result.overall, 'plain'];
     const reasoning = result.reasoning;
     const criteria = result.criteria ?? [];
@@ -60,6 +63,9 @@ const MracResult = ({ run, onAddException }) => {
 
     return (
         <div aria-live="polite">
+            <Recommendations run={run} reviews={reviews} names={names} canEdit={canEdit && Boolean(onAddException)}
+                onAddException={onAddException} onAddTerm={onAddTerm} onReviewed={onReviewed} />
+            {result.recommendations && <h3 className="mrac-rules-title">Rule checks</h3>}
             <div className={`mrac-banner ${overallTone}`}>
                 <div className="top">
                     <b><Terms text={overallLabel} /></b>
@@ -130,7 +136,7 @@ const MracResult = ({ run, onAddException }) => {
                 </div>
             )}
 
-            {suggested.length > 0 && (
+            {!recommended && suggested.length > 0 && (
                 <div className="mrac-block mrac-suggest">
                     <h3>Possible exceptions for V. Exception/s</h3>
                     <p className="fp-note">Clauses found by keyword: check that each one really applies before adding it.</p>

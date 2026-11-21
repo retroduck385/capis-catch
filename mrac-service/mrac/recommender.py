@@ -388,18 +388,24 @@ def unavailable(reason: str, trait_map: dict[str, str] | None = None, checked: i
 
 
 def recommend(profile: dict | None, facts: dict, pairs: list[tuple[dict, dict]], results: list[dict], retriever,
-              judge, approval_clauses: list[dict], on: str | None = None, triggers: dict | None = None) -> dict:
+              judge, approval_clauses: list[dict], on: str | None = None, triggers: dict | None = None,
+              progress=None) -> dict:
+    """progress(text): called at each step (the worker shows it to the CO while the check runs)."""
+    step = progress or (lambda _text: None)
     trait_map = traits(profile, facts, results)
     if judge is None:
         return unavailable("Recommendations are off: set ANTHROPIC_API_KEY in mrac-service/.env.", trait_map)
+    step("Finding the policy clauses that apply to this file")
     candidates = gather(retriever, triggers or load_triggers(), trait_map, pairs, on=on)
     if not candidates:
         return unavailable("No policy clauses were found to check.", trait_map)
     payload = judge_payload(profile, facts, results, candidates, trait_map)
+    step(f"Claude is reading {len(candidates)} policy clauses against the file (about a minute)")
     try:
         answer = judge(payload)
     except Exception as e:  # noqa: BLE001  the rule results are still saved; this part says why it is missing
         return unavailable(f"The policy recommender could not run: {str(e)[:300]}", trait_map, len(candidates))
+    step("Checking every finding against its clause and the figures")
     kept, unverified = verify(answer.get("findings") or [], candidates, profile, facts, results)
     meta = {"model": answer.get("model"), "input_tokens": answer.get("input_tokens"),
             "output_tokens": answer.get("output_tokens"), "summary": ""}

@@ -102,3 +102,43 @@
 
 /* spacing below the work tray */
 .wt-page > .mrac-ask { margin-top: 1.25rem; }
+
+/* ---------- policy recommender findings (recommendations.jsx) ---------- */
+.mrac-recs > .mrac-banner .fp-note { margin: 0.45rem 0 0; }
+.mrac-rec-approval { margin-top: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--line); border-radius: 8px; background: #fafbfd; }
+.mrac-rec-approval h3 { margin: 0 0 0.3rem; font-size: 0.95rem; }
+.mrac-rec-approval p { margin: 0; line-height: 1.5; }
+.mrac-rec-approval .fp-note { margin-top: 0.35rem; }
+.mrac .meta { color: var(--muted); font-size: 0.82rem; font-weight: 500; }
+.mrac-rec-group > h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.mrac-rec-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.7rem; }
+.mrac-rec {
+  margin: 0; padding: 0.75rem 0.9rem; border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--line-strong));
+  border-radius: 8px; background: var(--surface, #fff);
+}
+.mrac-rec.compact { border-left-color: var(--mrac-ok-line); padding: 0.55rem 0.8rem; }
+.mrac-rec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.3rem 0.8rem; }
+.mrac-rec-head strong { font-size: 0.95rem; }
+.mrac-rec-text { margin: 0.35rem 0 0; line-height: 1.5; }
+.mrac-rec-next { margin: 0.35rem 0 0; line-height: 1.45; }
+.mrac-rec-next span { font-weight: 700; color: var(--tone, var(--ink)); }
+.mrac-rec-exc { display: grid; gap: 0.2rem; margin: 0.45rem 0 0; font-size: 0.9rem; }
+.mrac-rec-exc div { display: flex; flex-wrap: wrap; gap: 0.2rem 0.6rem; }
+.mrac-rec-exc dt { margin: 0; color: var(--muted); font-weight: 600; }
+.mrac-rec-exc dd { margin: 0; }
+.mrac-rec-quote { margin: 0.5rem 0 0; padding: 0.35rem 0.7rem; border-left: 3px solid var(--line-strong); color: #334155; font-size: 0.88rem; font-style: italic; }
+.mrac-rec-meta { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.8rem; }
+.mrac-rec-note { margin: 0.3rem 0 0; color: var(--mrac-warn); font-size: 0.82rem; }
+.mrac-rec-clause { margin-top: 0.4rem; font-size: 0.86rem; }
+.mrac-rec-clause summary { cursor: pointer; color: var(--blue-700); font-weight: 600; }
+.mrac-rec-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.65rem; }
+.mrac .mrac-rec-buttons .fp-btn { margin-top: 0; }
+.mrac .fp-btn.secondary { background: transparent; border-color: var(--line-strong); color: var(--ink); }
+.mrac .fp-btn.secondary:hover:not(:disabled) { background: var(--blue-50); color: var(--blue-700); }
+.mrac-rec-edit { display: grid; gap: 0.5rem; margin-top: 0.65rem; }
+.mrac-rec-edit label { display: grid; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; }
+.mrac.mrac .mrac-rec-edit textarea { margin-top: 0; width: 100%; min-height: 3rem; font-weight: 400; }
+.mrac-rec-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0.6rem 0 0; }
+.mrac-rec-decision .why { flex-basis: 100%; color: var(--muted); font-size: 0.85rem; }
+.mrac-rec + .mrac-more, .mrac-rec .mrac-more { margin: 0.4rem 0 0; }
+.mrac-rules-title { margin: 1.6rem 0 0; font-size: 1rem; }

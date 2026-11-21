@@ -564,7 +564,9 @@ const FinancialPackagePage = () => {
                     <div className="fp-dialogbody">
                         <MracPanel app={app} computed={computed} score={score} pricing={form.pricing}
                             exceptions={form.exceptions} canEdit={canEdit}
-                            onAddException={(row) => onList('exceptions')([...form.exceptions, { _key: crypto.randomUUID(), ...row }])} />
+                            onAddException={(row) => onList('exceptions')([...form.exceptions, { _key: crypto.randomUUID(), ...row }])}
+                            onAddTerm={(text) => onPkg('terms_and_conditions',
+                                [form.pkg.terms_and_conditions?.trimEnd(), `- ${text}`].filter(Boolean).join('\n'))} />
                     </div>
                 </dialog>
 
