@@ -12,7 +12,7 @@ import { fetchActiveReviewAssignments, fetchSignoffs } from '../review/api';
 import { assignApplication, fetchAssignableStaff, fetchWorkTray, unassignApplication } from './api';
 import {
     AVATAR_TONES, SLOT_LABELS, STAGES, STAGE_COLORS, STAGE_STATUS_LABELS, STATUS_TONES, TAT_LABELS, TAT_RULE, TAT_STATE_RULES,
-    TAT_TARGETS_TEXT, TAT_TONES, stageLabel, tatSlashHint,
+    TAT_TARGETS_TEXT, TAT_TONES, byUrgency, positionHint, stageLabel, tatSlashHint, urgencyRanks,
 } from './options';
 import { folderPath } from './paths';
 import { clearTrails } from '../../components/trailStore';
@@ -65,8 +65,6 @@ const isMyReviewTurn = (routing, row, userId) => row.stage === 'REVIEW'
 
 const SLOT_FULL_LABELS = { ACCOUNT_OFFICER: 'Account Officer', CREDIT_OFFICER: 'Credit Officer' };
 
-// Urgency priority for sorting: most urgent first
-const TAT_PRIORITY = { BEYOND: 0, NEAR: 1, ON_TRACK: 2 };
 
 // Stage status as a small icon + word (no pill)
 const STATUS_ICONS = { PENDING: Hourglass, IN_PROGRESS: Play, REQUESTED: Send, RETURNED: Undo2, DONE: Check };
@@ -343,8 +341,9 @@ const WorkTray = () => {
     const isMine = useCallback((r) => r.ao_id === myId || r.co_id === myId || isRoutedTo(routing, r, myId),
         [routing, myId]);
 
-    // FIFO position by submission order (rows come back sorted)
+    // Arrival order by submission (rows come back sorted) and the place in the urgency order (the "TAT position")
     const fifo = useMemo(() => new Map(rows.map((r, i) => [r.application_id, i + 1])), [rows]);
+    const ranks = useMemo(() => urgencyRanks(rows), [rows]);
 
     // ---- dashboard numbers, always over everything the user can see (not the filtered list) ----
     const stats = useMemo(() => {
@@ -377,12 +376,8 @@ const WorkTray = () => {
                 || (assignment === 'MINE' && isMine(r))
                 || (assignment === 'UNASSIGNED' && isUnassigned(r)))
             && (!q || [r.application_no, r.applicant_name].some((v) => v?.toLowerCase().includes(q))));
-        // Sort by urgency: Beyond TAT → Near TAT → On track → no TAT; ties preserve original FIFO order
-        return filtered.sort((a, b) => {
-            const pa = TAT_PRIORITY[a.tat_state] ?? 3;
-            const pb = TAT_PRIORITY[b.tat_state] ?? 3;
-            return pa - pb;
-        });
+        // Most urgent first (byUrgency in options.js); equal files keep their arrival order
+        return filtered.sort(byUrgency);
     }, [rows, search, tat, assignment, stage, isMine, isUnassigned]);
 
     const filtersActive = search || tat !== 'ALL' || assignment !== defaultAssignment || stage !== 'OPEN';
@@ -595,8 +590,8 @@ const WorkTray = () => {
                                         <Term k="TAT" /> position
                                         <span
                                             className='wt-th-info'
-                                            title='Sorted by urgency: beyond TAT first, then near TAT, then on track'
-                                            aria-label='Sorted by urgency: beyond TAT first, then near TAT, then on track'>
+                                            title='Place by urgency, 1 = most urgent: beyond TAT first, then near TAT, then on track; inside each, the file that has used most of its target first. Hover a number for the order of arrival.'
+                                            aria-label='Place by urgency, 1 = most urgent: beyond TAT first, then near TAT, then on track; inside each, the file that has used most of its target first.'>
                                             <Info size={13} aria-hidden='true' />
                                         </span>
                                     </span>
@@ -627,7 +622,11 @@ const WorkTray = () => {
                                             r.can_open ? 'clickable' : 'locked',
                                             mine ? 'mine' : '',
                                         ].join(' ')}>
-                                        <td className='wt-fifo'>{fifo.get(r.application_id)}</td>
+                                        <td className='wt-fifo'>
+                                            <Hint text={positionHint(ranks.get(r.application_id), fifo.get(r.application_id), rows.length)}>
+                                                {ranks.get(r.application_id)}
+                                            </Hint>
+                                        </td>
                                         <td>
                                             {/* Flags after the reference: quiet icon + word, except "Your turn",
                                                 which asks for action and gets the one orange tag */}

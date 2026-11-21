@@ -15,6 +15,7 @@ import { ArrowLeft, Check, FileText } from 'lucide-react';
 import ApplicantShell from '../components/applicantShell';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
+import ApplicantStageTracker from './notifications/applicantStageTracker';
 import ApplicantRequestCard from './documentRequests/applicantRequestCard';
 import { SummaryContext } from './applicationForm/summaryContext';
 import { formatDay } from '../components/people';
@@ -117,6 +118,7 @@ const ApplicationFormPage = () => {
                     </div>
                     <span className="ct-badge plain"><ApplicantStatusLabel application={app} /></span>
                 </header>
+                <ApplicantStageTracker application={app} />
                 <ApplicantRequestCard applicationId={app.id} />
                 <section className="ct-card ap-summary" aria-label="Your application">
                     <div className="ct-sheet-body">

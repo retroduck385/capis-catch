@@ -445,6 +445,43 @@
 .ap-facts b { color: var(--ink); font-weight: 600; }
 .ap-viewhead > .ct-badge { margin-top: 0.35rem; }
 
+/* ---------- where the application is (applicantStageTracker.jsx): five steps, done green, the current one blue ---------- */
+.ap-track {
+  margin: 1rem 0 0; padding: 1rem 1.25rem; border: 1px solid var(--lf-glass-rim); border-radius: 20px;
+  background: var(--lf-glass); backdrop-filter: var(--lf-glass-blur); box-shadow: var(--lf-glass-shadow);
+}
+.ap-track ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.ap-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; text-align: center; color: var(--muted); font-size: 0.95rem; }
+/* the line to the next step */
+.ap-track li:not(:last-child)::after {
+  content: ''; position: absolute; top: 1rem; left: calc(50% + 1.3rem); right: calc(-50% + 1.3rem); height: 3px;
+  border-radius: 2px; background: var(--lf-track);
+}
+.ap-track li.done:not(:last-child)::after { background: var(--lf-ok); }
+.ap-track .dot {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 999px; flex: none;
+  border: 2px solid var(--lf-hollow); background: var(--lf-block-bg); color: var(--muted); font-weight: 700; font-size: 0.9rem;
+}
+.ap-track li.done .dot { border-color: var(--lf-ok); background: var(--lf-ok); color: #fff; }
+.ap-track li.done { color: var(--ink); }
+.ap-track li.now .dot { border-color: var(--blue); background: var(--lf-blue-grad); color: #fff; box-shadow: 0 0 0 4px var(--lf-accent-bg); }
+.ap-track li.now { color: var(--ink); font-weight: 700; }
+.ap-track .txt { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
+.ap-track .txt small { font-size: 0.78rem; font-weight: 600; color: var(--blue); text-transform: uppercase; letter-spacing: 0.04em; }
+.ap-track-outcome {
+  margin: 0.9rem 0 0; padding: 0.55rem 0.85rem; border-radius: 12px; font-size: 0.95rem;
+  border: 1px solid var(--lf-none-line); background: var(--lf-none-bg); color: var(--ink);
+}
+.ap-track-outcome.ok { border-color: var(--lf-ok-line); background: var(--lf-ok-bg); }
+.ap-track-outcome.warn { border-color: var(--lf-warn-line); background: var(--lf-warn-bg); }
+/* phones: the steps stack, each line runs down between the dots */
+@media (max-width: 760px) {
+  .ap-track ol { grid-template-columns: minmax(0, 1fr); gap: 0.85rem; }
+  .ap-track li { flex-direction: row; text-align: left; }
+  .ap-track .txt { flex-direction: row; align-items: baseline; gap: 0.5rem; }
+  .ap-track li:not(:last-child)::after { top: 2.1rem; bottom: -0.8rem; left: calc(1rem - 1.5px); right: auto; width: 3px; height: auto; }
+}
+
 /* ---------- motion (DESIGN.md 11.6): rows rise on load, lists cascade, the step fades in, hover lifts ---------- */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes ap-rise { from { opacity: 0; transform: translateY(12px); } }
