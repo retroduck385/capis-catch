@@ -2,8 +2,8 @@
 -- Run after 20261119_document_request_reminders.sql (needs 20261020_financial_package.sql, 20261105_mrac_rag.sql,
 -- 20261024_notifications.sql and 20261007_ao_kyc_verification.sql). Re-runnable, no drops of data.
 --
--- SYNTHETIC TEST FILES ONLY until the data privacy question (Q-04) is cleared: the figures below and short policy
--- excerpts go to the Claude API (an external model). Same rule as the AI document extraction.
+-- The bank cleared the data privacy question (Q-04) on 2026-11-20: the de-identified figures below and the policy
+-- findings go to the Claude API (an external model). The filters stay.
 --
 -- What it does
 --   * The assigned Credit Officer asks for a suggestion on the Financial Package (request_credit_suggestion), while
@@ -14,8 +14,9 @@
 --     names), DBR / LCR, the credit score without the Condition criteria (only their sub-total: never gender, civil
 --     status, dependents, residence type, length of stay or age bands), CI results per role (no summaries), the
 --     recorded exceptions. The function refuses an input with personal fields or a Condition criterion in it.
---   * The ocr-service worker (ocr-service/advise.py, service role) claims it, adds the policy check result and short
---     excerpts of the cited passages, calls Claude, keeps only reasons that cite a passage it was given, and saves
+--   * The advise-service worker (advise-service/advise.py, service role; was ocr-service until 2026-11-22) claims it,
+--     adds the policy check's rule results and recommender findings with the CO's reviews (mrac_finding_reviews),
+--     calls Claude, keeps only reasons that cite a finding it was given, flags untraceable figures, and saves
 --     the suggestion with exactly what was sent (sent), the model and the tokens. Without ANTHROPIC_API_KEY the
 --     request stays QUEUED.
 --   * The suggestion never sets the credit result: the Credit Officer may copy the draft justification and edits it.

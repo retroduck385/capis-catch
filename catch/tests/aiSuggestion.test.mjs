@@ -91,3 +91,14 @@ test('changedFacts: same rule as the policy check staleness', () => {
     assert.deepEqual(changedFacts({ dbr: 0.4, property_type: 'Condo' }, { dbr: 0.41, property_type: 'House', new_key: 1 }), ['dbr', 'property type']);
     assert.deepEqual(changedFacts(null, { dbr: 1 }), []);
 });
+
+test('the CI file checks go out as counts (null until all CI results are in)', () => {
+    const withCi = buildSuggestionInput({
+        app, computed, score: {}, rules: { criteria: [], bands: [] },
+        facts: { has_replevin_or_foreclosure: false, nfis_deviation_count: 1, nfis_lcr_cap_breaches: 0, undisclosed_tu_accounts: 2, expired_ci_reports: 0 },
+    });
+    assert.deepEqual(withCi.ci.file_checks, { has_replevin_or_foreclosure: false, nfis_deviation_count: 1, nfis_lcr_cap_breaches: 0,
+        undisclosed_tu_accounts: 2, expired_ci_reports: 0 });
+    const without = buildSuggestionInput({ app, computed, score: {}, rules: { criteria: [], bands: [] } });
+    assert.ok(Object.values(without.ci.file_checks).every((v) => v === null));
+});
