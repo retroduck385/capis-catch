@@ -7,10 +7,6 @@
 .ai-wait p { margin: 0.2rem 0 0; }
 .ai-result { display: grid; gap: 0.5rem; margin-top: 0.4rem; }
 .ai-h { margin: 0.4rem 0 0; font-size: 0.92rem; font-weight: 700; }
-.ai-reasons, .ai-missing { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.4rem; }
-.ai-cite summary { cursor: pointer; color: var(--lf-accent, #1e3f97); font-size: 0.84rem; }
-.ai-cite p { margin: 0.3rem 0 0; padding: 0.4rem 0.6rem; border-left: 3px solid var(--lf-none-line, #d5dbe6);
-  font-size: 0.86rem; color: var(--lf-text-2, #334155); white-space: pre-wrap; }
 .ai-draft { margin: 0; padding: 0.6rem 0.8rem; border-left: 3px solid var(--lf-accent, #1e3f97);
   background: var(--lf-accent-bg, rgba(30, 63, 151, 0.06)); border-radius: 0 10px 10px 0; white-space: pre-wrap; }
 .ai-meta { margin: 0; }
@@ -19,4 +15,39 @@
 .ai-figs pre { max-height: 16rem; overflow: auto; padding: 0.5rem; border-radius: 8px; font-size: 0.75rem;
   background: var(--lf-none-bg, #eef1f6); color: var(--lf-text-2, #334155); }
 .ai-earlier ul { margin: 0.4rem 0 0; padding-left: 1.2rem; display: grid; gap: 0.5rem; }
-.ai-reasons .mrac-chip { margin-left: 0.4rem; vertical-align: middle; }
+
+/* Reasons: one numbered card each, figures bolded, the cited policy as a pill that opens its excerpt */
+.ai-reasons { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.7rem; }
+.ai-reason {
+  display: grid; grid-template-columns: auto 1fr; gap: 0.85rem; align-items: start; margin: 0;
+  padding: 0.95rem 1.1rem; border: 1px solid var(--lf-block-line, rgba(20, 41, 95, 0.13));
+  border-left: 4px solid var(--lf-accent, #1e3f97); border-radius: 14px;
+  background: var(--lf-block-bg, #fff); box-shadow: var(--lf-shadow-sm, 0 6px 14px -10px rgba(20, 41, 95, 0.35));
+}
+.ai-reason-n {
+  display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 999px;
+  background: var(--lf-accent-bg, rgba(30, 63, 151, 0.1)); color: var(--lf-accent, #1e3f97);
+  font-weight: 800; font-size: 0.95rem; font-variant-numeric: tabular-nums;
+}
+.ai-reason-body { min-width: 0; display: grid; gap: 0.55rem; }
+.ai-reason-text { margin: 0; color: var(--ink); font-size: 1.02rem; line-height: 1.6; }
+.ai-reason-text strong { color: var(--lf-accent, #1e3f97); font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ai-reason-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+/* the citation reads like a footnote: a small "Source" label, the section as a dotted-underline link, the file muted */
+.ai-cite summary {
+  display: inline; cursor: pointer; list-style: none; font-size: 0.9rem; color: var(--lf-text-3, #4c5a73);
+}
+.ai-cite summary::-webkit-details-marker { display: none; }
+.ai-cite-label {
+  margin-right: 0.5rem; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.ai-cite-head {
+  color: var(--lf-accent, #1e3f97); font-weight: 600;
+  text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-thickness: 1px;
+}
+.ai-cite summary:hover .ai-cite-head { text-decoration-style: solid; }
+.ai-cite[open] .ai-cite-head { text-decoration: none; }
+.ai-cite-doc::before { content: ', '; }
+.ai-cite p { margin: 0.5rem 0 0; padding: 0.55rem 0.8rem; border-left: 3px solid var(--lf-accent, #1e3f97);
+  border-radius: 0 10px 10px 0; background: var(--lf-sub-bg, #f6f8fc);
+  font-size: 0.92rem; color: var(--lf-text-2, #334155); white-space: pre-wrap; }

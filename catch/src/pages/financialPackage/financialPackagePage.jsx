@@ -34,7 +34,10 @@ import { fetchReviewAssignments } from '../review/api';
 import { splitRouting } from '../review/approval';
 import CoSteps, { CoOptionalView } from './coSteps';
 import { ReturnNotice } from '../review/returnNotice';
-import { fetchAssignedAo, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage } from './api';
+import {
+    fetchAssignedAo, fetchBankStatements, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage,
+} from './api';
+import { depositRows } from './depositChecks';
 import MessagesPanel from '../messages/messagesPanel';
 import MracPanel from '../mrac/mracPanel';
 import { useActiveSection } from '../review/useActiveSection';
@@ -188,14 +191,18 @@ const FinancialPackagePage = () => {
     const [error, setError] = useState(null);
     const [ci, setCi] = useState(null);           // the CI results (XI. "Copy from TU"); null if they can't be read
     const [copyNote, setCopyNote] = useState(null);
+    const [statements, setStatements] = useState(null); // bank statements (X. "Fill from ..."); null if they can't be read
+    const [depositNote, setDepositNote] = useState(null);
 
     // Saved FP + its change history (+ the staff names in it)
     const loadFp = useCallback(async (record) => {
         const ids = getParties(record, BORROWER_ROLES).map((p) => p.id);
-        const [savedFp, log, aoId, reviewRows, ciResults] = await Promise.all([
+        const [savedFp, log, aoId, reviewRows, ciResults, bankStatements] = await Promise.all([
             fetchFinancialPackage(record.id, ids), fetchAuditLog(record.id), fetchAssignedAo(record.id),
-            fetchReviewAssignments(record.id), fetchCiResults(ids).catch(() => null)]);
+            fetchReviewAssignments(record.id), fetchCiResults(ids).catch(() => null),
+            fetchBankStatements(record).catch(() => null)]);
         setCi(ciResults);
+        setStatements(bankStatements);
         const fpLog = log.filter((e) => FP_TABLES.includes(e.table_name)
             || (e.table_name === 'loan_applications' && ('interest_rate' in (e.new_data ?? {}) || 'fixing_period' in (e.new_data ?? {}))));
         const staff = await fetchStaffNames([aoId, ...fpLog.map((e) => e.changed_by),
@@ -362,6 +369,14 @@ const FinancialPackagePage = () => {
         change({ ...form, loan_checks: [...form.loan_checks, ...tuRows.map((r) => ({ _key: crypto.randomUUID(), ...r }))] });
         setCopyNote(`${tuRows.length} row${tuRows.length === 1 ? '' : 's'} added from TU. Not saved yet.`);
     };
+    // X. "Fill from KYC and bank statements": the accounts not in X. yet (bank statements only once the AO confirmed them)
+    const confirmedStatements = (statements ?? []).filter((s) => s.confirmed);
+    const unconfirmedStatements = (statements ?? []).length - confirmedStatements.length;
+    const newDepositRows = depositRows(kycBankAccounts, confirmedStatements, form?.deposit_checks ?? []);
+    const fillDeposits = () => {
+        change({ ...form, deposit_checks: [...form.deposit_checks, ...newDepositRows.map((r) => ({ _key: crypto.randomUUID(), ...r }))] });
+        setDepositNote(`${newDepositRows.length} account${newDepositRows.length === 1 ? '' : 's'} added. Add the handling in the remarks, then Save.`);
+    };
 
     const pesoOf = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
     // The key figures as tiles; the risk rating opens the scoring page. tone 'warn': something is still missing for it
@@ -463,8 +478,9 @@ const FinancialPackagePage = () => {
                     <button type="button" className="lf-btn" aria-haspopup="dialog" onClick={openHistory}>
                         <History size={16} aria-hidden="true" />Change history
                     </button>
-                    {/* The assigned CO's draft of the final report (Credit Evaluation only); it reads the saved FP */}
-                    <FinalReportButton applicationId={app.id} draft coCanEdit={canEdit} onClick={confirmLeave} />
+                    {/* The final report: the assigned CO's draft in Credit Evaluation, the final one once every reviewer
+                        endorsed it; it reads the saved FP */}
+                    <FinalReportButton applicationId={app.id} coCanEdit={canEdit} onClick={confirmLeave} />
                     {/* The assigned CO gets these as steps / optional view below */}
                     {!canEdit && (
                         <>
@@ -631,7 +647,7 @@ const FinancialPackagePage = () => {
                         <FacilitySection app={app} computed={computed} form={form.pkg} pricing={form.pricing}
                             onPkg={onPkg} onPricing={onPricing} disabled={disabled} />
                         <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
-                        <CreditCheckingSection app={app} computed={computed} />
+                        <CreditCheckingSection app={app} />
                         <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
                             onChange={onList('exceptions')} disabled={disabled}>
                             <p className="fp-note">List each policy this file doesn&apos;t meet, what you recommend, and what
@@ -656,6 +672,27 @@ const FinancialPackagePage = () => {
                                 {kycBankAccounts.length === 0 ? 'none.' : kycBankAccounts.map((b) =>
                                     `${partyLabel(b.party)}: ${b.bank_name} ${b.account_type} ${b.account_number}`).join('; ')}
                             </p>
+                            {!disabled && (
+                                <div className="fp-copytu">
+                                    <button type="button" className="fp-add" disabled={newDepositRows.length === 0} onClick={fillDeposits}>
+                                        Fill from KYC and bank statements ({newDepositRows.length === 0 ? 'nothing new'
+                                            : `${newDepositRows.length} account${newDepositRows.length === 1 ? '' : 's'}`})
+                                    </button>
+                                    <span className="fp-note">
+                                        Adds each bank account from the <Term k="KYC" /> and from bank statements the Account Officer
+                                        confirmed: <Term k="AMD" /> is the monthly deposits averaged; <Term k="ADB" /> only when the
+                                        statement prints it. Check them, add the handling, then Save.
+                                    </span>
+                                    {unconfirmedStatements > 0 && (
+                                        <span className="fp-note">
+                                            {unconfirmedStatements} bank statement{unconfirmedStatements === 1 ? ' is' : 's are'} not
+                                            confirmed on the Document check yet, so {unconfirmedStatements === 1 ? 'its' : 'their'} figures are not used.
+                                        </span>
+                                    )}
+                                    {statements === null && <span className="fp-note">The bank statements could not be read; only the KYC accounts are used.</span>}
+                                    {depositNote && <span role="status" className="fp-note">{depositNote}</span>}
+                                </div>
+                            )}
                         </RowsSection>
                         <RowsSection id="fp-xi" title="XI. Loan Verification (Based on Loandex and Disclosure)" config={LOAN_CHECK_FIELDS}
                             rows={form.loan_checks} onChange={onList('loan_checks')} disabled={disabled}>
@@ -666,10 +703,11 @@ const FinancialPackagePage = () => {
                             {!disabled && tuRows !== null && (
                                 <div className="fp-copytu">
                                     <button type="button" className="fp-add" disabled={tuRows.length === 0} onClick={copyFromTu}>
-                                        Copy from TU ({tuRows.length === 0 ? 'nothing new' : `${tuRows.length} open loan${tuRows.length === 1 ? '' : 's'}`})
+                                        Copy from TU ({tuRows.length === 0 ? 'nothing new' : `${tuRows.length} loan${tuRows.length === 1 ? '' : 's'}`})
                                     </button>
                                     <span className="fp-note">
-                                        Adds the borrowers' open loans from the Credit Investigator's TU accounts (not credit cards). Check them, then Save.
+                                        Adds the borrowers' loans from the Credit Investigator's TU accounts, open and closed (not credit cards).
+                                        Closed ones say so in the remarks. Check them, then Save.
                                     </span>
                                     {copyNote && <span role="status" className="fp-note">{copyNote}</span>}
                                 </div>

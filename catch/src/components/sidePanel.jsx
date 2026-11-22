@@ -1,5 +1,5 @@
-// Side panels that can be hidden and shown again (group notes item 38), on the staff pages' section lists and the loan
-// folder's KYC check rail. Remembered per page type (panelState.js).
+// Side panels that can be hidden and shown again (group notes item 38), on the staff pages' section lists. The loan
+// folder's KYC check rail always stays shown. Remembered per page type (panelState.js).
 //   const panel = useSidePanel('fp');   (useSidePanel.js)
 //   panel.hidden ? <PanelRail panel={panel} label="sections" /> : <nav>...<PanelHide panel={panel} label="sections" /></nav>
 // While hidden, the panel is replaced by a slim strip (PanelRail) with a Show button and any icon buttons passed as

@@ -13,7 +13,7 @@ import { ApprovalRoutingSkeleton } from '../../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    ArrowRight, ArrowUp, ClipboardCheck, Gauge, Landmark, ListOrdered, Lock, PenLine, Send, Save, Trash2, Users, Wallet,
+    ArrowRight, ArrowUp, ChevronDown, ClipboardCheck, Gauge, Landmark, ListOrdered, Lock, PenLine, Send, Save, Trash2, Users, Wallet,
 } from 'lucide-react';
 import Byline from '../../components/byline';
 import SelectMenu from '../../components/selectMenu';
@@ -287,6 +287,10 @@ const ApprovalRoutingPage = () => {
         ? 'Only the Dept Head or the Dispatch Admin can change the reviewers and approvers, while the application is in Review or Approval.'
         : 'Only the assigned Credit Officer picks the reviewers and approvers and sends it for review.';
 
+    const activeCount = history.filter((r) => !r.unassigned_at).length;
+    // Approvers are routed when it's sent but only get the file once every reviewer has endorsed it (Approval opens)
+    const approversReached = ['APPROVAL', 'DECIDED'].includes(stage?.stage);
+
     const goTo = (id) => (e) => {
         e.preventDefault();
         pickSection(id);
@@ -476,22 +480,31 @@ const ApprovalRoutingPage = () => {
 
                     <Section id="ar-history" title="Routing history">
                         {history.length === 0 ? <p className="fp-empty">Not sent yet.</p> : (
-                            <ul className="rv-timeline">
-                                {history.map((r) => (
-                                    <li key={r.id} className={`rv-step ${r.unassigned_at ? 'none' : 'ok'}`}>
-                                        <div className="rv-step-top">
-                                            <b>{r.assignee_role === 'REVIEWER' ? `Reviewer ${r.seq}` : 'Approver'}: {personName(names[r.user_id]) || 'Unknown'}</b>
-                                            <span className="lf-chip">{r.unassigned_at ? 'Removed' : 'Active'}</span>
-                                        </div>
-                                        <p className="ar-by">
-                                            <span>Added by <Byline layout="inline" name={names[r.assigned_by]} fallback="Unknown" at={r.assigned_at} /></span>
-                                            {r.unassigned_at && (
-                                                <span>Removed by <Byline layout="inline" name={names[r.unassigned_by]} fallback="Unknown" at={r.unassigned_at} /></span>
-                                            )}
-                                        </p>
-                                    </li>
-                                ))}
-                            </ul>
+                            <details className="ar-history">
+                                <summary>
+                                    <span>
+                                        {history.length} {history.length === 1 ? 'entry' : 'entries'}
+                                        {' · '}{activeCount} active{history.length > activeCount ? `, ${history.length - activeCount} removed` : ''}
+                                    </span>
+                                    <ChevronDown size={18} className="ar-history-chevron" aria-hidden="true" />
+                                </summary>
+                                <ul className="rv-timeline">
+                                    {history.map((r) => (
+                                        <li key={r.id} className={`rv-step ${r.unassigned_at ? 'none' : 'ok'}`}>
+                                            <div className="rv-step-top">
+                                                <b>{r.assignee_role === 'REVIEWER' ? `Reviewer ${r.seq}` : 'Approver'}: {personName(names[r.user_id]) || 'Unknown'}</b>
+                                                <span className="lf-chip">{r.unassigned_at ? 'Removed' : r.assignee_role === 'APPROVER' && !approversReached ? 'After review' : 'Active'}</span>
+                                            </div>
+                                            <p className="ar-by">
+                                                <span>Added by <Byline layout="inline" name={names[r.assigned_by]} fallback="Unknown" at={r.assigned_at} /></span>
+                                                {r.unassigned_at && (
+                                                    <span>Removed by <Byline layout="inline" name={names[r.unassigned_by]} fallback="Unknown" at={r.unassigned_at} /></span>
+                                                )}
+                                            </p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </details>
                         )}
                     </Section>
 

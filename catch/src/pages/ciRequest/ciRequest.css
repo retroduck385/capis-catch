@@ -445,22 +445,6 @@
 .lf-ci .ci-rest-sec .ci-fact-grid { clear: both; padding: 0; }
 .lf-ci .ci-compare { justify-self: start; font-size: 0.74rem; }
 
-/* ---------- "What the CI results mean for this file" (ciFileChecks.jsx), under IV. Credit Checking ---------- */
+/* ---------- CI chips: the "err" tone (expired, not allowed) ---------- */
 .lf-folder .ci-chip.err { border-color: rgba(180, 35, 24, 0.3); background: #fdecea; color: #b42318; }
-.lf-folder .ci-meaning { display: grid; gap: 0.75rem; margin: 1rem 0 0; padding: 1rem 1.1rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg); text-align: left; }
-.lf-folder .ci-meaning h4 { margin: 0; color: var(--navy); font-size: 1rem; font-weight: 700; }
-.lf-folder .ci-meaning h5 { display: flex; align-items: center; gap: 0.4rem; margin: 0 0 0.35rem; color: var(--ink); font-size: 0.9rem; font-weight: 700; }
-.lf-folder .ci-meaning h5 svg { color: var(--lf-accent); }
-.lf-folder .ci-meaning ul { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; font-size: 0.9rem; line-height: 1.5; color: var(--ink); }
-.lf-folder .ci-meaning-block { padding-top: 0.7rem; border-top: 1px solid var(--lf-hair); }
-.lf-folder .ci-meaning-note { margin: 0; color: var(--lf-text-2); font-size: 0.84rem; line-height: 1.45; }
-.lf-folder .ci-meaning-sub { display: block; margin-top: 0.15rem; color: var(--lf-text-2); font-size: 0.85rem; }
-.lf-folder .ci-meaning-ok { display: flex; align-items: center; gap: 0.35rem; margin: 0; color: var(--lf-ok); font-size: 0.88rem; font-weight: 600; }
-.lf-folder .ci-meaning-stop {
-  display: flex; gap: 0.55rem; margin: 0; padding: 0.7rem 0.85rem; border: 1px solid rgba(180, 35, 24, 0.35); border-radius: 12px;
-  background: #fdecea; color: #7a1610; font-size: 0.9rem; line-height: 1.45;
-}
-.lf-folder .ci-meaning-stop svg { flex: none; margin-top: 0.1rem; color: #b42318; }
 [data-theme='dark'] .lf-folder .ci-chip.err { background: rgba(248, 113, 113, 0.12); border-color: rgba(252, 165, 165, 0.35); color: #fca5a5; }
-[data-theme='dark'] .lf-folder .ci-meaning-stop { background: rgba(248, 113, 113, 0.12); border-color: rgba(252, 165, 165, 0.35); color: #fecaca; }
-[data-theme='dark'] .lf-folder .ci-meaning-stop svg { color: #fca5a5; }

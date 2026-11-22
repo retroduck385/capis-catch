@@ -131,25 +131,34 @@ test('report validity: a year, or 4 months for an NFIS with a court case', () =>
     assert.equal(yearsSince('2020-11-22', AS_OF), 6);
 });
 
-test('Copy from TU: open loans (not cards) become XI. rows, without the ones already there', async () => {
+test('Copy from TU: open and closed loans (not cards) become XI. rows, without the ones already there', async () => {
     const { tuLoanRows } = await import('../src/pages/ciRequest/ciFacts.js');
     const accounts = [
+        { applicant_id: 1, is_open: false, account_type: 'PERSONAL LOAN', lender_type: 'BANK', balance: 0, installment: 6300,
+            original_amount: 151200, opened_on: '2017-08-18', closed_on: '2019-08-18', maturity_on: '2019-08-18' },
         { applicant_id: 1, is_open: true, account_type: 'AUTO LOAN', lender_name: 'Sample Bank', balance: 350000, installment: 12000,
             original_amount: 900000, opened_on: '2023-02-01', maturity_on: '2028-02-01', max_dpd: 15 },
         { applicant_id: 1, is_open: true, account_type: 'CREDIT CARD', lender_type: 'BANK', balance: 5000 },
-        { applicant_id: 1, is_open: false, account_type: 'HOME LOAN', balance: 0 },
+        { applicant_id: 1, is_open: false, account_type: 'CREDIT CARD', lender_type: 'BANK', balance: 0 },
         { applicant_id: 2, is_open: true, account_type: 'SALARY LOAN', lender_type: 'FINANCING', balance: 20000, ownership: 'GUARANTOR' },
     ];
     const slots = ciSlots(app, ci(both('NO_ADVERSE_FINDINGS'), [], accounts));
     const rows = tuLoanRows(slots);
-    assert.equal(rows.length, 2);
+    assert.equal(rows.length, 3);
+    // per borrower, open loans first
     assert.deepEqual(rows[0], {
         bank_name: 'Sample Bank', facility: 'AUTO LOAN', original_loan: '900000', outstanding_balance: '350000',
         amortization: '12000', contract_date: '2023-02-01', maturity_date: '2028-02-01',
         remarks: 'TU report 2026-10-01 (Principal Borrower), max 15 days late',
     });
-    assert.match(rows[1].remarks, /as guarantor/);
-    assert.equal(rows[1].bank_name, 'FINANCING');
+    assert.deepEqual(rows[1], {
+        bank_name: 'BANK', facility: 'PERSONAL LOAN', original_loan: '151200', outstanding_balance: '0',
+        amortization: '6300', contract_date: '2017-08-18', maturity_date: '2019-08-18',
+        remarks: 'TU report 2026-10-01 (Principal Borrower), closed 2019-08-18',
+    });
+    assert.match(rows[2].remarks, /as guarantor/);
+    assert.equal(rows[2].bank_name, 'FINANCING');
     // already in XI.: skipped
-    assert.equal(tuLoanRows(slots, [{ bank_name: 'sample bank', facility: 'Auto Loan', outstanding_balance: '350000' }]).length, 1);
+    assert.equal(tuLoanRows(slots, [{ bank_name: 'sample bank', facility: 'Auto Loan', outstanding_balance: '350000' }]).length, 2);
+    assert.equal(tuLoanRows(slots, [{ bank_name: 'Bank', facility: 'personal loan', outstanding_balance: '0' }]).length, 2);
 });

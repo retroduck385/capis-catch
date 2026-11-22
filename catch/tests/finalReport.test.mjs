@@ -3,20 +3,32 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSignoffs, reportMode, scoreSheet, whenPH } from '../src/pages/finalReport/signoffs.js';
 
-test('reportMode: final once Decided for the AO and Approvers only, draft only for the assigned CO in Credit Evaluation', () => {
-    assert.equal(reportMode({ stage: { stage: 'DECIDED' }, role: 'ACCOUNT_OFFICER', coCanEdit: false }), 'FINAL');
-    assert.equal(reportMode({ stage: { stage: 'DECIDED' }, role: 'APPROVER', coCanEdit: false }), 'FINAL');
-    for (const role of ['CREDIT_OFFICER', 'REVIEWER', 'DISPATCH_ADMIN', 'DEPT_HEAD', 'CREDIT_INVESTIGATOR']) {
-        assert.equal(reportMode({ stage: { stage: 'DECIDED' }, role, coCanEdit: false }), null, `no final report for ${role}`);
+test('reportMode: final once every reviewer endorsed (AO, assigned CO, routed reviewers) or Decided (Approvers); drafts for the CO and reviewers', () => {
+    const mode = (stage, role, extra = {}) => reportMode({ stage: stage && { stage }, role, coCanEdit: false, ...extra });
+    // Approval = every reviewer endorsed it
+    for (const stage of ['APPROVAL', 'DECIDED']) {
+        assert.equal(mode(stage, 'ACCOUNT_OFFICER'), 'FINAL', `AO in ${stage}`);
+        assert.equal(mode(stage, 'CREDIT_OFFICER', { assigned: true }), 'FINAL', `assigned CO in ${stage}`);
+        assert.equal(mode(stage, 'CREDIT_OFFICER'), null, `not the assigned CO in ${stage}`);
+        assert.equal(mode(stage, 'REVIEWER', { assigned: true }), 'FINAL', `routed reviewer in ${stage}`);
+        assert.equal(mode(stage, 'REVIEWER'), null, `not a routed reviewer in ${stage}`);
     }
-    assert.equal(reportMode({ stage: { stage: 'CREDIT_EVALUATION', status: 'IN_PROGRESS' }, role: 'CREDIT_OFFICER', coCanEdit: true }), 'DRAFT');
-    assert.equal(reportMode({ stage: { stage: 'CREDIT_EVALUATION', status: 'RETURNED' }, role: 'CREDIT_OFFICER', coCanEdit: true }), 'DRAFT',
-        'after a reviewer return');
-    assert.equal(reportMode({ stage: { stage: 'CREDIT_EVALUATION' }, role: 'CREDIT_OFFICER', coCanEdit: false }), null, 'not the assigned CO');
-    assert.equal(reportMode({ stage: { stage: 'REVIEW' }, role: 'CREDIT_OFFICER', coCanEdit: true }), null, 'not while in Review');
-    assert.equal(reportMode({ stage: { stage: 'APPROVAL' }, role: 'APPROVER', coCanEdit: false }), null);
-    assert.equal(reportMode({ stage: null, role: 'CREDIT_OFFICER', coCanEdit: true }), null);
+    assert.equal(mode('DECIDED', 'APPROVER'), 'FINAL');
+    assert.equal(mode('APPROVAL', 'APPROVER'), null);
+    for (const role of ['DISPATCH_ADMIN', 'DEPT_HEAD', 'CREDIT_INVESTIGATOR']) {
+        assert.equal(mode('DECIDED', role, { assigned: true }), null, `no final report for ${role}`);
+    }
+    // Before endorsement: AO / Approver none, CO draft while editing, reviewers draft while in Review
+    assert.equal(mode('REVIEW', 'ACCOUNT_OFFICER'), null);
+    assert.equal(mode('REVIEW', 'REVIEWER', { assigned: true }), 'DRAFT', 'routed reviewer before endorsing');
+    assert.equal(mode('REVIEW', 'REVIEWER'), null, 'not routed to this reviewer');
+    assert.equal(mode('CREDIT_EVALUATION', 'REVIEWER', { assigned: true }), null, 'returned to the CO');
+    assert.equal(mode('CREDIT_EVALUATION', 'CREDIT_OFFICER', { coCanEdit: true }), 'DRAFT');
+    assert.equal(mode('CREDIT_EVALUATION', 'CREDIT_OFFICER'), null, 'not the assigned CO');
+    assert.equal(mode('REVIEW', 'CREDIT_OFFICER', { coCanEdit: true, assigned: true }), null, 'not while in Review');
+    assert.equal(mode(null, 'CREDIT_OFFICER', { coCanEdit: true }), null);
 });
+
 
 const T = (h) => `2026-11-${String(h).padStart(2, '0')}T02:00:00Z`;
 const stages = [

@@ -227,12 +227,15 @@ export const validityRows = (slots, asOf = new Date()) => slots.flatMap((s) => [
 ].filter(Boolean));
 
 // ---------- FP XI. Loan Verification: "Copy from TU" ----------
-// The borrowers' open TU loans (not credit cards) as XI. rows (form strings), for the CO to check before saving.
-// Rows already in XI. (same lender, facility and balance) are skipped. existing: the form's loan_checks rows.
+// The borrowers' TU loans (not credit cards), open and closed, as XI. rows (form strings), for the CO to check before
+// saving. Per borrower, open loans first; a closed one says so in its remarks (it shows the payment history; XI. rows
+// don't count in the DBR). Rows already in XI. (same lender, facility and balance) are skipped.
+// existing: the form's loan_checks rows.
 const str = (v) => (v === null || v === undefined ? '' : String(v));
 const same = (a, b) => str(a).trim().toUpperCase() === str(b).trim().toUpperCase();
 export const tuLoanRows = (slots, existing = []) => slots.flatMap((s) => s.tu.accounts
-    .filter((a) => a.is_open && !isCard(a))
+    .filter((a) => !isCard(a))
+    .sort((a, b) => Number(b.is_open) - Number(a.is_open))
     .map((a) => ({
         bank_name: str(a.lender_name || a.lender_type),
         facility: str(a.account_type),
@@ -242,6 +245,7 @@ export const tuLoanRows = (slots, existing = []) => slots.flatMap((s) => s.tu.ac
         contract_date: str(a.opened_on),
         maturity_date: str(a.maturity_on),
         remarks: [`TU report${s.tu.report_date ? ` ${s.tu.report_date}` : ''} (${s.who})`,
+            a.is_open ? null : `closed${a.closed_on ? ` ${a.closed_on}` : ''}`,
             a.ownership === 'GUARANTOR' ? 'as guarantor' : null,
             (num(a.max_dpd) ?? 0) > 0 ? `max ${a.max_dpd} days late` : null,
             (num(a.past_due) ?? 0) > 0 ? `${peso(a.past_due)} past due` : null].filter(Boolean).join(', '),

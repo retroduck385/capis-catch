@@ -9,13 +9,28 @@ export const whenPH = (iso) => (iso ? new Date(iso).toLocaleString('en-PH', {
     timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
 }) : null);
 
-// FINAL once the file is Decided, for the Account Officer and the Approvers only (group notes item 36; FINAL_REPORT_ROLES
-// in roles.js). DRAFT only for the assigned Credit Officer while they can edit the Financial Package in Credit
-// Evaluation (still editing, or after a reviewer return). null = not available (the page says so).
-const FINAL_ROLES = ['ACCOUNT_OFFICER', 'APPROVER'];
-export const reportMode = ({ stage, role, coCanEdit }) => {
-    if (stage?.stage === 'DECIDED') return FINAL_ROLES.includes(role) ? 'FINAL' : null;
-    if (role === 'CREDIT_OFFICER' && coCanEdit && stage?.stage === 'CREDIT_EVALUATION') return 'DRAFT';
+// Which version of the final report a viewer gets (FINAL, DRAFT or null = not available; the page says so).
+//   FINAL  once every reviewer has endorsed it (the file is in Approval, then Decided): the Account Officer (prints it
+//          for the approvers), the assigned Credit Officer and the routed reviewers; the Approvers once Decided
+//          (group notes item 36). In Approval the sheets say "for approval".
+//   DRAFT  the assigned Credit Officer while they can edit the FP in Credit Evaluation (still editing, or after a
+//          reviewer return); the routed reviewers while the file is in Review, to see what the approvers will get
+//          before they endorse.
+// assigned: the viewer holds this file's Credit Officer slot, or (for a reviewer) an active review assignment.
+const ENDORSED_STAGES = ['APPROVAL', 'DECIDED'];
+export const reportMode = ({ stage, role, coCanEdit, assigned = false }) => {
+    const s = stage?.stage;
+    const endorsed = ENDORSED_STAGES.includes(s);
+    if (role === 'ACCOUNT_OFFICER') return endorsed ? 'FINAL' : null;
+    if (role === 'APPROVER') return s === 'DECIDED' ? 'FINAL' : null;
+    if (role === 'CREDIT_OFFICER') {
+        if (s === 'CREDIT_EVALUATION' && coCanEdit) return 'DRAFT';
+        return endorsed && assigned ? 'FINAL' : null;
+    }
+    if (role === 'REVIEWER' && assigned) {
+        if (s === 'REVIEW') return 'DRAFT';
+        return endorsed ? 'FINAL' : null;
+    }
     return null;
 };
 

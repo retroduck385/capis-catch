@@ -312,7 +312,7 @@ const CiRequestPage = () => {
                         ) : <span />}
                         {next && (
                             <button type="button" className="ci-go" title={tt(next.title)} onClick={() => openStep(next.key)}>
-                                Next: {next.title}<ArrowRight size={16} aria-hidden="true" />
+                                {next.title}<ArrowRight size={16} aria-hidden="true" />
                             </button>
                         )}
                     </nav>

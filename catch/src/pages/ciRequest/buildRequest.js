@@ -31,6 +31,14 @@ const pickId = (party, idDetails) => {
     return { idStatus: 'CONFIRMED', idType: best.id_type, idNumber: best.id_number, idExpiry: best.expiry_date };
 };
 
+// The spouse is married by definition, so their civil status isn't asked on the form. The bank doesn't ask for
+// a co-borrower's civil status, so the TU form leaves it as "—".
+const civilStatusFor = (p) => {
+    if (p.role === 'CO_BORROWER') return null;
+    if (p.civil_status) return labelFor(CIVIL_STATUSES, p.civil_status);
+    return p.role === 'SPOUSE' ? labelFor(CIVIL_STATUSES, 'MARRIED') : null;
+};
+
 // Everything both forms need, per borrower (principal, spouse, co-borrowers 1..n).
 // idDetails = fetchConfirmedIdDetails() result; undefined while it loads.
 export const buildCiRequest = (app, idDetails) => {
@@ -43,13 +51,14 @@ export const buildCiRequest = (app, idDetails) => {
         const address = presentAddressOf(p, principal);
         return {
             key: `${p.role}-${p.party_no ?? 1}`,
-            label: p.role === 'PRINCIPAL' ? 'Subject' : partyLabel(p),
+            role: p.role,
+            label: p.role === 'PRINCIPAL' ? 'Principal' : partyLabel(p),
             lastName: p.last_name,
             firstName: p.first_name,
             middleName: p.middle_name,
             maidenName: p.maiden_name,
             birthDate: p.date_of_birth,
-            civilStatus: p.civil_status ? labelFor(CIVIL_STATUSES, p.civil_status) : null,
+            civilStatus: civilStatusFor(p),
             address: joinAddress(address),
             zip: address?.zip_code ?? null,
             mobile: p.mobile_number,
@@ -77,7 +86,7 @@ export const TU_ROWS = [
     ['Middle Name', (p) => p.middleName, true],
     ['Full Maiden Name (married female)', (p) => p.maidenName, true],
     ['Date of Birth', (p) => p.birthDate],
-    ['Civil Status', (p) => p.civilStatus],
+    ['Civil Status', (p) => p.civilStatus, (p) => p.role === 'CO_BORROWER'],
     ['Complete Address (Philippines)', (p) => p.address],
     ['Zip Code', (p) => p.zip],
     ['Contact Number (Philippines)', (p) => p.mobile],

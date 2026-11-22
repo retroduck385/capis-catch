@@ -1,6 +1,10 @@
 // Supabase calls for the Financial Package (see 20261020_financial_package.sql). Functions throw on error;
 // callers handle it in try/catch/finally.
 import { supabase } from '../../supabaseClient';
+import { getParties } from '../applicationForm/api';
+import { BORROWER_ROLES } from '../applicationForm/options';
+import { fetchDocumentChecks } from '../documentCheck/api';
+import { statementValues } from './depositChecks';
 
 const check = ({ data, error }) => {
     if (error) throw error;
@@ -29,6 +33,22 @@ export const fetchFinancialPackage = async (applicationId, applicantIds) => {
         byApplication('credit_score_entries', applicationId),
     ]);
     return { pkg, parties, exceptions, depositChecks, loanChecks, tradeChecks, titles, creditScore };
+};
+
+// X. "Fill from KYC and bank statements": the borrowers' current bank statement files, each with the values the
+// Account Officer confirmed on the Document check. confirmed false: not confirmed yet (its values are not used).
+// -> [{ party, doc, confirmed, header, rows }]
+export const fetchBankStatements = async (record) => {
+    const docs = getParties(record, BORROWER_ROLES).flatMap((party) => (party.application_requirements ?? [])
+        .flatMap((r) => r.documents ?? [])
+        .filter((d) => d.document_type === 'FS_BANK_STATEMENTS')
+        .map((doc) => ({ party, doc })));
+    const checks = await fetchDocumentChecks(docs.map((d) => d.doc.id));
+    return docs.map(({ party, doc }) => {
+        const c = checks[doc.id];
+        const confirmed = Boolean(c?.run?.confirmed_at && c.run.status === 'DONE');
+        return { party, doc, confirmed, ...(confirmed ? statementValues(c.fields) : { header: {}, rows: [] }) };
+    });
 };
 
 // Credit_Score tab rules (criteria + bands with points), in sheet order

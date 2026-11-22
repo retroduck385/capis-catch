@@ -7,8 +7,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Byline from '../../components/byline';
 import {
-    ArrowDown, ArrowUp, Ban, Check, CheckCircle2, Circle, CloudCheck, CornerUpLeft, ExternalLink, Gavel, ListChecks, Scale, ThumbsUp,
-    TriangleAlert,
+    ArrowDown, ArrowUp, Ban, Check, CheckCircle2, Circle, CloudCheck, CornerUpLeft, ExternalLink, FileText, Gavel, ListChecks, Scale,
+    ThumbsUp, TriangleAlert,
 } from 'lucide-react';
 import { formatWhen } from '../../components/people';
 import { getDocumentUrl, getParties } from '../applicationForm/api';
@@ -309,12 +309,13 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
         !action && 'Pick a decision.',
         !isReturn && action && marked.length < checkItems.length && `Mark every checklist item (${marked.length} of ${checkItems.length}).`,
         isReturn && flagged.length === 0 && 'Mark at least one item as Needs revision.',
+        // The file reaches the approvers only once every reviewer accepts everything (20261201_review_endorse_all_ok.sql)
+        action === 'ENDORSED' && flagged.length > 0
+            && `To endorse, every item must be OK. Return it to the Credit Officer to fix: ${flagged.map((i) => i.label).join(', ')}.`,
         flagged.some((i) => !checks[i.code].remark.trim()) && 'Add a remark to every item marked Needs revision.',
         isReturn && !severity && 'Pick Minor or Major.',
         !remarks.trim() && (isReturn ? 'Say what the Credit Officer needs to revise.' : 'Write the justification.'),
     ].filter(Boolean);
-    // only an endorsement signs off with items still flagged ("Doesn't endorse" goes back to the CO anyway)
-    const signingOffWithFlags = action === 'ENDORSED' && flagged.length > 0;
     const ready = blockers.length === 0;
     const hasRemarks = remarks.trim() !== '';
     const actionLabel = REVIEW_ACTIONS.find((a) => a.value === action)?.label ?? null;
@@ -425,7 +426,8 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                 </div>
                 <p className="fp-note">
                     Endorse / Not endorse is your recommendation to the approvers, like the Credit Officer&apos;s Credit Result.
-                    It doesn&apos;t approve or reject the loan.
+                    It doesn&apos;t approve or reject the loan. You can endorse only when every item is OK; the file goes to the
+                    approvers once every reviewer has endorsed it.
                 </p>
                 {isReturn && (
                     <div className="rv-severity">
@@ -446,15 +448,6 @@ export const ReviewForm = ({ checkItems, flags, nextLabel, onSubmit, busy, error
                     <textarea rows={4} value={remarks} disabled={busy} onChange={(e) => update({ remarks: e.target.value })}
                         placeholder={isReturn ? 'Summarize what to fix; the items above have the details' : 'Why you endorse it or not'} />
                 </label>
-                {signingOffWithFlags && (
-                    <p className="lf-note warn">
-                        <TriangleAlert size={16} aria-hidden="true" />
-                        <span>
-                            You marked {flagged.map((i) => i.label).join(', ')} as Needs revision. To have it fixed, return it to
-                            the Credit Officer instead.
-                        </span>
-                    </p>
-                )}
             </fieldset>
 
             <div className="fp-savebar">
@@ -545,3 +538,24 @@ export const MyWorkProgress = ({ kind, progress, total = 0, onJump }) => {
         </div>
     );
 };
+
+// A routed reviewer's way to the final report (the panel's "final artifact"), near the top of the review summary so
+// it's seen before signing off. mode from reportMode() in finalReport/signoffs.js: DRAFT while in Review (every page
+// marked DRAFT), FINAL once every reviewer has endorsed it. Opens in a new tab so the review in progress stays put.
+export const ReportStrip = ({ appId, mode }) => (
+    <section className="rv-report" aria-label="Final report">
+        <span className="rv-report-ic" aria-hidden="true"><FileText size={20} /></span>
+        <div className="rv-report-text">
+            <b>{mode === 'DRAFT' ? 'Final report (draft)' : 'Final report'}</b>
+            <span>
+                {mode === 'DRAFT'
+                    ? 'See what the approvers will get before you sign off: the Financial Package, credit scoring sheet, Decision Support and sign-offs as one PDF. Every page is marked DRAFT until every reviewer has endorsed it.'
+                    : 'Every reviewer has endorsed it. The Financial Package, credit scoring sheet, Decision Support and sign-offs as one PDF.'}
+            </span>
+        </div>
+        <Link to={`/finalReportPage?id=${appId}`} className="lf-primary" target="_blank" rel="noreferrer">
+            <FileText size={16} aria-hidden="true" />{mode === 'DRAFT' ? 'Generate final report (Draft)' : 'Generate final report'}
+            <ExternalLink size={14} aria-hidden="true" />
+        </Link>
+    </section>
+);

@@ -102,7 +102,8 @@ export const Readiness = ({ ctx }) => {
 // ---- DSS-11: exception highlights ----
 const TONE_OF = { fail: 'bad', needs_review: 'warn' };
 
-export const ExceptionHighlights = ({ ctx }) => {
+// fullHref: set when shown outside the full page (the brief's modal): the exceptions table is then on another page
+export const ExceptionHighlights = ({ ctx, fullHref }) => {
     const { mrac, mracChanges, exceptions } = ctx;
     const done = mrac?.status === 'DONE';
     const criteria = done ? mrac.result?.criteria ?? [] : [];
@@ -186,7 +187,11 @@ export const ExceptionHighlights = ({ ctx }) => {
                             </li>
                         ))}
                     </ul>
-                    <p className="fp-note"><a href="#ds-exceptions">Full table below (V. Exception/s)</a></p>
+                    <p className="fp-note">
+                        {fullHref
+                            ? <Link to={fullHref} target="_blank" rel="noopener">Full table on the Decision Support page (V. Exception/s)<span className="sr-only"> (opens in a new tab)</span></Link>
+                            : <a href="#ds-exceptions">Full table below (V. Exception/s)</a>}
+                    </p>
                 </div>
             )}
         </Section>
@@ -321,7 +326,7 @@ export const Score = ({ ctx }) => {
 export const CreditChecking = ({ ctx }) => (
     <Section id="ds-ci" title="IV. Credit Checking (CI results)" className="lf-ciresults">
         {!ctx.ciDone && <p className="lf-note warn">Credit investigation is not finished yet.</p>}
-        <CiResultsView app={ctx.app} title={null} computed={ctx.computed} />
+        <CiResultsView app={ctx.app} title={null} />
     </Section>
 );
 

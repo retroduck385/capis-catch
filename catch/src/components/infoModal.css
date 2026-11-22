@@ -1,0 +1,58 @@
+/* Read-only detail modal (infoModal.jsx): a solid card over a dimmed page (like .fm-dialog), the tone as a top
+   stripe; header and footer stay put while the body scrolls. --tone comes from the .lf tone classes (.ok / .warn...). */
+.info-modal {
+  position: fixed; inset: 0; display: none; width: min(52rem, calc(100vw - 2rem)); max-width: none; height: fit-content; max-height: calc(100dvh - 2rem);
+  margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08)); border-radius: 18px;
+  background: #fff; color: var(--ink, #0f1b33); box-shadow: inset 0 4px 0 var(--tone), 0 30px 70px -20px rgba(13, 20, 40, 0.5); text-align: left;
+}
+.info-modal[open] { display: flex; flex-direction: column; }
+.info-modal::backdrop { background: rgba(13, 20, 40, 0.45); }
+.info-modal-head {
+  display: flex; align-items: center; gap: 0.65rem; padding: 0.95rem 0.9rem 0.85rem 1.4rem;
+  border-bottom: 1px solid var(--lf-hair, #e8ebf2);
+}
+.info-modal-head .ic {
+  display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: 10px;
+  background: var(--tone-bg); color: var(--tone); box-shadow: 0 0 0 1px var(--tone-line);
+}
+.info-modal-head p { flex: 1; margin: 0; color: var(--muted); font-size: 0.88rem; }
+.info-modal-head p b { color: var(--navy, #14295f); font-size: 1rem; }
+.info-modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1.1rem 1.4rem 0.4rem; overscroll-behavior: contain; }
+.info-modal-body > .ct-section { margin: 0; }
+.info-modal-body > .ct-section > :not(legend) { max-width: none; }
+.info-modal-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1rem;
+  padding: 0.85rem 1.4rem 1rem; border-top: 1px solid var(--lf-hair, #e8ebf2); color: var(--muted); font-size: 0.84rem;
+}
+.info-modal-foot .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-left: auto; }
+.info-modal-go {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.5rem; padding: 0.2rem 1rem;
+  border: 1px solid rgba(30, 63, 151, 0.3); border-radius: 999px; background: var(--lf-accent-bg, #e8edf9);
+  color: var(--lf-accent, #1e3f97); font-size: 0.88rem; font-weight: 700; text-decoration: none;
+}
+.info-modal-go:hover { background: var(--lf-control-hover, #fff); border-color: var(--lf-accent, #1e3f97); color: var(--lf-accent, #1e3f97); text-decoration: none; }
+.info-modal-go:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.info-modal-go svg { flex: none; }
+.info-modal .info-modal-x, .info-modal .info-modal-close {
+  display: inline-grid; place-items: center; min-height: 2.5rem; margin: 0; border: 1px solid transparent; border-radius: 999px;
+  background: transparent; box-shadow: none; color: var(--muted); font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+}
+.info-modal .info-modal-x { width: 2.5rem; padding: 0; }
+.info-modal .info-modal-close { padding: 0.3rem 1rem; }
+.info-modal .info-modal-x:hover, .info-modal .info-modal-close:hover { background: var(--lf-wash, rgba(20, 41, 95, 0.06)); color: var(--ink); }
+.info-modal .info-modal-x:focus-visible, .info-modal .info-modal-close:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+[data-theme='dark'] .lf-folder .info-modal { background: #131c38; border-color: rgba(255, 255, 255, 0.1); }
+[data-theme='dark'] .lf-folder .info-modal-head, [data-theme='dark'] .lf-folder .info-modal-foot { border-color: rgba(255, 255, 255, 0.1); }
+[data-theme='dark'] .lf-folder .info-modal-go { border-color: rgba(169, 192, 255, 0.4); }
+
+@media (max-width: 40rem) {
+  .info-modal { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }
+  .info-modal-head { padding-left: 1rem; }
+  .info-modal-body { padding-inline: 1rem; }
+  .info-modal-foot { padding-inline: 1rem; }
+  .info-modal-foot .acts { width: 100%; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes info-modal-in { from { opacity: 0; transform: translateY(-6px) scale(0.99); } }
+  .info-modal[open] { animation: info-modal-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+}

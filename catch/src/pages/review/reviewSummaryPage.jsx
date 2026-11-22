@@ -21,7 +21,7 @@ import { ReviewSummarySkeleton } from '../../components/skeleton';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    ArrowDown, ArrowRight, CalendarClock, ClipboardCheck, Eye, Gauge, House, Lock, Percent, PenLine, Scale, Send, UserCheck, Users, Wallet,
+    ArrowDown, ArrowRight, CalendarClock, ClipboardCheck, Eye, Gauge, House, Lock, Maximize2, Percent, PenLine, Scale, Send, UserCheck, Users, Wallet,
 } from 'lucide-react';
 import Byline from '../../components/byline';
 import { formatWhen, personName } from '../../components/people';
@@ -51,7 +51,8 @@ import { isReviewedChange, policyFlags, reviewFlags, reviewState } from './revie
 import { clearDraft, draftKey } from './reviewDraft';
 import { PanelHide, PanelRail } from '../../components/sidePanel';
 import { useSidePanel } from '../../components/useSidePanel';
-import { FlagList, IncomeEvidence, MyWorkProgress, ReviewForm, ReviewProgress } from './reviewParts';
+import { FlagList, IncomeEvidence, MyWorkProgress, ReportStrip, ReviewForm, ReviewProgress } from './reviewParts';
+import { reportMode } from '../finalReport/signoffs';
 import MessagesPanel from '../messages/messagesPanel';
 import '../loanFolder/loanFolder.css';
 import '../financialPackage/financialPackage.css';
@@ -62,6 +63,7 @@ import FinalReportButton from '../finalReport/finalReportButton';
 import { fetchDecisionSupport } from '../decisionSupport/api';
 import { buildDssContext } from '../decisionSupport/context';
 import DecisionBrief from '../decisionSupport/brief';
+import ScoreCategoryDialog from './scoreCategoryDialog';
 
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
 const money = (v) => (v === null || v === undefined || v === '' ? '—' : `₱${formatMoney(v)}`);
@@ -140,6 +142,7 @@ const ReviewSummaryPage = () => {
     const approverView = Boolean(data?.rows.some((r) => r.assignee_role === 'APPROVER' && !r.unassigned_at && r.user_id === myId));
     const [activeId, pickSection] = useActiveSection(approverView ? APPROVER_TOC_IDS : TOC_IDS, Boolean(data));
     const [returnTo, setReturnTo] = useState(null); // { code, label }: the checklist item the reviewer jumped up from
+    const [scoreCat, setScoreCat] = useState(null); // the credit score category open in its modal (CATEGORIES value)
 
     // "Back to your review" goes away once the item is back on screen (after it has left it: the jump scrolls smoothly)
     useEffect(() => {
@@ -184,7 +187,8 @@ const ReviewSummaryPage = () => {
     const pkg = fp.pkg ?? {};
     const details = Object.fromEntries(fp.parties.map((r) => [r.applicant_id, r]));
     const computed = computeFp(app, details, pkg, { interest_rate: app.interest_rate });
-    const score = totalCreditScore(rules, Object.fromEntries(fp.creditScore.map((r) => [r.criterion, r])));
+    const scoreEntries = Object.fromEntries(fp.creditScore.map((r) => [r.criterion, r]));
+    const score = totalCreditScore(rules, scoreEntries);
 
     const { approvers } = splitRouting(rows);
     const state = reviewState(rows, decisions);
@@ -193,6 +197,8 @@ const ReviewSummaryPage = () => {
     const mySignoff = myReview && state.signoffs[myReview.id];
     const reviewDraftKey = draftKey(myId, myReview?.id);
     const isApprover = approverView;
+    // The routed reviewer's final report: a draft while in Review, the final one once every reviewer endorsed it
+    const reviewerReport = role === 'REVIEWER' ? reportMode({ stage, role, coCanEdit: false, assigned: Boolean(myReview) }) : null;
     const progress = approvalProgress(pkg.approval_tier, approvers, approvals, positions);
     const myApprover = approvers.find((r) => r.user_id === myId);
     const myApproval = myApprover && progress.decisionOf(myApprover);
@@ -213,7 +219,7 @@ const ReviewSummaryPage = () => {
     ];
 
     const isLast = current && reviewers.at(-1)?.id === current.id;
-    const nextLabel = isLast ? 'You are the last reviewer: it moves to Approval and the approvers are notified.'
+    const nextLabel = isLast ? 'You are the last reviewer: it moves to Approval, the approvers are notified, and the Account Officer and the Credit Officer are told the final report is ready.'
         : `It passes to reviewer ${(current?.seq ?? 0) + 1}.`;
 
     const handleSubmit = async (review) => {
@@ -224,7 +230,7 @@ const ReviewSummaryPage = () => {
             clearDraft(reviewDraftKey);
             await reload();
             setDone(review.action === 'RETURNED' ? 'Returned to the Credit Officer.'
-                : isLast ? 'Review complete: sent to the approvers.' : 'Signed off: passed to the next reviewer.');
+                : isLast ? 'Review complete: sent to the approvers. The Account Officer and the Credit Officer are notified to generate the final report.' : 'Signed off: passed to the next reviewer.');
         } catch (err) {
             setSubmitError(err.message);
         } finally {
@@ -365,7 +371,7 @@ const ReviewSummaryPage = () => {
         ),
         'rv-ci': (
             <Section id="rv-ci" title="IV. Credit Checking (CI results)" className="lf-ciresults">
-                <CiResultsView app={app} title={null} computed={computed} />
+                <CiResultsView app={app} title={null} />
             </Section>
         ),
         'rv-score': (
@@ -373,10 +379,18 @@ const ReviewSummaryPage = () => {
                 {score.scored === 0 ? <p className="fp-empty">Not scored yet.</p> : (
                     <>
                         <dl className="fp-info">
+                            {/* each category opens its criteria in a modal (scoreCategoryDialog.jsx); the whole row is the button */}
                             {CATEGORIES.map((c) => (
-                                <Info key={c.value} label={c.label}>
-                                    {score.byCategory[c.value].score} / {score.byCategory[c.value].max}
-                                </Info>
+                                <div key={c.value} className="fp-info-row rv-score-row">
+                                    <dt>{c.label}</dt>
+                                    <dd>
+                                        <button type="button" className="rv-score-open" aria-haspopup="dialog" onClick={() => setScoreCat(c.value)}>
+                                            <span className="val">{score.byCategory[c.value].score} / {score.byCategory[c.value].max}</span>
+                                            <span className="hint">View criteria<Maximize2 size={13} aria-hidden="true" /></span>
+                                            <span className="sr-only"> for {c.label}</span>
+                                        </button>
+                                    </dd>
+                                </div>
                             ))}
                             <Info label="Total">{score.total} / 100</Info>
                             <Info label="Risk rating">{score.riskRating ?? '—'}</Info>
@@ -384,6 +398,10 @@ const ReviewSummaryPage = () => {
                         </dl>
                         {!score.complete && (
                             <p className="lf-note warn">Not finished: {score.scored} of {score.count} criteria scored.</p>
+                        )}
+                        {scoreCat && (
+                            <ScoreCategoryDialog appId={app.id} category={CATEGORIES.find((c) => c.value === scoreCat)} rules={rules}
+                                entries={scoreEntries} sub={score.byCategory[scoreCat]} onClose={() => setScoreCat(null)} />
                         )}
                     </>
                 )}
@@ -526,6 +544,8 @@ const ReviewSummaryPage = () => {
                 <span>{yourPart}</span>
             </p>
             {done && <p className="lf-ok-note rv-done" role="status"><Terms text={done} /></p>}
+
+            {reviewerReport && <ReportStrip appId={app.id} mode={reviewerReport} />}
 
             {myTurn && (
                 <MyWorkProgress kind={canAct ? 'review' : 'approval'} progress={myWork} total={checkItems.length}

@@ -1,5 +1,5 @@
 // The policy recommender's findings for one check run (mrac-service recommender.py -> result.recommendations), grouped
-// for the Credit Officer: exceptions needed, documents / information to obtain, conditions for the T&Cs, then what is
+// for the Credit Officer: exceptions needed, conditions for the T&Cs, then what is
 // met. Every finding is a PROPOSAL with the clause it comes from; the assigned CO accepts, edits or dismisses each one
 // (review_mrac_finding, logged in audit_log). Accepting an exception or a condition also adds it to this page's
 // V. Exception/s or terms and conditions; the CO still saves the Financial Package.
@@ -14,8 +14,7 @@ import Excerpt from './excerpt';
 const GROUPS = [
     { key: 'exception', title: 'Exceptions needed', tone: 'bad',
         note: 'The file does not meet these. Each needs an exception approved by the approving authority, or a change to the file.' },
-    { key: 'obtain', title: 'Documents and information to obtain', tone: 'warn',
-        note: 'The policy applies, but the file cannot show yet whether it is met.' },
+    // 'obtain' (documents and information to obtain) is still produced by the recommender but no longer shown
     { key: 'condition', title: 'Conditions for the terms and conditions', tone: 'plain',
         note: 'Things the policy requires at approval or release.' },
 ];
@@ -69,8 +68,8 @@ const Editor = ({ group, initial, onSave, onCancel, busy }) => {
                 </label>
             ))}
             <div className="mrac-rec-buttons">
-                <button type="button" className="fp-btn" disabled={busy} onClick={() => onSave(value)}>Save and add</button>
-                <button type="button" className="fp-btn secondary" disabled={busy} onClick={onCancel}>Cancel</button>
+                <button type="button" className="fp-btn mrac-b-blue" disabled={busy} onClick={() => onSave(value)}>Save and add</button>
+                <button type="button" className="fp-btn mrac-b-white" disabled={busy} onClick={onCancel}>Cancel</button>
             </div>
         </div>
     );
@@ -141,11 +140,11 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
             {review && <Decision review={review} names={names} />}
             {canEdit && !review && mode === null && (
                 <div className="mrac-rec-buttons">
-                    <button type="button" className="fp-btn" disabled={busy} onClick={accept}>{acceptLabel}</button>
+                    <button type="button" className="fp-btn mrac-b-blue" disabled={busy} onClick={accept}>{acceptLabel}</button>
                     {group !== 'obtain' && (
-                        <button type="button" className="fp-btn secondary" disabled={busy} onClick={() => setMode('edit')}>Edit, then add</button>
+                        <button type="button" className="fp-btn mrac-b-orange" disabled={busy} onClick={() => setMode('edit')}>Edit, then add</button>
                     )}
-                    <button type="button" className="fp-btn secondary" disabled={busy} onClick={() => setMode('dismiss')}>Dismiss</button>
+                    <button type="button" className="fp-btn mrac-b-white" disabled={busy} onClick={() => setMode('dismiss')}>Dismiss</button>
                 </div>
             )}
             {canEdit && !review && mode === 'edit' && (
@@ -162,9 +161,9 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
                         <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} />
                     </label>
                     <div className="mrac-rec-buttons">
-                        <button type="button" className="fp-btn" disabled={busy || !reason.trim()}
+                        <button type="button" className="fp-btn mrac-b-blue" disabled={busy || !reason.trim()}
                             onClick={() => decide('DISMISSED', { reason: reason.trim() })}>Dismiss</button>
-                        <button type="button" className="fp-btn secondary" disabled={busy} onClick={() => setMode(null)}>Cancel</button>
+                        <button type="button" className="fp-btn mrac-b-white" disabled={busy} onClick={() => setMode(null)}>Cancel</button>
                     </div>
                 </div>
             )}
@@ -212,14 +211,10 @@ const Recommendations = ({ run, reviews = {}, names = {}, canEdit = false, onAdd
 
     return (
         <div className="mrac-recs" aria-live="polite">
-            <div className={`mrac-banner ${counts.exception ? 'bad' : counts.obtain ? 'warn' : 'ok'}`}>
-                <div className="top">
-                    <b>{rec.checked} policy clauses checked against this file</b>
-                    {run.finished_at && <time dateTime={run.finished_at} title={fullWhen(run.finished_at)}>{formatWhen(run.finished_at)}</time>}
-                </div>
-                <p>
-                    {rec.summary || `${counts.exception ?? 0} exception(s) needed, ${counts.obtain ?? 0} item(s) to obtain, `
-                        + `${counts.condition ?? 0} condition(s), ${counts.met ?? 0} met.`}
+            <div className={`mrac-banner ${counts.exception ? 'bad' : 'ok'}`}>
+                <p className="lead">
+                    {rec.summary?.replace(/\s*\d+ items? to obtain or verify\./, '')
+                        || `${counts.exception ?? 0} exception(s) needed, ${counts.condition ?? 0} condition(s), ${counts.met ?? 0} met.`}
                 </p>
                 <p className="fp-note">
                     Proposals from {rec.model || 'the recommender'}, each checked by CATCH against its clause and the figures.

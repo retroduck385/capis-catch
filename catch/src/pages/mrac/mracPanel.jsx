@@ -76,7 +76,7 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
         <Section id="fp-mrac" title="Policy check (MRAC)" className="mrac fp-key">
             <p className="fp-note">
                 Checks this file against the enabled <Term k="MRAC" /> criteria and reads the bank&apos;s policy clauses that apply
-                to it: exceptions needed, documents to obtain, conditions for the terms. These are proposals: you accept, edit or
+                to it: exceptions needed and conditions for the terms. These are proposals: you accept, edit or
                 dismiss each one, and nothing is saved to the Financial Package until you add it and save.
             </p>
             <div className="mrac-actions">

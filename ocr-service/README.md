@@ -40,6 +40,10 @@ Add `OCR_DISABLE_MKLDNN=1` to `ocr-service/.env` and restart the worker: PaddleO
 (slower, same results) and the worker prints "OCR: oneDNN (MKLDNN) off" on the first file. Leave it unset everywhere
 else; the default is unchanged.
 
+The worker now also does this by itself: if a file fails with that error, it switches oneDNN off, reads the same
+file again and stays that way until it restarts (`ocr.py`, `_predict`). Every worker on the shared Supabase project
+takes runs from the same queue, so one teammate's worker without the fix used to fail everyone's uploads.
+
 The request uses structured outputs (the answer must match the field schema built from `extraction_field_defs`), effort `low`, and, on the models that support it, server-side refusal fallbacks (`fallbacks: "default"`); `extraction_runs.model` records the model that actually answered. Only **synthetic test documents** go through it (CATCH rule).
 
 Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`, then `20261109_ai_extraction.sql` and `20261109_ci_extraction.sql` (NFIS / TU extraction).

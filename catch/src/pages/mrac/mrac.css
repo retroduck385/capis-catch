@@ -1,10 +1,13 @@
 /* MRAC policy check (Financial Package) and policy search (work tray). Matches the FP section cards (financialPackage.css)
-   and the work tray cards (workTray.css). Scoped to .mrac; unlayered so it wins over the theme's component-layer rules. */
+   and the work tray cards (workTray.css). Scoped to .mrac; unlayered so it wins over the theme's component-layer rules.
+   Sized for reading: body text at 1rem+, small print no smaller than ~0.9rem, generous line height. */
 .mrac {
   --mrac-ok: #15714a;   --mrac-ok-bg: #e6f5ed;   --mrac-ok-line: #b6e0c8;
   --mrac-warn: #a8480b; --mrac-warn-bg: #fff1e2; --mrac-warn-line: #f7cfa4;
   --mrac-bad: #b3261e;  --mrac-bad-bg: #fdeceb;  --mrac-bad-line: #f5bcb8;
   --mrac-plain: #475569; --mrac-plain-bg: #eef1f6; --mrac-plain-line: #d5dbe6;
+  --mrac-soft: #3d4757;   /* secondary text: darker than --muted so small print stays readable */
+  font-size: 1rem; line-height: 1.6;
 }
 .mrac .ok    { --tone: var(--mrac-ok);    --tone-bg: var(--mrac-ok-bg);    --tone-line: var(--mrac-ok-line); }
 .mrac .warn  { --tone: var(--mrac-warn);  --tone-bg: var(--mrac-warn-bg);  --tone-line: var(--mrac-warn-line); }
@@ -13,155 +16,183 @@
 
 /* the FP caps section children at the theme's reading width; this section holds tables and full-width cards */
 .fp .mrac > :not(legend) { max-width: none; }
+.mrac .fp-note { color: var(--mrac-soft); font-size: 0.98rem; line-height: 1.6; }
 
 .mrac-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
 .mrac-actions .fp-btn, .mrac-actions .mrac-btn { margin-top: 0; }
-.mrac-actions small { color: var(--muted); font-size: 0.85rem; }
+.mrac-actions small { color: var(--mrac-soft); font-size: 0.95rem; }
 .mrac .mrac-btn {
-  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.5rem; padding: 0.4rem 1.1rem;
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.45rem 1.25rem;
   border: 1px solid var(--blue); border-radius: var(--radius); background: var(--blue); color: #fff;
-  font-weight: 600; font-size: 0.95rem;
+  font-weight: 700; font-size: 1rem;
 }
 .mrac .mrac-btn:hover:not(:disabled) { background: var(--blue-700); border-color: var(--blue-700); }
 .mrac .mrac-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .mrac .mrac-btn svg { flex: none; }
-.mrac-err { margin: 0.6rem 0 0; color: var(--mrac-bad); font-weight: 600; font-size: 0.92rem; }
+.mrac-err { margin: 0.6rem 0 0; color: var(--mrac-bad); font-weight: 600; font-size: 1rem; }
+
+/* when the shown check ran and how long it took */
+.mrac-runmeta {
+  display: flex; flex-wrap: wrap; gap: 0.3rem 1.5rem; margin: 1rem 0 0; color: var(--mrac-soft); font-size: 0.95rem;
+}
+.mrac-runmeta strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 
 /* result banner: overall outcome + reasoning headline */
 .mrac-banner {
-  margin-top: 1rem; padding: 0.85rem 1rem; border: 1px solid var(--tone-line); border-left: 4px solid var(--tone);
-  border-radius: 8px; background: var(--tone-bg);
+  margin-top: 1rem; padding: 1rem 1.2rem; border: 1px solid var(--tone-line); border-left: 5px solid var(--tone);
+  border-radius: 10px; background: var(--tone-bg);
 }
 .mrac-banner .top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.3rem 1rem; }
-.mrac-banner b { color: var(--tone); font-size: 1.02rem; }
-.mrac-banner time { color: var(--muted); font-size: 0.82rem; }
-.mrac-banner p { margin: 0.35rem 0 0; color: var(--ink); line-height: 1.45; }
-.mrac-notes { margin: 0.6rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.25rem; }
-.mrac-notes li { margin: 0; color: var(--mrac-warn); font-size: 0.85rem; }
+.mrac-banner b { color: var(--tone); font-size: 1.12rem; }
+.mrac-banner time { color: var(--mrac-soft); font-size: 0.92rem; }
+.mrac-banner p { margin: 0.45rem 0 0; color: var(--ink); line-height: 1.6; }
+.mrac-banner p:first-child { margin-top: 0; }
+.mrac-banner p.lead { font-size: 1.08rem; font-weight: 600; }
+.mrac-notes { margin: 0.6rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.35rem; }
+.mrac-notes li { margin: 0; color: var(--mrac-warn); font-size: 0.95rem; }
 
 .mrac-chip {
-  display: inline-flex; align-items: center; padding: 0.05rem 0.6rem; border-radius: 999px; white-space: nowrap;
-  background: var(--tone-bg); color: var(--tone); border: 1px solid var(--tone-line); font-size: 0.78rem; font-weight: 700;
+  display: inline-flex; align-items: center; padding: 0.12rem 0.7rem; border-radius: 999px; white-space: nowrap;
+  background: var(--tone-bg); color: var(--tone); border: 1px solid var(--tone-line); font-size: 0.88rem; font-weight: 700;
 }
 
-.mrac-block { margin-top: 1.25rem; }
-.mrac-block > h3 { margin: 0 0 0.5rem; font-size: 0.98rem; }
+.mrac-block { margin-top: 1.5rem; }
+.mrac-block > h3 { margin: 0 0 0.6rem; font-size: 1.08rem; }
 .mrac-block > .fp-note { margin-top: -0.25rem; }
-.mrac-list { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; line-height: 1.45; }
+.mrac-list { margin: 0; padding-left: 1.3rem; display: grid; gap: 0.5rem; line-height: 1.6; }
 .mrac-list li { margin: 0; }
-.mrac-list .ref { color: var(--muted); font-size: 0.82rem; }
+.mrac-list .ref { color: var(--mrac-soft); font-size: 0.92rem; }
 
 /* criteria table */
-.mrac-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-.mrac-table th, .mrac-table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-.mrac-table th { background: #fafbfd; color: var(--muted); font-size: 0.8rem; font-weight: 700; }
-.mrac-table td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.mrac-table .why { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.82rem; }
-.mrac-table .ref { margin-top: 0.2rem; color: var(--muted); font-size: 0.82rem; }
+.mrac-table { width: 100%; border-collapse: collapse; font-size: 1rem; }
+.mrac-table th, .mrac-table td { padding: 0.7rem 0.8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.mrac-table th { background: #f6f8fc; color: var(--mrac-soft); font-size: 0.9rem; font-weight: 700; }
+.mrac-table td.num { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.mrac-table .why { margin: 0.3rem 0 0; color: var(--mrac-soft); font-size: 0.92rem; line-height: 1.5; }
+.mrac-table .ref { margin-top: 0.25rem; color: var(--mrac-soft); font-size: 0.9rem; }
 
 /* policy passages (citations, approval clauses, search results) */
-.mrac-cite { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; border-left: 3px solid var(--line-strong); background: #fafbfd; border-radius: 0 6px 6px 0; font-size: 0.88rem; }
+.mrac-cite { margin: 0.6rem 0 0; padding: 0.75rem 0.95rem; border-left: 3px solid var(--line-strong); background: #f8fafd; border-radius: 0 8px 8px 0; font-size: 0.98rem; }
 .mrac-cite .head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem; font-weight: 600; color: var(--ink); }
-.mrac-cite .meta { color: var(--muted); font-size: 0.8rem; font-weight: 500; }
-.mrac-cite .body { margin-top: 0.3rem; color: #334155; line-height: 1.5; }
+.mrac-cite .meta { color: var(--mrac-soft); font-size: 0.9rem; font-weight: 500; }
+.mrac-cite .body { margin-top: 0.4rem; color: #273244; line-height: 1.65; }
 .mrac-cites { margin: 0; padding: 0; list-style: none; }
 .mrac-cites > li { margin: 0; }
-.mrac .mrac-more { margin: 0 0 0 0.35rem; padding: 0; min-height: 0; border: 0; background: none; color: var(--blue-700); font-size: 0.82rem; font-weight: 600; text-decoration: underline; }
+.mrac .mrac-more { margin: 0 0 0 0.35rem; padding: 0; min-height: 0; border: 0; background: none; box-shadow: none; color: var(--blue-700); font-size: 0.92rem; font-weight: 600; text-decoration: underline; }
 /* "Show more (n)" under a list of passages in a policy check result */
-.mrac .mrac-more.list { display: block; margin: 0.4rem 0 0; }
+.mrac .mrac-more.list { display: block; margin: 0.5rem 0 0; }
 
 /* suggested exceptions */
 .mrac-suggest .fp-sub > p:first-child { margin: 0; font-weight: 600; }
 .mrac-suggest .fp-add { margin-top: 0.7rem; }
 
 /* figures used */
-.mrac-facts { margin-top: 1.25rem; font-size: 0.88rem; }
+.mrac-facts { margin-top: 1.4rem; font-size: 0.98rem; }
 .mrac-facts summary { cursor: pointer; color: var(--blue-700); font-weight: 600; }
-.mrac-facts dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.2rem 1.5rem; margin: 0.6rem 0 0; }
-.mrac-facts dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid var(--line); }
-.mrac-facts dt { margin: 0; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+.mrac-facts dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.2rem 1.75rem; margin: 0.7rem 0 0; }
+.mrac-facts dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.4rem 0; border-bottom: 1px solid var(--line); }
+.mrac-facts dt { margin: 0; color: var(--mrac-soft); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88rem; }
 .mrac-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: right; }
-.mrac-disclaimer { margin: 1.1rem 0 0; color: var(--muted); font-size: 0.82rem; font-style: italic; }
+.mrac-disclaimer { margin: 1.25rem 0 0; color: var(--mrac-soft); font-size: 0.92rem; line-height: 1.6; }
 
 /* ---------- policy search card (work tray) ---------- */
 .mrac-ask { padding: 1.15rem 1.35rem 1.3rem; }
-.mrac-ask h2 { margin: 0; font-size: 1.05rem; }
-.mrac-ask > p { margin: 0.25rem 0 0.85rem; color: var(--muted); font-size: 0.9rem; }
+.mrac-ask h2 { margin: 0; font-size: 1.1rem; }
+.mrac-ask > p { margin: 0.25rem 0 0.85rem; color: var(--mrac-soft); font-size: 0.98rem; }
 .mrac-ask form { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-.mrac.mrac-ask input { flex: 1 1 20rem; min-width: 0; margin-top: 0; min-height: 2.5rem; padding: 0.35rem 0.8rem; font-size: 0.95rem; }
-.mrac-empty { margin: 0.8rem 0 0; color: var(--muted); }
+.mrac.mrac-ask input { flex: 1 1 20rem; min-width: 0; margin-top: 0; min-height: 2.75rem; padding: 0.4rem 0.85rem; font-size: 1rem; }
+.mrac-empty { margin: 0.8rem 0 0; color: var(--mrac-soft); }
 .mrac-ask .mrac-cites { margin-top: 0.4rem; }
 
 @media (max-width: 640px) {
   .mrac-table thead { display: none; }
   .mrac-table, .mrac-table tbody, .mrac-table tr, .mrac-table td { display: block; width: 100%; }
-  .mrac-table tr { padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
-  .mrac-table td { border: 0; padding: 0.15rem 0; }
-  .mrac-table td[data-label]::before { content: attr(data-label) ': '; color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+  .mrac-table tr { padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+  .mrac-table td { border: 0; padding: 0.2rem 0; }
+  .mrac-table td[data-label]::before { content: attr(data-label) ': '; color: var(--mrac-soft); font-size: 0.9rem; font-weight: 600; }
 }
 
 /* spacing below the work tray */
 .wt-page > .mrac-ask { margin-top: 1.25rem; }
 
 /* ---------- policy recommender findings (recommendations.jsx) ---------- */
-.mrac-recs > .mrac-banner .fp-note { margin: 0.45rem 0 0; }
-.mrac .meta { color: var(--muted); font-size: 0.82rem; font-weight: 500; }
+.mrac-recs > .mrac-banner .fp-note { margin: 0.55rem 0 0; }
+.mrac .meta { color: var(--mrac-soft); font-size: 0.92rem; font-weight: 500; }
 .mrac-rec-group > h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.mrac-rec-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.7rem; }
+.mrac-rec-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.75rem; }
 .mrac-rec {
-  margin: 0; padding: 0.75rem 0.9rem; border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--line-strong));
-  border-radius: 8px; background: var(--surface, #fff);
+  margin: 0; padding: 0.85rem 1rem; border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--line-strong));
+  border-radius: 10px; background: var(--surface, #fff);
 }
-.mrac-rec.compact { border-left-color: var(--mrac-ok-line); padding: 0.55rem 0.8rem; }
+.mrac-rec.compact { border-left-color: var(--mrac-ok-line); padding: 0.6rem 0.9rem; }
 .mrac-rec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.3rem 0.8rem; }
-.mrac-rec-head strong { font-size: 0.95rem; }
-.mrac-rec-text { margin: 0.35rem 0 0; line-height: 1.5; }
-.mrac-rec-next { margin: 0.35rem 0 0; line-height: 1.45; }
+.mrac-rec-head strong { font-size: 1.02rem; }
+.mrac-rec-text { margin: 0.55rem 0 0; font-size: 1.02rem; line-height: 1.65; }
+.mrac-rec-next { margin: 0.55rem 0 0; line-height: 1.6; }
 .mrac-rec-next span { font-weight: 700; color: var(--tone, var(--ink)); }
-.mrac-rec-exc { display: grid; gap: 0.2rem; margin: 0.45rem 0 0; font-size: 0.9rem; }
+.mrac-rec-exc { display: grid; gap: 0.35rem; margin: 0.6rem 0 0; font-size: 1rem; }
 .mrac-rec-exc div { display: flex; flex-wrap: wrap; gap: 0.2rem 0.6rem; }
-.mrac-rec-exc dt { margin: 0; color: var(--muted); font-weight: 600; }
+.mrac-rec-exc dt { margin: 0; color: var(--mrac-soft); font-weight: 600; }
 .mrac-rec-exc dd { margin: 0; }
-.mrac-rec-quote { margin: 0.5rem 0 0; padding: 0.35rem 0.7rem; border-left: 3px solid var(--line-strong); color: #334155; font-size: 0.88rem; font-style: italic; }
-.mrac-rec-meta { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.8rem; }
-.mrac-rec-note { margin: 0.3rem 0 0; color: var(--mrac-warn); font-size: 0.82rem; }
-.mrac-rec-clause { margin-top: 0.4rem; font-size: 0.86rem; }
+.mrac-rec-quote { margin: 0.65rem 0 0; padding: 0.5rem 0.85rem; border-left: 3px solid var(--line-strong); background: #f8fafd; color: #273244; font-size: 0.98rem; line-height: 1.6; }
+.mrac-rec-meta { margin: 0.55rem 0 0; color: var(--mrac-soft); font-size: 0.9rem; }
+.mrac-rec-note { margin: 0.4rem 0 0; color: var(--mrac-warn); font-size: 0.92rem; }
+.mrac-rec-clause { margin-top: 0.55rem; font-size: 0.95rem; }
 .mrac-rec-clause summary { cursor: pointer; color: var(--blue-700); font-weight: 600; }
-.mrac-rec-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.65rem; }
+
+/* finding actions: blue = add, orange = edit, white = dismiss / cancel. Always filled, not only on hover.
+   Selectors go through .mrac-rec .mrac-rec-buttons so they outrank the loan folder's `.lf-folder.lf-fp .fp-btn`
+   (white glass pill) and its :hover in financialPackage.css. */
+.mrac-rec-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.85rem; }
 .mrac .mrac-rec-buttons .fp-btn { margin-top: 0; }
+.mrac .mrac-rec .mrac-rec-buttons .fp-btn:is(.mrac-b-blue, .mrac-b-orange, .mrac-b-white) {
+  min-height: 2.75rem; padding: 0.45rem 1.3rem; border-radius: 999px; font-size: 1rem; font-weight: 700;
+}
+.mrac .mrac-rec .mrac-rec-buttons .fp-btn.mrac-b-blue {
+  background: var(--blue); border: 1.5px solid var(--blue); color: #fff; box-shadow: 0 8px 18px -10px rgba(31, 79, 216, 0.7);
+}
+.mrac .mrac-rec .mrac-rec-buttons .fp-btn.mrac-b-blue:hover:not(:disabled) { background: var(--blue-700); border-color: var(--blue-700); color: #fff; }
+.mrac .mrac-rec .mrac-rec-buttons .fp-btn.mrac-b-orange {   /* white on it: 5.2:1 */
+  background: #c2410c; border: 1.5px solid #c2410c; color: #fff; box-shadow: 0 8px 18px -10px rgba(154, 52, 18, 0.7);
+}
+.mrac .mrac-rec .mrac-rec-buttons .fp-btn.mrac-b-orange:hover:not(:disabled) { background: #9a3412; border-color: #9a3412; color: #fff; }
+.mrac .mrac-rec .mrac-rec-buttons .fp-btn.mrac-b-white { background: #fff; border: 1.5px solid #8b97ab; color: var(--ink); box-shadow: none; }
+.mrac .mrac-rec .mrac-rec-buttons .fp-btn.mrac-b-white:hover:not(:disabled) { background: #f1f4fa; border-color: var(--ink); color: var(--ink); }
+.mrac .fp-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .mrac .fp-btn.secondary { background: transparent; border-color: var(--line-strong); color: var(--ink); }
 .mrac .fp-btn.secondary:hover:not(:disabled) { background: var(--blue-50); color: var(--blue-700); }
-.mrac-rec-edit { display: grid; gap: 0.5rem; margin-top: 0.65rem; }
-.mrac-rec-edit label { display: grid; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; }
-.mrac.mrac .mrac-rec-edit textarea { margin-top: 0; width: 100%; min-height: 3rem; font-weight: 400; }
-.mrac-rec-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0.6rem 0 0; }
-.mrac-rec-decision .why { flex-basis: 100%; color: var(--muted); font-size: 0.85rem; }
-.mrac-rec + .mrac-more, .mrac-rec .mrac-more { margin: 0.4rem 0 0; }
-.mrac-rules-title { margin: 1.6rem 0 0; font-size: 1rem; }
 
-/* dropdowns: groups (Exceptions needed, To obtain, ...) and each finding inside them */
-.mrac-rec-groups { display: grid; gap: 0.6rem; margin-top: 1rem; }
-.mrac-rec-group { border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--line-strong)); border-radius: 8px; background: var(--surface, #fff); }
+.mrac-rec-edit { display: grid; gap: 0.6rem; margin-top: 0.75rem; }
+.mrac-rec-edit label { display: grid; gap: 0.3rem; font-size: 0.95rem; font-weight: 600; }
+.mrac.mrac .mrac-rec-edit textarea { margin-top: 0; width: 100%; min-height: 3.25rem; font-size: 1rem; font-weight: 400; }
+.mrac-rec-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; margin: 0.75rem 0 0; }
+.mrac-rec-decision .why { flex-basis: 100%; color: var(--mrac-soft); font-size: 0.95rem; }
+.mrac-rec + .mrac-more, .mrac-rec .mrac-more { margin: 0.5rem 0 0; }
+.mrac-rules-title { margin: 1.6rem 0 0; font-size: 1.05rem; }
+
+/* dropdowns: groups (Exceptions needed, Conditions, ...) and each finding inside them */
+.mrac-rec-groups { display: grid; gap: 0.75rem; margin-top: 1rem; }
+.mrac-rec-group { border: 1px solid var(--line); border-left: 5px solid var(--tone, var(--line-strong)); border-radius: 10px; background: var(--surface, #fff); }
 .mrac-rec-group > summary, .mrac-rec-sum {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; cursor: pointer; list-style: none;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.7rem; cursor: pointer; list-style: none;
 }
 .mrac-rec-group > summary::-webkit-details-marker, .mrac-rec-sum::-webkit-details-marker { display: none; }
-.mrac-rec-group > summary { padding: 0.7rem 0.9rem; font-weight: 700; font-size: 0.98rem; }
+.mrac-rec-group > summary { padding: 0.85rem 1.05rem; font-weight: 700; font-size: 1.08rem; }
 .mrac-rec-group > summary .title, .mrac-rec-sum .title { flex: 1 1 14rem; min-width: 0; }
 .mrac-rec-group > summary::before, .mrac-rec-sum::before {
-  content: ''; flex: none; width: 0.45rem; height: 0.45rem; margin-right: 0.15rem;
-  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform 0.15s;
+  content: ''; flex: none; width: 0.5rem; height: 0.5rem; margin-right: 0.2rem;
+  border-right: 2px solid var(--mrac-soft); border-bottom: 2px solid var(--mrac-soft); transform: rotate(-45deg); transition: transform 0.15s;
 }
 .mrac-rec-group[open] > summary::before, details[open] > .mrac-rec-sum::before { transform: rotate(45deg); }
-.mrac-rec-group > summary:hover, .mrac-rec-sum:hover { background: #fafbfd; }
+.mrac-rec-group > summary:hover, .mrac-rec-sum:hover { background: #f8fafd; }
 .mrac-rec-group > summary:focus-visible, .mrac-rec-sum:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.35); outline-offset: -3px; }
-.mrac-rec-groupbody { padding: 0 0.9rem 0.85rem; }
-.mrac-rec-groupbody > .fp-note { margin: 0 0 0.6rem; }
+.mrac-rec-groupbody { padding: 0 1.05rem 1rem; }
+.mrac-rec-groupbody > .fp-note { margin: 0 0 0.75rem; }
 .mrac-rec-groupbody > .mrac-banner:first-child { margin-top: 0; }
 .mrac-rec-list > .mrac-rec { padding: 0; border-left-width: 1px; }
-.mrac-rec-sum { padding: 0.55rem 0.8rem; border-radius: 8px; }
-.mrac-rec-sum .title { font-weight: 600; font-size: 0.93rem; }
-.mrac-rec-sum .chips { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
-.mrac-rec-body { padding: 0 0.8rem 0.75rem 1.65rem; }
+.mrac-rec-sum { padding: 0.7rem 0.95rem; border-radius: 10px; }
+.mrac-rec-sum .title { font-weight: 600; font-size: 1.02rem; line-height: 1.5; }
+.mrac-rec-sum .chips { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+.mrac-rec-body { padding: 0 0.95rem 0.95rem 1.85rem; }
 .mrac-rec-body > .mrac-rec-text:first-child { margin-top: 0; }
-.mrac-rules { margin-top: 1rem; }
+.mrac-rules { margin-top: 0.75rem; }

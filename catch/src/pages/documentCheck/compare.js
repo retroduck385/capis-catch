@@ -1,7 +1,7 @@
 // What the AI read from a document vs what the applicant typed in, plus the checks shown next to each
 // field (low OCR confidence, expired ID) and the per-document summaries (payslip average vs declared
 // income, average monthly deposits, TU credit report vs the declared loans / cards). No Supabase calls here.
-import { formatPeso } from '../applicationForm/options';
+import { formatPeso } from '../applicationForm/options.js';
 
 // Below this, PaddleOCR wasn't sure of a line: the AO should look at the document closely (P2)
 export const LOW_CONFIDENCE = 0.85;

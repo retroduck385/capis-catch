@@ -1,8 +1,8 @@
 // Final report (the panel's "final artifact"): the file's Financial Package (both pages), credit scoring sheet,
 // decision support and sign-offs as one printable document. /finalReportPage?id=<application id>
-// The Account Officer and the Approvers, once the file is Decided (group notes item 36).
-// The assigned Credit Officer can preview it as a DRAFT while editing in Credit Evaluation (also after a reviewer
-// return). "Download PDF" opens the browser's print dialog ("Save as PDF"): A4 portrait, each part on a new page
+// Who gets which version, and when: reportMode() in signoffs.js (FINAL for the AO, the assigned CO and the routed
+// reviewers once every reviewer has endorsed it, the REVIEW_COMPLETE notification links here; for the Approvers once
+// Decided. DRAFT for the assigned CO while editing, and for the routed reviewers while in Review). "Download PDF" opens the browser's print dialog ("Save as PDF"): A4 portrait, each part on a new page
 // (finalReport.css). For print the sheets are rendered a second time through a portal straight into <body>
 // (.fr-print-root) and #root is hidden, so no app container, grid, flex, height or overflow touches the printout.
 // Nothing is uploaded or stored. Read only; layout after the bank's KYC-FP workbook, values from
@@ -79,9 +79,16 @@ const FinalReportPage = () => {
     if (!data) return null;
 
     const { app, fp, rules, mrac, stage, rows, reviews, approvals, coCanEdit } = data;
-    const mode = reportMode({ stage, role, coCanEdit });
+    const myId = session?.user?.id;
+    // The assigned CO / a routed reviewer (reportMode() needs it for those two roles)
+    const assigned = role === 'CREDIT_OFFICER' ? Boolean(myId) && data.coId === myId
+        : role === 'REVIEWER' ? splitRouting(rows).reviewers.some((x) => x.user_id === myId) : false;
+    const mode = reportMode({ stage, role, coCanEdit, assigned });
+    // Back to the page this role works the file from
+    const [backTo, backLabel] = role === 'REVIEWER' || role === 'APPROVER' ? ['reviewSummaryPage', 'Review summary']
+        : role === 'CREDIT_OFFICER' ? ['financialPackagePage', 'Financial Package'] : ['loanFolderPage', 'Loan folder'];
     const back = (
-        <Link to={`/loanFolderPage?id=${app.id}`} className="lf-btn"><ArrowLeft size={16} aria-hidden="true" />Loan folder</Link>
+        <Link to={`/${backTo}?id=${app.id}`} className="lf-btn"><ArrowLeft size={16} aria-hidden="true" />{backLabel}</Link>
     );
     if (!mode) {
         return (
@@ -89,7 +96,7 @@ const FinalReportPage = () => {
                 <Breadcrumbs current="report" appId={app.id} appNo={app.application_no} />
                 <section className="lf-card fr-locked">
                     <Lock size={20} aria-hidden="true" />
-                    <p>The final report opens for the Account Officer and the Approvers once the file is decided. The assigned Credit Officer can preview a draft while working on the Financial Package.</p>
+                    <p>The final report opens for the Account Officer, the assigned Credit Officer and the reviewers once every reviewer has endorsed the file, and for the Approvers once it is decided. The assigned Credit Officer can preview a draft while working on the Financial Package, and the reviewers while the file is in Review.</p>
                     {back}
                 </section>
             </div>
@@ -134,7 +141,7 @@ const FinalReportPage = () => {
                         <h1>Application <span className="lf-appno">{app.application_no}</span></h1>
                         <p className="fr-hint">
                             {mode === 'DRAFT'
-                                ? 'Draft: every page is marked DRAFT. The final report is available once the file is decided.'
+                                ? 'Draft: every page is marked DRAFT. The final report is available once every reviewer has endorsed the file.'
                                 : 'A4, five parts, each on a new page. In the print dialog choose "Save as PDF"; untick "Headers and footers" if the browser adds the address.'}
                         </p>
                     </div>

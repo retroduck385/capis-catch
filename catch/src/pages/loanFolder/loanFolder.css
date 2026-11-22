@@ -686,6 +686,12 @@
 .lf-folder :is(.lf-primary, .ci-send button[type='submit'], .lf-formcard button[type='submit']):hover:not(:disabled) {
   background: var(--lf-blue-grad); color: #fff; filter: brightness(1.12);
 }
+/* the section form's Save: white with a blue outline, so the KYC check's Record check stays the one solid blue button
+   (the form card is light paper in both themes, so these colours hold in dark mode too) */
+.lf-folder .lf-formcard .ct-actions button[type='submit'] {
+  background: #fff; border: 1.5px solid var(--lf-accent); color: var(--lf-accent); box-shadow: none;
+}
+.lf-folder .lf-formcard .ct-actions button[type='submit']:hover:not(:disabled) { background: var(--lf-accent-bg); color: var(--lf-accent); filter: none; }
 
 /* the CI request panel's own boxes, rounded to match */
 .lf-folder .ci-remark { border-radius: 12px; background: var(--lf-inset); border-color: var(--lf-inset-rim); }

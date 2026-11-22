@@ -1,7 +1,6 @@
 /* Side panels that can be hidden (sidePanel.jsx, group notes item 38). On the --lf-* tokens of the staff pages, so they
    follow dark mode. A hidden panel leaves a slim strip (3.25rem); the page grid gives the freed width to the content.
-   Where the panels already stack (section lists at 960px and below, the KYC rail at 1300px and below) the strip is a
-   one-line "Show ..." bar instead. */
+   Where the panels already stack (960px and below) the strip is a one-line "Show ..." bar instead. */
 
 /* the Hide button at the top of a shown panel */
 .sp-hide {
@@ -10,7 +9,6 @@
   font-size: 0.8rem; font-weight: 600; cursor: pointer;
 }
 .sp-hide:hover { background: var(--lf-wash, rgba(20, 41, 95, 0.05)); color: var(--ink, #0f1b33); }
-.sp-hide.right { float: right; }
 .sp-hide:focus-visible, .sp-show:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
 
 /* the strip in place of a hidden panel */
@@ -19,7 +17,6 @@
   padding: 0.5rem 0.35rem; border: 1px solid var(--lf-glass-rim, rgba(255, 255, 255, 0.8)); border-radius: 18px;
   background: var(--lf-glass, rgba(255, 255, 255, 0.78)); box-shadow: var(--lf-glass-shadow, none);
 }
-.sp-rail.right { grid-area: rail; }
 .sp-show, .sp-rail-btn {
   display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid var(--lf-control-rim, #d5dbe6);
   border-radius: 12px; background: var(--lf-control, #fff); color: var(--lf-accent, #1e3f97); cursor: pointer;
@@ -30,15 +27,8 @@
 /* the page grids: the freed width goes to the content */
 .lf-folder .lf-body.edit.side-hidden,
 .lf-folder.lf-fp .lf-body.edit.side-hidden { grid-template-columns: 3.25rem minmax(0, 1fr); }
-.lf-folder .lf-secgrid.side-hidden { grid-template-columns: minmax(0, 1fr) 3.25rem; }
 
 /* where the panels stack: a one-line bar with the words */
-@media (max-width: 1300px) {
-  .lf-folder .lf-secgrid.side-hidden { grid-template-columns: minmax(0, 1fr); }
-  .sp-rail.right { position: static; display: flex; justify-content: flex-start; }
-  .sp-rail.right .sp-show { width: auto; padding: 0 0.85rem; gap: 0.4rem; display: inline-flex; }
-  .sp-rail.right .sp-show-txt { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
-}
 @media (max-width: 960px) {
   .lf-folder .lf-body.edit.side-hidden,
   .lf-folder.lf-fp .lf-body.edit.side-hidden { grid-template-columns: minmax(0, 1fr); }
@@ -47,5 +37,5 @@
   .sp-rail .sp-show-txt { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .lf-folder .lf-body.edit, .lf-folder .lf-secgrid { transition: grid-template-columns 0.2s ease; }
+  .lf-folder .lf-body.edit { transition: grid-template-columns 0.2s ease; }
 }

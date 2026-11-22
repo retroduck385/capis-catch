@@ -62,13 +62,11 @@ const MracResult = ({ run, onAddException, onAddTerm, reviews, names, canEdit = 
 
     return (
         <div aria-live="polite">
-            <Recommendations run={run} reviews={reviews} names={names} canEdit={canEdit && Boolean(onAddException)}
-                onAddException={onAddException} onAddTerm={onAddTerm} onReviewed={onReviewed} />
+            <RunMeta run={run} />
             <RuleChecks wrap={Boolean(result.recommendations)} label={overallLabel} tone={overallTone}>
             <div className={`mrac-banner ${overallTone}`}>
                 <div className="top">
                     <b><Terms text={overallLabel} /></b>
-                    {run.finished_at && <time dateTime={run.finished_at} title={fullWhen(run.finished_at)}>{formatWhen(run.finished_at)}</time>}
                 </div>
                 {reasoning?.headline && <p>{reasoning.headline}</p>}
                 {result.notes?.length > 0 && (
@@ -197,13 +195,35 @@ const MracResult = ({ run, onAddException, onAddTerm, reviews, names, canEdit = 
 
             {reasoning?.disclaimer && <p className="mrac-disclaimer">{reasoning.disclaimer}</p>}
             </RuleChecks>
+            <Recommendations run={run} reviews={reviews} names={names} canEdit={canEdit && Boolean(onAddException)}
+                onAddException={onAddException} onAddTerm={onAddTerm} onReviewed={onReviewed} />
         </div>
     );
 };
 
-// With the policy recommender's findings above, the rule checks fold into one dropdown; alone they show as they are
+// How long a run took, from when it was queued to when the worker finished ("48 s", "1 min 12 s")
+const tookFor = (from, to) => {
+    const s = Math.round((new Date(to) - new Date(from)) / 1000);
+    if (!Number.isFinite(s) || s < 0) return null;
+    return s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`;
+};
+
+// When the shown check finished and how long it took
+const RunMeta = ({ run }) => {
+    if (!run.finished_at) return null;
+    const took = run.created_at ? tookFor(run.created_at, run.finished_at) : null;
+    return (
+        <p className="mrac-runmeta">
+            <span>Last check: <time dateTime={run.finished_at} title={fullWhen(run.finished_at)}>{formatWhen(run.finished_at)}</time></span>
+            {took && <span>Took <strong>{took}</strong></span>}
+        </p>
+    );
+};
+
+// With the policy recommender's findings below, the rule checks fold into one dropdown (open at first, can be
+// collapsed); alone they show as they are
 const RuleChecks = ({ wrap, label, tone, children }) => (wrap ? (
-    <details className={`mrac-rec-group mrac-rules ${tone}`}>
+    <details className={`mrac-rec-group mrac-rules ${tone}`} open>
         <summary>
             <span className="title">Rule checks and figures used</span>
             <span className={`mrac-chip ${tone}`}><Terms text={label} /></span>

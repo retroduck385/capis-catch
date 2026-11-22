@@ -136,6 +136,22 @@
 .lf-folder.lf-rv .lf-note.rv-yours svg { color: var(--lf-orange-text); }
 .lf-folder.lf-rv .lf-ok-note.rv-done { margin: 0; padding: 0.7rem 1rem; border: 1px solid var(--lf-ok-line); border-radius: 16px; background: var(--lf-ok-bg); }
 
+/* the reviewer's final report strip (ReportStrip): a glass card with a blue edge, the button on the right */
+.lf-folder.lf-rv .rv-report {
+  display: flex; align-items: center; gap: 0.9rem 1rem; flex-wrap: wrap; margin: 0; padding: 0.95rem 1.2rem 0.95rem 1.4rem;
+  border: 1px solid var(--lf-glass-rim); border-radius: 22px; background: var(--lf-glass);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur); box-shadow: inset 4px 0 0 var(--lf-accent), var(--lf-glass-shadow);
+}
+.lf-folder.lf-rv .rv-report-ic {
+  display: grid; place-items: center; flex: none; width: 2.5rem; height: 2.5rem; border-radius: 12px;
+  background: var(--lf-accent-bg); color: var(--lf-accent);
+}
+.lf-folder.lf-rv .rv-report-text { display: grid; gap: 0.2rem; flex: 1 1 18rem; min-width: 0; }
+.lf-folder.lf-rv .rv-report-text b { color: var(--navy); font-size: 1.02rem; }
+.lf-folder.lf-rv .rv-report-text span { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+.lf-folder.lf-rv .rv-report .lf-primary { display: inline-flex; align-items: center; gap: 0.45rem; flex: none; text-decoration: none; white-space: nowrap; }
+@media (max-width: 560px) { .lf-folder.lf-rv .rv-report .lf-primary { width: 100%; justify-content: center; white-space: normal; } }
+
 /* your review / decision progress: a glass card with an orange edge */
 .lf-folder.lf-rv .rv-mywork {
   margin: 0; padding: 1.1rem 1.3rem 1rem 1.5rem; border: 1px solid var(--lf-glass-rim); border-radius: 22px; background: var(--lf-glass);
@@ -342,3 +358,33 @@
 [data-theme='dark'] .rv-seg-opt:is(.ok, .warn):has(input:checked),
 [data-theme='dark'] .rv-check:is(.ok, .warn) .rv-check-num { color: #0b1220; }
 [data-theme='dark'] .rv-check.warn { background: color-mix(in srgb, var(--lf-warn-bg) 40%, var(--lf-inset)); }
+
+/* ---------- Credit score card: each category row opens its criteria (scoreCategoryDialog.jsx) ----------
+   The button's ::after stretches over the whole row, so the label is clickable too. Unlayered: beats the .ct button base. */
+.lf-folder .rv-score-row { position: relative; border-radius: 10px; }
+.lf-folder .rv-score-row:hover { background: var(--lf-wash, rgba(20, 41, 95, 0.04)); }
+.lf-folder .rv-score-open {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.25rem 0.75rem; width: 100%;
+  min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  color: inherit; font: inherit; font-weight: inherit; text-align: left; cursor: pointer;
+}
+.lf-folder .rv-score-open:hover { background: transparent; color: inherit; }
+.lf-folder .rv-score-open::after { content: ''; position: absolute; inset: 0; border-radius: 10px; }
+.lf-folder .rv-score-open:focus-visible { outline: none; }
+.lf-folder .rv-score-open:focus-visible::after { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 0; }
+.lf-folder .rv-score-open .hint {
+  display: inline-flex; align-items: center; gap: 0.3rem; color: var(--lf-accent, #1e3f97); font-size: 0.82rem; font-weight: 700;
+}
+.lf-folder .rv-score-row:not(:hover) .rv-score-open:not(:focus-visible) .hint { color: var(--muted); font-weight: 600; }
+
+/* the modal's criteria: name + points, then the band picked (and the CO's remark) */
+.rv-score-crits { display: grid; gap: 0.6rem; margin: 0 0 0.9rem; padding: 0; list-style: none; }
+.rv-score-crits li {
+  display: grid; gap: 0.25rem; margin: 0; padding: 0.75rem 0.95rem; border: 1px solid var(--lf-sub-line, #e3e7ee);
+  border-radius: 12px; background: var(--lf-sub-bg, #fafbfd); box-shadow: inset 3px 0 0 var(--tone);
+}
+.rv-score-crits .top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.rv-score-crits .top b { color: var(--ink); font-size: 0.95rem; font-weight: 600; }
+.rv-score-crits .pts { flex: none; color: var(--navy); font-weight: 700; font-variant-numeric: tabular-nums; }
+.rv-score-crits p { margin: 0; color: var(--lf-text-2, var(--ink)); font-size: 0.9rem; line-height: 1.45; }
+.rv-score-crits .remark { color: var(--muted); font-size: 0.85rem; }

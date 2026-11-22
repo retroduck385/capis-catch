@@ -29,6 +29,7 @@ import { fetchAuditLog, fetchCanEdit, fetchKycChecks, fetchStaffNames } from './
 import AoSteps from './aoSteps';
 import ChangeHistory from './changeHistory';
 import KycCheckPanel from './kycCheckPanel';
+import { StepSaveLabel } from '../applicationForm/stepSaveLabel';
 import { KycBoard, KycProgress, StatusIcon } from './kycOverview';
 import { RESULT_LABELS, kycCounts, statusOf } from './options';
 import Byline from '../../components/byline';
@@ -61,7 +62,6 @@ const revealHistory = (el) => {
 };
 
 const LoanFolderPage = () => {
-    const kycRail = useSidePanel('folder-kyc');   // the side panel can be hidden (item 38)
     const sidePanel = useSidePanel('folder-nav');   // the side panel can be hidden (item 38)
     const { session, role } = UserAuth();
     const tt = useTermTitle();
@@ -83,6 +83,8 @@ const LoanFolderPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const historyRef = useRef(null);
+    const mainRef = useRef(null);
+    const scrollOnOpen = useRef(false);
     const wantHistory = useRef(false);
 
     // Checks + history + latest CI request (+ the names of whoever made them)
@@ -133,6 +135,19 @@ const LoanFolderPage = () => {
         }
     });
 
+    // A section just opened (open() below): bring its top into view when it's scrolled off above, e.g. after pressing
+    // Next at the bottom of a long form. Lands below the sticky top bar (html scroll-padding-top).
+    useEffect(() => {
+        if (!scrollOnOpen.current) return;
+        scrollOnOpen.current = false;
+        const el = mainRef.current;
+        if (!el) return;
+        const barOffset = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+        if (el.getBoundingClientRect().top < barOffset) {
+            el.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+        }
+    }, [currentKey]);
+
     // A message's topic chip (#kyc-<section>) opens that section for the editing AO: once per link, when the file
     // has loaded (state adjusted while rendering, not in an effect)
     if (app && canEdit && hash !== openedHash) {
@@ -180,7 +195,9 @@ const LoanFolderPage = () => {
         setSaved(true);
     };
 
+    // Opening a section (nav, pager, the check panel's Next / Request CI) brings its top into view (effect above)
     const open = (key) => {
+        scrollOnOpen.current = true;
         setCurrentKey(key);
         setSaved(false);
     };
@@ -422,10 +439,8 @@ const LoanFolderPage = () => {
                     </button>
                 </div>
             </header>
-            <div className={`lf-secgrid${kycRail.hidden ? ' side-hidden' : ''}`}>
-                {kycRail.hidden ? <PanelRail panel={kycRail} label="KYC check" side="right" /> : (
+            <div className="lf-secgrid">
                 <aside className="lf-rail" aria-label="KYC check">
-                    <PanelHide panel={kycRail} label="KYC check" side="right" />
                     <KycCheckPanel
                         key={`check-${section.key}`}
                         applicationId={app.id}
@@ -436,27 +451,28 @@ const LoanFolderPage = () => {
                         extra={askFor(section, latestCheck(section.key))}
                         onRecorded={handleRecorded}
                         onNext={() => open(next?.key ?? REQUEST_CI)}
-                        nextLabel={next ? 'Next section' : 'Next: Request CI'} />
+                        nextLabel={next ? 'Next section' : 'Request CI'} />
                 </aside>
-                )}
                 <div className="lf-card lf-formcard lf-paper">
                     <p className="lf-formcard-head">
                         <PencilLine size={15} aria-hidden="true" />
                         <span>The applicant&apos;s answers. Correct anything the documents show differently, then record the check.</span>
                     </p>
                     {saved && <p className="lf-ok-note" role="status">Changes saved.</p>}
-                    <Component
-                        key={section.key}
-                        {...section.props}
-                        app={app}
-                        session={session}
-                        profile={null}
-                        complete={section.complete}
-                        onSaved={handleSaved}
-                        onRefresh={refresh}
-                        onBack={null}
-                        viewOnly={section.key === 'documents'}
-                    />
+                    <StepSaveLabel.Provider value="Save">
+                        <Component
+                            key={section.key}
+                            {...section.props}
+                            app={app}
+                            session={session}
+                            profile={null}
+                            complete={section.complete}
+                            onSaved={handleSaved}
+                            onRefresh={refresh}
+                            onBack={null}
+                            viewOnly={section.key === 'documents'}
+                        />
+                    </StepSaveLabel.Provider>
                 </div>
             </div>
         </div>
@@ -523,7 +539,7 @@ const LoanFolderPage = () => {
                 </nav>
                 )}
 
-                <main className="lf-main">
+                <main className="lf-main" ref={mainRef}>
                     {error && <p className="lf-err" role="alert">{error}</p>}
                     {currentKey === REQUEST_CI ? (
                         <div className="lf-secview lf-ciview" key="ci">

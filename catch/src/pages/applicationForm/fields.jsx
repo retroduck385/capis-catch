@@ -1,7 +1,8 @@
 // Inputs for the application form (the applicant's wizard and the staff loan folder). Look and feel come from the .ct
 // rules in theme.css / applicantTheme.css. Dropdowns are SelectMenu (components/selectMenu.jsx), an animated listbox, not
 // a native <select>. Every Section uses the same four-column field grid, so all the steps look alike.
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import { StepSaveLabel } from './stepSaveLabel';
 import SelectMenu from '../../components/selectMenu';
 import {
     ADDRESS_FIELDS, EMPLOYMENT_FIELDS, EMPLOYMENT_KEYS, EMPLOYMENT_TYPES, formatMoney, HOME_OWNERSHIP, PARTY_FIELDS,
@@ -187,14 +188,18 @@ export const RowList = ({ title, config, rows, errors = [], onChange, emptyRow }
     );
 };
 
-export const StepButtons = ({ onBack, saving, nextLabel = 'Save and continue', disabled }) => (
-    <div className="ct-actions">
-        {onBack ? <button type="button" onClick={onBack}>Back</button> : <span />}
-        <button type="submit" disabled={saving || disabled}>
-            {saving ? 'Saving...' : nextLabel}
-        </button>
-    </div>
-);
+// nextLabel: overrides the default label, which comes from StepSaveLabel ("Save and continue", or "Save" in the loan folder)
+export const StepButtons = ({ onBack, saving, nextLabel, disabled }) => {
+    const defaultLabel = useContext(StepSaveLabel);
+    return (
+        <div className="ct-actions">
+            {onBack ? <button type="button" onClick={onBack}>Back</button> : <span />}
+            <button type="submit" disabled={saving || disabled}>
+                {saving ? 'Saving...' : (nextLabel ?? defaultLabel)}
+            </button>
+        </div>
+    );
+};
 
 export const FormError = ({ error }) => (error ? <p className="ct-error" role="alert">{error}</p> : null);
 

@@ -41,7 +41,7 @@ export const Sheet = ({ no, title, mode, app, generated, children }) => (
             </div>
             <div className="fr-head-meta">
                 <b>{app.application_no}</b>
-                <span>{mode === 'DRAFT' ? 'Draft — not for approval' : 'Final report'}</span>
+                <span>{mode === 'DRAFT' ? 'Draft — not for approval' : app.status === 'FOR_APPROVAL' ? 'Final report — for approval' : 'Final report'}</span>
             </div>
         </header>
         {children}

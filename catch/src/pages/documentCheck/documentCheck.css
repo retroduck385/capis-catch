@@ -45,6 +45,9 @@
 .dc-hitl svg { flex: none; margin-top: 0.15rem; color: var(--lf-accent); }
 .lf-folder .lf-actions .dc-progress { margin: 0; }
 .lf-folder.lf-doccheck > .lf-hero { align-items: center; }
+/* the progress chip on the left, the back arrow pushed to the right end of the same row */
+.lf-folder.lf-doccheck > .lf-hero > .lf-actions { flex: 1 1 auto; }
+.lf-folder.lf-doccheck .dc-back { margin-left: auto; }
 
 /* ---------- workspace: files + viewer | extracted values ----------
    Desktop: two cards side by side, a fixed height (52rem on a laptop, up to 66rem on a tall screen) so the page stays

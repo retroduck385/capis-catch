@@ -8,10 +8,12 @@ export const STAFF_ROLES = ['ACCOUNT_OFFICER', 'CREDIT_INVESTIGATOR', 'DISPATCH_
 // (mirrors the "read mrac runs" policy in 20261111_decision_support.sql)
 export const DSS_ROLES = STAFF_ROLES.filter((r) => r !== 'CREDIT_INVESTIGATOR');
 
-// Can open the FINAL report (group notes item 36): the Account Officer and the Approvers. The assigned Credit Officer
-// still previews the DRAFT from the Financial Package while editing (reportMode() in finalReport/signoffs.js).
+// Can open the final report page (/finalReportPage). Which version each gets, and when, is reportMode() in
+// finalReport/signoffs.js: FINAL for the AO, the assigned CO and the routed reviewers once every reviewer has endorsed
+// it, for the Approvers once Decided (group notes item 36); DRAFT for the assigned CO while editing and for the routed
+// reviewers while in Review.
 export const FINAL_REPORT_ROLES = ['ACCOUNT_OFFICER', 'APPROVER'];
-export const REPORT_PAGE_ROLES = [...FINAL_REPORT_ROLES, 'CREDIT_OFFICER'];
+export const REPORT_PAGE_ROLES = [...FINAL_REPORT_ROLES, 'CREDIT_OFFICER', 'REVIEWER'];
 
 // Roles assigned to applications (one AO and one CO slot per file). CATCH auto-assigns both on submission,
 // balanced by workload (20261120_team_managers_auto_assignment.sql); nobody claims or releases files.

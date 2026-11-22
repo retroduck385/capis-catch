@@ -9,20 +9,21 @@ import { CreditScoreSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    AlertTriangle, ArrowRight, BadgeCheck, Gauge, Info, ListChecks, Lock, PenLine, Save, ShieldCheck, Users, Wallet,
+    AlertTriangle, ArrowRight, BadgeCheck, ChevronDown, Gauge, History, Info, ListChecks, Lock, PenLine, Save, ShieldCheck, Users, Wallet,
 } from 'lucide-react';
 import { fetchCiFindingFlagCount, fetchCiResults } from '../ciRequest/api';
 import { needsAttention } from '../ciRequest/options';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, toRow } from '../applicationForm/api';
-import { FormError, Section } from '../applicationForm/fields';
+import { FormError } from '../applicationForm/fields';
 import { BORROWER_ROLES, formatMoney } from '../applicationForm/options';
 import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
 import { fetchReviewAssignments } from '../review/api';
 import { splitRouting } from '../review/approval';
 import CoSteps, { CoOptionalView } from './coSteps';
 import Byline from '../../components/byline';
+import CommentButton from '../messages/commentButton';
 import { scoreHistory } from './scoreHistory';
 import { ReturnNotice } from '../review/returnNotice';
 import { PanelHide, PanelRail } from '../../components/sidePanel';
@@ -46,7 +47,7 @@ const money = (v) => (v ? `₱${formatMoney(v)}` : '—');
 // Section navigator: [element id, label]; the category ids match creditScoreSection.jsx
 const TOC = [
     ['cs-CAPACITY', '1. Capacity'], ['cs-CHARACTER', '2. Character'], ['cs-COLLATERAL', '3. Collateral'],
-    ['cs-CONDITION', '4. Condition'], ['cs-total', 'Total score'], ['cs-history', 'Change history'],
+    ['cs-CONDITION', '4. Condition'], ['cs-total', 'Total score'], ['cs-history', 'Change History'],
 ];
 const TOC_IDS = TOC.map(([id]) => id);
 const fullName = (p) => [p.first_name, p.middle_name, p.last_name, p.name_extension].filter(Boolean).join(' ');
@@ -202,8 +203,12 @@ const CreditScorePage = () => {
         },
     ];
 
+    const historyLines = scoreHistory(audit, rules, scoreRows);
+
     const goTo = (id) => (e) => {
         e.preventDefault();
+        const target = document.getElementById(id);
+        if (target instanceof HTMLDetailsElement) target.open = true; // the change history is a dropdown
         pickSection(id);
         scrollToSection(id);
     };
@@ -322,12 +327,19 @@ const CreditScorePage = () => {
                     <CreditScoreSection rules={rules} suggestions={suggestions} scores={scores} totals={totals}
                         onScore={onScore} onRemarks={onRemarks} onUseAll={acceptAll} disabled={!canEdit || saving} />
 
-                    <Section id="cs-history" title="Credit score change history">
-                        {(() => {
-                            const lines = scoreHistory(audit, rules, scoreRows);
-                            return lines.length === 0 ? <p className="fp-empty">No changes yet.</p> : (
+                    {/* Collapsed until opened, like the loan folder's change history (loanFolder.css .lf-history) */}
+                    <details id="cs-history" className="lf-card lf-history">
+                        <summary>
+                            <span className="lf-history-ic"><History size={18} aria-hidden="true" /></span>
+                            <h2>Change History</h2>
+                            <span className="lf-history-count">{historyLines.length} {historyLines.length === 1 ? 'entry' : 'entries'}</span>
+                            <CommentButton topic="cs-history" />
+                            <ChevronDown size={18} className="lf-history-chevron" aria-hidden="true" />
+                        </summary>
+                        <div className="lf-history-body">
+                            {historyLines.length === 0 ? <p className="fp-empty">No changes yet.</p> : (
                                 <ol className="cs-hist">
-                                    {lines.map((l) => (
+                                    {historyLines.map((l) => (
                                         <li key={l.id} className={`cs-hist-item ${l.kind.toLowerCase()}`}>
                                             <p className="cs-hist-text"><Terms text={l.text} /></p>
                                             <Byline layout="inline" name={names[l.by]} fallback="unknown" at={l.at} />
@@ -335,9 +347,18 @@ const CreditScorePage = () => {
                                         </li>
                                     ))}
                                 </ol>
-                            );
-                        })()}
-                    </Section>
+                            )}
+                        </div>
+                    </details>
+
+                    {/* The assigned CO's next step (coSteps.jsx): Step 3 reads the saved score, so leave warns about unsaved edits */}
+                    {canEdit && (
+                        <div className="fp-pagenav">
+                            <Link to={`/financialPackagePage?id=${app.id}&page=3`} onClick={leave} className="fp-next">
+                                Next: Step 3, Credit result<ArrowRight size={16} aria-hidden="true" />
+                            </Link>
+                        </div>
+                    )}
 
                     {canEdit && (
                         <div className="fp-savebar">

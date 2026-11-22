@@ -325,8 +325,10 @@ const DocumentCheckPage = () => {
                     <p className="dc-hitl">
                         <ShieldCheck size={15} aria-hidden="true" />
                         <span><Terms text={ciMode
-                            ? 'Fill in the boxes from the report yourself, or press Run AI to have them filled for you to check. Nothing is saved to the CI results until a Credit Investigator presses Save. The application record is never changed here.'
-                            : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} /></span>
+                            ? (canEdit
+                                ? 'Type in the details, or press Run AI to fill them in for you. Check them, then press Save.'
+                                : 'The Credit Investigator fills these in from each report.')
+                            :'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} /></span>
                     </p>
                 </div>
                 <div className="lf-actions">
@@ -338,8 +340,9 @@ const DocumentCheckPage = () => {
                             </li>
                         </ul>
                     )}
-                    <Link to={backTo.to} className="lf-btn" onClick={guardLink}>
-                        <ArrowLeft size={16} aria-hidden="true" />{backTo.label}
+                    <Link to={backTo.to} className="lf-iconbtn dc-back" onClick={guardLink}
+                        aria-label={`Back to ${backTo.label}`} title={`Back to ${backTo.label}`}>
+                        <ArrowLeft size={18} aria-hidden="true" />
                     </Link>
                 </div>
             </header>

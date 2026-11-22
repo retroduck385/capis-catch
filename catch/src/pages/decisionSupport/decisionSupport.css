@@ -92,8 +92,8 @@
 [data-theme='dark'] .lf-folder .ds-go:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
 
 /* ---------- the brief (brief.jsx): the short version of this page inside the review summary ----------
-   Three inset status tiles that open their section of the full page in a new tab, then the readiness items still
-   open, then a "Full analysis" link. Tones are the policy check's (.mrac .ok / .warn / .bad). */
+   Inset status tiles (three are buttons that open their section in a modal: .ds-modal below), then the readiness
+   items still open, then a "Full analysis" link. Tones are the policy check's (.mrac .ok / .warn / .bad). */
 .ds-brief-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr)); gap: 0.75rem; }
 .ds-brief-tile {
   position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'ic lbl' 'val val' 'sub sub';
@@ -102,7 +102,11 @@
   box-shadow: inset 4px 0 0 var(--tone); color: var(--ink); text-decoration: none;
 }
 div.ds-brief-tile { padding-right: 1.1rem; }
-a.ds-brief-tile:hover { border-color: var(--tone-line); background: var(--lf-inset-hover, #fff); color: var(--ink); text-decoration: none; }
+/* the tile as a button: undo the .ct button base (theme.css, layered, so these unlayered rules win) */
+button.ds-brief-tile {
+  width: 100%; min-height: 0; margin: 0; font: inherit; font-size: inherit; font-weight: inherit; text-align: left; cursor: pointer;
+}
+button.ds-brief-tile:hover { border-color: var(--tone-line); background: var(--lf-inset-hover, #fff); color: var(--ink); text-decoration: none; }
 .ds-brief-tile:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
 .ds-brief-tile .ic {
   grid-area: ic; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 10px;
@@ -135,5 +139,5 @@ a.ds-brief-tile:hover { border-color: var(--tone-line); background: var(--lf-ins
 }
 @media (prefers-reduced-motion: no-preference) {
   .ds-brief-tile { transition: background-color 0.18s, border-color 0.18s, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
-  a.ds-brief-tile:hover { transform: translateY(-1px); }
+  button.ds-brief-tile:hover { transform: translateY(-1px); }
 }

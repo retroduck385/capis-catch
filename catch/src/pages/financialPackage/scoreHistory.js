@@ -1,5 +1,5 @@
 // Credit score change history as plain lines, newest first (group notes item 32, 2026-11-22): band names and points
-// instead of codes, always open. From audit_log rows of credit_score_entries (log_application_change): an UPDATE
+// instead of codes. Shown in a collapsed "Change History" dropdown (2026-11-23). From audit_log rows of credit_score_entries (log_application_change): an UPDATE
 // keeps only the fields that changed, so the criterion comes from the row's INSERT / DELETE entry or the saved scores.
 //   scoreHistory(audit, rules, savedRows) -> [{ id, kind, criterion, text, remarks, by, at }]
 // kind: SCORED | CHANGED | REMARKS | CLEARED. A change of the suggestion alone (suggested_band) is left out.

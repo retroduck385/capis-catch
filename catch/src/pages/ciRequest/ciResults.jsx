@@ -22,7 +22,6 @@ import { FactRowsView } from './ciFactsEditor';
 import { AI_CHECKED, REQUIRED_CHECKS, fullName, isAiChecked, keyOf, missingItems, reportUrl, useCiResults } from './ciResultsData';
 import { CI_CHECKS, CI_RESULTS, needsAttention, resultTone } from './options';
 import CiFindingFlags from './findingFlags';
-import CiFileChecks from './ciFileChecks';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 
@@ -464,11 +463,10 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
 };
 
 // ============================================================
-// Read-only view (CO, AO, heads; and the CI after Done). computed: computeFp() when the page has it (the LCR and
-// DBR in "What the CI results mean for this file").
+// Read-only view (CO, AO, heads; and the CI after Done).
 // ============================================================
-export const CiResultsView = ({ app, title = 'CI results', computed = null }) => {
-    const { borrowers, byKey, raw, loading, error: loadError } = useCiResults(app);
+export const CiResultsView = ({ app, title = 'CI results' }) => {
+    const { borrowers, byKey, loading, error: loadError } = useCiResults(app);
     const [meta, setMeta] = useState({ request: null, done: null, names: {} });
     const [error, setError] = useState(null);
 
@@ -537,7 +535,6 @@ export const CiResultsView = ({ app, title = 'CI results', computed = null }) =>
                     </tbody>
                 </table>
             </div>
-            <CiFileChecks app={app} ci={raw} computed={computed} />
             <CiFindingFlags applicationId={app.id}
                 hasFindings={Object.values(byKey).some((c) => needsAttention(c.result))} />
             <p className="pt-2"><span className="font-semibold">Overall <Term k="CI" /> remarks:</span>{' '}

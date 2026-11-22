@@ -664,8 +664,9 @@ const WorkTray = () => {
                                                     );
                                                 })()}
                                             </div>
-                                            {/* the assigned Account Officer's final report (group notes item 36) */}
-                                            {r.stage === 'DECIDED' && role === 'ACCOUNT_OFFICER' && r.ao_id === myId && (
+                                            {/* the assigned AO's / CO's final report, once every reviewer endorsed it (reportMode() in finalReport/signoffs.js) */}
+                                            {['APPROVAL', 'DECIDED'].includes(r.stage)
+                                                && ((role === 'ACCOUNT_OFFICER' && r.ao_id === myId) || (role === 'CREDIT_OFFICER' && r.co_id === myId)) && (
                                                 <Link to={`/finalReportPage?id=${r.application_id}`} className='wt-report'
                                                     onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                                     <FileText size={13} aria-hidden='true' />Final report

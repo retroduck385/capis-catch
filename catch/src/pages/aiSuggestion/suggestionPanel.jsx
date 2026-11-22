@@ -1,7 +1,7 @@
 // "Ask AI for a suggestion" under the Credit Result of the Financial Package. The assigned Credit Officer asks; the
 // advise-service worker answers with the Claude API (advise-service/advise.py), from the policy recommender's findings
 // and the CO's reviews of them: a suggested result, short reasons that each cite a finding, a draft justification and
-// missing data. Figures the AI used that are in nothing it was sent are flagged. The AI never sets the credit result: the CO may copy
+// missing data (not shown). Figures the AI used that are in nothing it was sent are flagged. The AI never sets the credit result: the CO may copy
 // the draft into the justification, edits it and saves the FP as usual. Every suggestion is kept, with who asked,
 // when and the figures used. Everyone who can open the FP reads them.
 // The data privacy question (Q-04) was cleared by the bank on 2026-11-20; what is sent stays filtered (buildInput.js).
@@ -28,23 +28,40 @@ const REVIEW_CHIPS = {
     NOT_REVIEWED: ['Finding not reviewed yet', 'warn'],
 };
 
-// One cited reason, with its clause excerpt (from what was sent) on demand. Older suggestions sent `passages`.
-const Reason = ({ reason, passages }) => {
+// Figures in a reason (peso amounts, percentages, ages and terms) are bolded so they stand out on a quick read
+const FIGURE = /(₱\s?[\d,]+(?:\.\d+)?|\d+(?:\.\d+)?%|\b\d+-(?:year|month)\b)/g;
+const withFigures = (text) => text.split(FIGURE).map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part));
+
+// One cited reason as a numbered card, with its clause excerpt (from what was sent) on demand. Older suggestions
+// sent `passages`.
+const Reason = ({ reason, passages, n }) => {
     const p = passages.find((x) => x.chunk_key === reason.chunk_key);
     const [chip, tone] = REVIEW_CHIPS[reason.review] ?? [];
+    const unverified = reason.unverified_figures?.length > 0;
     return (
-        <li>
-            <span>{reason.text}</span>
-            {chip && <span className={`mrac-chip ${tone}`}>{chip}</span>}
-            {reason.unverified_figures?.length > 0 && (
-                <span className="mrac-chip warn" title="Not in the file's figures or the policy findings sent to the AI">
-                    Check: {reason.unverified_figures.join(', ')}
-                </span>
-            )}
-            <details className="ai-cite">
-                <summary>Policy: {reason.heading || reason.chunk_key}{reason.document ? ` · ${reason.document}` : ''}</summary>
-                {p ? <p>{p.excerpt}{p.pages?.length ? ` (p. ${p.pages.join(', ')})` : ''}</p> : <p>Passage {reason.chunk_key}</p>}
-            </details>
+        <li className="ai-reason">
+            <span className="ai-reason-n" aria-hidden="true">{n}</span>
+            <div className="ai-reason-body">
+                <p className="ai-reason-text">{withFigures(reason.text)}</p>
+                {(chip || unverified) && (
+                    <div className="ai-reason-chips">
+                        {chip && <span className={`mrac-chip ${tone}`}>{chip}</span>}
+                        {unverified && (
+                            <span className="mrac-chip warn" title="Not in the file's figures or the policy findings sent to the AI">
+                                Check: {reason.unverified_figures.join(', ')}
+                            </span>
+                        )}
+                    </div>
+                )}
+                <details className="ai-cite">
+                    <summary>
+                        <span className="ai-cite-label">Source</span>
+                        <span className="ai-cite-head">{reason.heading || reason.chunk_key}</span>
+                        {reason.document && <span className="ai-cite-doc">{reason.document}</span>}
+                    </summary>
+                    {p ? <p>{p.excerpt}{p.pages?.length ? ` (p. ${p.pages.join(', ')})` : ''}</p> : <p>Passage {reason.chunk_key}</p>}
+                </details>
+            </div>
         </li>
     );
 };
@@ -78,8 +95,10 @@ export const SuggestionView = ({ row, names, canEdit, onUseDraft }) => {
             </div>
             {out.reasons?.length > 0 && (
                 <>
-                    <h4 className="ai-h">Reasons</h4>
-                    <ul className="ai-reasons">{out.reasons.map((r, i) => <Reason key={`${r.chunk_key}-${i}`} reason={r} passages={passages} />)}</ul>
+                    <h4 className="ai-h">Reasons ({out.reasons.length})</h4>
+                    <ol className="ai-reasons">
+                        {out.reasons.map((r, i) => <Reason key={`${r.chunk_key}-${i}`} reason={r} passages={passages} n={i + 1} />)}
+                    </ol>
                 </>
             )}
             {out.notes?.map((n) => <p key={n} className="lf-note warn"><AlertTriangle size={15} aria-hidden="true" /><span>{n}</span></p>)}
@@ -92,12 +111,6 @@ export const SuggestionView = ({ row, names, canEdit, onUseDraft }) => {
                             <Copy size={15} aria-hidden="true" />Copy into justification
                         </button>
                     )}
-                </>
-            )}
-            {out.missing_data?.length > 0 && (
-                <>
-                    <h4 className="ai-h">Missing or to verify</h4>
-                    <ul className="ai-missing">{out.missing_data.map((m) => <li key={m}>{m}</li>)}</ul>
                 </>
             )}
             <p className="fp-note ai-meta">
@@ -152,7 +165,7 @@ const SuggestionPanel = ({ applicationId, canEdit, dirty, justification, onUseDr
     const earlier = data.rows.filter((r) => r !== shown && !(waiting && r === latest));
 
     return (
-        <Section id="fp-ai" title="AI suggestion for the credit result" className="ai-panel">
+        <Section id="fp-ai" title="AI suggestion for the credit result" className="mrac ai-panel">
             <p className="fp-note">
                 <Terms text="The AI gets the saved figures (borrowers by role, no names, addresses or contact details; the Condition score as a sub-total only), the CI results, V. Exceptions as typed (don't put names there), and the policy recommender's findings with your reviews: edited ones as you wrote them, dismissed ones left out, ones you haven't reviewed marked as unconfirmed. It suggests; it never sets the credit result." />
             </p>
