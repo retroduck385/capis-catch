@@ -472,12 +472,8 @@ const ReviewSummaryPage = () => {
     const linkClass = `lf-btn${reviewRole ? ' quiet' : ''}`;
     const pageLinks = (
         <>
-            {role !== 'CREDIT_INVESTIGATOR' && (
-                <>
-                    <Link to={`/financialPackagePage?id=${app.id}`} className={linkClass}>Financial Package</Link>
-                    <Link to={`/creditScorePage?id=${app.id}`} className={linkClass}>Credit scoring</Link>
-                </>
-            )}
+            <Link to={`/financialPackagePage?id=${app.id}`} className={linkClass}>Financial Package</Link>
+            <Link to={`/creditScorePage?id=${app.id}`} className={linkClass}>Credit scoring</Link>
             <Link to={`/loanFolderPage?id=${app.id}`} className={linkClass}>
                 Loan folder<ArrowRight size={16} aria-hidden="true" />
             </Link>

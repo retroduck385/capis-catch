@@ -8,10 +8,6 @@ export const STAFF_ROLES = ['ACCOUNT_OFFICER', 'CREDIT_INVESTIGATOR', 'DISPATCH_
 // (mirrors the "read mrac runs" policy in 20261111_decision_support.sql)
 export const DSS_ROLES = STAFF_ROLES.filter((r) => r !== 'CREDIT_INVESTIGATOR');
 
-// Can open the Financial Package and its steps (credit scoring, approval routing): every staff role except the Credit
-// Investigator (group notes item 37). Screen only: the database read rules are unchanged.
-export const FP_ROLES = STAFF_ROLES.filter((r) => r !== 'CREDIT_INVESTIGATOR');
-
 // Can open the FINAL report (group notes item 36): the Account Officer and the Approvers. The assigned Credit Officer
 // still previews the DRAFT from the Financial Package while editing (reportMode() in finalReport/signoffs.js).
 export const FINAL_REPORT_ROLES = ['ACCOUNT_OFFICER', 'APPROVER'];
