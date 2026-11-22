@@ -4,6 +4,7 @@
 import React, { useContext } from 'react';
 import { getAddress, getParties, getParty, one } from './api';
 import { SUMMARY_GROUPS, SummaryContext } from './summaryContext';
+import { partyAnchor } from '../kycClarify/sections';
 import {
     ADDRESS_FIELDS, BANK_ACCOUNT_FIELDS, CIVIL_STATUSES, COLLATERAL_FIELDS, CREDIT_CARD_FIELDS, EMPLOYMENT_FIELDS,
     EMPLOYMENT_TYPES, EXISTING_LOAN_FIELDS, formatMoney, GENDERS, HOME_OWNERSHIP, labelFor, PARTY_FIELDS,
@@ -52,11 +53,12 @@ const Rows = ({ config, row, fields = Object.keys(config) }) => {
 };
 
 // sub: a second line in the stacked layout's header band (a borrower's name); the original layout ignores it
-const Block = ({ title, sub, children }) => {
+// anchor: an id for the block (KYC questions scroll the applicant to the matching part: kycClarify/sections.js)
+const Block = ({ title, sub, children, anchor }) => {
     const { stacked } = useContext(SummaryContext);
     if (stacked) {
         return (
-            <section className="sum-block">
+            <section className="sum-block" id={anchor}>
                 <header className="sum-head">
                     <h3>{title}</h3>
                     {sub && <span className="sum-sub">{sub}</span>}
@@ -66,7 +68,7 @@ const Block = ({ title, sub, children }) => {
         );
     }
     return (
-        <div className="border p-3 my-3 text-left">
+        <div className="border p-3 my-3 text-left" id={anchor}>
             <h3 className="font-semibold pb-1">{title}</h3>
             {children}
         </div>
@@ -103,7 +105,8 @@ const PartyBlock = ({ party, onViewDocument }) => {
         </>
     );
     return (
-        <Block title={partyLabel(party)} sub={[party.first_name, party.middle_name, party.last_name].filter(Boolean).join(' ')}>
+        <Block title={partyLabel(party)} sub={[party.first_name, party.middle_name, party.last_name].filter(Boolean).join(' ')}
+            anchor={partyAnchor(party.role, party.party_no)}>
             {/* stacked: the personal fields get a panel of their own, like the addresses below, so every group lines up */}
             {stacked ? <div className="pt-2"><p className="italic">Personal details</p>{personal}</div> : personal}
             {['PRESENT', 'PERMANENT'].map((type) => getAddress(party, type) && (
@@ -167,7 +170,7 @@ const ApplicationSummary = ({ app, onViewDocument, groups = SUMMARY_GROUPS }) =>
     return (
         <div>
             {has('loan') && (
-                <Block title="Loan Details">
+                <Block title="Loan Details" anchor="sum-loan">
                     <Rows
                         config={{
                             purpose: { label: 'Purpose' }, property_address: { label: 'Property Address' },
@@ -180,7 +183,7 @@ const ApplicationSummary = ({ app, onViewDocument, groups = SUMMARY_GROUPS }) =>
             {has('parties') && parties.map((p) => <PartyBlock key={p.id} party={p} onViewDocument={onViewDocument} />)}
 
             {has('obligations') && (
-                <>
+                <div id="sum-obligations">
                     <ListBlock title="Existing Bank Accounts" item="Account" config={BANK_ACCOUNT_FIELDS} rows={principal?.bank_accounts} />
                     <ListBlock title="Existing Loans" item="Loan" config={EXISTING_LOAN_FIELDS} rows={principal?.existing_loans} />
                     <ListBlock title="Credit Cards" item="Card" config={CREDIT_CARD_FIELDS} rows={principal?.credit_cards} />
@@ -191,16 +194,16 @@ const ApplicationSummary = ({ app, onViewDocument, groups = SUMMARY_GROUPS }) =>
                             <ListBlock title="Spouse: Credit Cards" item="Card" config={CREDIT_CARD_FIELDS} rows={spouse.credit_cards} />
                         </>
                     )}
-                </>
+                </div>
             )}
             {has('references') && (
-                <ListBlock title="Character References" item="Reference" config={REFERENCE_FIELDS}
-                    rows={[...(app.character_references ?? [])].sort((a, b) => a.reference_no - b.reference_no)} />
+                <div id="sum-references"><ListBlock title="Character References" item="Reference" config={REFERENCE_FIELDS}
+                    rows={[...(app.character_references ?? [])].sort((a, b) => a.reference_no - b.reference_no)} /></div>
             )}
 
             {has('collateral') && (
                 <>
-                    <Block title="Collateral Details"><Rows config={COLLATERAL_FIELDS} row={one(app.collateral_details)} /></Block>
+                    <Block title="Collateral Details" anchor="sum-collateral"><Rows config={COLLATERAL_FIELDS} row={one(app.collateral_details)} /></Block>
                     <Block title="Referral Details"><Rows config={REFERRAL_FIELDS} row={one(app.referral_details)} /></Block>
                 </>
             )}

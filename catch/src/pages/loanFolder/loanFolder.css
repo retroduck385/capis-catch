@@ -930,3 +930,18 @@
 [data-theme='dark'] .lf-folder .lf-formcard { background: #f4f7fc; border-color: rgba(255, 255, 255, 0.12); -webkit-backdrop-filter: none; backdrop-filter: none; }
 [data-theme='dark'] .lf-folder .lf-panels > .lf-paper > * { background: #f4f7fc; border-color: rgba(255, 255, 255, 0.12); }
 [data-theme='dark'] .lf-folder .lf-paper :is(button, a, summary):focus-visible { outline-color: rgba(15, 45, 94, 0.5); }
+
+/* KYC section (round 3): the check rail cards are solid, not glass, so the form behind never shows through; the
+   check's header wraps so the title, its comment button and the status chip never overlap */
+.lf-folder .lf-rail .lf-card { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+[data-theme='dark'] .lf-folder .lf-rail .lf-card { background: #16213f; }
+.lf-folder .lf-check .lf-cardhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; }
+.lf-folder .lf-check .lf-cardhead h3 { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; flex: 1 1 10rem; min-width: 0; margin: 0; }
+.lf-folder .lf-check .lf-cardhead h3 .lf-comment { position: static; margin: 0; }
+.lf-folder .lf-check .lf-cardhead > .lf-chip { flex: none; margin-left: auto; }
+
+/* The section form's Save: a white secondary button (the KYC check's Record check stays the primary action) */
+.lf-folder .lf-formcard .ct-actions button[type='submit'] {
+  background: #fff; border: 1.5px solid var(--navy, #14295f); color: var(--navy, #14295f); font-weight: 700;
+}
+.lf-folder .lf-formcard .ct-actions button[type='submit']:hover:not(:disabled) { background: #f1f4fa; border-color: var(--navy, #14295f); color: var(--navy, #14295f); }

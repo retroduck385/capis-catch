@@ -1,0 +1,36 @@
+/* KYC clarification threads (threadView, aoThread, applicantClarifyCard). Uses the page's tokens when present
+   (--lf-* on staff pages, --line / --muted / --ink on applicant pages) with light fallbacks. */
+.kq-thread { display: grid; gap: 0.6rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.kq-msg {
+  padding: 0.6rem 0.75rem; border: 1px solid var(--lf-hair, var(--line, rgba(20, 41, 95, 0.12)));
+  border-radius: 10px; background: var(--lf-wash, #f7f9fd);
+}
+.kq-msg.from-applicant { background: var(--lf-inset, #fff); border-left: 3px solid var(--lf-blue, #2453c9); }
+.kq-msg.from-ao { border-left: 3px solid var(--lf-orange, #d9822b); }
+.kq-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem; margin: 0 0 0.2rem; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.82rem; }
+.kq-meta b { color: var(--lf-text, var(--ink, #14295f)); font-weight: 700; }
+.kq-meta time { margin-left: auto; }
+.kq-body { margin: 0; color: var(--lf-text, var(--ink, #14295f)); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.kq-file {
+  display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.4rem; padding: 0.2rem 0.55rem;
+  border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.16)); border-radius: 999px; background: #fff;
+  color: var(--lf-blue, #2453c9); font-size: 0.85rem; font-weight: 600; cursor: pointer; overflow-wrap: anywhere;
+}
+.kq-err { margin: 0.4rem 0 0; color: #b42318; font-size: 0.88rem; }
+.kq-note { margin: 0.4rem 0 0; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.86rem; }
+.kq-form { display: grid; gap: 0.4rem; margin-top: 0.75rem; }
+.kq-form label { font-weight: 600; font-size: 0.9rem; color: var(--lf-text, var(--ink, #14295f)); }
+.kq-form textarea { width: 100%; min-height: 4.5rem; }
+.kq-counter { justify-self: end; margin: 0; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.8rem; }
+.kq-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.kq-history { margin-top: 0.75rem; }
+.kq-history > summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--lf-text-2, var(--ink, #14295f)); }
+.kq-past { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--lf-hair, rgba(20, 41, 95, 0.16)); }
+.kq-status { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; font-weight: 600; color: var(--lf-text-2, #33415c); }
+.kq-status.open { color: var(--lf-orange, #b45309); }
+.kq-card { scroll-margin-top: calc(var(--ct-head, 4.5rem) + 1rem); }
+.kq-card.focus { box-shadow: 0 0 0 3px rgba(217, 130, 43, 0.35); }
+.kq-badge {
+  display: inline-flex; align-items: center; margin-left: 0.4rem; padding: 0.1rem 0.5rem; border-radius: 999px;
+  background: #fff4e5; color: #9a4b00; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+}

@@ -13,7 +13,9 @@ import './ciRequest.css';
 import { Term, Terms } from '../../components/term';
 import { useTermTitle } from '../../components/useTermTitle';
 
-const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionCount, onRequested }) => {
+// blockedNote: "Resolve the open clarification on Employment first." while a KYC question is open (sending waits;
+// the database refuses the move too: 20261204_kyc_clarification_guard.sql)
+const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionCount, onRequested, blockedNote = null }) => {
     const tt = useTermTitle();
     const [nfisRemarks, setNfisRemarks] = useState('');
     const [tuRemarks, setTuRemarks] = useState('');
@@ -122,9 +124,10 @@ const RequestCiPanel = ({ app, ciRequest, requesterName, verifiedCount, sectionC
                     <span>TU remarks <small>optional</small></span>
                     <textarea value={tuRemarks} onChange={(e) => setTuRemarks(e.target.value)} rows={3} />
                 </label>
+                {blockedNote && <p className="ci-warn" role="note"><AlertTriangle size={16} aria-hidden="true" /><span>{blockedNote}</span></p>}
                 <div className="ci-send-foot">
                     {error ? <p className="ci-err" role="alert">{error}</p> : <span />}
-                    <button type="submit" title={tt('CI')} disabled={saving}>{saving ? 'Sending...' : 'Send CI request'}</button>
+                    <button type="submit" title={tt('CI')} disabled={saving || Boolean(blockedNote)}>{saving ? 'Sending...' : 'Send CI request'}</button>
                 </div>
             </form>
         </>

@@ -37,8 +37,9 @@ import { formatDay, formatWhen, fullWhen } from '../../components/people';
 import MessagesPanel from '../messages/messagesPanel';
 import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
-import AskApplicantButton from '../documentRequests/ask';
-import { kycFileRequest } from './kycAsk';
+import { fetchThreads } from '../kycClarify/api';
+import AoThread from '../kycClarify/aoThread';
+import { openSectionsText, stageBlockNote } from '../kycClarify/sections';
 import { PanelHide, PanelRail } from '../../components/sidePanel';
 import { useSidePanel } from '../../components/useSidePanel';
 import './loanFolder.css';
@@ -72,6 +73,7 @@ const LoanFolderPage = () => {
     const [app, setApp] = useState(null);
     const [canEdit, setCanEdit] = useState(false);
     const [checks, setChecks] = useState([]);
+    const [threads, setThreads] = useState([]);   // KYC clarification threads, open and closed (20261203)
     const [audit, setAudit] = useState([]);
     const [names, setNames] = useState({});
     const [ciRequest, setCiRequest] = useState(null);
@@ -89,10 +91,13 @@ const LoanFolderPage = () => {
 
     // Checks + history + latest CI request (+ the names of whoever made them)
     const loadTrail = useCallback(async () => {
-        const [nextChecks, nextAudit, ciRequests] = await Promise.all([
-            fetchKycChecks(applicationId), fetchAuditLog(applicationId), fetchCiRequests(applicationId)]);
+        const [nextChecks, nextAudit, ciRequests, nextThreads] = await Promise.all([
+            fetchKycChecks(applicationId), fetchAuditLog(applicationId), fetchCiRequests(applicationId),
+            // the threads are extra: if they can't load (migration not run yet), the page still opens
+            fetchThreads(applicationId).catch(() => [])]);
         const latestCi = ciRequests.at(-1) ?? null;
         setChecks(nextChecks);
+        setThreads(nextThreads);
         setAudit(nextAudit);
         setCiRequest(latestCi);
         setNames(await fetchStaffNames([...nextChecks.map((c) => c.checked_by), ...nextAudit.map((a) => a.changed_by),
@@ -125,6 +130,11 @@ const LoanFolderPage = () => {
         load();
         return () => { cancelled = true; };
     }, [applicationId, loadTrail]);
+
+    // A reply notification (#kyc-<section>) clicked while the folder is already open: load the threads again
+    useEffect(() => {
+        if (hash.startsWith('#kyc-') && app) fetchThreads(applicationId).then(setThreads, () => {});
+    }, [hash, applicationId, app]);
 
     // History (header button / dashboard tile) asked while the history wasn't on screen (the editing AO was in a
     // section): the page switched to the overview first, so finish once it has rendered
@@ -172,16 +182,23 @@ const LoanFolderPage = () => {
     const verifiedCount = counts.VERIFIED;
     const section = sections.find((s) => s.key === currentKey) ?? null;
 
-    // "Request a file" on a section marked Needs clarification: a document request with that section's documents
-    // ticked (kycAsk.js); the AO's remark is shown to them only, never sent
-    const askFor = (s, check) => (check?.result === 'NEEDS_CLARIFICATION' ? (
-        <p className="lf-kyc-meta lf-ask">
-            <AskApplicantButton applicationId={app.id} plain className="lf-ask-btn"
-                ask={{ ...kycFileRequest(s.key, getParties(app), s.title), remark: check.remarks ?? '' }}>
-                Request a file
-            </AskApplicantButton>
-        </p>
-    ) : null);
+    // KYC clarification threads (kycClarify/): per section, open and closed
+    const threadsFor = (key) => threads.filter((t) => t.section === key);
+    const openThreadFor = (key) => threadsFor(key).find((t) => t.status === 'OPEN') ?? null;
+    // A Needs clarification recorded before the threads existed (or by staff tooling) has no question sent
+    const unsent = (check) => check?.result === 'NEEDS_CLARIFICATION' && !threads.some((t) => t.opened_check_id === check.id);
+    // The board's line for a section: the editing AO opens the section to answer; anyone else reads the thread here
+    const askFor = (s, check) => {
+        const sectionThreads = threadsFor(s.key);
+        const open = sectionThreads.find((t) => t.status === 'OPEN');
+        if (!canEdit && sectionThreads.length > 0) return <AoThread threads={sectionThreads} canAnswer={false} onChanged={loadTrail} />;
+        if (open) {
+            const replies = open.messages.filter((m) => m.from === 'APPLICANT').length;
+            return <p className="lf-kyc-meta">Question open: {replies ? `the applicant replied (${replies})` : 'waiting for the applicant'}</p>;
+        }
+        if (unsent(check)) return <p className="lf-kyc-meta">No question was sent. Mark it again to ask the applicant.</p>;
+        return null;
+    };
 
     const refresh = async () => {
         const data = await refreshApplication(app.id);
@@ -448,10 +465,19 @@ const LoanFolderPage = () => {
                         complete={section.complete}
                         latest={latestCheck(section.key)}
                         names={names}
-                        extra={askFor(section, latestCheck(section.key))}
+                        extra={unsent(latestCheck(section.key))
+                            ? <p className="lf-kyc-meta">No question was sent. Mark it again to ask the applicant.</p> : null}
+                        openThread={Boolean(openThreadFor(section.key))}
                         onRecorded={handleRecorded}
                         onNext={() => open(next?.key ?? REQUEST_CI)}
                         nextLabel={next ? 'Next section' : 'Request CI'} />
+                    {threadsFor(section.key).length > 0 && (
+                        <section className="lf-card lf-check kq-card" aria-label="Question to the applicant">
+                            <div className="lf-cardhead"><h3>Question to the applicant</h3></div>
+                            <AoThread key={`thread-${section.key}`} threads={threadsFor(section.key)} canAnswer canWithdraw={canEdit}
+                                onChanged={loadTrail} />
+                        </section>
+                    )}
                 </aside>
                 <div className="lf-card lf-formcard lf-paper">
                     <p className="lf-formcard-head">
@@ -549,6 +575,7 @@ const LoanFolderPage = () => {
                                 requesterName={names[ciRequest?.requested_by]}
                                 verifiedCount={verifiedCount}
                                 sectionCount={sections.length}
+                                blockedNote={stageBlockNote(openSectionsText(threads))}
                                 onRequested={handleCiRequested} />
                         </div>
                     ) : section ? sectionView : (

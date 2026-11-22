@@ -17,6 +17,8 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, CircleHelp, Clock, FileText, PenLine, Save, Send, Sparkles, Trash2, Upload, UserRound } from 'lucide-react';
 import { partyLabel } from '../applicationForm/options';
 import { fetchStaffNames } from '../loanFolder/api';
+import { useOpenClarifications } from '../kycClarify/useOpenClarifications';
+import { stageBlockNote } from '../kycClarify/sections';
 import { completeCi, fetchCiDone, fetchCiRequests, getCiDocumentUrl, removeCiDocument, saveCiFindings, uploadCiDocument } from './api';
 import { FactRowsView } from './ciFactsEditor';
 import { AI_CHECKED, REQUIRED_CHECKS, fullName, isAiChecked, keyOf, missingItems, reportUrl, useCiResults } from './ciResultsData';
@@ -93,6 +95,8 @@ const ResultText = ({ value }) => (value
 export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged, onDirtyChange }) => {
     const { borrowers, byKey, confirmed, loading, error: loadError, reload } = data;
     const tt = useTermTitle();
+    // An open KYC question waits: the file can't go to Credit Evaluation yet (the database refuses it too)
+    const blockedNote = stageBlockNote(useOpenClarifications(app.id));
 
     const [remarks, setRemarks] = useState(null);     // null = unchanged
     const [busy, setBusy] = useState(null);           // slot key (upload) / doc id / 'remarks' / 'done'
@@ -442,9 +446,11 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
                     </div>
                 </div>
                 {missing.length > 0 && <ul className="ci-still">{missing.map((m) => <li key={m}><Terms text={m} /></li>)}</ul>}
+                {blockedNote && <p className="ci-warn" role="note"><AlertTriangle size={16} aria-hidden="true" /><span>{blockedNote}</span></p>}
                 {errorAt('done')}
                 <div className="ci-done-foot">
-                    <button type="button" className="lf-primary" title={tt('Mark CI Done')} disabled={missing.length > 0 || dirty || busy === 'done'} onClick={handleDone}>
+                    <button type="button" className="lf-primary" title={tt('Mark CI Done')}
+                        disabled={missing.length > 0 || dirty || busy === 'done' || Boolean(blockedNote)} onClick={handleDone}>
                         <Send size={16} aria-hidden="true" />{busy === 'done' ? 'Sending...' : 'Mark CI Done and send to Credit Evaluation'}
                     </button>
                     {dirty && <span className="ci-unsaved">Save or discard your changes first.</span>}
