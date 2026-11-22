@@ -56,8 +56,9 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
         setProgress('Sending the figures and the file profile');
         try {
             // Uses the figures on screen now, including unsaved edits (the run stores the facts and profile it was run on)
-            const facts = buildMracFacts({ app, computed, score, pricing, exceptions });
-            const profile = buildPolicyProfile({ app, computed, score, exceptions, facts, ...await fetchProfileInputs(app) });
+            const inputs = await fetchProfileInputs(app);
+            const facts = buildMracFacts({ app, computed, score, pricing, exceptions, ci: inputs.ci });
+            const profile = buildPolicyProfile({ app, computed, score, exceptions, facts, ...inputs });
             const id = await requestMracCheck(app.id, facts, profile);
             setProgress('Waiting for the policy worker');
             setRun(await waitForMracRun(id, { onProgress: (r) => r.progress && setProgress(r.progress) }));

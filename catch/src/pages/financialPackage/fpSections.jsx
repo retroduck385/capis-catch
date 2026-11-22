@@ -182,9 +182,9 @@ export const CollateralSection = ({ app, form, onPkg, disabled }) => {
 };
 
 // ---------- IV. Credit checking (the Credit Investigator's results, read-only) ----------
-export const CreditCheckingSection = ({ app }) => (
+export const CreditCheckingSection = ({ app, computed = null }) => (
     <Section id="fp-iv" title="IV. Credit Checking" className="lf-ciresults">
-        <CiResultsView app={app} title={null} />
+        <CiResultsView app={app} title={null} computed={computed} />
     </Section>
 );
 

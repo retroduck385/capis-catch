@@ -23,8 +23,19 @@ Nothing below is guessed in the code. Each item is either left as `needs_review`
 
 ## Data the RAAC needs that CATCH does not collect yet
 `employment_status` (regular / probationary), position level, total work experience, seafarer rank, `business_years`,
-`net_income_after_tax`, NFIS record category, `has_replevin_or_foreclosure`. Until they exist, those rules report `needs_review`
-(missing data), never `pass`.
+`net_income_after_tax`. Until they exist, those rules report `needs_review` (missing data), never `pass`.
+(NFIS record categories and `has_replevin_or_foreclosure` now come from the Credit Investigator's NFIS records:
+`ci_nfis_records`, read by `catch/src/pages/ciRequest/ciFacts.js`.)
+
+## NFIS thresholds that disagree (CATCH follows the defaults below until credit policy confirms; Josh, 2026-11-22)
+9. **Closed / mishandled checking account.** RAAC rule 1c: "reported five (5) years and up, for 1 checking account only".
+   The acceptable-records table (June 2021): "more than 3 years, one record only of closed CA". The Credit_Score sheet: "more
+   than 5 years". CATCH: the **score** uses 5 years (the sheet), the **RAAC check** uses 3 years (the table).
+10. **Cancelled credit card with a balance.** RAAC rule 1a: "unpaid balance of Php 5,000 and below, 3 years and above". The
+   table: up to Php 20,000 if over 3 years (and up to Php 50,000, or Php 20,000 if over 2 years, with the 70% / 80% LCR cap).
+   CATCH uses the table (it is dated, so likely the newer one).
+11. **RAAC 1d** ("adverse findings already surfaced in previously fully paid or existing loans with at least 50% paid
+   installment", with the bank) needs the bank's own loan history, which neither TU nor NFIS has. Where does CATCH get it?
 
 ## Useful for CATCH, not RAG
 - Housing turnaround time: 1 day for a financial package without bank-statement analysis, 2 days with; cut-off 11:00 AM (Operations Manual s.IX).

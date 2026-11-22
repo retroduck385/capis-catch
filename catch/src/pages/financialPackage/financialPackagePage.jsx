@@ -27,6 +27,8 @@ import { fetchApplication, getParties, one, toRow } from '../applicationForm/api
 import { FormError } from '../applicationForm/fields';
 import { BORROWER_ROLES, formatMoney, partyLabel } from '../applicationForm/options';
 import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
+import { fetchCiResults } from '../ciRequest/api';
+import { ciSlots, tuLoanRows } from '../ciRequest/ciFacts';
 import ChangeHistory from '../loanFolder/changeHistory';
 import { fetchReviewAssignments } from '../review/api';
 import { splitRouting } from '../review/approval';
@@ -184,13 +186,16 @@ const FinancialPackagePage = () => {
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [ci, setCi] = useState(null);           // the CI results (XI. "Copy from TU"); null if they can't be read
+    const [copyNote, setCopyNote] = useState(null);
 
     // Saved FP + its change history (+ the staff names in it)
     const loadFp = useCallback(async (record) => {
         const ids = getParties(record, BORROWER_ROLES).map((p) => p.id);
-        const [savedFp, log, aoId, reviewRows] = await Promise.all([
+        const [savedFp, log, aoId, reviewRows, ciResults] = await Promise.all([
             fetchFinancialPackage(record.id, ids), fetchAuditLog(record.id), fetchAssignedAo(record.id),
-            fetchReviewAssignments(record.id)]);
+            fetchReviewAssignments(record.id), fetchCiResults(ids).catch(() => null)]);
+        setCi(ciResults);
         const fpLog = log.filter((e) => FP_TABLES.includes(e.table_name)
             || (e.table_name === 'loan_applications' && ('interest_rate' in (e.new_data ?? {}) || 'fixing_period' in (e.new_data ?? {}))));
         const staff = await fetchStaffNames([aoId, ...fpLog.map((e) => e.changed_by),
@@ -351,6 +356,12 @@ const FinancialPackagePage = () => {
 
     const kycBankAccounts = getParties(app, BORROWER_ROLES).flatMap((p) => (p.bank_accounts ?? []).map((b) => ({ party: p, ...b })));
     const kycLoans = computed.existingLoans;
+    // XI. "Copy from TU": the open TU loans not in XI. yet (null: no CI results to copy from)
+    const tuRows = ci && ci.tuAccounts.length ? tuLoanRows(ciSlots(app, ci), form.loan_checks) : null;
+    const copyFromTu = () => {
+        change({ ...form, loan_checks: [...form.loan_checks, ...tuRows.map((r) => ({ _key: crypto.randomUUID(), ...r }))] });
+        setCopyNote(`${tuRows.length} row${tuRows.length === 1 ? '' : 's'} added from TU. Not saved yet.`);
+    };
 
     const pesoOf = (v) => (v === null || v === undefined ? '—' : `₱${formatMoney(v)}`);
     // The key figures as tiles; the risk rating opens the scoring page. tone 'warn': something is still missing for it
@@ -620,7 +631,7 @@ const FinancialPackagePage = () => {
                         <FacilitySection app={app} computed={computed} form={form.pkg} pricing={form.pricing}
                             onPkg={onPkg} onPricing={onPricing} disabled={disabled} />
                         <CollateralSection app={app} form={form.pkg} onPkg={onPkg} disabled={disabled} />
-                        <CreditCheckingSection app={app} />
+                        <CreditCheckingSection app={app} computed={computed} />
                         <RowsSection id="fp-v" title="V. Exception/s" config={EXCEPTION_FIELDS} rows={form.exceptions}
                             onChange={onList('exceptions')} disabled={disabled}>
                             <p className="fp-note">List each policy this file doesn&apos;t meet, what you recommend, and what
@@ -652,6 +663,17 @@ const FinancialPackagePage = () => {
                                 {kycLoans.length === 0 ? 'none.' : kycLoans.map((l) =>
                                     `${partyLabel(l.party)}: ${l.loan_type} with ${l.lending_institution}, ₱${formatMoney(l.monthly_payment)} / month`).join('; ')}
                             </p>
+                            {!disabled && tuRows !== null && (
+                                <div className="fp-copytu">
+                                    <button type="button" className="fp-add" disabled={tuRows.length === 0} onClick={copyFromTu}>
+                                        Copy from TU ({tuRows.length === 0 ? 'nothing new' : `${tuRows.length} open loan${tuRows.length === 1 ? '' : 's'}`})
+                                    </button>
+                                    <span className="fp-note">
+                                        Adds the borrowers' open loans from the Credit Investigator's TU accounts (not credit cards). Check them, then Save.
+                                    </span>
+                                    {copyNote && <span role="status" className="fp-note">{copyNote}</span>}
+                                </div>
+                            )}
                         </RowsSection>
                         <RowsSection id="fp-xii" title="XII. Trade Checking (if applicable)" config={TRADE_CHECK_FIELDS} rows={form.trade_checks}
                             onChange={onList('trade_checks')} disabled={disabled} />

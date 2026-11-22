@@ -5,8 +5,9 @@
 // at a time, with Back / Next at the bottom. The step is in the URL (&step=request|reports|send), so the browser's
 // Back button and links (e.g. the document check's "Go to step 3") work:
 //   1. Review the request (forms + AO remarks)
-//   2. Reports and results: per borrower x check, upload the report, open its OCR extraction on
-//      /documentCheckPage?ci=1 (optional; confirming there fills in the result + summary), choose the result, Save
+//   2. Reports and results: per borrower x check, upload the report, then Open report (/documentCheckPage?ci=1): the
+//      report next to one set of boxes (result, report date, summary, NFIS records / TU accounts), typed by the CI or
+//      filled by Run AI for the CI to check, then Save
 //   3. Check and send: a recap of the saved results, overall remarks, flag findings, Mark CI Done
 // Opened without &step (e.g. from the work tray), the page always starts on the first step, done or not.
 // Look (DESIGN.md, "CI request"): an .lf-folder page like the loan folder and document check: header with a mode tag
@@ -40,7 +41,7 @@ const STEP_KEYS = ['request', 'reports', 'send'];
 const STEP_ICONS = { request: ClipboardList, reports: FileText, send: ClipboardCheck };
 const STEP_INTRO = {
     request: 'What the Account Officer is asking you to check, built from the application.',
-    reports: 'For each borrower and report: upload it, check its OCR extraction if you like, then record the result and summary.',
+    reports: 'For each borrower and report: upload it, then Open report to fill in the result, report date, summary and its NFIS records or TU accounts (yourself, or with Run AI).',
     send: 'Check every result, add your overall remarks, flag any findings, then send the file to Credit Evaluation.',
 };
 
@@ -59,7 +60,7 @@ const ciSteps = ({ data, missing, dirty, onOpen }) => {
     const slots = data.borrowers.flatMap((p) => REQUIRED_CHECKS.map((c) => data.byKey[keyOf(p.id, c.value)]));
     const total = slots.length;
     const uploaded = slots.filter((s) => s?.documents?.length).length;
-    const complete = slots.filter((s) => s?.documents?.length && s?.result).length;
+    const complete = slots.filter((s) => s?.documents?.length && s?.result && s?.report_date).length;
     const stillNeeded = missingItems(data.borrowers, data.byKey).length;
 
     let reportsText = stillNeeded ? `${complete} of ${total} required reports done` : 'Every required report and result is in';

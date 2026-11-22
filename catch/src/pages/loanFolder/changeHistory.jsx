@@ -42,6 +42,10 @@ const TABLE_LABELS = {
     ci_checks: 'CI result',
     ci_documents: 'CI report file',
     extraction_runs: 'AI document extraction',
+    ocr_runs: 'AI reading requested',
+    ci_nfis_records: 'NFIS record',
+    ci_tu_accounts: 'TU account',
+    ci_report_values: 'CI report field',
     ci_finding_flags: 'CI findings flag',
     document_file_marks: 'Staff check of a file',
 };
@@ -57,13 +61,14 @@ const ACTION_OPTIONS = [
 const PAGE = 25;
 
 // Keys and bookkeeping columns aren't useful to show
-const HIDDEN = new Set(['id', 'application_id', 'applicant_id', 'requirement_id', 'file_path', 'uploaded_by',
+const HIDDEN = new Set(['id', 'application_id', 'applicant_id', 'requirement_id', 'file_path', 'uploaded_by', 'extraction_run_id',
     'assigned_by', 'assigned_at', 'unassigned_by', 'assignment_id', 'responded_by']);
 // Columns holding a staff user id: shown by name (`names` must include them)
 const STAFF_FIELDS = new Set(['user_id', 'confirmed_by']);
 // Money columns (numeric(12/14,2)): shown with ₱ and cents
 const MONEY_FIELDS = new Set(['loan_amount', 'gross_monthly_income', 'monthly_rent', 'selling_price', 'monthly_payment',
-    'credit_limit', 'appraised_value', 'other_income', 'amd', 'adb', 'original_loan', 'outstanding_balance', 'amortization']);
+    'credit_limit', 'appraised_value', 'other_income', 'amd', 'adb', 'original_loan', 'outstanding_balance', 'amortization',
+    'amount_involved', 'original_amount', 'balance', 'past_due', 'installment']);
 
 const fieldLabel = (key) => (key === 'confirmed_by' ? 'Confirmed by' : STAFF_FIELDS.has(key) ? 'Staff'
     : key.replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase()));

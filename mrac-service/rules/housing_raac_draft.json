@@ -237,7 +237,7 @@
     "enabled": false,
     "search_hint": "replevin foreclosure",
     "source_chunk_key": "RAAC-HL-03-NFIS-BMI-DATABASE",
-    "notes": "The RAAC: not allowed regardless of date of report. Fact comes from the CI / NFIS result, not collected by CATCH yet."
+    "notes": "The RAAC: not allowed regardless of date of report. Fact from the Credit Investigator's NFIS records (ci_nfis_records, record kind REPLEVIN / FORECLOSURE); null until every borrower's NFIS result is in. Switched on in 20261128_ci_mrac_facts.sql."
   },
   {
     "code": "POLICY-SCORE-ACCEPTABLE",

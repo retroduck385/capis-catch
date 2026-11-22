@@ -12,6 +12,7 @@
 // to use it as a judgment of the borrower, and the database accepts it only as borrowers[].civil_status with one of
 // those values.
 import { roleOf, yearsBetween } from '../aiSuggestion/buildInput.js';
+import { ciSlots, raacNfis, undisclosedLoans, validityRows, yearsSince } from '../ciRequest/ciFacts.js';
 
 const BORROWERS = ['PRINCIPAL', 'SPOUSE', 'CO_BORROWER'];
 // The civil_status_type values; anything else is sent as null
@@ -43,6 +44,12 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
     const borrowers = (computed.incomes ?? []).map((i) => i.party).filter((p) => BORROWERS.includes(p.role));
     const income = Object.fromEntries((computed.incomes ?? []).map((i) => [i.party.id, i]));
     const ciOf = (party, type) => ci.checks.find((x) => x.applicant_id === party.id && x.check_type === type)?.result ?? null;
+    const slots = ciSlots(app, ci);
+    const endUser = Boolean(text(referral?.developer_name));
+    const tcp = num(collateral?.selling_price);
+    const records = raacNfis(slots, { endUser, lcr: num(computed.lcr), tcpLcr: num(app.loan_amount) && tcp ? num(app.loan_amount) / tcp : null });
+    const tuRows = undisclosedLoans(slots);
+    const validity = validityRows(slots);
     const marks = latestMarks(fileMarks);
 
     return {
@@ -98,8 +105,33 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
             risk_rating: score.riskRating ?? null,
             recommendation: score.recommendation ?? null,
         },
+        // The CI results by role: each NFIS record as its kind, age, balance and RAAC reading (never the reporting
+        // institution, case number, who filed it or the CI's remarks); TU as counts and the worst lateness
         ci: {
-            borrowers: borrowers.map((p) => ({ role: roleOf(p), nfis: ciOf(p, 'NFIS'), tu: ciOf(p, 'TU'), bras: ciOf(p, 'BRAS') })),
+            borrowers: borrowers.map((p) => {
+                const slot = slots.find((s) => s.party.id === p.id);
+                const raac = records.filter((r) => r.record.applicant_id === p.id);
+                const tu = tuRows.find((r) => r.who === slot?.who);
+                const valid = Object.fromEntries(validity.filter((v) => v.who === slot?.who).map((v) => [v.check.toLowerCase(), v.status]));
+                return {
+                    role: roleOf(p), nfis: ciOf(p, 'NFIS'), tu: ciOf(p, 'TU'), bras: ciOf(p, 'BRAS'),
+                    nfis_records: raac.map((r) => ({
+                        kind: r.record.record_type,
+                        years_since_reported: yearsSince(r.record.date_reported),
+                        outstanding_balance: num(r.record.outstanding_balance),
+                        settled: r.record.settlement ? r.record.settlement !== 'UNPAID' : null,
+                        case_type: r.record.case_type ?? null,
+                        raac: r.status,
+                        lcr_within_cap: r.lcrOk ?? null,
+                    })),
+                    tu_open_accounts: slot ? slot.tu.accounts.filter((a) => a.is_open).length : null,
+                    tu_max_days_late: slot && slot.tu.accounts.length ? Math.max(...slot.tu.accounts.map((a) => num(a.max_dpd) ?? 0)) : null,
+                    tu_undeclared_loans: tu?.extraLoans ?? null,
+                    tu_undeclared_cards: tu?.extraCards ?? null,
+                    nfis_validity: valid.nfis ?? null,
+                    tu_validity: valid.tu ?? null,
+                };
+            }),
             findings_flagged: Boolean(ciFlagged),
         },
         // The checklist CATCH derived from each borrower's employment type, with what is on file and the staff marks

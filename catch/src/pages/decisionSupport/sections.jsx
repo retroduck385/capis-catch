@@ -321,7 +321,7 @@ export const Score = ({ ctx }) => {
 export const CreditChecking = ({ ctx }) => (
     <Section id="ds-ci" title="IV. Credit Checking (CI results)" className="lf-ciresults">
         {!ctx.ciDone && <p className="lf-note warn">Credit investigation is not finished yet.</p>}
-        <CiResultsView app={ctx.app} title={null} />
+        <CiResultsView app={ctx.app} title={null} computed={ctx.computed} />
     </Section>
 );
 

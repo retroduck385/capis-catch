@@ -6,7 +6,7 @@
 // Look: .dc-* in documentCheck.css (inset field cards, Keep / Update pills, the table frame). Status chips use the
 // page's tones: a difference or an expired ID is amber (it needs a look), a wrong format is the form red.
 import { useEffect, useId, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleHelp, Lock } from 'lucide-react';
 import SelectMenu from '../../components/selectMenu';
 import Byline from '../../components/byline';
 import { CI_RESULTS } from '../ciRequest/options';
@@ -155,7 +155,7 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
     const unpicked = header.filter((h) => h.needs && !choices[h.field.id]);
     const emptyUpdate = header.filter((h) => h.status === 'NOT_ON_DOCUMENT' && choices[h.field.id] === 'UPDATE');
     const ciProblems = !ci ? [] : [
-        !ciResult && 'Pick the result: No adverse findings or With findings.',
+        !ciResult && 'Pick the result: No adverse findings, With findings or Inconclusive.',
         ciResult === 'WITH_FINDINGS' && !ciSummary.trim() && 'Write a summary of the findings.',
     ].filter(Boolean);
     const toCopy = header.filter((h) => h.needs && choices[h.field.id] === 'UPDATE');
@@ -418,12 +418,14 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                         <fieldset className="lf-choices">
                             <legend className="sr-only"><Term k="CI" /> result</legend>
                             {CI_RESULTS.map((r) => (
-                                <label key={r.value} className={`lf-choice ${r.value === 'WITH_FINDINGS' ? 'warn' : 'ok'}`}>
+                                <label key={r.value} className={`lf-choice ${r.tone}`}>
                                     <input type="radio" name={`ci-result-${run.id}`} checked={ciResult === r.value} disabled={!editable}
                                         onChange={() => { setCiResult(r.value); setReviewing(false); }} />
-                                    {r.value === 'WITH_FINDINGS'
-                                        ? <AlertTriangle size={20} className="mark" aria-hidden="true" />
-                                        : <CheckCircle2 size={20} className="mark" aria-hidden="true" />}
+                                    {r.value === 'NO_ADVERSE_FINDINGS'
+                                        ? <CheckCircle2 size={20} className="mark" aria-hidden="true" />
+                                        : r.value === 'INCONCLUSIVE'
+                                            ? <CircleHelp size={20} className="mark" aria-hidden="true" />
+                                            : <AlertTriangle size={20} className="mark" aria-hidden="true" />}
                                     <span><b>{r.label}</b></span>
                                 </label>
                             ))}

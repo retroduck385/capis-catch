@@ -12,6 +12,7 @@ import {
     AlertTriangle, ArrowRight, BadgeCheck, Gauge, Info, ListChecks, Lock, PenLine, Save, ShieldCheck, Users, Wallet,
 } from 'lucide-react';
 import { fetchCiFindingFlagCount, fetchCiResults } from '../ciRequest/api';
+import { needsAttention } from '../ciRequest/options';
 import Breadcrumbs from '../../components/breadcrumbs';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, toRow } from '../applicationForm/api';
@@ -71,16 +72,20 @@ const CreditScorePage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [ciFindings, setCiFindings] = useState(false); // a CI result is "With findings" or a CI flagged findings
+    const [ci, setCi] = useState(null);                 // the CI results (Character suggestions: ciFacts.js)
     const [activeId, pickSection] = useActiveSection(TOC_IDS, Boolean(app && scores && rules));
 
-    // CI findings note: only a hint, so a failed load just leaves it out
+    // CI results: the findings note, and the NFIS / loan history / returned checks suggestions. A failed load just
+    // leaves them out (the Character items then wait for the CI)
     useEffect(() => {
         if (!app) return undefined;
         let cancelled = false;
         const ids = getParties(app, BORROWER_ROLES).map((p) => p.id);
         Promise.all([fetchCiResults(ids), fetchCiFindingFlagCount(app.id)])
             .then(([ci, flags]) => {
-                if (!cancelled) setCiFindings(flags > 0 || ci.checks.some((c) => c.result === 'WITH_FINDINGS'));
+                if (cancelled) return;
+                setCi(ci);
+                setCiFindings(flags > 0 || ci.checks.some((c) => needsAttention(c.result)));
             })
             .catch(() => {});
         return () => { cancelled = true; };
@@ -127,8 +132,8 @@ const CreditScorePage = () => {
         if (!app || !fp || !rules) return null;
         const details = Object.fromEntries(fp.parties.map((r) => [r.applicant_id, r]));
         const computed = computeFp(app, details, fp.pkg ?? {}, { interest_rate: app.interest_rate });
-        return suggestCreditScore(app, computed, { loan_checks: fp.loanChecks, deposit_checks: fp.depositChecks }, rules.criteria);
-    }, [app, fp, rules]);
+        return suggestCreditScore(app, computed, { loan_checks: fp.loanChecks, deposit_checks: fp.depositChecks }, rules.criteria, ci);
+    }, [app, fp, rules, ci]);
     const totals = useMemo(() => (rules && scores ? totalCreditScore(rules, scores) : null), [rules, scores]);
 
     if (loading) return <CreditScoreSkeleton />;
