@@ -7,7 +7,7 @@ import { ApplicationFormSkeleton } from '../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
-import { fetchProfile, getOrCreateDraft, refreshApplication } from './applicationForm/api';
+import { fetchProfile, getOrCreateDraft, refreshMyApplication } from './applicationForm/api';
 import ApplicationSummary from './applicationForm/applicationSummary';
 import { formatPeso } from './applicationForm/options';
 import { buildSteps } from './applicationForm/steps';
@@ -72,7 +72,7 @@ const ApplicationFormPage = () => {
                 }
                 if (!cancelled) setProfile(myProfile);
                 const id = requestedId ? Number(requestedId) : await getOrCreateDraft(userId);
-                const data = await refreshApplication(id);
+                const data = await refreshMyApplication(id);
                 if (cancelled) return;
                 const seen = readVisited(id);
                 const steps = buildSteps(data);
@@ -141,7 +141,7 @@ const ApplicationFormPage = () => {
     const step = steps[currentIndex];
 
     const refresh = async () => {
-        const data = await refreshApplication(app.id);
+        const data = await refreshMyApplication(app.id);
         setApp(data);
         return data;
     };

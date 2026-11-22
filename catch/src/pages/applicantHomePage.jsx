@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, Bell, Check, FilePen, FileText, FileUp, House, IdCard, Send, UserRound, Wallet } from 'lucide-react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { fetchProfile, listMyApplications } from './applicationForm/api';
+import { fetchProfile, listMyVisibleApplications } from './applicationForm/api';
 import { formatPeso } from './applicationForm/options';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
@@ -57,7 +57,7 @@ const ApplicantHomePage = () => {
 
     useEffect(() => {
         if (!session?.user?.id) return;
-        listMyApplications(session.user.id)
+        listMyVisibleApplications(session.user.id)
             .then(setApplications)
             .catch((err) => setError(err.message))
             .finally(() => setLoaded(true));
