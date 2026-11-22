@@ -104,7 +104,7 @@ const FinalReportPage = () => {
     const exceptions = fp.exceptions.filter((e) => e.policy || e.exception_recommendation || e.mitigant);
     const { reviewers, approvers } = splitRouting(rows);
     const resultLabel = CREDIT_RESULTS.find((x) => x.value === pkg.credit_result)?.label;
-    const nowFacts = buildMracFacts({ app, computed, score, pricing: { interest_rate: app.interest_rate }, exceptions: fp.exceptions });
+    const nowFacts = buildMracFacts({ app, computed, score, pricing: { interest_rate: app.interest_rate }, exceptions: fp.exceptions, ci: data.ci });
     const mracChanges = mrac?.status === 'DONE' ? changedFacts(mrac.facts, nowFacts) : [];
     const base = {
         ...data, pkg, computed, score, exceptions, reviewers, approvers, resultLabel, mracChanges,

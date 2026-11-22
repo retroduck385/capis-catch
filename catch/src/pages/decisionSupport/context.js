@@ -36,7 +36,7 @@ export const buildDssContext = (data, myId) => {
     const resultLabel = CREDIT_RESULTS.find((r) => r.value === pkg.credit_result)?.label;
 
     // Same facts the Financial Package would send now, to tell whether the last check is out of date
-    const nowFacts = buildMracFacts({ app, computed, score, pricing: { interest_rate: app.interest_rate }, exceptions: fp.exceptions });
+    const nowFacts = buildMracFacts({ app, computed, score, pricing: { interest_rate: app.interest_rate }, exceptions: fp.exceptions, ci: data.ci });
     const mracChanges = mrac?.status === 'DONE' ? changedFacts(mrac.facts, nowFacts) : [];
 
     const base = {

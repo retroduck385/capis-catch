@@ -1,6 +1,7 @@
 // "Ask AI for a suggestion" under the Credit Result of the Financial Package. The assigned Credit Officer asks; the
-// ocr-service worker answers with the Claude API (ocr-service/advise.py): a suggested result, short reasons that each
-// cite a policy passage, a draft justification and missing data. The AI never sets the credit result: the CO may copy
+// advise-service worker answers with the Claude API (advise-service/advise.py), from the policy recommender's findings
+// and the CO's reviews of them: a suggested result, short reasons that each cite a finding, a draft justification and
+// missing data. Figures the AI used that are in nothing it was sent are flagged. The AI never sets the credit result: the CO may copy
 // the draft into the justification, edits it and saves the FP as usual. Every suggestion is kept, with who asked,
 // when and the figures used. Everyone who can open the FP reads them.
 // The data privacy question (Q-04) was cleared by the bank on 2026-11-20; what is sent stays filtered (buildInput.js).
@@ -20,12 +21,26 @@ const POLL_MS = 4000;
 const WAITING = ['QUEUED', 'RUNNING'];
 const TONE = { ENDORSED: 'ok', NOT_ENDORSED: 'bad', DEFERRED: 'warn' };
 
-// One cited reason, with its passage excerpt (from what was sent) on demand
+// How the CO had reviewed the finding a reason cites, when the suggestion was asked
+const REVIEW_CHIPS = {
+    ACCEPTED: ['Finding accepted', 'ok'],
+    EDITED: ['Finding edited by you', 'ok'],
+    NOT_REVIEWED: ['Finding not reviewed yet', 'warn'],
+};
+
+// One cited reason, with its clause excerpt (from what was sent) on demand. Older suggestions sent `passages`.
 const Reason = ({ reason, passages }) => {
     const p = passages.find((x) => x.chunk_key === reason.chunk_key);
+    const [chip, tone] = REVIEW_CHIPS[reason.review] ?? [];
     return (
         <li>
             <span>{reason.text}</span>
+            {chip && <span className={`mrac-chip ${tone}`}>{chip}</span>}
+            {reason.unverified_figures?.length > 0 && (
+                <span className="mrac-chip warn" title="Not in the file's figures or the policy findings sent to the AI">
+                    Check: {reason.unverified_figures.join(', ')}
+                </span>
+            )}
             <details className="ai-cite">
                 <summary>Policy: {reason.heading || reason.chunk_key}{reason.document ? ` · ${reason.document}` : ''}</summary>
                 {p ? <p>{p.excerpt}{p.pages?.length ? ` (p. ${p.pages.join(', ')})` : ''}</p> : <p>Passage {reason.chunk_key}</p>}
@@ -51,7 +66,7 @@ const FiguresUsed = ({ input }) => (
 
 export const SuggestionView = ({ row, names, canEdit, onUseDraft }) => {
     const out = row.output ?? {};
-    const passages = row.sent?.passages ?? [];
+    const passages = row.sent?.findings ?? row.sent?.passages ?? [];
     return (
         <div className="ai-result">
             <div className={`mrac-banner ${TONE[out.suggested_result] ?? 'plain'}`}>
@@ -59,7 +74,7 @@ export const SuggestionView = ({ row, names, canEdit, onUseDraft }) => {
                     <b>AI suggests: {RESULT_LABELS[out.suggested_result] ?? out.suggested_result}</b>
                     <span className="mrac-chip plain">Suggestion only</span>
                 </div>
-                <p>The credit result is still yours to set. Read the cited passages before relying on it.</p>
+                <p>The credit result is still yours to set. Read the cited findings before relying on it.</p>
             </div>
             {out.reasons?.length > 0 && (
                 <>
@@ -139,7 +154,7 @@ const SuggestionPanel = ({ applicationId, canEdit, dirty, justification, onUseDr
     return (
         <Section id="fp-ai" title="AI suggestion for the credit result" className="ai-panel">
             <p className="fp-note">
-                <Terms text="The AI gets the saved figures (borrowers by role, no names, addresses or contact details; the Condition score as a sub-total only), the CI results, V. Exceptions as typed (don't put names there) and the latest policy check with its passages. It suggests; it never sets the credit result." />
+                <Terms text="The AI gets the saved figures (borrowers by role, no names, addresses or contact details; the Condition score as a sub-total only), the CI results, V. Exceptions as typed (don't put names there), and the policy recommender's findings with your reviews: edited ones as you wrote them, dismissed ones left out, ones you haven't reviewed marked as unconfirmed. It suggests; it never sets the credit result." />
             </p>
 
             {canEdit && (
@@ -149,7 +164,7 @@ const SuggestionPanel = ({ applicationId, canEdit, dirty, justification, onUseDr
                     </button>
                     <span className="fp-note">
                         {dirty ? 'Save the Financial Package first: the AI reads the saved figures.'
-                            : 'Needs a finished policy check run on the same figures as now.'}
+                            : 'Needs a finished policy check run on the same figures as now. Review its findings first for the best suggestion.'}
                     </span>
                 </div>
             )}
@@ -160,7 +175,7 @@ const SuggestionPanel = ({ applicationId, canEdit, dirty, justification, onUseDr
                     <Clock size={18} aria-hidden="true" />
                     <div>
                         <b>{latest.status === 'RUNNING' ? 'The AI is working on it...' : 'Waiting for the AI worker...'}</b>
-                        <p className="fp-note">Usually under a minute. If this stays, ocr-service isn&apos;t running or ocr-service/.env has no ANTHROPIC_API_KEY.</p>
+                        <p className="fp-note">Usually under a minute. If this stays, advise-service isn&apos;t running or advise-service/.env has no ANTHROPIC_API_KEY.</p>
                     </div>
                 </div>
             )}

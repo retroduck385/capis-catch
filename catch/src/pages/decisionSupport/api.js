@@ -4,7 +4,7 @@
 import { supabase } from '../../supabaseClient';
 import { fetchApplication, getParties } from '../applicationForm/api';
 import { BORROWER_ROLES } from '../applicationForm/options';
-import { fetchCiDone } from '../ciRequest/api';
+import { fetchCiDone, fetchCiResults } from '../ciRequest/api';
 import { fetchOpenRequest } from '../documentRequests/api';
 import { fetchKycChecks, fetchStaffNames } from '../loanFolder/api';
 import { fetchAssignee, fetchCreditScoreRules, fetchFinancialPackage } from '../financialPackage/api';
@@ -51,7 +51,7 @@ const fetchDocumentStates = async (documentIds) => {
 export const fetchDecisionSupport = async (applicationId) => {
     const app = await fetchApplication(applicationId);
     const ids = getParties(app, BORROWER_ROLES).map((p) => p.id);
-    const [fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, kycChecks, types, docRequest, aiSuggestion] = await Promise.all([
+    const [fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, kycChecks, types, docRequest, aiSuggestion, ci] = await Promise.all([
         fetchFinancialPackage(app.id, ids),
         fetchCreditScoreRules(),
         optional(fetchCiDone(app.id), false),
@@ -68,6 +68,9 @@ export const fetchDecisionSupport = async (applicationId) => {
         optional(fetchExtractionTypes(), new Set()),
         optional(fetchOpenRequest(app.id), null),
         optional(fetchLatestSuggestion(app.id), null),   // the latest AI suggestion given to the CO (20261120)
+        // CI results: the policy check's facts include the CI file checks (mrac/facts.js ciMracFacts), so the facts of
+        // now must be built with them too, or every check run with CI results in looks out of date
+        optional(fetchCiResults(ids), { checks: [], documents: [] }),
     ]);
 
     // The documents the AI reads, with where each one is in OCR -> AI -> confirmation
@@ -85,6 +88,6 @@ export const fetchDecisionSupport = async (applicationId) => {
         ...reviews.map((d) => d.responded_by), ...Object.values(findingReviews).map((r) => r.reviewed_by)]);
     return {
         app, fp, rules, ciDone, mrac, stage, coId, aoId, rows, checkItems, reviews, approvals, staff, positions, names,
-        kycChecks, docs, docStates, docRequest, aiSuggestion, findingReviews,
+        kycChecks, docs, docStates, docRequest, aiSuggestion, findingReviews, ci,
     };
 };

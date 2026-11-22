@@ -1,11 +1,8 @@
 // Final report: everything its pages show, loaded once. Read only; RLS decides what each role can read.
 // Builds on the Decision Support loader (same data, so the report can't disagree with that page), plus the stage
-// history for the sign-offs, the CI results for IV. Credit Checking, and the credit score's change history for
-// "Prepared by".
+// history for the sign-offs and the credit score's change history for
+// "Prepared by". The CI results for IV. Credit Checking come with the Decision Support data (data.ci).
 import { supabase } from '../../supabaseClient';
-import { getParties } from '../applicationForm/api';
-import { BORROWER_ROLES } from '../applicationForm/options';
-import { fetchCiResults } from '../ciRequest/api';
 import { fetchDecisionSupport } from '../decisionSupport/api';
 import { fetchCoCanEdit } from '../financialPackage/api';
 import { fetchAuditLog, fetchStaffNames } from '../loanFolder/api';
@@ -26,12 +23,10 @@ const fetchStageHistory = async (applicationId) =>
 export const fetchFinalReport = async (applicationId) => {
     const data = await fetchDecisionSupport(applicationId);
     const { app } = data;
-    const borrowerIds = getParties(app, BORROWER_ROLES).map((p) => p.id);
-    const [stages, coCanEdit, audit, ci] = await Promise.all([
+    const [stages, coCanEdit, audit] = await Promise.all([
         optional(fetchStageHistory(app.id), []),
         optional(fetchCoCanEdit(app.id), false),
         optional(fetchAuditLog(app.id), []),
-        optional(fetchCiResults(borrowerIds), { checks: [], documents: [] }),
     ]);
     // Who last saved the credit score (audit_log is newest first)
     const scoreSaved = audit.find((e) => e.table_name === 'credit_score_entries') ?? null;
@@ -40,5 +35,5 @@ export const fetchFinalReport = async (applicationId) => {
         ...stages.flatMap((s) => (s.stage_status_changes ?? []).map((c) => c.changed_by)),
         ...data.rows.map((r) => r.user_id),
     ]);
-    return { ...data, names: { ...extra, ...data.names }, stages, coCanEdit, scoreSaved, ci };
+    return { ...data, names: { ...extra, ...data.names }, stages, coCanEdit, scoreSaved };   // data.ci: loaded by Decision Support
 };

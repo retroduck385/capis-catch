@@ -1,4 +1,4 @@
-// AI suggestion for the credit result: what the page sends (20261120_credit_ai_suggestions.sql, ocr-service/advise.py).
+// AI suggestion for the credit result: what the page sends (20261120_credit_ai_suggestions.sql, advise-service/advise.py).
 // Pure (no React, no Supabase), so tests/aiSuggestion.test.mjs can check it never lets personal data through.
 // Only saved, confirmed values, as figures and labels; borrowers by ROLE, never by name. Left out on purpose: names,
 // birth dates, addresses, contact details, employer and bank names, ID / TIN / account / title numbers, the
@@ -86,6 +86,14 @@ export const buildSuggestionInput = ({ app, computed, score, rules, entries = []
                 tu: ci.checks.find((x) => x.applicant_id === p.id && x.check_type === 'TU')?.result ?? null,
             })),
             findings_flagged: Boolean(ciFlagged),
+            // What the CI results mean for the file, as counts (mrac/facts.js ciMracFacts; null until all results are in)
+            file_checks: {
+                has_replevin_or_foreclosure: facts.has_replevin_or_foreclosure ?? null,
+                nfis_deviation_count: num(facts.nfis_deviation_count),
+                nfis_lcr_cap_breaches: num(facts.nfis_lcr_cap_breaches),
+                undisclosed_tu_accounts: num(facts.undisclosed_tu_accounts),
+                expired_ci_reports: num(facts.expired_ci_reports),
+            },
         },
         exceptions: exceptions.filter((e) => e.policy || e.exception_recommendation || e.mitigant).map((e) => ({
             policy: text(e.policy), recommendation: text(e.exception_recommendation), mitigant: text(e.mitigant),
