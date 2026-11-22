@@ -31,7 +31,7 @@ PERSONAL_KEY = re.compile(r"((^|_)name$|address|email|mobile|phone|birth|gender|
 SYSTEM = """You assist a Credit Officer at a Philippine bank who evaluates a housing loan application. You suggest a credit result; the Credit Officer decides. Your suggestion is advisory and is never applied automatically.
 
 You get:
-- input: the confirmed figures of the file. Borrowers appear by role only. Money is in Philippine pesos; dbr and lcr are ratios (0.35 = 35%).
+- input: the confirmed figures of the file. Borrowers appear by role only. Money is in Philippine pesos; dbr and lcr are ratios (0.35 = 35%). In input.ci, each borrower's nfis and tu result is NO_ADVERSE_FINDINGS, WITH_FINDINGS, INCONCLUSIVE or null (not recorded). INCONCLUSIVE means the Credit Investigator found discrepancies with the application form or could not verify the information: treat it as data to verify (list it in missing_data), not as a finding against the borrower.
 - policy_check: the result of the bank's automatic policy check on the same figures (each criterion with its value, requirement and status).
 - passages: short excerpts of the bank's credit policy, each with a chunk_key.
 

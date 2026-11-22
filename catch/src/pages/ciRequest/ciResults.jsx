@@ -20,7 +20,7 @@ import { fetchStaffNames } from '../loanFolder/api';
 import { completeCi, fetchCiDone, fetchCiRequests, getCiDocumentUrl, removeCiDocument, saveCiFindings, uploadCiDocument } from './api';
 import { FactRowsView } from './ciFactsEditor';
 import { AI_CHECKED, REQUIRED_CHECKS, fullName, isAiChecked, keyOf, missingItems, reportUrl, useCiResults } from './ciResultsData';
-import { CI_CHECKS, CI_RESULTS, resultTone } from './options';
+import { CI_CHECKS, CI_RESULTS, needsAttention, resultTone } from './options';
 import CiFindingFlags from './findingFlags';
 import CiFileChecks from './ciFileChecks';
 import { Term, Terms } from '../../components/term';
@@ -426,7 +426,7 @@ export const CiResultsEditor = ({ app, ciRequest, data, show, onGoTo, onChanged,
             </div>
 
             <CiFindingFlags applicationId={app.id}
-                hasFindings={Object.values(byKey).some((c) => c.result === 'WITH_FINDINGS')} />
+                hasFindings={Object.values(byKey).some((c) => needsAttention(c.result))} />
 
             <section className={`ci-done ${missing.length ? 'warn' : 'ok'}`} aria-labelledby="ci-done-h">
                 <div className="ci-done-head">
@@ -539,7 +539,7 @@ export const CiResultsView = ({ app, title = 'CI results', computed = null }) =>
             </div>
             <CiFileChecks app={app} ci={raw} computed={computed} />
             <CiFindingFlags applicationId={app.id}
-                hasFindings={Object.values(byKey).some((c) => c.result === 'WITH_FINDINGS')} />
+                hasFindings={Object.values(byKey).some((c) => needsAttention(c.result))} />
             <p className="pt-2"><span className="font-semibold">Overall <Term k="CI" /> remarks:</span>{' '}
                 <span className="whitespace-pre-wrap">{meta.request.ci_remarks || '—'}</span></p>
         </div>

@@ -140,6 +140,10 @@ class AdviseTests(unittest.TestCase):
         self.assertIn("₱2,500,000.00", advise.SYSTEM)
         self.assertIn("exactly two decimals", advise.SYSTEM)
 
+    def test_model_is_told_what_inconclusive_means(self):
+        self.assertIn("INCONCLUSIVE", advise.SYSTEM)
+        self.assertIn("not as a finding against the borrower", advise.SYSTEM)
+
     def test_peso_amounts_in_the_answer_get_cents(self):
         cases = {
             "Loan of ₱2,500,000 approved": "Loan of ₱2,500,000.00 approved",
