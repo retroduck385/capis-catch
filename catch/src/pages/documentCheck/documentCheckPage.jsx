@@ -22,6 +22,7 @@ import { formatDay, formatExact, fullWhen } from '../../components/people';
 import { readingTime } from './duration';
 import { isExpired } from './compare';
 import { docHasProblem } from './severity';
+import { PARTY_SWITCH_RESET, showsEarlier } from './partySwitch';
 import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
@@ -213,7 +214,7 @@ const DocumentCheckPage = () => {
     const selectedParty = parties.find((p) => p.docs.some((d) => d.id === docId))
         ?? parties.find((p) => p.party.id === partyId) ?? parties[0] ?? null;
     const doc = selectedParty?.docs.find((d) => d.id === docId) ?? selectedParty?.docs[0] ?? null;
-    const showEarlier = view === 'earlier' && (selectedParty?.earlier.length ?? 0) > 0;
+    const showEarlier = showsEarlier(view, selectedParty);
     const earlierDoc = showEarlier ? selectedParty.earlier.find((d) => d.id === earlierId) ?? selectedParty.earlier[0] : null;
     const viewDoc = showEarlier ? earlierDoc : doc;
     const check = doc ? checks[doc.id] : null;
@@ -255,10 +256,13 @@ const DocumentCheckPage = () => {
     };
     const openParty = (id) => {
         if (id === selectedParty?.party.id || !leaveEdits()) return;
+        // a new borrower starts on their current files (not "Earlier versions"), first file, page 1
         setPartyId(id);
-        setDocId(null);
-        setFocused(null);
-        setPage(1);
+        setDocId(PARTY_SWITCH_RESET.docId);
+        setFocused(PARTY_SWITCH_RESET.focused);
+        setPage(PARTY_SWITCH_RESET.page);
+        setView(PARTY_SWITCH_RESET.view);
+        setEarlierId(PARTY_SWITCH_RESET.earlierId);
     };
     const focusField = (field) => {
         setFocused(field);

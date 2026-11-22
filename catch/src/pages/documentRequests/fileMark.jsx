@@ -115,6 +115,7 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
                     {asking && (
                         <NewCopyDialog applicationId={applicationId} file={file} initialComment={comment}
                             onClose={() => setAsking(false)}
+                            onMarked={() => marks.reload()}
                             onDone={() => { setAsking(false); setComment(''); marks.reload(); }} />
                     )}
 

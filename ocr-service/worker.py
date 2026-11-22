@@ -239,7 +239,7 @@ def test_file(path, document_type):
         row = f"{groups.get(f['key'], 'row')} {f['item_no']} " if f["item_no"] else ""
         print(f"  {row}{labels.get(f['key'], f['key'])}: {f['value'] or '—'}  (lines {f['line_ids']})")
     for issue in result["output"].get("issues") or []:
-        print(f"  ! {issue}")
+        print(f"  ! [{issue.get('severity') or '-'}] {issue.get('text')}" if isinstance(issue, dict) else f"  ! {issue}")
     if "proposed_result" in result["output"]:
         print(f"\nProposed CI result: {result['output']['proposed_result']}")
         print(f"Summary: {result['output'].get('findings_summary') or '—'}")
