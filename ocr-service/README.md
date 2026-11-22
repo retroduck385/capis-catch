@@ -46,6 +46,10 @@ takes runs from the same queue, so one teammate's worker without the fix used to
 
 The request uses structured outputs (the answer must match the field schema built from `extraction_field_defs`), effort `low`, and, on the models that support it, server-side refusal fallbacks (`fallbacks: "default"`); `extraction_runs.model` records the model that actually answered. Only **synthetic test documents** go through it (CATCH rule).
 
+The notes the officer should check (`output.issues`, "Check on the document" on the page) come back as `{text, severity}`, severity `MAJOR` (could change whether the document is accepted) or `MINOR` (small or cosmetic); the page shows it as a red or amber tag. Runs saved before 2026-11-23 hold plain strings: the page still shows them, without a tag, until the file is read again (`request_rerun_extraction(<ocr run id>)`).
+
+Tests (no database, no network, no API key): `.venv\Scripts\python -m unittest discover -s tests -v` from this folder.
+
 Run `catch/supabase/migrations/20261007_id_ocr.sql` in the Supabase SQL Editor (after `20261007_ao_kyc_verification.sql`), then `20261010_ocr_income_docs.sql`, and (after `20261108_ci_results.sql`) `20261108_ocr_realtime.sql`, then `20261109_ai_extraction.sql` and `20261109_ci_extraction.sql` (NFIS / TU extraction).
 
 ## AI suggestion for the Credit Officer

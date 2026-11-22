@@ -5,17 +5,21 @@
 // "Ask the applicant for documents" box (preview_document_request / open_document_request), so the same rules apply:
 // only the assigned AO sends, one request at a time, no links. Anyone else (the CO, or the AO while a request is
 // still open) only saves the mark, and the modal says why. Styles: fileMark.css (.fm-dialog).
+// If the mark is saved but the request fails, File status is refreshed at once (onMarked) and the modal says the
+// mark was saved; trying again only sends the request (newCopySave.js).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Bell, FileText, Mail, Send, Smartphone } from 'lucide-react';
 import { fetchRequestContext, markFile, openRequest, previewRequest } from './api';
 import { refreshCanAsk } from './askStore';
+import { saveNewCopy } from './newCopySave';
 
 const keyOf = (r) => `${r.applicant_id}:${r.requirement_type}`;
 
 // file: { documentId, applicantId, requirementType (null = not a checklist document), label }
 // initialComment: what was already typed in the staff check box
+// onMarked(): the mark is saved (called at once, before the request is sent, so File status can refresh)
 // onDone(sent): the mark is saved; sent = a request also went to the applicant
-const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDone }) => {
+const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDone, onMarked }) => {
     const ref = useRef(null);
     const [ctx, setCtx] = useState(null);
     const [loadError, setLoadError] = useState(null);
@@ -25,6 +29,7 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
     const [commentError, setCommentError] = useState(false);
+    const [marked, setMarked] = useState(false);       // the mark is saved; a retry only sends the request
 
     useEffect(() => {
         const d = ref.current;
@@ -62,25 +67,29 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
     const close = () => { if (!busy) onClose(); };
 
     const submit = async (send) => {
-        if (!comment.trim()) {
+        if (!marked && !comment.trim()) {
             setCommentError(true);
+            return;
+        }
+        // the mark is already saved: closing without sending is just closing
+        if (marked && !send) {
+            onDone(false);
             return;
         }
         setBusy(true);
         setError(null);
-        let marked = false;
-        try {
-            await markFile(file.documentId, 'NEEDS_NEW_COPY', comment);
-            marked = true;
-            if (send) {
-                await openRequest(applicationId, message, items);
-                refreshCanAsk(applicationId);
-            }
+        const result = await saveNewCopy({
+            markFile, openRequest, onMarked, documentId: file.documentId, comment, applicationId, message, items, send,
+            alreadyMarked: marked,
+        });
+        if (result.marked) setMarked(true);
+        if (send) refreshCanAsk(applicationId);   // sent, or refused because a request is waiting: the buttons follow
+        if (!result.error) {
             onDone(send);
-        } catch (err) {
-            setError(marked ? `The mark was saved, but the request was not sent: ${err.message}` : err.message);
-            setBusy(false);
+            return;
         }
+        setError(result.error);
+        setBusy(false);
     };
 
     const whyNot = ctx && !canSend
@@ -106,7 +115,7 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
                     <label htmlFor="fm-dialog-comment" className="fm-label">
                         Staff only, not sent: what is wrong with this file <small>(required)</small>
                     </label>
-                    <input id="fm-dialog-comment" className="fm-input" value={comment} maxLength={500} autoFocus
+                    <input id="fm-dialog-comment" className="fm-input" value={comment} maxLength={500} autoFocus readOnly={marked}
                         onChange={(e) => { setComment(e.target.value); setCommentError(false); }}
                         placeholder="e.g. Blurry, the last page is cut off"
                         aria-invalid={commentError || undefined} aria-describedby={commentError ? 'fm-dialog-comment-err' : undefined} />
@@ -153,9 +162,12 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
                     {canSend ? (
                         <>
                             <button type="button" className="fm-dbtn" disabled={busy} onClick={() => submit(false)}
-                                title="Record the problem for staff without contacting the applicant yet">Save without asking</button>
+                                title={marked ? 'The mark is saved. Close without sending the request'
+                                    : 'Record the problem for staff without contacting the applicant yet'}>
+                                {marked ? 'Close without sending' : 'Save without asking'}
+                            </button>
                             <button type="button" className="fm-dbtn primary" disabled={sendDisabled} onClick={() => submit(true)}>
-                                <Send size={15} aria-hidden="true" />{busy ? 'Sending...' : 'Save and send request'}
+                                <Send size={15} aria-hidden="true" />{busy ? 'Sending...' : marked ? 'Try sending again' : 'Save and send request'}
                             </button>
                         </>
                     ) : (
