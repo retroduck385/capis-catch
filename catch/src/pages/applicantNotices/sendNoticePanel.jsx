@@ -57,7 +57,8 @@ const SendNoticePanel = ({ applicationId }) => {
 
     const isCorrection = ctx.already_sent;
     // Document requests are notices too (20261112); they're shown in their own panel
-    const notices = ctx.notices.filter((n) => n.outcome !== 'DOCUMENTS_NEEDED');
+    // document requests and KYC questions are their own panels, not outcome notices
+    const notices = ctx.notices.filter((n) => !['DOCUMENTS_NEEDED', 'CLARIFICATION'].includes(n.outcome));
     const outcome = OUTCOME_LABELS[ctx.outcome];
     const problem = preview?.problem;
     const canSubmit = !sending && preview && !problem && (isCorrection ? correction : true);

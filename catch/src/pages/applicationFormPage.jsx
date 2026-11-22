@@ -17,6 +17,7 @@ import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
 import ApplicantStageTracker from './notifications/applicantStageTracker';
 import ApplicantRequestCard from './documentRequests/applicantRequestCard';
+import ApplicantClarifications from './kycClarify/applicantClarifications';
 import { SummaryContext } from './applicationForm/summaryContext';
 import { formatDay } from '../components/people';
 import './applicationForm/applicantPages.css';
@@ -125,6 +126,8 @@ const ApplicationFormPage = () => {
                     <span className="ct-badge plain"><ApplicantStatusLabel application={app} /></span>
                 </header>
                 <ApplicantStageTracker application={app} />
+                {/* KYC questions from the AO (open ones only), with a Reply box; the application stays read only */}
+                <ApplicantClarifications applicationId={app.id} />
                 <ApplicantRequestCard applicationId={app.id} />
                 <section className="ct-card ap-summary" aria-label="Your application">
                     <div className="ct-sheet-body">

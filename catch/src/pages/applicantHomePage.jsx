@@ -12,6 +12,8 @@ import { formatPeso } from './applicationForm/options';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
 import ApplicantRequestCard from './documentRequests/applicantRequestCard';
+import { fetchMyClarifications } from './kycClarify/api';
+import './kycClarify/kycClarify.css';
 import { Ghost, RegisterSkeleton } from '../components/skeleton';
 import { formatDay } from '../components/people';
 import { useCountUp } from './workTray/useCountUp';
@@ -55,6 +57,7 @@ const ApplicantHomePage = () => {
     const [profile, setProfile] = useState(null);
     const [profileComplete, setProfileComplete] = useState(null); // null = still loading
     const [error, setError] = useState(null);
+    const [asked, setAsked] = useState(() => new Set());   // applications with an open KYC question
 
     useEffect(() => {
         if (!session?.user?.id) return;
@@ -62,6 +65,10 @@ const ApplicantHomePage = () => {
             .then(setApplications)
             .catch((err) => setError(err.message))
             .finally(() => setLoaded(true));
+        // Open KYC questions per application, for the "Clarification requested" badge (extra: no badge if it fails)
+        fetchMyClarifications()
+            .then((rows) => setAsked(new Set(rows.map((t) => t.application_id))))
+            .catch(() => setAsked(new Set()));
         fetchProfile(session.user.id)
             .then((p) => { setProfile(p); setProfileComplete(isProfileComplete(p)); })
             .catch((err) => setError(err.message));
@@ -152,7 +159,10 @@ const ApplicantHomePage = () => {
                                                     <span className="ap-nowrap">{formatDay(draft ? a.created_at : a.submitted_at)}</span>
                                                 </small>
                                             </span>
-                                            <span><span className={`ct-badge ${draft ? 'warm' : 'plain'}`}><ApplicantStatusLabel application={a} /></span></span>
+                                            <span>
+                                                <span className={`ct-badge ${draft ? 'warm' : 'plain'}`}><ApplicantStatusLabel application={a} /></span>
+                                                {asked.has(a.id) && <span className="kq-badge">Clarification requested</span>}
+                                            </span>
                                             <span className="amt">{a.loan_amount ? formatPeso(a.loan_amount) : ''}</span>
                                             <Link className={`ap-rowlink${draft ? ' primary' : ''}`} to={`/applicationFormPage?id=${a.id}`}>
                                                 {draft ? 'Continue' : 'View'}<ArrowRight size={16} aria-hidden="true" />
