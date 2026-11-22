@@ -350,3 +350,117 @@
 [data-theme='dark'] .lf-folder .ci-flags .ci-flags-btn:focus-visible { outline-color: rgba(253, 186, 116, 0.6); }
 [data-theme='dark'] .lf-folder :is(.ci-flags-err, .ci-req) { color: #fca5a5; }
 [data-theme='dark'] .lf-ci .ci-panel-head h2:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
+
+/* ---------- "Run AI" (a button, styled like the blue link pill) and the typed CI facts (ciFactsEditor.jsx) ---------- */
+.lf-folder button.ci-mini.go { border-color: transparent; background: var(--lf-blue-grad); color: #fff; box-shadow: 0 8px 16px -10px rgba(20, 41, 95, 0.75); }
+.lf-folder button.ci-mini.go:hover:not(:disabled) { background: var(--lf-blue-grad); color: #fff; filter: brightness(1.12); }
+
+/* report date: a date input in the result column, same look as the summary textarea */
+.lf-ci .ci-date input,
+.lf-ci .ci-fact-field :is(input, select) {
+  width: 100%; min-height: 2.5rem; margin: 0; padding: 0.45rem 0.75rem; border: 1px solid rgba(20, 41, 95, 0.2); border-radius: 12px;
+  background: var(--lf-control-hover); color: var(--ink); font: inherit; font-size: 0.9rem;
+}
+.lf-ci .ci-date input { max-width: 14rem; }
+.lf-ci .ci-date input:focus,
+.lf-ci .ci-fact-field :is(input, select):focus { border-color: var(--lf-accent); outline: 3px solid rgba(30, 63, 151, 0.22); outline-offset: 0; }
+.lf-ci :is(.ci-date, .ci-fact-field) small { color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+
+/* the rows: a sub-panel across the whole card, one collapsible box per record / account */
+.lf-ci .ci-facts-box { display: grid; gap: 0.5rem; margin-top: 1rem; padding: 0.9rem 1rem 1rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg); }
+.lf-ci .ci-facts-box h5 { margin: 0; color: var(--navy); font-size: 0.95rem; font-weight: 700; }
+.lf-ci .ci-facts-box h5 small { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lf-ci .ci-facts-hint, .lf-ci .ci-facts-note, .lf-ci .ci-facts-empty { margin: 0; color: var(--lf-text-2); font-size: 0.86rem; line-height: 1.45; }
+.lf-ci .ci-facts-note { margin-top: 0.9rem; font-style: italic; }
+.lf-ci .ci-facts { display: grid; justify-items: start; gap: 0.6rem; }
+.lf-ci .ci-fact-list { display: grid; gap: 0.5rem; width: 100%; margin: 0; padding: 0; list-style: none; }
+.lf-ci .ci-fact { border: 1px solid var(--lf-block-line); border-radius: 14px; background: var(--lf-block-bg); }
+.lf-ci .ci-fact > summary {
+  display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; padding: 0.4rem 0.85rem; cursor: pointer; list-style: none;
+  color: var(--ink); font-size: 0.88rem;
+}
+.lf-ci .ci-fact > summary::-webkit-details-marker { display: none; }
+.lf-ci .ci-fact > summary:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; border-radius: 14px; }
+.lf-ci .ci-fact[open] > summary { border-bottom: 1px solid var(--lf-hair); }
+.lf-ci .ci-fact[open] > summary .ci-chev { transform: rotate(180deg); }
+.lf-ci .ci-fact-no {
+  display: inline-grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem; border-radius: 999px;
+  background: var(--lf-accent-bg); color: var(--lf-accent); font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.lf-ci .ci-fact-sum { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.lf-ci .ci-fact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.75rem 0.9rem; padding: 0.85rem; }
+.lf-ci .ci-fact-field { display: grid; align-content: start; gap: 0.3rem; min-width: 0; }
+.lf-ci .ci-fact-field.wide { grid-column: 1 / -1; }
+.lf-ci .ci-fact-field label { color: var(--ink); font-size: 0.84rem; font-weight: 600; }
+.lf-ci .ci-fact-foot { display: flex; justify-content: flex-end; padding: 0 0.85rem 0.85rem; }
+
+/* read-only list (CiResultsView) */
+.ci-fact-view { margin: 0.35rem 0 0; padding-left: 1.2rem; font-size: 0.86rem; line-height: 1.45; }
+.ci-fact-view .ci-fact-rem { display: block; color: var(--muted, #64748b); font-style: italic; }
+
+[data-theme='dark'] .lf-ci :is(.ci-date input, .ci-fact-field input, .ci-fact-field select) { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.18); color-scheme: dark; }
+[data-theme='dark'] .lf-ci :is(.ci-date input, .ci-fact-field input, .ci-fact-field select):focus { outline-color: rgba(169, 192, 255, 0.45); }
+[data-theme='dark'] .lf-ci .ci-fact > summary:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
+
+/* ---------- the boxes on the CI report page (ciReportForm.jsx: .lf-ci.ci-form inside .dc-fields-body) ---------- */
+.lf-ci.ci-form { display: grid; flex: 1; align-content: start; gap: 1rem; min-width: 0; min-height: 0; overflow-y: auto; padding: 0.1rem 0.15rem 0.5rem; }
+.lf-ci .ci-form-sec { margin: 0; padding: 0; border: 0; min-width: 0; }
+.lf-ci fieldset.ci-form-sec > legend { margin-bottom: 0.45rem; padding: 0; color: var(--ink); font-size: 0.9rem; font-weight: 600; }
+.lf-ci .ci-facts-box { margin-top: 0; }
+.lf-ci .ci-facts-box h3 { margin: 0; color: var(--navy); font-size: 0.95rem; font-weight: 700; }
+.lf-ci .ci-facts-box h3 small { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lf-ci .ci-form-foot { position: sticky; bottom: 0; padding: 0.75rem 0.25rem 0.25rem; background: var(--lf-glass-hi); backdrop-filter: var(--lf-glass-blur); }
+
+/* the AI bar at the top of the boxes: what Run AI can do now (blue), filled-in-check-it (amber), failed (red), done (green) */
+.lf-ci .ci-aibar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0; padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(30, 63, 151, 0.22); border-radius: 14px; background: var(--lf-accent-bg); color: var(--ink); font-size: 0.88rem; line-height: 1.45;
+}
+.lf-ci .ci-aibar > svg { flex: none; color: var(--lf-accent); }
+.lf-ci .ci-aibar > p { flex: 1 1 14rem; margin: 0; }
+.lf-ci .ci-aibar.warn { border-color: var(--lf-warn-line); background: var(--lf-warn-bg); }
+.lf-ci .ci-aibar.warn > svg { color: var(--lf-warn); }
+.lf-ci .ci-aibar.ok { border-color: var(--lf-ok-line); background: var(--lf-ok-bg); }
+.lf-ci .ci-aibar.ok > svg { color: var(--lf-ok); }
+.lf-ci .ci-aibar.err { border-color: rgba(180, 35, 24, 0.3); background: #fdecea; }
+.lf-ci .ci-aibar.err > svg { color: #b42318; }
+
+/* the CI request card: what is saved, and Open report */
+.lf-ci .ci-saved { display: grid; justify-items: start; gap: 0.35rem; margin: 0; padding: 0; list-style: none; color: var(--lf-text-2); font-size: 0.88rem; }
+.lf-ci .lf-primary.ci-open { display: inline-flex; align-items: center; gap: 0.45rem; justify-self: start; margin-top: 0.35rem; text-decoration: none; }
+
+[data-theme='dark'] .lf-ci .ci-aibar.err { background: rgba(248, 113, 113, 0.12); border-color: rgba(252, 165, 165, 0.35); }
+[data-theme='dark'] .lf-ci .ci-aibar.err > svg { color: #fca5a5; }
+
+/* "Rest of the report" on the CI report page: every other field as boxes, grouped like the report prints them */
+.lf-ci .ci-rest { display: grid; gap: 0.75rem; padding: 0.9rem 1rem 1rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg); }
+.lf-ci .ci-rest > summary { display: flex; align-items: center; gap: 0.6rem; cursor: pointer; list-style: none; color: var(--navy); font-size: 0.95rem; font-weight: 700; }
+.lf-ci .ci-rest > summary::-webkit-details-marker { display: none; }
+.lf-ci .ci-rest > summary small { flex: 1; color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+.lf-ci .ci-rest > summary:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 3px; border-radius: 8px; }
+.lf-ci .ci-rest[open] > summary .ci-chev { transform: rotate(180deg); }
+.lf-ci .ci-rest-sec { display: grid; gap: 0.5rem; margin: 0; padding: 0.75rem 0 0; border: 0; border-top: 1px solid var(--lf-hair); min-width: 0; }
+.lf-ci .ci-rest-sec > legend, .lf-ci .ci-rest-sec > h4 { float: left; width: 100%; margin: 0 0 0.25rem; padding: 0; color: var(--ink); font-size: 0.88rem; font-weight: 700; }
+.lf-ci .ci-rest-sec > h4 small { color: var(--muted); font-weight: 600; }
+.lf-ci .ci-rest-sec .ci-fact-grid { clear: both; padding: 0; }
+.lf-ci .ci-compare { justify-self: start; font-size: 0.74rem; }
+
+/* ---------- "What the CI results mean for this file" (ciFileChecks.jsx), under IV. Credit Checking ---------- */
+.lf-folder .ci-chip.err { border-color: rgba(180, 35, 24, 0.3); background: #fdecea; color: #b42318; }
+.lf-folder .ci-meaning { display: grid; gap: 0.75rem; margin: 1rem 0 0; padding: 1rem 1.1rem; border: 1px solid var(--lf-sub-line); border-radius: 16px; background: var(--lf-sub-bg); text-align: left; }
+.lf-folder .ci-meaning h4 { margin: 0; color: var(--navy); font-size: 1rem; font-weight: 700; }
+.lf-folder .ci-meaning h5 { display: flex; align-items: center; gap: 0.4rem; margin: 0 0 0.35rem; color: var(--ink); font-size: 0.9rem; font-weight: 700; }
+.lf-folder .ci-meaning h5 svg { color: var(--lf-accent); }
+.lf-folder .ci-meaning ul { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; font-size: 0.9rem; line-height: 1.5; color: var(--ink); }
+.lf-folder .ci-meaning-block { padding-top: 0.7rem; border-top: 1px solid var(--lf-hair); }
+.lf-folder .ci-meaning-note { margin: 0; color: var(--lf-text-2); font-size: 0.84rem; line-height: 1.45; }
+.lf-folder .ci-meaning-sub { display: block; margin-top: 0.15rem; color: var(--lf-text-2); font-size: 0.85rem; }
+.lf-folder .ci-meaning-ok { display: flex; align-items: center; gap: 0.35rem; margin: 0; color: var(--lf-ok); font-size: 0.88rem; font-weight: 600; }
+.lf-folder .ci-meaning-stop {
+  display: flex; gap: 0.55rem; margin: 0; padding: 0.7rem 0.85rem; border: 1px solid rgba(180, 35, 24, 0.35); border-radius: 12px;
+  background: #fdecea; color: #7a1610; font-size: 0.9rem; line-height: 1.45;
+}
+.lf-folder .ci-meaning-stop svg { flex: none; margin-top: 0.1rem; color: #b42318; }
+[data-theme='dark'] .lf-folder .ci-chip.err { background: rgba(248, 113, 113, 0.12); border-color: rgba(252, 165, 165, 0.35); color: #fca5a5; }
+[data-theme='dark'] .lf-folder .ci-meaning-stop { background: rgba(248, 113, 113, 0.12); border-color: rgba(252, 165, 165, 0.35); color: #fecaca; }
+[data-theme='dark'] .lf-folder .ci-meaning-stop svg { color: #fca5a5; }

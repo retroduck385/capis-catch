@@ -81,6 +81,17 @@ class TraitTests(unittest.TestCase):
         self.assertIn("Co-borrower 2 is an OFW", t["employment:OFW"])
         self.assertIn("RAAC-DBR", t["rule_failed"])
 
+    def test_ci_records_bring_in_the_nfis_clauses(self):
+        profile = {"ci": {"borrowers": [{"role": "Principal", "nfis": "WITH_FINDINGS", "tu": "NO_ADVERSE_FINDINGS",
+                                         "nfis_records": [{"kind": "CANCELLED_CARD", "raac": "ACCEPTABLE"},
+                                                          {"kind": "FORECLOSURE", "raac": "NOT_ALLOWED"}],
+                                         "tu_undeclared_loans": 1, "tu_validity": "EXPIRED"}]}}
+        why = traits(profile, {}, [])["ci_findings"]
+        self.assertIn("NFIS foreclosure (not allowed)", why)
+        self.assertNotIn("cancelled card", why)
+        self.assertIn("1 TU account(s) not declared", why)
+        self.assertIn("TU report past its validity", why)
+
     def test_no_profile_still_has_loan_traits_from_facts(self):
         self.assertIn("loan_over_3m", traits(None, FACTS, []))
 

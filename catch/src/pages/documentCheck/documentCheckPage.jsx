@@ -2,8 +2,10 @@
 // the AI read from it (ocr-service: PaddleOCR text -> Claude -> extraction_fields). The AI only proposes; the
 // assigned AO checks every value against the document, picks what goes into the application, and confirms.
 // Opened from the loan folder: /documentCheckPage?id=<application id>[&doc=<document id>]
-// CI mode (&ci=1, opened from the CI page): the NFIS / TU reports of each borrower instead. A Credit Investigator
-// checks the values and the AI's proposed result + summary, and confirms them into the CI results.
+// CI mode (&ci=1, "Open report" on the CI page): the NFIS / TU reports of each borrower instead, each next to ONE set
+// of boxes for that borrower x check (ciRequest/ciReportForm.jsx): result, report date, summary, NFIS records or TU
+// accounts. The Credit Investigator types them, or presses "Run AI" and the AI fills the same boxes for them to check
+// (20261125_ci_ocr_opt_in.sql, 20261126_ci_facts.sql). Nothing is saved until the CI presses Save.
 // Once every document here is confirmed, a banner points at the next step: the loan folder's KYC verification (AO)
 // or the CI request's results + Mark CI Done (CI).
 // Look (DESIGN.md, "Document check"): an .lf-folder page (panel, glass cards, tokens, dark mode) with a header, the
@@ -12,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, Eye, FileText, Loader2, Lock, RotateCcw, ScanText, ShieldCheck, UserRound,
+    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, Eye, FileText, Loader2, Lock, RotateCcw, ScanText, ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
@@ -24,10 +26,11 @@ import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
 import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
-import { fetchDocumentChecks, fetchFieldDefs, rerunExtraction, UNREADABLE_TEXT } from './api';
+import { fetchDocumentChecks, fetchFieldDefs, requestCiRead, rerunExtraction, UNREADABLE_TEXT } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import ManualValuesCard from './manualValuesCard';
+import CiReportForm from '../ciRequest/ciReportForm';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
 import Breadcrumbs from '../../components/breadcrumbs';
 import AskApplicantButton from '../documentRequests/ask';
@@ -45,8 +48,10 @@ const docLabel = (type) => CI_LABELS[type] ?? REQUIREMENT_LABELS[type] ?? type;
 const BUSY = ['PENDING', 'RUNNING'];
 
 // Where a document is in OCR -> AI -> AO confirmation. tone: an .lf-chip tone (documentCheck.css adds info / err);
-// a failed read is an error (form red), "Ready to check" waits on the AO (amber), never a TAT colour
+// a failed read is an error (form red), "Ready to check" waits on the AO (amber), never a TAT colour.
+// c = its loaded check (undefined while loading); a CI report with no OCR run was never sent to the AI (NOT_READ)
 const docStatus = (c) => {
+    if (c && c.ci && !c.ocr) return { key: 'NOT_READ', label: 'Not read by AI', tone: 'none', Icon: ScanText };
     const run = c?.run;
     if (run?.confirmed_at) return { key: 'CONFIRMED', label: 'Confirmed', tone: 'ok', Icon: CheckCircle2 };
     if (run?.status === 'DONE') return { key: 'READY', label: 'Ready to check', tone: 'warn', Icon: Eye };
@@ -90,6 +95,8 @@ const DocumentCheckPage = () => {
     const [view, setView] = useState('current');   // 'current' files, or the 'earlier' versions a new upload replaced
     const [earlierId, setEarlierId] = useState(null);
     const [rerunning, setRerunning] = useState(false);
+    const [reading, setReading] = useState(false);     // CI: "Run AI" being queued
+    const [savedStamp, setSavedStamp] = useState(0);   // CI: bumped on each save, so the boxes start from what's saved
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const dirtyRef = useRef(false);
@@ -119,6 +126,7 @@ const DocumentCheckPage = () => {
 
     const loadChecks = useCallback(async (ids) => {
         const next = await fetchDocumentChecks(ids, { ci: ciMode });
+        if (ciMode) for (const c of Object.values(next)) c.ci = true;   // docStatus: no OCR run = not read (yet)
         setChecks(next);
         setNames(await fetchStaffNames(Object.values(next).map((c) => c.run?.confirmed_by)));
     }, [ciMode]);
@@ -126,6 +134,20 @@ const DocumentCheckPage = () => {
         if (!ciMode) return;
         setCiData(await fetchCiResults(getParties(record, BORROWER_ROLES).map((p) => p.id)));
     }, [ciMode]);
+    // CI mode: what is saved for one borrower x check (the boxes' starting point)
+    const slotOf = (applicantId, checkType) => {
+        const c = ciData.checks.find((x) => x.applicant_id === applicantId && x.check_type === checkType);
+        return {
+            result: c?.result ?? null, summary: c?.summary ?? '', report_date: c?.report_date ?? null,
+            rows: (checkType === 'NFIS' ? ciData.nfisRecords : ciData.tuAccounts)?.filter((r) => r.applicant_id === applicantId) ?? [],
+            values: (ciData.reportValues ?? []).filter((v) => v.applicant_id === applicantId && v.check_type === checkType),
+            documents: ciData.documents.filter((d) => d.applicant_id === applicantId && d.check_type === checkType),
+        };
+    };
+    const slotDone = (applicantId, checkType) => {
+        const sl = slotOf(applicantId, checkType);
+        return Boolean(sl.result && sl.report_date);
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -212,13 +234,22 @@ const DocumentCheckPage = () => {
         label: `${ciCheckType} for ${nameOf(selectedParty.party)}`,
     } : null;
 
+    // AO: documents confirmed. CI: each borrower's NFIS / TU filled in (result + report date saved), counted per report
+    // kind, not per file (a report split into two files is one set of boxes)
+    const slotsOf = (p) => [...new Set(p.docs.map((d) => d.check_type))].map((t) => ({ party: p.party, checkType: t }));
+    const ciSlots = ciMode ? parties.flatMap(slotsOf) : [];
     const isConfirmed = (id) => Boolean(checks[id]?.run?.confirmed_at);
-    const confirmedCount = docIds.filter(isConfirmed).length;
-    const allConfirmed = docIds.length > 0 && confirmedCount === docIds.length;
+    const confirmedCount = ciMode ? ciSlots.filter((sl) => slotDone(sl.party.id, sl.checkType)).length
+        : docIds.filter(isConfirmed).length;
+    const totalCount = ciMode ? ciSlots.length : docIds.length;
+    const allConfirmed = totalCount > 0 && confirmedCount === totalCount;
     const leaveEdits = () => !dirtyRef.current || window.confirm('Discard your unsaved changes on this document?');
     const guardLink = (e) => { if (!leaveEdits()) e.preventDefault(); };
     const openDoc = (id) => {
-        if (id === doc?.id || !leaveEdits()) return;
+        // CI: another file of the same report keeps the same boxes, so nothing is lost
+        const target = selectedParty?.docs.find((d) => d.id === id);
+        const sameBoxes = ciMode && target && doc && target.check_type === doc.check_type;
+        if (id === doc?.id || (!sameBoxes && !leaveEdits())) return;
         setDocId(id);
         setFocused(null);
         setPage(1);
@@ -255,6 +286,21 @@ const DocumentCheckPage = () => {
         }
     };
 
+    // CI: "Run AI" on this report (also after a failed read); the page polls while it's being read
+    const handleReadCi = async () => {
+        if (!doc || reading) return;
+        setReading(true);
+        setError(null);
+        try {
+            await requestCiRead(doc.id);
+            await loadChecks(docIds);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setReading(false);
+        }
+    };
+
     const docDefs = doc ? defs.filter((d) => d.document_type === doc.document_type) : [];
     const highlights = (focused?.lines ?? []).map((l) => ({ id: l.id, page_no: l.page_no, bbox: l.bbox, text: l.text }));
     const backTo = ciMode && role === 'CREDIT_INVESTIGATOR'
@@ -279,7 +325,7 @@ const DocumentCheckPage = () => {
                     <p className="dc-hitl">
                         <ShieldCheck size={15} aria-hidden="true" />
                         <span><Terms text={ciMode
-                            ? 'The AI only proposes values and a draft result. Nothing is saved to the CI results until a Credit Investigator confirms. The application record is never changed here.'
+                            ? 'Fill in the boxes from the report yourself, or press Run AI to have them filled for you to check. Nothing is saved to the CI results until a Credit Investigator presses Save. The application record is never changed here.'
                             : 'The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.'} /></span>
                     </p>
                 </div>
@@ -288,7 +334,7 @@ const DocumentCheckPage = () => {
                         <ul className="lf-meta dc-progress">
                             <li className={allConfirmed ? 'dc-meta-done' : undefined}>
                                 <CheckCircle2 size={15} aria-hidden="true" />
-                                <span><b>{confirmedCount}</b> of {docIds.length} {ciMode ? 'reports' : 'documents'} confirmed</span>
+                                <span><b>{confirmedCount}</b> of {totalCount} {ciMode ? 'reports filled in' : 'documents confirmed'}</span>
                             </li>
                         </ul>
                     )}
@@ -305,9 +351,9 @@ const DocumentCheckPage = () => {
                 <div role="status" className="dc-next">
                     <CheckCircle2 size={20} aria-hidden="true" />
                     <p>
-                        <b><Terms text={ciMode ? 'Every NFIS and TU report is confirmed.' : 'Every document is confirmed.'} /></b>{' '}
+                        <b><Terms text={ciMode ? 'Every NFIS and TU report is filled in.' : 'Every document is confirmed.'} /></b>{' '}
                         <Terms text={ciMode
-                            ? 'Their results and summaries are saved. Next: check the results and Mark CI Done.'
+                            ? 'Their results, report dates and rows are saved. Next: check the recap, add your overall remarks and Mark CI Done.'
                             : 'Next: KYC verification of each section in the loan folder.'} />
                     </p>
                     <Link to={ciMode ? `/ciRequestPage?id=${app.id}&step=send` : `/loanFolderPage?id=${app.id}`}
@@ -329,15 +375,18 @@ const DocumentCheckPage = () => {
                 <>
                     {/* the borrowers, each with how many of their files are confirmed */}
                     <nav className="lf-tabs dc-people" aria-label="Borrowers">
-                        {parties.map(({ party, docs }) => {
-                            const done = docs.filter((d) => isConfirmed(d.id)).length;
+                        {parties.map((pp) => {
+                            const { party } = pp;
+                            const docs = ciMode ? slotsOf(pp) : pp.docs;
+                            const done = ciMode ? docs.filter((sl) => slotDone(party.id, sl.checkType)).length
+                                : docs.filter((d) => isConfirmed(d.id)).length;
                             return (
                                 <button key={party.id} type="button" onClick={() => openParty(party.id)}
                                     aria-current={party.id === selectedParty?.party.id ? 'true' : undefined}>
                                     <span className="dc-person" aria-hidden="true"><UserRound size={15} /></span>
                                     <span className="who">{nameOf(party)} <span className="role">· {partyLabel(party)}</span></span>
                                     <b className={done === docs.length ? 'all' : undefined}>
-                                        {done}/{docs.length}<span className="sr-only"> confirmed</span>
+                                        {done}/{docs.length}<span className="sr-only"> {ciMode ? 'filled in' : 'confirmed'}</span>
                                     </b>
                                 </button>
                             );
@@ -432,7 +481,7 @@ const DocumentCheckPage = () => {
                         <section className="lf-card dc-pane dc-fields" aria-labelledby="dc-fields-title">
                             <div className="lf-cardhead">
                                 <div className="dc-headleft">
-                                    <h2 id="dc-fields-title">Extracted information</h2>
+                                    <h2 id="dc-fields-title">{ciMode && doc ? <Terms text={`${CI_LABELS[doc.document_type]?.split(' ')[0] ?? ''} results for ${nameOf(selectedParty.party)}`} /> : 'Extracted information'}</h2>
                                     {!showEarlier && took && (
                                         <span className="dc-took" title={`Took ${took}, from the start of the OCR to the end of the AI extraction`}>
                                             <Clock size={13} className="dc-took-ic" aria-hidden="true" />
@@ -459,6 +508,17 @@ const DocumentCheckPage = () => {
                                     Switch back to Current to read and confirm the files that count.
                                 </p>
                             ) : !doc ? <p className="lf-empty">Pick a document on the left.</p>
+                                : ciMode ? (
+                                    <div className="dc-fields-body">
+                                        <CiReportForm key={`${selectedParty.party.id}:${doc.check_type}:${savedStamp}`}
+                                            party={selectedParty.party} checkType={doc.check_type}
+                                            slot={slotOf(selectedParty.party.id, doc.check_type)} canEdit={canEdit}
+                                            defs={defs} ctx={ctx}
+                                            ai={{ status: status.key, check, fileName: doc.file_name }}
+                                            running={reading} onRunAi={handleReadCi} onDirtyChange={setDirty}
+                                            onSaved={async () => { await refreshAll(); setSavedStamp((n) => n + 1); }} />
+                                    </div>
+                                )
                                 : status.key === 'READY' || status.key === 'CONFIRMED' ? (
                                     <div className="dc-fields-body">
                                         <ExtractionPanel key={`${check.run.id}-${check.run.confirmed_at ?? ''}`}
@@ -472,6 +532,16 @@ const DocumentCheckPage = () => {
                                             <status.Icon size={22} className={status.spin ? 'dc-spin' : undefined} aria-hidden="true" />
                                         </span>
                                         <p className="dc-wait-title">{unreadable ? (ciMode ? "We couldn't read this file." : UNREADABLE_TEXT) : status.label}</p>
+                                        {status.key === 'NOT_READ' && (
+                                            <p className="dc-muted">
+                                                <Terms text="The AI reads a CI report only when you ask. It then drafts the values, the result and a summary for you to check. You can also choose the result and type the findings yourself on the CI request page." />
+                                            </p>
+                                        )}
+                                        {status.key === 'NOT_READ' && canEdit && (
+                                            <button type="button" className="lf-btn" disabled={reading} onClick={handleReadCi}>
+                                                <Sparkles size={16} aria-hidden="true" />{reading ? 'Queuing...' : 'Run AI'}
+                                            </button>
+                                        )}
                                         {/* the worker already tried twice: the AO asks for a clearer copy, the CI uploads it again */}
                                         {unreadable && !ciMode && (
                                             <AskApplicantButton applicationId={app.id} confirmLeave={leaveEdits} plain className="lf-ask-btn"
@@ -484,9 +554,14 @@ const DocumentCheckPage = () => {
                                             </AskApplicantButton>
                                         )}
                                         {unreadable && ciMode && canEdit && (
-                                            <Link to={`/ciRequestPage?id=${app.id}&step=reports`} className="lf-btn" onClick={guardLink}>
-                                                Upload it again
-                                            </Link>
+                                            <>
+                                                <button type="button" className="lf-btn" disabled={reading} onClick={handleReadCi}>
+                                                    <RotateCcw size={16} aria-hidden="true" />{reading ? 'Queuing...' : 'Read again'}
+                                                </button>
+                                                <Link to={`/ciRequestPage?id=${app.id}&step=reports`} className="lf-btn" onClick={guardLink}>
+                                                    Upload a clearer copy
+                                                </Link>
+                                            </>
                                         )}
                                         {unreadable && (
                                             <p className="dc-muted">Details: {(status.key === 'OCR_FAILED' ? check.ocr.error : check.run.error) || 'no error saved'}</p>

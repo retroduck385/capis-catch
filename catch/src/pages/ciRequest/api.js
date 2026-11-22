@@ -47,16 +47,26 @@ export const fetchConfirmedIdDetails = async (documentIds) => {
 export const fetchCiCanEdit = async (applicationId) =>
     check(await supabase.rpc('ci_can_edit', { p_application_id: applicationId })) ?? false;
 
-// Results and files of the given borrowers (ids from the application record). Only the checks in CI_CHECKS
-// (NFIS, TU): old BRAS rows stay in the database but are never shown or counted.
+// Results, files and the typed rows (NFIS records, TU accounts; 20261126_ci_facts.sql) of the given borrowers (ids
+// from the application record). Only the checks in CI_CHECKS (NFIS, TU): old BRAS rows stay in the database but are
+// never shown or counted. If the rows can't be read (migration not run yet), the results still load without them.
 export const fetchCiResults = async (borrowerIds) => {
-    if (!borrowerIds.length) return { checks: [], documents: [] };
-    const [checks, documents] = await Promise.all([
+    if (!borrowerIds.length) return { checks: [], documents: [], nfisRecords: [], tuAccounts: [], reportValues: [] };
+    const [checks, documents, nfis, tu, values] = await Promise.all([
         supabase.from('ci_checks').select('*').in('applicant_id', borrowerIds),
         supabase.from('ci_documents').select('*').in('applicant_id', borrowerIds).order('uploaded_at').order('id'),
+        supabase.from('ci_nfis_records').select('*').in('applicant_id', borrowerIds).order('id'),
+        supabase.from('ci_tu_accounts').select('*').in('applicant_id', borrowerIds).order('id'),
+        supabase.from('ci_report_values').select('*').in('applicant_id', borrowerIds).order('item_no').order('id'),
     ]);
     const used = (r) => CI_CHECK_VALUES.has(r.check_type);
-    return { checks: (check(checks) ?? []).filter(used), documents: (check(documents) ?? []).filter(used) };
+    return {
+        checks: (check(checks) ?? []).filter(used),
+        documents: (check(documents) ?? []).filter(used),
+        nfisRecords: nfis.error ? [] : nfis.data ?? [],
+        tuAccounts: tu.error ? [] : tu.data ?? [],
+        reportValues: values.error ? [] : values.data ?? [],   // every other field on the reports (20261127)
+    };
 };
 
 // How many times a Credit Investigator flagged CI findings on this file (ci_finding_flags, staff read by RLS)
@@ -71,6 +81,16 @@ export const fetchCiFindingFlagCount = async (applicationId) => {
 export const saveCiFindings = async (applicationId, rows, remarks) =>
     check(await supabase.rpc('save_ci_findings', {
         p_application_id: applicationId, p_checks: rows, p_remarks: remarks,
+    }));
+
+// One borrower x check in one go: result, summary, report date and its rows (NFIS records or TU accounts, the full
+// list: rows with an id are updated, without one added, saved ones left out removed). Unchanged rows aren't touched.
+// runId: the AI run that filled the boxes ("Run AI"), if it did; saving confirms it (audit trail).
+// values: every other box on the report ([{ field_key, item_no, value }], the full list; null = leave as saved).
+export const saveCiCard = async ({ applicantId, checkType, result, summary, reportDate, rows, runId = null, values = null }) =>
+    check(await supabase.rpc('save_ci_card', {
+        p_applicant_id: applicantId, p_check_type: checkType, p_result: result, p_summary: summary,
+        p_report_date: reportDate || null, p_rows: rows, p_run_id: runId, p_values: values,
     }));
 
 // Stored at ci/{application}/{borrower}/{check}/..., outside the applicant's folder, so the applicant can't open it

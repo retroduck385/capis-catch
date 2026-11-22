@@ -110,7 +110,12 @@ test('loan, CI per role, totals and score', () => {
     assert.equal(profile.loan.from_developer, true);
     assert.equal(profile.loan.referral_channel, 'Developer');
     assert.equal(profile.loan.collateral_basis, 'APPRAISED_VALUE');
-    assert.deepEqual(profile.ci.borrowers, [
+    const results = profile.ci.borrowers.map(({ role, nfis, tu, bras }) => ({ role, nfis, tu, bras }));
+    // the CI's records and accounts (ciFacts.js): none here, and no report dates
+    assert.deepEqual(profile.ci.borrowers[0].nfis_records, []);
+    assert.equal(profile.ci.borrowers[0].nfis_validity, 'NO_DATE');
+    assert.equal(profile.ci.borrowers[1].nfis_validity, null);
+    assert.deepEqual(results, [
         { role: 'Principal', nfis: 'NO_ADVERSE_FINDINGS', tu: 'WITH_FINDINGS', bras: null },
         { role: 'Co-borrower 2', nfis: null, tu: null, bras: 'NO_ADVERSE_FINDINGS' },
     ]);
@@ -133,4 +138,26 @@ test('civil status: only the four CATCH values, anything else null', () => {
     const odd = party(21, 'PRINCIPAL', { civil_status: 'complicated' });
     const out = buildPolicyProfile({ app: { applicants: [odd] }, computed: { incomes: [{ party: odd }] } });
     assert.equal(out.borrowers[0].civil_status, null);
+});
+
+test('CI records reach the policy check by role only: kind, age, balance, RAAC reading; never who reported them', () => {
+    const app = {
+        id: 1, loan_amount: 2000000, applicants: [{ id: 11, role: 'PRINCIPAL', party_no: 1, existing_loans: [], credit_cards: [] }],
+        collateral_details: [{ selling_price: 2500000 }], referral_details: [],
+    };
+    const computed = { incomes: [{ party: app.applicants[0], gross: 100000 }], lcr: 0.8 };
+    const ci = {
+        checks: [{ applicant_id: 11, check_type: 'NFIS', result: 'WITH_FINDINGS', report_date: '2026-11-01' },
+            { applicant_id: 11, check_type: 'TU', result: 'NO_ADVERSE_FINDINGS', report_date: '2026-11-01' }],
+        nfisRecords: [{ id: 1, applicant_id: 11, record_type: 'FORECLOSURE', institution: 'Sample Bank', date_reported: '2015-01-01',
+            case_reference: 'Civil Case 0000', remarks: 'free text' }],
+        tuAccounts: [],
+    };
+    const profile = buildPolicyProfile({ app, computed, ci });
+    const [rec] = profile.ci.borrowers[0].nfis_records;
+    assert.equal(rec.kind, 'FORECLOSURE');
+    assert.equal(rec.raac, 'NOT_ALLOWED');
+    const text = JSON.stringify(profile);
+    for (const secret of ['Sample Bank', 'Civil Case', 'free text']) assert.equal(text.includes(secret), false, secret);
+    assert.equal(PERSONAL_KEY.test(Object.keys(rec).join(' ')), false);
 });

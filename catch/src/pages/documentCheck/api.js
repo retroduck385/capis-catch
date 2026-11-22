@@ -14,7 +14,7 @@ export const fetchFieldDefs = async () =>
 
 // Per document id: { ocr, run, fields, pages }. ci = true: the ids are ci_documents ids (CI reports).
 //   ocr    = latest OCR run of the document (created_at / started_at / finished_at: duration.js works out how long it took)
-//   run    = latest AI extraction run (the confirmed one, once locked: no later run can be made)
+//   run    = latest AI extraction run of that OCR run (the confirmed one, once locked: no later run can be made)
 //   fields = the run's fields, each with the OCR lines it was read from (`lines`)
 //   pages  = { [page_no]: { width, height, angle } } of the OCR run the extraction read
 export const fetchDocumentChecks = async (documentIds, { ci = false } = {}) => {
@@ -34,7 +34,13 @@ export const fetchDocumentChecks = async (documentIds, { ci = false } = {}) => {
         result[r[source]].ocr = r;
         docOfOcr[r.id] = r[source];
     }
-    for (const run of runs) result[docOfOcr[run.ocr_run_id]].run = run;
+    // The confirmed run once there is one; otherwise the latest run of the latest OCR run (a failed run of an older
+    // OCR run doesn't count after the file was read again)
+    for (const run of runs) {
+        const c = result[docOfOcr[run.ocr_run_id]];
+        if (c.run?.confirmed_at) continue;
+        if (run.confirmed_at || run.ocr_run_id === c.ocr?.id) c.run = run;
+    }
 
     const done = Object.values(result).map((c) => c.run).filter((run) => run?.status === 'DONE');
     if (done.length === 0) return result;
@@ -70,6 +76,39 @@ export const fetchConfirmedIds = async (documentIds, { ci = false } = {}) => {
     return new Set(confirmed.map((r) => docOfOcr[r.ocr_run_id]));
 };
 
+// Where each document is in OCR -> AI -> confirmation, from its latest runs: { [id]: state }. ci = true: ci_documents ids.
+//   NONE (never read: CI reports are read only on "Run AI"), READING (OCR or AI queued / running),
+//   READY (to check), CONFIRMED (locked), FAILED (the last OCR or AI step failed: can be read again)
+export const fetchReadStates = async (documentIds, { ci = false } = {}) => {
+    const states = Object.fromEntries(documentIds.map((id) => [id, 'NONE']));
+    if (documentIds.length === 0) return states;
+    const source = ci ? 'ci_document_id' : 'document_id';
+    const ocrRuns = check(await supabase.from('ocr_runs').select(`id, ${source}, status`)
+        .in(source, documentIds).order('id')) ?? [];
+    if (ocrRuns.length === 0) return states;
+    const runs = check(await supabase.from('extraction_runs').select('ocr_run_id, status, confirmed_at')
+        .in('ocr_run_id', ocrRuns.map((r) => r.id)).order('id')) ?? [];
+    const docOfOcr = Object.fromEntries(ocrRuns.map((r) => [r.id, r[source]]));
+    const latestOcr = {};
+    for (const r of ocrRuns) latestOcr[r[source]] = r;            // ordered by id: the last one wins
+    const latestRun = {};
+    const confirmed = new Set();
+    for (const run of runs) {
+        if (run.confirmed_at) confirmed.add(docOfOcr[run.ocr_run_id]);
+        if (latestOcr[docOfOcr[run.ocr_run_id]]?.id === run.ocr_run_id) latestRun[docOfOcr[run.ocr_run_id]] = run;
+    }
+    for (const id of documentIds) {
+        const ocr = latestOcr[id];
+        const run = latestRun[id];
+        if (confirmed.has(id)) states[id] = 'CONFIRMED';
+        else if (!ocr) states[id] = 'NONE';
+        else if (ocr.status === 'FAILED' || run?.status === 'FAILED') states[id] = 'FAILED';
+        else if (ocr.status !== 'DONE' || !run || run.status !== 'DONE') states[id] = 'READING';
+        else states[id] = 'READY';
+    }
+    return states;
+};
+
 // Loan folder step 1: of the application's documents the AI reads (a type in extraction_field_defs), how many the
 // AO has confirmed. documents = every application document; returns { total, confirmed }.
 export const fetchDocumentProgress = async (documents) => {
@@ -79,9 +118,11 @@ export const fetchDocumentProgress = async (documents) => {
     return { total: ids.length, confirmed: (await fetchConfirmedIds(ids)).size };
 };
 
-// Reading is automatic: OCR is queued when a file is uploaded (queue_ocr_run / queue_ci_ocr_run) and the AI
-// extraction when OCR finishes (queue_extraction_run). The worker retries a failed step once by itself; a second
-// failure is final, and staff ask the applicant for a clearer copy (AO) or upload the report again (CI).
+// Application documents are read automatically: OCR is queued when a file is uploaded (queue_ocr_run) and the AI
+// extraction when OCR finishes (queue_extraction_run). CI reports (NFIS / TU) are read only when the Credit
+// Investigator presses "Run AI" (requestCiRead, 20261125_ci_ocr_opt_in.sql). The worker retries a failed step
+// once by itself; a second failure is final, and staff ask the applicant for a clearer copy (AO), or the CI reads
+// the report again or uploads a clearer copy.
 export const UNREADABLE_TEXT = "We couldn't read this file. Ask the applicant for a clearer copy.";
 
 // AO: confirm & lock. fields = [{ id, final_value, apply_to_record }] for every field of the run
@@ -91,6 +132,11 @@ export const confirmExtraction = async (runId, fields) =>
 // Testing: queue a fresh AI extraction on the same OCR run (the worker picks it up within seconds)
 export const rerunExtraction = async (ocrRunId) =>
     check(await supabase.rpc('request_rerun_extraction', { p_ocr_run_id: ocrRunId }));
+
+// Credit Investigator: "Run AI" on one NFIS / TU report (queues OCR; the AI extraction follows by itself).
+// Also reads a report again after a failed OCR or AI step.
+export const requestCiRead = async (ciDocumentId) =>
+    check(await supabase.rpc('request_ci_ocr', { p_ci_document_id: ciDocumentId }));
 
 // Credit Investigator: confirm & lock a CI report and save the result + summary to the CI results.
 // fields = [{ id, final_value }] for every field of the run; result = NO_ADVERSE_FINDINGS | WITH_FINDINGS

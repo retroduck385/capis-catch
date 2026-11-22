@@ -79,6 +79,20 @@ def traits(profile: dict | None, facts: dict, results: list[dict]) -> dict[str, 
         bad = [k.upper() for k in ("nfis", "tu", "bras") if c.get(k) == "WITH_FINDINGS"]
         if bad:
             _add(out, "ci_findings", f"{c.get('role')}: {', '.join(bad)} with findings")
+        unsure = [k.upper() for k in ("nfis", "tu", "bras") if c.get(k) == "INCONCLUSIVE"]
+        if unsure:
+            _add(out, "ci_findings", f"{c.get('role')}: {', '.join(unsure)} inconclusive")
+        # The CI's NFIS records read against the RAAC's acceptable records (catch ciFacts.js), and TU vs the KYC
+        for r in c.get("nfis_records") or []:
+            if r.get("raac") in ("NOT_ALLOWED", "DEVIATION") or r.get("lcr_within_cap") is False:
+                _add(out, "ci_findings", f"{c.get('role')}: NFIS {str(r.get('kind', 'record')).lower().replace('_', ' ')}"
+                                         f" ({'not allowed' if r.get('raac') == 'NOT_ALLOWED' else 'outside the acceptable records'})")
+        undeclared = (c.get("tu_undeclared_loans") or 0) + (c.get("tu_undeclared_cards") or 0)
+        if undeclared:
+            _add(out, "ci_findings", f"{c.get('role')}: {undeclared} TU account(s) not declared in the KYC")
+        expired = [k.upper() for k in ("nfis", "tu") if c.get(f"{k}_validity") == "EXPIRED"]
+        if expired:
+            _add(out, "ci_findings", f"{c.get('role')}: {', '.join(expired)} report past its validity")
     if ci.get("findings_flagged"):
         _add(out, "ci_findings", "the CI flagged findings")
     for d in (profile.get("documents") or {}).get("borrowers") or []:

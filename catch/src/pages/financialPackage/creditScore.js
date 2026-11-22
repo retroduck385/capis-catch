@@ -8,6 +8,7 @@ import { getAddress, getParty, one } from '../applicationForm/api';
 import { tenure, wholeYears } from '../applicationForm/derived';
 import { CIVIL_STATUSES, EMPLOYMENT_TYPES, GENDERS, HOME_OWNERSHIP, formatMoney, labelFor } from '../applicationForm/options';
 import { percent } from './compute';
+import { ciSlots, depositBandFromNfis, loanHistoryBand, nfisBand, returnedChecks } from '../ciRequest/ciFacts';
 
 export const CATEGORIES = [
     { value: 'CAPACITY', label: '1. Capacity' },
@@ -92,17 +93,26 @@ const SUGGESTERS = {
             : none('Could be locally employed or self-employed: pick from the documents.', input);
     },
 
-    // ---------- Character (mostly from the CI and the CO's own checks) ----------
-    LOAN_HISTORY: ({ computed, form }) => {
+    // ---------- Character (from the CI results: ciFacts.js; else the CO's own checks) ----------
+    // Every borrower's TU accounts, once every TU result is in; until then, what the KYC and XI. say
+    LOAN_HISTORY: ({ computed, form, slots }) => {
+        const fromTu = loanHistoryBand(slots);
+        if (fromTu.band) return fromTu;
         const checked = form.loan_checks.filter((r) => r.bank_name || r.facility).length;
         if (computed.existingLoans.length || checked) {
             return none('Has loans: pick from the payment history (Loandex / CI).',
                 `${computed.existingLoans.length} declared, ${checked} verified`);
         }
         return pick('None declared or verified', 'NONE',
-            'No loans in the KYC or XI. Loan Verification. Fully paid past loans won\'t show here; check Loandex / CI.');
+            `No loans in the KYC or XI. Loan Verification. ${fromTu.source}`);
     },
-    DEPOSIT_HANDLING: ({ app, form }) => {
+    // Returned checks on the NFIS records decide when there are any; otherwise the declared / checked accounts
+    DEPOSIT_HANDLING: ({ app, form, slots }) => {
+        const returned = returnedChecks(slots);
+        if (returned > 0) {
+            return pick(`${returned} returned check${returned === 1 ? '' : 's'} on NFIS`, depositBandFromNfis(returned),
+                'Returned checks on the borrowers\' NFIS records (CI results).');
+        }
         const types = [
             ...(app.applicants ?? []).flatMap((p) => (p.bank_accounts ?? []).map((b) => b.account_type)),
             ...form.deposit_checks.map((r) => r.account_type),
@@ -112,9 +122,12 @@ const SUGGESTERS = {
         if (types.every((t) => /saving/i.test(t))) {
             return pick(input, 'SAVINGS_ONLY', 'Every declared / checked account is a savings account.');
         }
-        return none('Has a checking / other account: pick from the returned-check history.', input);
+        if (returned === 0) {
+            return pick(input, 'GOOD', 'Has a checking account; no returned checks on any borrower\'s NFIS. Confirm with X. Deposit Checking.');
+        }
+        return none('Has a checking / other account: pick from the returned-check history (NFIS results not all in).', input);
     },
-    NFIS: () => none('Awaiting the Credit Investigator\'s NFIS results.'),
+    NFIS: ({ slots }) => nfisBand(slots),
 
     // ---------- Collateral ----------
     // The sheet points this at the Statement of Account cell (FP!D42); CATCH uses the collateral value
@@ -187,9 +200,10 @@ const SUGGESTERS = {
     },
 };
 
-// { [criterion]: { input, band, source } } for every criterion in the rules
-export const suggestCreditScore = (app, computed, form, criteria) => {
-    const ctx = { app, computed, form, principal: getParty(app, 'PRINCIPAL') };
+// { [criterion]: { input, band, source } } for every criterion in the rules. ci: fetchCiResults() (optional: without
+// it the Character items wait for the CI results).
+export const suggestCreditScore = (app, computed, form, criteria, ci = null) => {
+    const ctx = { app, computed, form, principal: getParty(app, 'PRINCIPAL'), slots: ci ? ciSlots(app, ci) : [] };
     return Object.fromEntries(criteria.map((c) => [c.code, SUGGESTERS[c.code]?.(ctx) ?? none('No suggestion for this criterion.')]));
 };
 

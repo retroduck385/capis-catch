@@ -365,7 +365,7 @@ const ReviewSummaryPage = () => {
         ),
         'rv-ci': (
             <Section id="rv-ci" title="IV. Credit Checking (CI results)" className="lf-ciresults">
-                <CiResultsView app={app} title={null} />
+                <CiResultsView app={app} title={null} computed={computed} />
             </Section>
         ),
         'rv-score': (
