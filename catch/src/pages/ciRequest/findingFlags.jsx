@@ -1,8 +1,8 @@
-// "Flag the findings": when a saved CI result is "With findings", a Credit Investigator can flag them with a short
-// note. The assigned Account Officer and the assigned Credit Officer (the Dispatch Admins while no Credit Officer is
-// assigned) get a bell alert that opens IV. Credit Checking. Every flag is kept and shown here: who, when, the note.
-// Shown under the CI results wherever they appear; only a Credit Investigator gets the form.
-// (ci_finding_flags / flag_ci_findings() in 20261116_findings_and_file_marks.sql)
+// "Flag the findings": when a saved CI result is "With findings" or "Inconclusive", a Credit Investigator can flag them
+// with a short note. The assigned Account Officer and the assigned Credit Officer (the CO Managers while no Credit
+// Officer is assigned) get a bell alert that opens IV. Credit Checking. Every flag is kept and shown here: who, when,
+// the note. Shown under the CI results wherever they appear; only a Credit Investigator gets the form.
+// (ci_finding_flags in 20261116_findings_and_file_marks.sql; flag_ci_findings() in 20261129_flag_inconclusive.sql)
 // Look: .ci-flags in ciRequest.css, on --lf-* tokens with light fallbacks: an amber box on every page, and it follows
 // dark mode on the converted ones (the CI request). Who flagged it is a Byline.
 import { useEffect, useId, useState } from 'react';
@@ -26,7 +26,7 @@ const fetchFlags = async (applicationId) =>
 const flagFindings = async (applicationId, note) =>
     check(await supabase.rpc('flag_ci_findings', { p_application_id: applicationId, p_note: note }));
 
-// hasFindings: a SAVED result on this file is "With findings"; unsaved: the CI picked it but hasn't saved yet
+// hasFindings: a SAVED result on this file is "With findings" or "Inconclusive" (needsAttention); unsaved: the CI picked it but hasn't saved yet
 const CiFindingFlags = ({ applicationId, hasFindings, unsaved = false }) => {
     const role = UserAuth()?.role;
     const [flags, setFlags] = useState([]);
@@ -99,7 +99,7 @@ const CiFindingFlags = ({ applicationId, hasFindings, unsaved = false }) => {
                     <textarea id={`ci-flag-note${uid}`} rows={2} value={note} maxLength={MAX}
                         onChange={(e) => { setNote(e.target.value); setDone(false); }} aria-describedby={`ci-flag-hint${uid}`} />
                     <p id={`ci-flag-hint${uid}`} className="ci-flags-hint">
-                        {note.length} / {MAX}. Alerts the assigned Account Officer and Credit Officer (the Dispatch Admins if no
+                        {note.length} / {MAX}. Alerts the assigned Account Officer and Credit Officer (the CO Managers if no
                         Credit Officer is assigned yet). The note is read here, not in the alert. A flag can't be edited or removed.
                     </p>
                     <button type="button" className="ci-flags-btn" disabled={busy} onClick={submit}>
@@ -108,7 +108,7 @@ const CiFindingFlags = ({ applicationId, hasFindings, unsaved = false }) => {
                 </div>
             )}
             {role === 'CREDIT_INVESTIGATOR' && !hasFindings && unsaved && (
-                <p className="ci-flags-hint">Save your findings first, then you can flag them.</p>
+                <p className="ci-flags-hint">Save the result (With findings or Inconclusive) first, then you can flag it.</p>
             )}
             {done && <p role="status" className="ci-flags-sent">Flag sent.</p>}
             {error && <p role="alert" className="ci-flags-err">{error}</p>}
