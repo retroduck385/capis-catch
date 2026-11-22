@@ -39,6 +39,7 @@ import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import { fetchThreads } from '../kycClarify/api';
 import AoThread from '../kycClarify/aoThread';
+import { openSectionsText, stageBlockNote } from '../kycClarify/sections';
 import { PanelHide, PanelRail } from '../../components/sidePanel';
 import { useSidePanel } from '../../components/useSidePanel';
 import './loanFolder.css';
@@ -473,7 +474,8 @@ const LoanFolderPage = () => {
                     {threadsFor(section.key).length > 0 && (
                         <section className="lf-card lf-check kq-card" aria-label="Question to the applicant">
                             <div className="lf-cardhead"><h3>Question to the applicant</h3></div>
-                            <AoThread key={`thread-${section.key}`} threads={threadsFor(section.key)} canAnswer onChanged={loadTrail} />
+                            <AoThread key={`thread-${section.key}`} threads={threadsFor(section.key)} canAnswer canWithdraw={canEdit}
+                                onChanged={loadTrail} />
                         </section>
                     )}
                 </aside>
@@ -573,6 +575,7 @@ const LoanFolderPage = () => {
                                 requesterName={names[ciRequest?.requested_by]}
                                 verifiedCount={verifiedCount}
                                 sectionCount={sections.length}
+                                blockedNote={stageBlockNote(openSectionsText(threads))}
                                 onRequested={handleCiRequested} />
                         </div>
                     ) : section ? sectionView : (

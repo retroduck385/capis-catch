@@ -1,4 +1,4 @@
-// The applicant's "Question from your Account Officer" card on their submitted application: the AO's question, the
+// The applicant's "Clarification requested: <section>" card on their submitted application: the AO's question, the
 // thread so far, and a Reply box (text, optionally one JPG, PNG or PDF file). Shown only while the question is open
 // (my_kyc_clarifications()); once the AO marks the section Verified it is gone. The application itself stays read only.
 // focus: this is the question the notification pointed to (it is highlighted and scrolled into view by the page).
@@ -45,7 +45,7 @@ const ApplicantClarifyCard = ({ thread, focus = false, onChanged, onShowPart }) 
         <section id={`clarify-${thread.section}`} className={`ct-card kq-card${focus ? ' focus' : ''}`}
             aria-labelledby={`${id}-title`} style={{ marginBottom: '1rem' }}>
             <div className="ct-card-head">
-                <h2 id={`${id}-title`}>Question from your Account Officer: {thread.section_label}</h2>
+                <h2 id={`${id}-title`}>Clarification requested: {thread.section_label}</h2>
                 <span className="ct-mono ct-muted">{thread.application_no}</span>
             </div>
             <div className="ct-sheet-body">

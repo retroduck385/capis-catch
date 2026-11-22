@@ -59,3 +59,12 @@ export const fileProblem = (file) => {
 
 export const QUESTION_MAX = 300;
 export const REPLY_MAX = 1000;
+
+// The open questions of a file as one line ("Employment, Loan Details"), or null when none is open
+export const openSectionsText = (threads) => {
+    const open = (threads ?? []).filter((t) => t.status === 'OPEN');
+    return open.length ? open.map((t) => t.section_label ?? sectionLabel(t.section)).join(', ') : null;
+};
+
+// The note on Request CI / Mark CI Done while a question is open (the database refuses the move with the same words)
+export const stageBlockNote = (text) => (text ? `Resolve the open clarification on ${text} first.` : null);

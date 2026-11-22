@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { fileProblem, fromLabel, partyAnchor, sectionLabel, summaryAnchor } from '../src/pages/kycClarify/sections.js';
+import { fileProblem, fromLabel, openSectionsText, partyAnchor, sectionLabel, stageBlockNote, summaryAnchor } from '../src/pages/kycClarify/sections.js';
 
 const SQL = fs.readFileSync(new URL('../supabase/migrations/20261203_kyc_clarifications.sql', import.meta.url), 'utf8');
 const KEYS = ['loan', 'principalInfo', 'principalAddress', 'principalEmployment', 'spouse', 'coBorrowers', 'mortgagor',
@@ -43,4 +43,18 @@ test('reply files: JPG, PNG or PDF up to 10 MB; no file is fine', () => {
     assert.equal(fileProblem({ name: 'a.png', type: 'image/png', size: 10 * 1024 * 1024 }), null);
     assert.match(fileProblem({ name: 'a.exe', type: 'application/x-msdownload', size: 10 }), /JPG, PNG or PDF/);
     assert.match(fileProblem({ name: 'big.jpg', type: 'image/jpeg', size: 10 * 1024 * 1024 + 1 }), /larger than 10 MB/);
+});
+
+test('Request CI / Mark CI Done wait for open questions, with the same words as the database', () => {
+    const threads = [
+        { status: 'OPEN', section: 'principalEmployment', section_label: 'Employment' },
+        { status: 'CLOSED', section: 'spouse', section_label: 'Spouse' },
+        { status: 'OPEN', section: 'loan' },
+    ];
+    assert.equal(openSectionsText(threads), 'Employment, Loan Details');
+    assert.equal(stageBlockNote(openSectionsText(threads)), 'Resolve the open clarification on Employment, Loan Details first.');
+    assert.equal(openSectionsText([{ status: 'CLOSED', section: 'loan' }]), null);
+    assert.equal(stageBlockNote(null), null);
+    const guard = fs.readFileSync(new URL('../supabase/migrations/20261204_kyc_clarification_guard.sql', import.meta.url), 'utf8');
+    assert.ok(guard.includes("raise exception 'Resolve the open clarification on % first.'"));
 });

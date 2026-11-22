@@ -20,6 +20,10 @@ export const askClarification = async (applicationId, section, question) =>
 export const answerClarification = async (threadId, body) =>
     check(await supabase.rpc('answer_kyc_clarification', { p_clarification_id: threadId, p_body: body }));
 
+// Withdraw an open question (Intake or Credit Investigation): the thread closes, the applicant gets the neutral line
+export const withdrawClarification = async (threadId) =>
+    check(await supabase.rpc('withdraw_kyc_clarification', { p_clarification_id: threadId }));
+
 // Every thread of the file, open and closed (closed ones are read-only history), oldest first
 export const fetchThreads = async (applicationId) =>
     check(await supabase.rpc('kyc_clarification_threads', { p_application_id: applicationId })) ?? [];
