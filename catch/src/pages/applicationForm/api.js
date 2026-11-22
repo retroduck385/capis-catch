@@ -83,6 +83,34 @@ export const refreshApplication = async (applicationId) => {
     return fetchApplication(applicationId);
 };
 
+// The applicant's own applications (applicant pages only; staff use fetchApplication). Since
+// 20261130_applicant_status_privacy.sql an applicant reads loan_applications directly only while it is a draft;
+// my_loan_applications() returns their rows with the status they may know (an outcome shows as FOR_APPROVAL until the
+// AO has sent its notice) and the bank's terms hidden until then. Until that migration is run (PGRST202: no such
+// function) the old direct read is used.
+const noSuchFunction = (error) => error?.code === 'PGRST202';
+
+export const fetchMyApplication = async (applicationId) => {
+    const res = await supabase.rpc('my_loan_applications').select(APPLICATION_SELECT).eq('id', applicationId).single();
+    if (noSuchFunction(res.error)) return fetchApplication(applicationId);
+    const app = check(res);
+    await attachEarlierDocuments(app);
+    return app;
+};
+
+export const refreshMyApplication = async (applicationId) => {
+    check(await supabase.rpc('sync_requirements', { p_application_id: applicationId }));
+    return fetchMyApplication(applicationId);
+};
+
+export const listMyVisibleApplications = async (userId) => {
+    const res = await supabase.rpc('my_loan_applications')
+        .select('id, application_no, status, loan_amount, created_at, submitted_at')
+        .order('created_at', { ascending: false });
+    if (noSuchFunction(res.error)) return listMyApplications(userId);
+    return check(res);
+};
+
 export const getOrCreateDraft = async (userId) => {
     const findDraft = async () =>
         check(await supabase.from('loan_applications').select('id')
