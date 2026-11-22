@@ -13,6 +13,7 @@ import { formatDay, formatExact, fullWhen } from '../../../components/people';
 import { deleteDocument, getDocumentUrl, getParties, uploadDocument } from '../api';
 import { FormError, Section, StepButtons } from '../fields';
 import { BORROWER_ROLES, minFilesFor, partyLabel, REQUIREMENT_LABELS } from '../options';
+import { Terms } from '../../../components/term';
 import '../applicantPages.css';
 
 // Shown under the Valid ID / Passport upload: the ID kinds the document reading recognizes (DOCUMENT_KINDS
@@ -103,9 +104,9 @@ const DocumentsStep = ({ app, complete, onSaved, onRefresh, onBack, viewOnly = f
                                                 {done ? <CheckCircle2 size={18} /> : <Paperclip size={18} />}
                                             </span>
                                             <div className="ap-doc-title">
-                                                <strong>{label}</strong>
+                                                <strong><Terms text={label} /></strong>
                                                 {req.requirement_type === 'VALID_ID_PASSPORT' && (
-                                                    <p className="ap-doc-hint">Accepted IDs: {ACCEPTED_IDS.join(', ')}.</p>
+                                                    <p className="ap-doc-hint">Accepted IDs: <Terms text={ACCEPTED_IDS.join(', ')} />.</p>
                                                 )}
                                             </div>
                                             <span className={`ap-chip ${done ? 'ok' : 'warn'}`}>

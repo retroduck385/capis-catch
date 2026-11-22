@@ -160,6 +160,7 @@ const ListBlock = ({ title, item, config, rows }) => {
 
 const ApplicationSummary = ({ app, onViewDocument, groups = SUMMARY_GROUPS }) => {
     const principal = getParty(app, 'PRINCIPAL');
+    const spouse = principal?.civil_status === 'MARRIED' ? getParty(app, 'SPOUSE') : null;
     const parties = getParties(app);
     const has = (g) => groups.includes(g);
 
@@ -183,6 +184,13 @@ const ApplicationSummary = ({ app, onViewDocument, groups = SUMMARY_GROUPS }) =>
                     <ListBlock title="Existing Bank Accounts" item="Account" config={BANK_ACCOUNT_FIELDS} rows={principal?.bank_accounts} />
                     <ListBlock title="Existing Loans" item="Loan" config={EXISTING_LOAN_FIELDS} rows={principal?.existing_loans} />
                     <ListBlock title="Credit Cards" item="Card" config={CREDIT_CARD_FIELDS} rows={principal?.credit_cards} />
+                    {spouse && (
+                        <>
+                            <ListBlock title="Spouse: Existing Bank Accounts" item="Account" config={BANK_ACCOUNT_FIELDS} rows={spouse.bank_accounts} />
+                            <ListBlock title="Spouse: Existing Loans" item="Loan" config={EXISTING_LOAN_FIELDS} rows={spouse.existing_loans} />
+                            <ListBlock title="Spouse: Credit Cards" item="Card" config={CREDIT_CARD_FIELDS} rows={spouse.credit_cards} />
+                        </>
+                    )}
                 </>
             )}
             {has('references') && (

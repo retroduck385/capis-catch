@@ -446,15 +446,24 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                     <section>
                         <h3 className="dc-h">Details</h3>
                         <div className="dc-fieldlist">
-                            {header.map(({ def, field, value, appValue, status, tone, needs }) => (
+                            {header.map(({ def, field, value, appValue, status, tone, needs }) => {
+                                // Keep: the box shows the application's value (read only). Display only: what the
+                                // document says (value) stays the staged reading, and nothing is copied (apply_to_record false).
+                                const kept = needs && editable && choices[field.id] === 'KEEP';
+                                return (
                                 <div key={field.id} onClick={() => onFocusField(field)}
                                     className={`dc-field sev-${tone}${focusedId === field.id ? ' on' : ''}`}>
                                     <div className="dc-field-top">
                                         <span className="dc-field-label">{def.label}</span>
                                         {chipsFor(def, field, value, status)}
                                     </div>
-                                    <ValueInput def={def} value={value} readOnly={!editable}
+                                    <ValueInput def={def} value={kept ? (appValue ?? '') : value} readOnly={!editable || kept}
                                         onChange={(v) => setValue(field.id, v)} onFocus={() => onFocusField(field)} />
+                                    {kept && (
+                                        <p className="dc-muted">
+                                            Showing the application&apos;s value. The document says: {displayValue(value, def.data_type)}
+                                        </p>
+                                    )}
                                     {(value ?? '') !== (field.extracted_value ?? '') && (
                                         <p className="dc-muted">
                                             AI read: {displayValue(field.extracted_value, def.data_type)}
@@ -495,7 +504,8 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                     )}
                                     {confirmed && field.apply_to_record && <p className="dc-good dc-small">Copied to the application</p>}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </section>
                 )}

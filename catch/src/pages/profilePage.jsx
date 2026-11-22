@@ -61,7 +61,8 @@ const ProfilePage = () => {
         setError(null);
         try {
             await saveProfile(userId, form);
-            navigate(applyNext ? '/applicationFormPage' : '/applicantHomePage');
+            // Always back to Home first (round 2 item 3); the applicant starts the application from there
+            navigate('/applicantHomePage');
         } catch (err) {
             // 23505 = unique violation (user_profile.sss_no / tin)
             setError(err.code === '23505' ? 'That SSS No. or TIN is already registered to another account.' : err.message);
@@ -153,7 +154,7 @@ const ProfilePage = () => {
                             <div className="sp-actions">
                                 <Link to="/applicantHomePage" className="sp-cancel">Cancel</Link>
                                 <button type="submit" disabled={saving}>
-                                    {saving ? 'Saving...' : applyNext ? 'Save and start application' : 'Save profile'}
+                                    {saving ? 'Saving...' : 'Save profile'}
                                 </button>
                             </div>
                         </form>

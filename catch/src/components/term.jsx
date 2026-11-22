@@ -7,7 +7,8 @@
 // Inside a button or a link use a title attribute instead (useTermTitle.js): the term is focusable itself, so it must
 // not be nested in another control. Inside a form label it is fine: clicking the term shows the tip and doesn't open
 // or focus the field.
-// Staff only: for an applicant (or signed out) everything renders as plain text.
+// Staff get every glossary term. An applicant gets only APPLICANT_TERMS (documents, IDs, agencies); any other term,
+// and everything for a signed-out visitor, renders as plain text.
 //
 // The tip is rendered into document.body (a portal), so a card, a table, an overflow box or the Messages drawer
 // can't clip or shift it. It sits under the word (above it when there is no room below), as wide as its text up to
@@ -15,7 +16,7 @@
 import { Children, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { UserAuth } from '../context/authContext';
-import { explain, splitTerms } from '../glossary';
+import { APPLICANT_TERMS, explain, splitTerms } from '../glossary';
 import { STAFF_ROLES } from '../roles';
 
 const WIDTH = 288;  // widest the tip gets (px)
@@ -95,18 +96,24 @@ const Tip = ({ k, text, children }) => {
     );
 };
 
-const isStaff = (role) => STAFF_ROLES.includes(role);
+// Which terms this role gets a hover for (null = none)
+const termFilter = (role) => {
+    if (STAFF_ROLES.includes(role)) return () => true;
+    if (role === 'APPLICANT') return (k) => APPLICANT_TERMS.has(k);
+    return null;
+};
 
 // Any short explanation on hover / focus / tap, in the same look as a term (text may hold line breaks)
 export const Hint = ({ text, children }) => (text ? <Tip text={text}>{children}</Tip> : children);
 
-const split = (text) => splitTerms(text).map((p, i) => (
+const split = (text, allow) => splitTerms(text).map((p, i) => (
     // the index is a fine key here: the parts of one fixed text never reorder
-    p.term ? <Tip key={i} k={p.term} /> : p.text));
+    p.term ? (allow(p.term) ? <Tip key={i} k={p.term} /> : p.term) : p.text));
 
 export const Term = ({ k, children }) => {
     const role = UserAuth()?.role;
-    return isStaff(role) && explain(k) ? <Tip k={k}>{children}</Tip> : (children ?? k);
+    const allow = termFilter(role);
+    return allow && allow(k) && explain(k) ? <Tip k={k}>{children}</Tip> : (children ?? k);
 };
 
 // text: a string (anything else - a number, JSX - passes through unchanged); or children, whose plain-text parts
@@ -114,8 +121,9 @@ export const Term = ({ k, children }) => {
 export const Terms = ({ text, children }) => {
     const role = UserAuth()?.role;
     const content = text !== undefined ? text : children;
-    if (!isStaff(role)) return content ?? null;
-    if (typeof content === 'string') return split(content);
+    const allow = termFilter(role);
+    if (!allow) return content ?? null;
+    if (typeof content === 'string') return split(content, allow);
     if (text !== undefined) return content ?? null;
-    return Children.map(children, (c) => (typeof c === 'string' ? split(c) : c));
+    return Children.map(children, (c) => (typeof c === 'string' ? split(c, allow) : c));
 };

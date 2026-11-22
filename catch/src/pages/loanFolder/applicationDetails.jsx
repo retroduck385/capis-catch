@@ -36,10 +36,12 @@ const ApplicationDetails = ({ app, onViewDocument }) => {
 
     const principal = getParty(app, 'PRINCIPAL');
     const count = (rows) => (rows ?? []).length;
+    const spouse = principal?.civil_status === 'MARRIED' ? getParty(app, 'SPOUSE') : null;
+    const obligations = (p) => count(p?.bank_accounts) + count(p?.existing_loans) + count(p?.credit_cards);
     const tabs = [
         { key: 'loan', label: 'Loan' },
         { key: 'parties', label: 'Borrowers', n: getParties(app).length },
-        { key: 'obligations', label: 'Obligations', n: count(principal?.bank_accounts) + count(principal?.existing_loans) + count(principal?.credit_cards) },
+        { key: 'obligations', label: 'Obligations', n: obligations(principal) + obligations(spouse) },
         { key: 'references', label: 'References', n: count(app.character_references) },
         { key: 'collateral', label: 'Collateral & referral' },
     ];

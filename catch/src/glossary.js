@@ -1,5 +1,6 @@
-// The short terms staff see on the pages, with a one-line explanation each. Shown by <Term> / <Terms>
-// (components/term.jsx) when a staff member hovers, focuses or taps the term.
+// The short terms on the pages, with a one-line explanation each. Shown by <Term> / <Terms> (components/term.jsx)
+// when someone hovers, focuses or taps the term. Staff get every term; applicants only the document and everyday
+// terms in APPLICANT_TERMS below (never staff roles, bank units or internal checks).
 //
 // To add a term: add one line below, KEY: ['What it stands for', 'One short line in plain words'].
 //   - KEY is the term exactly as it is written on the page (case matters: "CrID").
@@ -38,7 +39,18 @@ export const GLOSSARY = {
     RPT: ['Related Party Transaction', 'A loan to a party related to the bank; it needs closer review.'],
     HGC: ['Home Guaranty Corporation', 'The government agency that guarantees housing loans; the field says whether this loan qualifies.'],
 
+    // ---- Government IDs, agencies and borrower types (standard Philippine meanings) ----
+    TIN: ['Taxpayer Identification Number', 'The number the BIR gives each taxpayer.'],
+    SSS: ['Social Security System', 'The social insurance agency for private-sector workers; the SSS number is on the SSS ID or UMID.'],
+    UMID: ['Unified Multi-Purpose ID', 'A government ID card issued through SSS, GSIS, PhilHealth or Pag-IBIG.'],
+    PRC: ['Professional Regulation Commission', 'Issues the ID of licensed professionals.'],
+    DTI: ['Department of Trade and Industry', "Registers sole proprietors' business names."],
+    SEC: ['Securities and Exchange Commission', 'Registers corporations and partnerships.'],
+    OFW: ['Overseas Filipino Worker'],
+    PUV: ['Public Utility Vehicle', 'A jeepney, bus, taxi or similar vehicle run for public transport.'],
+
     // ---- Documents ----
+    FS: ['Financial Statements', "The business's income statement and balance sheet."],
     FP: ['Financial Package', 'The summary of the borrower and the loan that credit uses to decide.'],
     COE: ['Certificate of Employment', 'The employer\'s letter stating the job, position and start date.'],
     COEC: ['Certificate of Employment with Compensation'],
@@ -56,6 +68,12 @@ export const GLOSSARY = {
     CrID: ['Credit Investigation Department'],                 // TO CONFIRM with groupmates
     CCS: ['Centralized Collection Services'],                  // TO CONFIRM with groupmates
 };
+
+// The terms an applicant may see explained: documents, IDs, agencies and everyday loan terms. Everything else
+// (AO, CO, CI, KYC, NFIS, TU, DBR, LCR, MRAC, CrID ...) stays staff only and is plain text for an applicant.
+export const APPLICANT_TERMS = new Set([
+    'CTC', 'COE', 'COEC', 'ITR', 'TIN', 'SSS', 'UMID', 'PRC', 'DTI', 'SEC', 'FS', 'SPA', 'TCT', 'CCT', 'DOU', 'HGC', 'OFW', 'PUV',
+]);
 
 // Longest first, so "COEC" is found before "COE"
 const KEYS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
@@ -83,8 +101,9 @@ export const splitTerms = (text) => {
 };
 
 // For a button, link or form label (where a hover can't be nested): a plain title attribute explaining each known
-// term in the text once, one per line ("TAT: Turnaround Time. The target time ..."), or undefined when there is none
-export const termsTitle = (text) => {
-    const keys = [...new Set([...String(text ?? '').matchAll(TERM_RE)].map((m) => m[1]))];
+// term in the text once, one per line ("TAT: Turnaround Time. The target time ..."), or undefined when there is none.
+// allow: which terms to explain (default: all)
+export const termsTitle = (text, allow = () => true) => {
+    const keys = [...new Set([...String(text ?? '').matchAll(TERM_RE)].map((m) => m[1]))].filter(allow);
     return keys.length ? keys.map((k) => `${k}: ${explain(k)}`).join('\n') : undefined;
 };

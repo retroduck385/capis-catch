@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { deleteParty, getAddress, getParty, toForm, upsertAddress, upsertParty } from '../api';
 import { AddressFields, FormError, PersonCards, Section, StepButtons, YesNo } from '../fields';
 import { ADDRESS_FIELDS, PARTY_FIELDS } from '../options';
+import { Terms } from '../../../components/term';
 import { hasErrors, validateAddress, validatePerson } from '../validators';
 
 const CONTACT_ADDRESS_KEYS = Object.keys(ADDRESS_FIELDS);
@@ -74,7 +75,7 @@ const MortgagorStep = ({ app, onSaved, onBack }) => {
             )}
 
             <Section title="Attorney-in-Fact">
-                <p>Will an attorney-in-fact act on your behalf (e.g. you are an OFW or seafarer)?</p>
+                <p><Terms>Will an attorney-in-fact act on your behalf (e.g. you are an OFW or seafarer)?</Terms></p>
                 <YesNo name="has-aif" value={hasAif} onChange={setHasAif} />
             </Section>
             {hasAif && (

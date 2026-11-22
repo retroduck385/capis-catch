@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     AlertTriangle, Bell, CheckCircle2, ChevronDown, Clock, FileText, History, Mail, MailQuestion, Plus, RefreshCw, Send, Smartphone, Undo2, X,
 } from 'lucide-react';
@@ -7,6 +7,7 @@ import MessagePreview from '../applicantNotices/messagePreview';
 import { closeRequest, fetchReminderStatus, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
 import Reminders from './reminders';
 import { refreshCanAsk } from './askStore';
+import { isAskUsed, markAskUsed, withoutAsk } from './askOnce';
 import FileMark from './fileMark';
 import { useFileMarks } from './useFileMarks';
 import { useReadStates } from './useReadStates';
@@ -124,13 +125,15 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const [done, setDone] = useState(null);
     const [error, setError] = useState(null);
     const [expanded, setExpanded] = useState(null);    // null = not toggled yet: open only if documents came back
-    const [askSeen, setAskSeen] = useState(null);       // the "Ask the applicant" click already put into the box
+    const [applied, setApplied] = useState(null);       // the "Ask the applicant" click already put into the box
     const marks = useFileMarks(applicationId);
     const [reminders, setReminders] = useState(null);  // document_reminder_status(); null = not loaded / not run yet
     const reads = useReadStates(ctx ? uploadIds([ctx.current, ...(ctx.history ?? [])].filter(Boolean)) : []);
     const boxRef = useRef(null);
     // Set by an "Ask the applicant" button (ask.jsx): documents to tick and a note to prefill
-    const ask = useLocation().state?.ask ?? null;
+    const location = useLocation();
+    const navigate = useNavigate();
+    const ask = location.state?.ask ?? null;
 
     const load = useCallback(() => {
         refreshCanAsk(applicationId);
@@ -168,8 +171,9 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
 
     // An "Ask the applicant" click: open the dropdown, tick its documents and prefill the note, once (state adjusted
     // while rendering). Nothing is sent: the AO reviews the box and clicks Send request.
-    if (ask && formVisible && ask.at !== askSeen) {
-        setAskSeen(ask.at);
+    // Only once per click (askOnce.js): a remount or a reload never replaces what the AO has typed since.
+    if (ask && formVisible && ask.at !== applied?.at && !isAskUsed(ask)) {
+        setApplied(ask);
         const onList = (i) => i.requirement_type && checklist.some((r) => keyOf(r) === keyOf(i));
         const wanted = ask.items?.length ? ask.items
             : checklist.filter((r) => r.uploaded < r.needed && (ask.missingFor == null || r.applicant_id === ask.missingFor));
@@ -183,8 +187,16 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         setDone(null);
         setExpanded(true);
     }
-    // ...then bring the box into view
-    const askKind = ask?.kind;
+    // ...then mark the click as used and drop it from the history state, and bring the box into view
+    const askSeen = applied?.at ?? null;
+    const askKind = applied?.kind;
+    useEffect(() => {
+        if (!applied) return;
+        markAskUsed(applied);
+        if (location.state?.ask) {
+            navigate(`${location.pathname}${location.search}`, { replace: true, state: withoutAsk(location.state) });
+        }
+    }, [applied, location, navigate]);
     useEffect(() => {
         if (!askSeen) return;
         boxRef.current?.scrollIntoView({ block: 'start' });
@@ -321,16 +333,16 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
 
                 {ctx.can_open && (
                     <section className="dr-form" aria-label="New request">
-                        {askSeen && ask?.at === askSeen && (
+                        {applied && (
                             <p role="status" className="dr-strip info">
                                 <MailQuestion size={16} aria-hidden="true" />
-                                <span>Prefilled from {ask.from ?? 'the item you picked'}. Check the documents and rewrite the note for the
+                                <span>Prefilled from {applied.from ?? 'the item you picked'}. Check the documents and rewrite the note for the
                                     applicant, then click Send request. Nothing has been sent yet.</span>
                             </p>
                         )}
-                        {askSeen && ask?.at === askSeen && ask.remark?.trim() && (
+                        {applied?.remark?.trim() && (
                             <p className="dr-strip info dr-remark">
-                                <span><b>Your KYC note (staff only, not sent):</b> {ask.remark}</span>
+                                <span><b>Your KYC note (staff only, not sent):</b> {applied.remark}</span>
                             </p>
                         )}
 

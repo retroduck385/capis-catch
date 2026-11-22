@@ -26,7 +26,7 @@ import { joinAddress, presentAddressOf } from '../applicationForm/derived';
 import { BORROWER_ROLES, REQUIREMENT_LABELS, partyLabel } from '../applicationForm/options';
 import { fetchCiCanEdit, fetchCiResults } from '../ciRequest/api';
 import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
-import { fetchDocumentChecks, fetchFieldDefs, requestCiRead, rerunExtraction, UNREADABLE_TEXT } from './api';
+import { fetchDocumentChecks, fetchFieldDefs, requestCiRead, UNREADABLE_TEXT } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
 import ManualValuesCard from './manualValuesCard';
@@ -94,7 +94,6 @@ const DocumentCheckPage = () => {
     const [page, setPage] = useState(1);
     const [view, setView] = useState('current');   // 'current' files, or the 'earlier' versions a new upload replaced
     const [earlierId, setEarlierId] = useState(null);
-    const [rerunning, setRerunning] = useState(false);
     const [reading, setReading] = useState(false);     // CI: "Run AI" being queued
     const [savedStamp, setSavedStamp] = useState(0);   // CI: bumped on each save, so the boxes start from what's saved
     const [loading, setLoading] = useState(true);
@@ -273,19 +272,6 @@ const DocumentCheckPage = () => {
         await loadChecks(docIds);
     };
 
-    const handleRunAgain = async () => {
-        if (!check?.ocr?.id || rerunning) return;
-        setRerunning(true);
-        try {
-            await rerunExtraction(check.ocr.id);
-            await loadChecks(docIds);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setRerunning(false);
-        }
-    };
-
     // CI: "Run AI" on this report (also after a failed read); the page polls while it's being read
     const handleReadCi = async () => {
         if (!doc || reading) return;
@@ -314,7 +300,7 @@ const DocumentCheckPage = () => {
                 <div className="lf-hero-main">
                     <p className="lf-eyebrow">
                         <ScanText size={15} aria-hidden="true" />
-                        {ciMode ? <><Term k="CI" />&nbsp;report check</> : 'Document check (AI)'}
+                        {ciMode ? <><Term k="CI" />&nbsp;report check</> : 'Document check'}
                         <span className={`lf-mode ${canEdit ? 'edit' : 'read'}`}>
                             {canEdit
                                 ? <><ShieldCheck size={13} aria-hidden="true" />You confirm</>
@@ -495,13 +481,6 @@ const DocumentCheckPage = () => {
                                 {doc && !showEarlier && (
                                     <div className="dc-headright">
                                         <StatusChip status={status} />
-                                        {!ciMode && check?.ocr?.status === 'DONE' && !['AI', 'WAITING'].includes(status.key) && (
-                                            <button type="button" className="dc-rerun-btn" disabled={rerunning} onClick={handleRunAgain}
-                                                title="Run again: queue a fresh AI extraction on the same OCR scan (testing)">
-                                                <RotateCcw size={13} aria-hidden="true" className={rerunning ? 'dc-spin' : undefined} />
-                                                <span className="dc-rerun-txt">{rerunning ? 'Queuing...' : 'Run again'}</span>
-                                            </button>
-                                        )}
                                     </div>
                                 )}
                             </div>

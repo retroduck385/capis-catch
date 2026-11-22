@@ -73,6 +73,12 @@ export const formatExact = (iso) => {
     return d ? d.toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 };
 
+// "Nov 22, 2026 · 3:10 PM": a date and time on one line (the work tray's Submitted)
+export const formatStamp = (iso) => {
+    const d = toDate(iso);
+    return d ? `${d.toLocaleDateString(LOCALE, { dateStyle: 'medium' })} · ${time(d)}` : '—';
+};
+
 export const fullWhen = (iso) => {
     const d = toDate(iso);
     return d ? d.toLocaleString(LOCALE, { dateStyle: 'full', timeStyle: 'short' }) : '';

@@ -12,7 +12,7 @@ import { fetchActiveReviewAssignments, fetchSignoffs } from '../review/api';
 import { assignApplication, fetchAssignableStaff, fetchWorkTray, unassignApplication } from './api';
 import {
     AVATAR_TONES, SLOT_LABELS, STAGES, STAGE_COLORS, STAGE_STATUS_LABELS, STATUS_TONES, TAT_LABELS, TAT_RULE, TAT_STATE_RULES,
-    TAT_TARGETS_TEXT, TAT_TONES, byUrgency, positionHint, stageLabel, tatSlashHint, urgencyRanks,
+    TAT_TARGETS_TEXT, TAT_TONES, byUrgency, stageLabel, tatSlashHint,
 } from './options';
 import { folderPath } from './paths';
 import { clearTrails } from '../../components/trailStore';
@@ -21,6 +21,7 @@ import { useCountUp } from './useCountUp';
 import TeamWorkload from './teamWorkload';
 import './workTray.css';
 import { Hint, Term, Terms } from '../../components/term';
+import { formatStamp, fullWhen } from '../../components/people';
 import { useTermTitle } from '../../components/useTermTitle';
 
 // A title of several lines, skipping the empty ones (tt() is undefined for a text without known terms)
@@ -341,9 +342,6 @@ const WorkTray = () => {
     const isMine = useCallback((r) => r.ao_id === myId || r.co_id === myId || isRoutedTo(routing, r, myId),
         [routing, myId]);
 
-    // Arrival order by submission (rows come back sorted) and the place in the urgency order (the "TAT position")
-    const fifo = useMemo(() => new Map(rows.map((r, i) => [r.application_id, i + 1])), [rows]);
-    const ranks = useMemo(() => urgencyRanks(rows), [rows]);
 
     // ---- dashboard numbers, always over everything the user can see (not the filtered list) ----
     const stats = useMemo(() => {
@@ -581,7 +579,6 @@ const WorkTray = () => {
                     <table>
                         <thead>
                             <tr>
-                                <th>#</th>
                                 <th>Application</th>
                                 <th>Stage</th>
                                 <th className='wt-amt'>Amount</th>
@@ -590,8 +587,8 @@ const WorkTray = () => {
                                         <Term k="TAT" /> position
                                         <span
                                             className='wt-th-info'
-                                            title='Place by urgency, 1 = most urgent: beyond TAT first, then near TAT, then on track; inside each, the file that has used most of its target first. Hover a number for the order of arrival.'
-                                            aria-label='Place by urgency, 1 = most urgent: beyond TAT first, then near TAT, then on track; inside each, the file that has used most of its target first.'>
+                                            title='The list is sorted by urgency, most urgent first: beyond TAT, then near TAT, then on track; inside each, the file that has used most of its target first.'
+                                            aria-label='The list is sorted by urgency, most urgent first: beyond TAT, then near TAT, then on track; inside each, the file that has used most of its target first.'>
                                             <Info size={13} aria-hidden='true' />
                                         </span>
                                     </span>
@@ -602,7 +599,7 @@ const WorkTray = () => {
                         </thead>
                         <tbody>
                             {visible.length === 0 && (
-                                <tr><td colSpan={7} className='wt-empty'>No applications match these filters.</td></tr>
+                                <tr><td colSpan={6} className='wt-empty'>No applications match these filters.</td></tr>
                             )}
                             {visible.map((r) => {
                                 const routedToMe = isRoutedTo(routing, r, myId);
@@ -622,11 +619,6 @@ const WorkTray = () => {
                                             r.can_open ? 'clickable' : 'locked',
                                             mine ? 'mine' : '',
                                         ].join(' ')}>
-                                        <td className='wt-fifo'>
-                                            <Hint text={positionHint(ranks.get(r.application_id), fifo.get(r.application_id), rows.length)}>
-                                                {ranks.get(r.application_id)}
-                                            </Hint>
-                                        </td>
                                         <td>
                                             {/* Flags after the reference: quiet icon + word, except "Your turn",
                                                 which asks for action and gets the one orange tag */}
@@ -650,6 +642,11 @@ const WorkTray = () => {
                                             <span className='wt-sub'>
                                                 {[employmentLabel(r.employment_type), r.branch].filter(Boolean).join(' · ')}
                                             </span>
+                                            {r.submitted_at && (
+                                                <span className='wt-sub wt-submitted'>
+                                                    Submitted <time dateTime={r.submitted_at} title={fullWhen(r.submitted_at)}>{formatStamp(r.submitted_at)}</time>
+                                                </span>
+                                            )}
                                         </td>
                                         <td>
                                             <div className='wt-stagecell' style={{ '--st': STAGE_COLORS[r.stage] }}>

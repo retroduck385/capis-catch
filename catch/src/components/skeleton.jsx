@@ -623,7 +623,7 @@ export const DocumentCheckSkeleton = () => (
         <Crumbs items={['Work tray', `Application ${APP_NO}`, 'Document check']} />
         <header className="lf-hero" aria-hidden="true">
             <div className="lf-hero-main">
-                <p className="lf-eyebrow"><T>Document check (AI)</T><span className="lf-mode read sk-btn">Read-only</span></p>
+                <p className="lf-eyebrow"><T>Document check</T><span className="lf-mode read sk-btn">Read-only</span></p>
                 <h1><T>{`Application ${APP_NO}`}</T></h1>
                 <p className="dc-hitl"><T>The AI only proposes values. Nothing in the application changes until the assigned Account Officer confirms.</T></p>
             </div>

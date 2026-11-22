@@ -15,6 +15,7 @@ import ApplicantRequestCard from './documentRequests/applicantRequestCard';
 import { Ghost, RegisterSkeleton } from '../components/skeleton';
 import { formatDay } from '../components/people';
 import { useCountUp } from './workTray/useCountUp';
+import { Terms } from '../components/term';
 import './applicationForm/applicantPages.css';
 
 // What happens, in order; each step's `done` is worked out from the profile and the applications below
@@ -171,7 +172,7 @@ const ApplicantHomePage = () => {
                             {GUIDE.map(([Icon, title, text]) => (
                                 <li key={title}>
                                     <span className="ap-guide-ic" aria-hidden="true"><Icon size={18} /></span>
-                                    <span><b>{title}</b><small>{text}</small></span>
+                                    <span><b>{title}</b><small><Terms text={text} /></small></span>
                                 </li>
                             ))}
                         </ul>
