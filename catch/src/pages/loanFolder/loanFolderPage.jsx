@@ -283,9 +283,8 @@ const LoanFolderPage = () => {
                             <ScanText size={16} aria-hidden="true" />Document check (AI)
                         </Link>
                     )}
-                    {/* the Credit Investigator opens neither Decision Support nor the Financial Package */}
-                    {!isAo && role !== 'CREDIT_INVESTIGATOR' && decisionLink}
-                    {!isAo && role !== 'CREDIT_INVESTIGATOR' && packageLink}
+                    {!isAo && decisionLink}
+                    {!isAo && packageLink}
                 </div>
             </header>
             {!canEdit && (
