@@ -13,7 +13,6 @@ import { ROLE_LABELS } from '../../roles';
 import { markFile } from './api';
 import AskApplicantButton from './ask';
 import NewCopyDialog from './newCopyDialog';
-import { Term } from '../../components/term';
 import Byline from '../../components/byline';
 import './fileMark.css';
 
@@ -71,7 +70,7 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
     return (
         <div className={`fm${open ? ' open' : ''}${className ? ` ${className}` : ''}`}>
             <button type="button" className="fm-head" aria-expanded={open} aria-controls={bodyId} onClick={() => setToggled(!open)}>
-                <span className="fm-title">Staff check of this file</span>
+                <span className="fm-title">File status</span>
                 {latest ? <MarkChip mark={latest.mark} /> : <span className="fm-chip none"><CircleDashed size={13} aria-hidden="true" />Not marked yet</span>}
                 {latest && <MarkedBy row={latest} names={marks.names} />}
                 <ChevronDown size={18} className="fm-chev" aria-hidden="true" />
@@ -79,9 +78,6 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
 
             {open && (
                 <div id={bodyId} className="fm-body">
-                    <p className="fm-note">
-                        Staff only: the assigned <Term k="AO" /> and <Term k="CO" /> mark files. Applicants never see this.
-                    </p>
                     {latest?.comment && <p className="fm-comment">{latest.comment}</p>}
 
                     {askAgain && (
@@ -98,7 +94,7 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
                     {marks.canMark && (
                         <div className="fm-form">
                             <label htmlFor={inputId} className="fm-label">
-                                {latest ? 'Mark it again' : 'Mark this file'} <small>(comment optional)</small>
+                                {latest ? 'Mark it again' : 'Mark this file'} <small>(staff only, not sent; comment optional)</small>
                             </label>
                             <input id={inputId} className="fm-input" value={comment} maxLength={500}
                                 onChange={(e) => setComment(e.target.value)}

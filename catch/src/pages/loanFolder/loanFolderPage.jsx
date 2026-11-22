@@ -297,7 +297,7 @@ const LoanFolderPage = () => {
                     {/* The assigned AO reaches the document check from step 1 below */}
                     {!canEdit && (
                         <Link to={`/documentCheckPage?id=${app.id}`} className="lf-btn">
-                            <ScanText size={16} aria-hidden="true" />Document check (AI)
+                            <ScanText size={16} aria-hidden="true" />Document check
                         </Link>
                     )}
                     {!isAo && decisionLink}
@@ -498,7 +498,7 @@ const LoanFolderPage = () => {
                         <li>
                             <Link to={`/documentCheckPage?id=${app.id}`}>
                                 <ScanText size={18} aria-hidden="true" />
-                                <span className="label">Document check (AI)</span>
+                                <span className="label">Document check</span>
                                 {docProgress?.total > 0 && (
                                     <span className={`lf-nav-cnt${docProgress.confirmed === docProgress.total ? ' all' : ''}`}>
                                         {docProgress.confirmed}/{docProgress.total}<span className="sr-only"> confirmed</span>

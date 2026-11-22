@@ -104,13 +104,14 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
 
                 <div className="fm-field">
                     <label htmlFor="fm-dialog-comment" className="fm-label">
-                        What is wrong with this file <small>(staff only, required)</small>
+                        Staff only, not sent: what is wrong with this file <small>(required)</small>
                     </label>
                     <input id="fm-dialog-comment" className="fm-input" value={comment} maxLength={500} autoFocus
                         onChange={(e) => { setComment(e.target.value); setCommentError(false); }}
                         placeholder="e.g. Blurry, the last page is cut off"
                         aria-invalid={commentError || undefined} aria-describedby={commentError ? 'fm-dialog-comment-err' : undefined} />
                     {commentError && <p id="fm-dialog-comment-err" className="fm-err">Say what is wrong with the file.</p>}
+                    <p className="fm-note">For staff. The applicant never sees this box.</p>
                 </div>
 
                 {loadError && <p className="fm-err" role="alert">{loadError}</p>}
@@ -129,9 +130,10 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
                         </div>
 
                         <div className="fm-field">
-                            <label htmlFor="fm-dialog-message" className="fm-label">Message to the applicant</label>
+                            <label htmlFor="fm-dialog-message" className="fm-label">Sent to the applicant: what we need</label>
+                            <p id="fm-dialog-message-hint" className="fm-note">This is the only text the applicant gets. It starts with a standard line; rewrite it if they need more detail.</p>
                             <textarea id="fm-dialog-message" className="fm-input" rows={3} value={message} maxLength={ctx.max_length}
-                                onChange={(e) => setMessage(e.target.value)} aria-describedby="fm-dialog-count"
+                                onChange={(e) => setMessage(e.target.value)} aria-describedby="fm-dialog-message-hint fm-dialog-count"
                                 aria-invalid={Boolean(problem && message.trim()) || undefined} />
                             <p id="fm-dialog-count" className="fm-counter">{message.length} / {ctx.max_length}</p>
                             {problem && message.trim() && <p className="fm-err" role="alert">{problem}</p>}

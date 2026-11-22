@@ -1,5 +1,5 @@
 // The assigned Account Officer's work in the loan folder as three numbered steps (components/stepStrip.jsx):
-// 1. Document check (AI), 2. KYC verification per section, 3. Request CI. Documents come first because confirming
+// 1. Document check, 2. KYC verification per section, 3. Request CI. Documents come first because confirming
 // them can change the record the KYC check is about, and the CI request takes the ID details from them.
 import StepStrip from '../../components/stepStrip';
 import { formatWhen } from '../../components/people';
@@ -15,7 +15,7 @@ const docsText = (progress) => {
 const AoSteps = ({ appId, docProgress, verifiedCount, sectionCount, ciRequest, openStep, onOpenKyc, onOpenCi }) => (
     <StepStrip openStep={openStep} steps={[
         {
-            key: 'docs', title: 'Document check (AI)', text: docsText(docProgress),
+            key: 'docs', title: 'Document check', text: docsText(docProgress),
             done: !!docProgress && docProgress.confirmed === docProgress.total,
             meter: docProgress && { value: docProgress.confirmed, max: docProgress.total },
             to: `/documentCheckPage?id=${appId}`,

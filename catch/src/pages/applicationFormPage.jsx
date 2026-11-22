@@ -7,7 +7,7 @@ import { ApplicationFormSkeleton } from '../components/skeleton';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { UserAuth } from '../context/authContext';
-import { fetchProfile, getOrCreateDraft, refreshMyApplication } from './applicationForm/api';
+import { fetchProfile, getOrCreateDraft, getParty, refreshMyApplication } from './applicationForm/api';
 import ApplicationSummary from './applicationForm/applicationSummary';
 import { formatPeso } from './applicationForm/options';
 import { buildSteps } from './applicationForm/steps';
@@ -89,6 +89,12 @@ const ApplicationFormPage = () => {
         return () => { cancelled = true; };
     }, [requestedId, userId]);
 
+    // Moving to another step (Next, Back or the step list) keeps the same address, so the router's scroll-to-top
+    // (components/scrollToTop.jsx, on a path change) doesn't run: start each step at the top of the page.
+    useEffect(() => {
+        if (currentKey) window.scrollTo(0, 0);
+    }, [currentKey]);
+
     if (needsProfile) return <Navigate to="/profilePage?next=apply" replace />;
     if (loading) return <ApplicationFormSkeleton />;
     if (error) return <ApplicantShell><p className="ct-error" role="alert">{error}</p></ApplicantShell>;
@@ -147,10 +153,21 @@ const ApplicationFormPage = () => {
     };
 
     const handleSaved = async () => {
-        const nextVisited = [...new Set([...visited, step.key])];
+        let nextVisited = [...new Set([...visited, step.key])];
+        const data = await refresh();
+        // A married applicant whose spouse has no obligation rows must answer the spouse's part of Financial
+        // Obligations (rows, or "has none") after the spouse step is saved: that step counts as not saved yet
+        if (step.key === 'spouse') {
+            const principal = getParty(data, 'PRINCIPAL');
+            const spouse = getParty(data, 'SPOUSE');
+            const spouseRows = ['bank_accounts', 'existing_loans', 'credit_cards'].reduce((n, k) => n + (spouse?.[k] ?? []).length, 0);
+            if (principal?.civil_status === 'MARRIED' && spouse && spouseRows === 0) {
+                nextVisited = nextVisited.filter((k) => k !== 'obligations');
+            }
+        }
         writeVisited(app.id, nextVisited);
         setVisited(nextVisited);
-        const nextSteps = buildSteps(await refresh());
+        const nextSteps = buildSteps(data);
         const i = nextSteps.findIndex((s) => s.key === step.key);
         setCurrentKey(nextSteps[Math.min(i + 1, nextSteps.length - 1)].key);
     };
@@ -238,6 +255,7 @@ const ApplicationFormPage = () => {
                                 session={session}
                                 profile={profile}
                                 complete={step.complete}
+                                saved={visited.includes(step.key)}
                                 onSaved={handleSaved}
                                 onRefresh={refresh}
                                 onBack={currentIndex > 0 ? () => setCurrentKey(steps[currentIndex - 1].key) : null}

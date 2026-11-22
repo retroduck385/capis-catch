@@ -34,6 +34,12 @@ const otherBorrowerComplete = (party, role) =>
     && ok(validateAddress(getAddress(party, 'PRESENT'), 'PRESENT'))
     && jobComplete(party, role);
 
+// A borrower's bank accounts, loans and cards are each complete (an empty list is fine)
+const obligationsValid = (party) => !!party
+    && (party.bank_accounts ?? []).every((r) => ok(validateBankAccount(r)))
+    && (party.existing_loans ?? []).every((r) => ok(validateExistingLoan(r)))
+    && (party.credit_cards ?? []).every((r) => ok(validateCreditCard(r)));
+
 const documentsComplete = (app) =>
     getParties(app, ['PRINCIPAL', 'SPOUSE', 'CO_BORROWER'])
         .every((p) => (p.application_requirements ?? [])
@@ -94,10 +100,9 @@ export const buildSteps = (app) => {
         },
         {
             key: 'obligations', title: 'Financial Obligations', Component: ObligationsStep,
-            complete: !!principal
-                && (principal.bank_accounts ?? []).every((r) => ok(validateBankAccount(r)))
-                && (principal.existing_loans ?? []).every((r) => ok(validateExistingLoan(r)))
-                && (principal.credit_cards ?? []).every((r) => ok(validateCreditCard(r))),
+            // A married principal's spouse needs rows or "has none" (obligationsStep.jsx); "none" is a saved visit
+            complete: obligationsValid(principal)
+                && (!married || !getParty(app, 'SPOUSE') || obligationsValid(getParty(app, 'SPOUSE'))),
         },
         {
             key: 'references', title: 'Character References', Component: ReferencesStep,
