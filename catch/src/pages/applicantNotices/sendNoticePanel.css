@@ -1,0 +1,10 @@
+/* "Send notice to applicant" (sendNoticePanel.jsx): the few pieces the shared dr-* styles (requestPanel.css) don't
+   cover. Same --lf-* tokens with light fallbacks, so it follows dark mode on the loan folder. */
+.sn .sn-pick { justify-self: start; }
+
+/* notices already sent: a section under a divider, one inset card per notice */
+.sn-sent { display: grid; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.1)); }
+.sn-sent-head { display: flex; align-items: center; gap: 0.75rem; }
+.sn-sent-head h4 { flex: 1; margin: 0; color: var(--navy, #14295f); font-size: 1rem; font-weight: 700; }
+.sn-notice { display: grid; gap: 0.55rem; }
+.sn-notice-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; }

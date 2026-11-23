@@ -191,8 +191,9 @@ too busy (feedback, 16 Nov 2026). Cards are firmer to match (`--lf-glass` 0.78 w
 | Steps 2 and 3 in the folder's look | Inside the loan folder, the wizard's pieces are re-skinned to match the page. **Step 2:** form panels have 16px corners on `#f8faff` with navy titles; inputs and dropdowns have 12px corners; Back / View / Remove are pills; "Changes saved" is a green strip. **Ask the applicant** is an orange outline pill (`.lf-ask-btn`, via `AskApplicantButton`'s `plain` prop), since it waits on the AO. The KYC result radios are drawn (ring, then dot) so they read the same in dark mode. **Step 3:** the warning strip has 16px corners; **Missing** is amber, not red (red is TAT only); the TU tiles are inset cards with a blue edge; every table (NFIS / TU forms, CI results) has a rounded frame, a tinted uppercase header band and hairline rows; the CI results are their own card |
 
 **Dark mode.** Tokens on `[data-theme='dark'] .lf-folder` (same values as the work tray). `applicantTheme.css`
-leaves `.lf-folder` off the light sheet. The applicant's forms and the notice / document-request panels aren't
-dark-adapted, so they sit on **light paper** (`.lf-paper` resets the tokens to light values, background `#f4f7fc`).
+leaves `.lf-folder` off the light sheet. The applicant's forms aren't dark-adapted, so they sit on **light paper**
+(`.lf-paper` resets the tokens to light values, background `#f4f7fc`). The Send notice and document-request panels
+use the tokens and follow dark mode.
 
 **Motion** (all off under reduced motion):
 
@@ -211,7 +212,7 @@ dark-adapted, so they sit on **light paper** (`.lf-paper` resets the tokens to l
 ### Ask the applicant for documents (`src/pages/documentRequests/requestPanel.jsx`, `requestPanel.css`)
 
 The box under the loan folder's panels (`.lf-panels`). It no longer sits on paper: it uses the `--lf-*` tokens (with
-light fallbacks), so it follows dark mode. Send notice still sits on paper (see the open points).
+light fallbacks), so it follows dark mode. Send notice (below) uses the same styles.
 
 ```
  ┌ (✉) Ask the applicant for documents [⚠ Documents back: check them] [1 earlier]      ⌃ ┐
@@ -248,6 +249,18 @@ light fallbacks), so it follows dark mode. Send notice still sits on paper (see 
 | Earlier requests | A disclosure under a hairline divider, **closed by default** (the form above is the main job). Its summary row: History icon disc, title, count chip, chevron on the right, and a one-line hint below; it gets the panel header's hover tint, and the list fades in when it opens. Inside, **one closed card per request** (`.dr-past`, a `<details>`), 0.6rem apart, each with a 4px stripe and a round icon in the outcome tone (Received: green check · Withdrawn: slate undo arrow), so the cards tell apart without opening them. Summary row: what was asked (the item names, truncated), then "Sent **date** · Closed **date** · N files" (`formatDay`, full date on hover), the status chip and a chevron. Opened: "Sent by" / "Closed by" (or "Withdrawn by") bylines, the close note in a labelled box, the message, the items (white, one level deeper) and delivery chips. Each file's staff check starts **closed** here (`FileMark autoOpen={false}`); it opens by itself only in the current request |
 
 **Motion** (off under reduced motion): the body drops in (4px, 0.28s) and the chevron turns.
+
+### Send notice to applicant (`src/pages/applicantNotices/sendNoticePanel.jsx`, `sendNoticePanel.css`)
+
+The box above Ask the applicant, shown to the assigned AO once the file is Approved, Rejected or Deferred. Moved off
+paper into the staff look on 23 Nov 2026: it reuses the `dr-*` styles from `requestPanel.css`, plus a few `sn-*` rules.
+
+| Part | Notes |
+|---|---|
+| Frame | A `<details className="dr sn">` glass card, **open until the notice is sent**, then closed. Summary: Megaphone icon disc, title, an **Outcome** chip (Approved ok · Deferred amber · Rejected slate; never red) and **Not sent yet** amber (it waits on you) or **Notice sent** green |
+| Correction | Once sent: an info strip (the first notice is kept) and a "Send a correction" checkbox card (`.dr-pick`) that opens the form |
+| Form | **Goes to the applicant by** channel chips, as in Ask the applicant. **Suggestions from the file** as suggestion cards with "Use this". The note box (`.dr-h` label, hint, counter). **What the applicant will receive** (`MessagePreview`). A blue Send pill that confirms in the blue panel |
+| Notices sent | Under a hairline divider: title and a round refresh button, then one inset card per notice: outcome chip, a Correction info chip if it is one, a "Sent by" byline, the in-app text in a quote box and one delivery chip per channel (same tones as the document requests) |
 
 ### Messages (`src/pages/messages/messagesPanel.jsx`, `messages.css`)
 
@@ -659,6 +672,6 @@ to `Byline` / `formatWhen` when they are.
   `<select>`; move them to `SelectMenu` / `FilterSelect` when those pages are converted.
 - **Chip tones `info` and `err`** live in `documentCheck.css` for now. Move them to the shared `.lf-folder` block
   (`loanFolder.css`) when a second page needs them.
-- **Loan folder's embedded panels.** The applicant forms and Send notice stay light in dark mode (on paper, `.lf-paper`). Converting them means replacing their fixed Tailwind colours with tokens, as was done for Ask the applicant.
+- **Loan folder's embedded panels.** The applicant forms stay light in dark mode (on paper, `.lf-paper`). Converting them means replacing their fixed Tailwind colours with tokens, as was done for Ask the applicant and Send notice.
 - **`workTray.css` layering.** It grew in stages, so some properties are set more than once. When you tidy it,
   fold each block's overrides into the original rules and delete the dead `.wt .wt-select` rule.

@@ -1,22 +1,29 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Bell, CheckCircle2, ChevronDown, Mail, Megaphone, RefreshCw, Send, Smartphone } from 'lucide-react';
 import { fetchNoticeContext, previewNotice, sendNotice } from './api';
 import MessagePreview from './messagePreview';
 import { Terms } from '../../components/term';
+import Byline from '../../components/byline';
+import '../documentRequests/requestPanel.css';
+import './sendNoticePanel.css';
 
 // "Send notice to applicant" (the bank's answer to Q-42): the assigned Account Officer tells the applicant the outcome
 // and a reason, in-app, by SMS and by email. Shown only to the assigned AO, once the status is Approved / Rejected /
-// Deferred (applicant_notice_context() decides). Light colours with an explicit text colour on every element:
-// index.css turns headings and body text light in OS dark mode.
+// Deferred (applicant_notice_context() decides).
+// In the staff look like "Ask the applicant for documents" (DESIGN.md, "Send notice"): a disclosure card on the
+// requestPanel.css (dr-*) styles, so it follows dark mode on the loan folder. Open by default until the notice is sent.
+// Extra layout: sendNoticePanel.css.
 
-const OUTCOME_LABELS = { APPROVED: 'Approved', REJECTED: 'Rejected', DEFERRED: 'Deferred' };
+const OUTCOME = { APPROVED: ['Approved', 'ok'], REJECTED: ['Rejected', 'none'], DEFERRED: ['Deferred', 'warn'] };
 const REASON_HINTS = {
     APPROVED: 'Optional. Leave empty to say "Your Account Officer will contact you about the next steps."',
     REJECTED: 'Required: the policy the applicant most likely did not pass.',
     DEFERRED: 'Required: what is missing.',
 };
-const DELIVERY_LABELS = {
-    QUEUED: 'Queued', RUNNING: 'Sending', LOGGED: 'Logged (test mode, not sent)', SENT: 'Sent',
-    FAILED: 'Failed', SKIPPED: 'Skipped',
+// [label, chip tone], as in the document request panel
+const DELIVERY = {
+    QUEUED: ['Queued', 'none'], RUNNING: ['Sending', 'info'], LOGGED: ['Logged (test mode, not sent)', 'info'],
+    SENT: ['Sent', 'ok'], FAILED: ['Failed', 'err'], SKIPPED: ['Skipped', 'none'],
 };
 
 const SendNoticePanel = ({ applicationId }) => {
@@ -28,6 +35,7 @@ const SendNoticePanel = ({ applicationId }) => {
     const [sending, setSending] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState(null);
+    const [expanded, setExpanded] = useState(null);    // null = not toggled yet: open until the notice is sent
 
     // Errors (e.g. no access) leave the panel hidden
     const load = useCallback(() => fetchNoticeContext(applicationId).then(setCtx, () => setCtx(null)), [applicationId]);
@@ -56,12 +64,12 @@ const SendNoticePanel = ({ applicationId }) => {
     if (!visible) return null;
 
     const isCorrection = ctx.already_sent;
-    // Document requests are notices too (20261112); they're shown in their own panel
-    // document requests and KYC questions are their own panels, not outcome notices
+    // document requests and KYC questions are notices too (20261112), but they have their own panels
     const notices = ctx.notices.filter((n) => !['DOCUMENTS_NEEDED', 'CLARIFICATION'].includes(n.outcome));
-    const outcome = OUTCOME_LABELS[ctx.outcome];
+    const [outcome, outcomeTone] = OUTCOME[ctx.outcome] ?? [ctx.outcome, 'none'];
     const problem = preview?.problem;
     const canSubmit = !sending && preview && !problem && (isCorrection ? correction : true);
+    const open = expanded ?? !isCorrection;
 
     const submit = async () => {
         setSending(true);
@@ -81,127 +89,151 @@ const SendNoticePanel = ({ applicationId }) => {
     };
 
     return (
-        <section aria-labelledby='send-notice-heading' className='my-3 rounded-lg border border-gray-300 bg-white p-4 text-left text-gray-900'>
-            <h3 id='send-notice-heading' className='text-lg font-semibold text-gray-900'>Send notice to applicant</h3>
-            <p className='text-gray-900'>
-                Outcome: <span className='font-semibold text-gray-900'>{outcome}</span>
-            </p>
-            <p className='text-gray-800'>
-                Sent in-app, by SMS {ctx.sms_to ? `(to ${ctx.sms_to})` : '(no valid mobile number: SMS will be skipped)'} and by email
-                {ctx.email_to ? ` (to ${ctx.email_to})` : ' (no valid email address: email will be skipped)'}. No links are allowed.
-            </p>
+        <details open={open} onToggle={(e) => setExpanded(e.currentTarget.open)} className="dr sn">
+            <summary className="dr-head">
+                <span className="dr-ic" aria-hidden="true"><Megaphone size={18} /></span>
+                <h3>Send notice to applicant</h3>
+                <span className={`dr-chip ${outcomeTone}`}>Outcome: {outcome}</span>
+                {isCorrection
+                    ? <span className="dr-chip ok"><CheckCircle2 size={13} aria-hidden="true" />Notice sent</span>
+                    : <span className="dr-chip warn">Not sent yet</span>}
+                <ChevronDown size={20} className="dr-chev" aria-hidden="true" />
+            </summary>
 
-            {sent && <p role='status' className='mt-2 font-semibold text-green-800'>Notice sent. Delivery status is below.</p>}
+            <div className="dr-body">
+                {sent && <p role="status" className="dr-strip ok"><CheckCircle2 size={16} aria-hidden="true" /><span>Notice sent. Delivery status is below.</span></p>}
+                {error && <p role="alert" className="dr-err">{error}</p>}
 
-            {isCorrection && (
-                <div className='mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-gray-900'>
-                    <p className='text-gray-900'>The notice for this outcome was already sent. You can send a correction; the first notice is kept.</p>
-                    <label className='mt-1 flex items-center gap-2 text-gray-900'>
-                        <input type='checkbox' checked={correction} onChange={(e) => setCorrection(e.target.checked)} />
-                        Send a correction
-                    </label>
-                </div>
-            )}
-
-            {(!isCorrection || correction) && (
-                <>
-                    {ctx.suggestions.length > 0 && (
-                        <div className='mt-3'>
-                            <h4 className='font-semibold text-gray-900'>Suggestions from the file (internal: rewrite for the applicant)</h4>
-                            <ul className='mt-1'>
-                                {ctx.suggestions.map((s, i) => (
-                                    <li key={i} className='flex items-start justify-between gap-3 border-b border-gray-200 py-2 text-gray-900'>
-                                        <span className='min-w-0 text-gray-900'>
-                                            <span className='block text-sm text-gray-700'><Terms text={s.source} /></span>
-                                            <span className='block whitespace-pre-wrap break-words text-gray-900'>{s.text}</span>
-                                        </span>
-                                        <button type='button' onClick={() => setReason(s.text.slice(0, ctx.max_length))}
-                                            className='shrink-0 rounded border border-gray-400 bg-white px-3 py-1 text-blue-800 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                                            Use this
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    <label htmlFor='notice-reason' className='mt-3 block font-semibold text-gray-900'>
-                        {ctx.outcome === 'DEFERRED' ? 'What is missing' : ctx.outcome === 'REJECTED' ? 'Reason' : 'Note (optional)'}
-                    </label>
-                    <p id='notice-reason-hint' className='text-sm text-gray-700'>{REASON_HINTS[ctx.outcome]}</p>
-                    <textarea
-                        id='notice-reason'
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        maxLength={ctx.max_length}
-                        rows={3}
-                        aria-describedby='notice-reason-hint notice-reason-count'
-                        aria-invalid={Boolean(problem)}
-                        className='mt-1 w-full rounded border border-gray-400 bg-white p-2 text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600' />
-                    <p id='notice-reason-count' className='text-sm text-gray-700'>{reason.length} / {ctx.max_length}</p>
-                    {problem && reason.trim() && <p role='alert' className='font-semibold text-red-800'>{problem}</p>}
-
-                    <MessagePreview preview={preview} />
-
-                    {error && <p role='alert' className='mt-2 text-red-800'>{error}</p>}
-
-                    {!confirming ? (
-                        <button type='button' disabled={!canSubmit} onClick={() => setConfirming(true)}
-                            className='mt-3 rounded bg-blue-800 px-4 py-2 text-white hover:bg-blue-900 disabled:bg-gray-300 disabled:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'>
-                            {isCorrection ? 'Send correction' : 'Send notice'}
-                        </button>
-                    ) : (
-                        <div role='alertdialog' aria-labelledby='notice-confirm' className='mt-3 rounded border border-red-300 bg-red-50 p-3 text-gray-900'>
-                            <p id='notice-confirm' className='font-semibold text-gray-900'>
-                                Send this {isCorrection ? 'correction' : 'notice'} to the applicant now? It can't be edited or taken back.
-                            </p>
-                            <div className='mt-2 flex gap-3'>
-                                <button type='button' onClick={submit} disabled={sending}
-                                    className='rounded bg-blue-800 px-4 py-2 text-white hover:bg-blue-900 disabled:bg-gray-300 disabled:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'>
-                                    {sending ? 'Sending...' : 'Yes, send'}
-                                </button>
-                                <button type='button' onClick={() => setConfirming(false)} disabled={sending}
-                                    className='rounded border border-gray-400 bg-white px-4 py-2 text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {notices.length > 0 && (
-                <div className='mt-4'>
-                    <div className='flex items-center justify-between'>
-                        <h4 className='font-semibold text-gray-900'>Notices sent</h4>
-                        <button type='button' onClick={load}
-                            className='text-blue-800 underline hover:text-blue-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600'>
-                            Refresh status
-                        </button>
+                {isCorrection && (
+                    <div className="dr-group">
+                        <p className="dr-strip info">
+                            <Megaphone size={16} aria-hidden="true" />
+                            <span>The notice for this outcome was already sent. You can send a correction; the first notice is kept.</span>
+                        </p>
+                        <label className="dr-pick sn-pick">
+                            <input type="checkbox" checked={correction} onChange={(e) => setCorrection(e.target.checked)} />
+                            <span className="dr-pick-txt"><b>Send a correction</b></span>
+                        </label>
                     </div>
-                    <ul>
-                        {notices.map((n) => (
-                            <li key={n.id} className='border-b border-gray-200 py-2 text-gray-900'>
-                                <p className='text-gray-900'>
-                                    <span className='font-semibold text-gray-900'>{OUTCOME_LABELS[n.outcome]}</span>
-                                    {n.correction_of && <span className='text-gray-800'> (correction)</span>}
-                                    <span className='text-sm text-gray-700'> · {new Date(n.sent_at).toLocaleString()} by {n.sent_by ?? 'Account Officer'}</span>
-                                </p>
-                                <p className='whitespace-pre-wrap break-words text-gray-900'>{n.in_app_body}</p>
-                                <ul className='mt-1 flex flex-wrap gap-2'>
-                                    {n.deliveries.map((d) => (
-                                        <li key={d.channel} className={`rounded border px-2 text-sm ${d.status === 'FAILED' ? 'border-red-400 bg-red-50 text-red-900' : 'border-gray-400 bg-white text-gray-900'}`}>
-                                            {d.channel === 'SMS' ? 'SMS' : 'Email'}{d.to ? ` ${d.to}` : ''}: {DELIVERY_LABELS[d.status] ?? d.status}
-                                            {d.error ? ` (${d.error})` : ''}
+                )}
+
+                {(!isCorrection || correction) && (
+                    <section className="dr-form" aria-label={isCorrection ? 'Correction' : 'New notice'}>
+                        {/* where it goes: three channels, any that can't be used say so */}
+                        <div className="dr-channels">
+                            <span className="dr-channels-label">Goes to the applicant by</span>
+                            <ul className="dr-chips">
+                                <li className="dr-chip ok"><Bell size={13} aria-hidden="true" />In the app</li>
+                                <li className={`dr-chip ${ctx.sms_to ? 'ok' : 'warn'}`}>
+                                    <Smartphone size={13} aria-hidden="true" />{ctx.sms_to ? `SMS to ${ctx.sms_to}` : 'SMS skipped: no valid mobile number'}
+                                </li>
+                                <li className={`dr-chip ${ctx.email_to ? 'ok' : 'warn'}`}>
+                                    <Mail size={13} aria-hidden="true" />{ctx.email_to ? `Email to ${ctx.email_to}` : 'Email skipped: no valid address'}
+                                </li>
+                            </ul>
+                            <p className="dr-muted">No links are allowed.</p>
+                        </div>
+
+                        {ctx.suggestions.length > 0 && (
+                            <div className="dr-group">
+                                <h4 className="dr-h">Suggestions from the file <small>internal: rewrite it for the applicant</small></h4>
+                                <ul className="dr-suggestions">
+                                    {ctx.suggestions.map((s, i) => (
+                                        <li key={i} className="dr-suggestion">
+                                            <span className="dr-suggestion-txt">
+                                                <span className="dr-source"><Terms text={s.source} /></span>
+                                                <span>{s.text}</span>
+                                            </span>
+                                            <button type="button" className="dr-btn small" onClick={() => setReason(s.text.slice(0, ctx.max_length))}>Use this</button>
                                         </li>
                                     ))}
                                 </ul>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-        </section>
+                            </div>
+                        )}
+
+                        <div className="dr-group">
+                            <label htmlFor="notice-reason" className="dr-h">
+                                {ctx.outcome === 'DEFERRED' ? 'What is missing' : ctx.outcome === 'REJECTED' ? 'Reason' : 'Note'}
+                                {ctx.outcome === 'APPROVED' && <small>optional</small>}
+                            </label>
+                            <p id="notice-reason-hint" className="dr-muted">{REASON_HINTS[ctx.outcome]}</p>
+                            <textarea id="notice-reason" className="dr-input" value={reason} maxLength={ctx.max_length} rows={3}
+                                onChange={(e) => setReason(e.target.value)} aria-describedby="notice-reason-hint notice-reason-count"
+                                aria-invalid={Boolean(problem && reason.trim())} />
+                            <p id="notice-reason-count" className="dr-counter">{reason.length} / {ctx.max_length}</p>
+                            {problem && reason.trim() && <p role="alert" className="dr-err">{problem}</p>}
+                        </div>
+
+                        {preview && (
+                            <div className="dr-group">
+                                <MessagePreview preview={preview} />
+                            </div>
+                        )}
+
+                        {!confirming ? (
+                            <div className="dr-acts">
+                                <button type="button" className="dr-primary" disabled={!canSubmit} onClick={() => setConfirming(true)}>
+                                    <Send size={16} aria-hidden="true" />{isCorrection ? 'Send correction' : 'Send notice'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div role="alertdialog" aria-labelledby="notice-confirm" className="dr-confirm">
+                                <p id="notice-confirm" className="dr-confirm-title">
+                                    Send this {isCorrection ? 'correction' : 'notice'} to the applicant now? It can&apos;t be edited or taken back.
+                                </p>
+                                <div className="dr-acts">
+                                    <button type="button" className="dr-primary" disabled={sending} onClick={submit}>
+                                        <Send size={16} aria-hidden="true" />{sending ? 'Sending...' : 'Yes, send'}
+                                    </button>
+                                    <button type="button" className="dr-btn quiet" disabled={sending} onClick={() => setConfirming(false)}>Cancel</button>
+                                </div>
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {notices.length > 0 && (
+                    <section className="sn-sent" aria-labelledby="notice-sent-heading">
+                        <div className="sn-sent-head">
+                            <h4 id="notice-sent-heading">Notices sent</h4>
+                            <button type="button" className="dr-icon-btn" onClick={load} aria-label="Refresh delivery status" title="Refresh">
+                                <RefreshCw size={16} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <ul className="dr-items">
+                            {notices.map((n) => {
+                                const [label, tone] = OUTCOME[n.outcome] ?? [n.outcome, 'none'];
+                                return (
+                                    <li key={n.id} className="dr-item sn-notice">
+                                        <div className="sn-notice-head">
+                                            <span className={`dr-chip ${tone}`}>{label}</span>
+                                            {n.correction_of && <span className="dr-chip info">Correction</span>}
+                                            <span className="dr-by">Sent by <Byline layout="inline" name={n.sent_by} fallback="Account Officer" at={n.sent_at} /></span>
+                                        </div>
+                                        <p className="dr-quote">{n.in_app_body}</p>
+                                        {n.deliveries?.length > 0 && (
+                                            <ul className="dr-chips" aria-label="Delivery">
+                                                {n.deliveries.map((d) => {
+                                                    const [dLabel, dTone] = DELIVERY[d.status] ?? [d.status, 'none'];
+                                                    const Icon = d.channel === 'SMS' ? Smartphone : Mail;
+                                                    return (
+                                                        <li key={d.channel} className={`dr-chip ${dTone}`} title={d.error || undefined}>
+                                                            <Icon size={13} aria-hidden="true" />
+                                                            {d.channel === 'SMS' ? 'SMS' : 'Email'}{d.to ? ` ${d.to}` : ''}: {dLabel}
+                                                            {d.error && <span className="sr-only"> ({d.error})</span>}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </section>
+                )}
+            </div>
+        </details>
     );
 };
 

@@ -850,8 +850,8 @@
 /* ==========================================================================================================
    Loan folder dark mode (the frame sets data-theme='dark' on .ct-e-app; applicantTheme.css leaves .lf-folder off
    its light sheet). Tokens first, then the few fixed light values above. Status tones get lighter tints so they keep
-   4.5:1 on dark glass. The applicant's forms and the notice / document-request panels are not dark-adapted, so they
-   sit on light paper (.lf-paper resets the tokens to light values inside them).
+   4.5:1 on dark glass. The applicant's forms are not dark-adapted, so they sit on light paper (.lf-paper resets the
+   tokens to light values inside them); the notice and document-request panels use the tokens.
    ========================================================================================================== */
 [data-theme='dark'] .lf-folder {
   --ink: #e6ecff; --muted: #a3b0cc; --navy: #dbe5ff; --blue: #7ea2ff; --blue-700: #a9c0ff;

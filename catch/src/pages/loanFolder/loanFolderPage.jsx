@@ -406,11 +406,11 @@ const LoanFolderPage = () => {
         </>
     );
 
-    // Notices and document requests, shown when they apply. Send notice is still Tailwind, so it sits on light paper;
-    // the document request panel (requestPanel.jsx) is in the staff look and follows dark mode
+    // Notices and document requests, shown when they apply. Both are in the staff look (dr-* in requestPanel.css)
+    // and follow dark mode
     const panels = (reloadKey) => (
         <div className="lf-panels">
-            <div className="lf-paper"><SendNoticePanel applicationId={app.id} /></div>
+            <SendNoticePanel applicationId={app.id} />
             {/* New KYC checks change the suggestions */}
             <RequestPanel applicationId={app.id} reloadKey={reloadKey} />
         </div>
