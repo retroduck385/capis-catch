@@ -2,6 +2,7 @@
 // top stripe, a fixed header and footer around a scrolling body. Used where a summary row or tile opens its details
 // in place, so the page underneath (and any draft on it) stays put: the review summary's Decision support tiles
 // (decisionSupport/briefDialog.jsx) and its credit score categories (review/scoreCategoryDialog.jsx).
+// Also the Financial Package's TU report popup (financialPackage/tuReport.jsx), widened through className.
 // link: { to, label } opens the full page in a new tab. Tones are the .lf ones (.ok / .warn / .bad / .none).
 // Styles: infoModal.css (.info-modal).
 import { useEffect, useRef } from 'react';
@@ -9,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { ExternalLink, X } from 'lucide-react';
 import './infoModal.css';
 
-const InfoModal = ({ Icon, tone = 'none', eyebrow, title, note, link, onClose, children }) => {
+const InfoModal = ({ Icon, tone = 'none', eyebrow, title, note, link, onClose, className = '', children }) => {
     const ref = useRef(null);
     const close = () => ref.current?.close();
 
@@ -19,7 +20,7 @@ const InfoModal = ({ Icon, tone = 'none', eyebrow, title, note, link, onClose, c
     }, []);
 
     return (
-        <dialog ref={ref} className={`info-modal ${tone}`} aria-label={eyebrow ? `${title} (${eyebrow})` : title}
+        <dialog ref={ref} className={`info-modal ${tone}${className ? ` ${className}` : ''}`}aria-label={eyebrow ? `${title} (${eyebrow})` : title}
             onClose={onClose}
             onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
             <header className="info-modal-head">

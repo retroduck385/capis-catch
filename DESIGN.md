@@ -660,6 +660,7 @@ to `Byline` / `formatWhen` when they are.
 | `src/components/byline.jsx`, `byline.css`, `people.js` | Who + when: `Byline`, and name / initials / avatar tone / time formatting (tested in `tests/people.test.mjs`) |
 | `src/pages/documentRequests/requestPanel.jsx`, `requestPanel.css`, `fileMark.jsx` | Ask the applicant for documents (section 6) and the shared staff check of a file |
 | `src/pages/messages/messagesPanel.jsx`, `messages.css` | Messages trigger and drawer, own `--m-*` tokens (section 6) |
+| `src/pages/financialPackage/tuReport.jsx` (`.fp-tu*` in `financialPackage.css`) | Financial Package VIII: each borrower's TU report as an inset row (icon disc, date, CI result chip, "View TU report" quiet pill). The pill opens the shared `InfoModal` (widened via `className`, tone = CI result) around Document check's `DocumentViewer`; "Open the CI report" in its footer. Added 23 Nov 2026 |
 | `src/components/selectMenu.jsx`, `selectMenu.css` | Animated form dropdown used by every `Field` with options (applicant wizard and loan folder) |
 | `src/pages/workTray/workTray.css` | All work tray styles. Later blocks override earlier ones and are labelled: Look, Table, Colour, Motion, Dropdowns, Dark mode |
 

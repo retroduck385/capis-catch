@@ -189,7 +189,7 @@ const FinancialPackagePage = () => {
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [ci, setCi] = useState(null);           // the CI results (XI. "Copy from TU"); null if they can't be read
+    const [ci, setCi] = useState(null);           // the CI results (VIII. TU report popup, XI. "Copy from TU"); null if they can't be read
     const [copyNote, setCopyNote] = useState(null);
     const [statements, setStatements] = useState(null); // bank statements (X. "Fill from ..."); null if they can't be read
     const [depositNote, setDepositNote] = useState(null);
@@ -664,7 +664,7 @@ const FinancialPackagePage = () => {
                     {/* Page 2: the application information (VIII onwards) */}
                     <div id="fp-page-2" role="tabpanel" aria-labelledby="fp-tab-2" data-fp-page="2" hidden={page !== 2} className="fp-page">
                         <h2 className="fp-pagehead">Page 2: Credit Application Information</h2>
-                        <EmploymentSection app={app} details={form.parties} onParty={onParty} disabled={disabled} />
+                        <EmploymentSection app={app} ci={ci} details={form.parties} onParty={onParty} disabled={disabled} />
                         <CashFlowSection computed={computed} details={form.parties} onParty={onParty} disabled={disabled} />
                         <RowsSection id="fp-x" title="X. Deposit Checking" config={DEPOSIT_CHECK_FIELDS} rows={form.deposit_checks}
                             onChange={onList('deposit_checks')} disabled={disabled}>

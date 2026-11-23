@@ -12,6 +12,7 @@ import {
 import { CiResultsView } from '../ciRequest/ciResults';
 import RoutingSummary from '../review/routingSummary';
 import { percent } from './compute';
+import TuReport from './tuReport';
 import { CREDIT_RESULTS, INCOME_BASES, TITLE_FIELDS, TITLE_KINDS, withBasisLine } from './options';
 import { FIELD_LABELS, fieldsToRemove, shownFields, undoResultFor } from './creditResultFields';
 import { Term, Terms } from '../../components/term';
@@ -242,7 +243,8 @@ export const TermsSection = ({ form, onPkg, onReset, disabled }) => (
 );
 
 // ---------- VIII. Employment / business verification ----------
-export const EmploymentSection = ({ app, details, onParty, disabled }) => (
+// ci: the CI results (each borrower's TU report opens in a popup: tuReport.jsx)
+export const EmploymentSection = ({ app, ci, details, onParty, disabled }) => (
     <Section id="fp-viii" title="VIII. Employment / Business Verification">
         <KycNote />
         {getParties(app, BORROWER_ROLES).map((p) => {
@@ -251,6 +253,7 @@ export const EmploymentSection = ({ app, details, onParty, disabled }) => (
             return (
                 <div key={p.id} className="fp-sub">
                     <h4 className="fp-subhead">{partyLabel(p)}: {show(fullName(p))}</h4>
+                    <TuReport app={app} party={p} ci={ci} />
                     <Info rows={employed ? [
                         ['Company Name / Address', [job.employer_business_name, joinAddress(getAddress(p, 'EMPLOYER'))].filter(Boolean).join(' / ')],
                         ['Position / Rank / Status', job.occupation],

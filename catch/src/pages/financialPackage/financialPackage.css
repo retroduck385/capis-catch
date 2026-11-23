@@ -596,3 +596,35 @@
 /* XI. Loan Verification: "Copy from TU" (the CI's TU accounts) */
 .lf-folder .fp-copytu { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin: 0.25rem 0 0.75rem; }
 .lf-folder .fp-copytu .fp-add:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* VIII. Employment / business verification: each borrower's TU report (tuReport.jsx). A row like the KYC inset cards:
+   icon disc, "TransUnion (TU) report" + date, the CI result chip, and View TU report, which opens the file in the
+   shared popup (infoModal.css), widened and given a fixed height so the document viewer (documentCheck.css) fills it. */
+.lf-folder.lf-fp .fp-tu {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0 0 0.75rem; padding: 0.65rem 0.8rem;
+  border: 1px solid var(--lf-inset-rim); border-radius: 14px; background: var(--lf-inset);
+}
+.lf-folder.lf-fp .fp-tu-ic {
+  display: grid; place-items: center; flex: none; width: 2.1rem; height: 2.1rem; border-radius: 11px;
+  background: var(--lf-accent-bg); color: var(--lf-accent);
+}
+.lf-folder.lf-fp .fp-tu.empty .fp-tu-ic { background: var(--lf-none-bg); color: var(--lf-none); }
+.lf-folder.lf-fp .fp-tu-txt { display: grid; flex: 1 1 12rem; min-width: 0; line-height: 1.35; }
+.lf-folder.lf-fp .fp-tu-txt b { color: var(--ink); font-size: 0.92rem; font-weight: 700; }
+.lf-folder.lf-fp .fp-tu-txt > span { color: var(--muted); font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+.lf-folder.lf-fp .fp-tu-btn { flex: none; gap: 0.4rem; }
+.lf-folder.lf-fp .fp-tu-none { margin: 0 0 0.75rem; }
+.info-modal.fp-tu-modal { width: min(64rem, calc(100vw - 2rem)); height: calc(100dvh - 2rem); }
+.fp-tu-modal .info-modal-body { display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1rem; }
+.fp-tu-viewer { display: flex; flex: 1; min-height: 20rem; }
+/* more than one file: pill toggles, like the message preview tabs */
+.fp-tu-files { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.lf-folder .fp-tu-files button {
+  display: inline-flex; align-items: center; min-height: 2.25rem; margin: 0; padding: 0.3rem 0.85rem;
+  border: 1px solid var(--lf-control-rim, #d5dbe6); border-radius: 999px; background: var(--lf-control, #fff); box-shadow: none;
+  color: var(--lf-text-2, #2b3a5c); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.lf-folder .fp-tu-files button:hover { background: var(--lf-control-hover, #f4f6fa); color: var(--lf-text-2, #2b3a5c); }
+.lf-folder .fp-tu-files button[aria-pressed='true'] { border-color: var(--lf-accent); background: var(--lf-accent-bg); color: var(--lf-accent); }
+.lf-folder .fp-tu-files button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+@media (max-width: 40rem) { .info-modal.fp-tu-modal { width: calc(100vw - 1rem); height: calc(100dvh - 1rem); } }
