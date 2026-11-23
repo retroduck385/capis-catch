@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-    AlertTriangle, Bell, CheckCircle2, ChevronDown, Clock, FileText, History, Mail, MailQuestion, Plus, RefreshCw, Send, Smartphone, Undo2, X,
+    AlertTriangle, Bell, CheckCircle2, ChevronDown, Clock, FileText, History, Mail, MailQuestion, Plus, RefreshCw, Send, Smartphone, Undo2, User, X,
 } from 'lucide-react';
 import MessagePreview from '../applicantNotices/messagePreview';
 import { closeRequest, fetchReminderStatus, fetchRequestContext, fileUrl, openRequest, previewRequest } from './api';
@@ -41,6 +41,14 @@ const DELIVERY = {
 };
 
 const keyOf = (r) => `${r.applicant_id}:${r.requirement_type}`;
+// The checklist grouped by person, in the order it comes (principal, spouse, co-borrowers): [{ applicantId, party, rows }]
+const byParty = (rows) => rows.reduce((groups, r) => {
+    const last = groups[groups.length - 1];
+    if (last?.applicantId === r.applicant_id) last.rows.push(r);
+    else groups.push({ applicantId: r.applicant_id, party: r.party, rows: [r] });
+    return groups;
+}, []);
+const capitalized = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // Read state of an uploaded file (useReadStates.js): [label, chip tone, icon]
 const READ = { READING: ['Reading...', 'info', Clock], READ: ['Read', 'ok', CheckCircle2], UNREADABLE: ["Couldn't read", 'err', AlertTriangle] };
 const uploadIds = (reqs) => reqs.flatMap((r) => r.items.flatMap((i) => i.uploads.map((u) => u.document_id)));
@@ -381,20 +389,38 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                         <fieldset className="dr-group">
                             <legend className="dr-h">Documents needed</legend>
                             {checklist.length === 0 && <p className="dr-muted">No checklist documents on this file. Add an &quot;Other&quot; document below.</p>}
-                            <ul className="dr-picks">
-                                {checklist.map((r) => {
-                                    const short = r.uploaded < r.needed;
+                            {/* one block per person, so it's clear whose documents are whose */}
+                            <div className="dr-party-groups">
+                                {byParty(checklist).map((g) => {
+                                    const missing = g.rows.filter((r) => r.uploaded < r.needed).length;
+                                    const headId = `dr-party-${g.applicantId}`;
                                     return (
-                                        <li key={keyOf(r)}>
-                                            <label className="dr-pick">
-                                                <input type="checkbox" checked={selected.has(keyOf(r))} onChange={() => toggle(r)} />
-                                                <span className="dr-pick-txt"><b>{r.label}</b><span className="dr-party">{r.party}</span></span>
-                                                <span className={`dr-count${short ? ' short' : ' all'}`}>{r.uploaded} / {r.needed}<span className="sr-only"> uploaded</span></span>
-                                            </label>
-                                        </li>
+                                        <div key={g.applicantId} className="dr-party-group" role="group" aria-labelledby={headId}>
+                                            <p className="dr-party-head">
+                                                <User size={15} aria-hidden="true" />
+                                                <span id={headId}>{capitalized(g.party)}</span>
+                                                {missing > 0
+                                                    ? <span className="dr-chip warn">{missing} missing</span>
+                                                    : <span className="dr-chip ok"><CheckCircle2 size={13} aria-hidden="true" />All uploaded</span>}
+                                            </p>
+                                            <ul className="dr-picks">
+                                                {g.rows.map((r) => {
+                                                    const short = r.uploaded < r.needed;
+                                                    return (
+                                                        <li key={keyOf(r)}>
+                                                            <label className="dr-pick">
+                                                                <input type="checkbox" checked={selected.has(keyOf(r))} onChange={() => toggle(r)} />
+                                                                <span className="dr-pick-txt"><b>{r.label}</b></span>
+                                                                <span className={`dr-count${short ? ' short' : ' all'}`}>{r.uploaded} / {r.needed}<span className="sr-only"> uploaded</span></span>
+                                                            </label>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </div>
                                     );
                                 })}
-                            </ul>
+                            </div>
                             {others.map((o, i) => (
                                 <div key={i} className="dr-other">
                                     <div className="dr-other-who">
