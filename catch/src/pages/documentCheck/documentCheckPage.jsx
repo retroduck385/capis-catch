@@ -6,6 +6,9 @@
 // of boxes for that borrower x check (ciRequest/ciReportForm.jsx): result, report date, summary, NFIS records or TU
 // accounts. The Credit Investigator types them, or presses "Run AI" and the AI fills the same boxes for them to check
 // (20261125_ci_ocr_opt_in.sql, 20261126_ci_facts.sql). Nothing is saved until the CI presses Save.
+// SPA, SEC / DTI / Mayor's permit and "Other" files (e.g. a "Proof of billing" the AO asked for) are in the same file
+// list, after the AI-read ones; the AI doesn't read them, so picking one shows the "Details" pane (manualDetails.jsx)
+// where the AO adds label + description panels by hand. They are not counted in "N of M documents confirmed".
 // Once every document here is confirmed, a banner points at the next step: the loan folder's KYC verification (AO)
 // or the CI request's results + Mark CI Done (CI).
 // Look (DESIGN.md, "Document check"): an .lf-folder page (panel, glass cards, tokens, dark mode) with a header, the
@@ -14,7 +17,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, Eye, FileText, Loader2, Lock, RotateCcw, ScanText, ShieldCheck, Sparkles, UserRound,
+    AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Clock, Eye, FileText, Keyboard, Loader2, Lock, PenLine, RotateCcw, ScanText,
+    ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
 import { UserAuth } from '../../context/authContext';
 import { fetchApplication, getParties, one } from '../applicationForm/api';
@@ -30,7 +34,9 @@ import { fetchCanEdit, fetchStaffNames } from '../loanFolder/api';
 import { fetchDocumentChecks, fetchFieldDefs, requestCiRead, UNREADABLE_TEXT } from './api';
 import DocumentViewer from './documentViewer';
 import ExtractionPanel from './extractionPanel';
-import ManualValuesCard from './manualValuesCard';
+import ManualDetails from './manualDetails';
+import { fetchManualData } from './manualApi';
+import { MANUAL_TYPE_LABELS, savesByDocument } from './manualValues';
 import CiReportForm from '../ciRequest/ciReportForm';
 import { DocumentCheckSkeleton } from '../../components/skeleton';
 import Breadcrumbs from '../../components/breadcrumbs';
@@ -47,6 +53,13 @@ const TYPE_ORDER = ['VALID_ID_PASSPORT', 'COE_ITR', 'PAYSLIPS_REMITTANCES', 'FS_
 const CI_LABELS = { CI_NFIS: 'NFIS result', CI_TU: 'TU credit report' };
 const docLabel = (type) => CI_LABELS[type] ?? REQUIREMENT_LABELS[type] ?? type;
 const BUSY = ['PENDING', 'RUNNING'];
+const NO_MANUAL = { files: [], saves: [], canSave: false, names: {}, labels: {} };
+// a file's name in the list: an "Other" file goes by what the AO asked for
+const labelOf = (d) => (d.manual ? d.manual_label : docLabel(d.document_type));
+// a file typed by hand: details saved or not
+const manualStatus = (typed) => (typed
+    ? { key: 'TYPED', label: 'Details added', tone: 'ok', Icon: Keyboard }
+    : { key: 'UNTYPED', label: 'No details yet', tone: 'none', Icon: PenLine });
 
 // Where a document is in OCR -> AI -> AO confirmation. tone: an .lf-chip tone (documentCheck.css adds info / err);
 // a failed read is an error (form red), "Ready to check" waits on the AO (amber), never a TAT colour.
@@ -88,6 +101,7 @@ const DocumentCheckPage = () => {
     const [defs, setDefs] = useState([]);
     const [checks, setChecks] = useState({});
     const [ciData, setCiData] = useState({ checks: [], documents: [] }); // CI mode: ci_checks + ci_documents
+    const [manual, setManual] = useState(NO_MANUAL);   // files typed by hand (not in CI mode): manualApi.fetchManualData
     const [names, setNames] = useState({});
     const [partyId, setPartyId] = useState(null);
     const [docId, setDocId] = useState(docParam);
@@ -106,23 +120,44 @@ const DocumentCheckPage = () => {
     // Staff check of each applicant file (Cleared / Needs a new copy); not for the CI's reports
     const marks = useFileMarks(ciMode ? null : applicationId);
 
-    // Borrowers with at least one document the AI reads, and those documents (ID first, then income; NFIS, then TU)
+    // Borrowers with at least one document, and those documents: the ones the AI reads first (ID, then income; NFIS,
+    // then TU), then the ones typed by hand (SPA / SEC / Other, oldest first; never in CI mode)
     const parties = useMemo(() => getParties(app ?? {}, ciMode ? BORROWER_ROLES : undefined)
-        .map((party) => ({
-            party,
-            docs: (ciMode
-                ? ciData.documents.filter((d) => d.applicant_id === party.id)
-                    .map((d) => ({ ...d, document_type: `CI_${d.check_type}` }))
-                : (party.application_requirements ?? []).flatMap((r) => r.documents ?? []))
-                .filter((d) => types.has(d.document_type))
-                .sort((a, b) => TYPE_ORDER.indexOf(a.document_type) - TYPE_ORDER.indexOf(b.document_type)
-                    || a.uploaded_at.localeCompare(b.uploaded_at)),
-            // files a new upload replaced: not counted or confirmed here, but still openable
-            earlier: ciMode ? [] : (party.application_requirements ?? []).flatMap((r) => r.earlier_documents ?? [])
-                .filter((d) => types.has(d.document_type)).sort((a, b) => a.superseded_at.localeCompare(b.superseded_at)),
-        }))
-        .filter((p) => p.docs.length > 0), [app, types, ciMode, ciData.documents]);
-    const docIds = useMemo(() => parties.flatMap((p) => p.docs.map((d) => d.id)), [parties]);
+        .map((party) => {
+            const typedByHand = manual.files.filter((f) => f.applicant_id === party.id)
+                .map((f) => ({ ...f, manual: true, manual_label: manual.labels[f.id] ?? MANUAL_TYPE_LABELS[f.document_type] }));
+            return {
+                party,
+                docs: [
+                    ...(ciMode
+                        ? ciData.documents.filter((d) => d.applicant_id === party.id)
+                            .map((d) => ({ ...d, document_type: `CI_${d.check_type}` }))
+                        : (party.application_requirements ?? []).flatMap((r) => r.documents ?? []))
+                        .filter((d) => types.has(d.document_type))
+                        .sort((a, b) => TYPE_ORDER.indexOf(a.document_type) - TYPE_ORDER.indexOf(b.document_type)
+                            || a.uploaded_at.localeCompare(b.uploaded_at)),
+                    ...typedByHand.filter((f) => !f.superseded_at),
+                ],
+                // files a new upload replaced: not counted or confirmed here, but still openable
+                earlier: ciMode ? [] : [
+                    ...(party.application_requirements ?? []).flatMap((r) => r.earlier_documents ?? []).filter((d) => types.has(d.document_type)),
+                    ...typedByHand.filter((f) => f.superseded_at),
+                ].sort((a, b) => a.superseded_at.localeCompare(b.superseded_at)),
+            };
+        })
+        .filter((p) => p.docs.length > 0), [app, types, ciMode, ciData.documents, manual]);
+    // the documents the AI reads (the ones typed by hand have no OCR -> AI -> confirm status to load or count)
+    const docIds = useMemo(() => parties.flatMap((p) => p.docs.filter((d) => !d.manual).map((d) => d.id)), [parties]);
+    const manualSaves = useMemo(() => savesByDocument(manual.saves), [manual.saves]);
+    // the files typed by hand: a failure here leaves the rest of the page working
+    const loadManual = useCallback(async () => {
+        if (ciMode) return;
+        try {
+            setManual(await fetchManualData(applicationId));
+        } catch (err) {
+            setError(`Files typed by hand could not be loaded: ${err.message}`);
+        }
+    }, [applicationId, ciMode]);
 
     const loadChecks = useCallback(async (ids) => {
         const next = await fetchDocumentChecks(ids, { ci: ciMode });
@@ -158,7 +193,7 @@ const DocumentCheckPage = () => {
                     ciMode ? fetchCiCanEdit(applicationId) : fetchCanEdit(applicationId),
                     fetchFieldDefs()]);
                 if (cancelled) return;
-                await loadCiData(data);
+                await Promise.all([loadCiData(data), loadManual()]);
                 if (cancelled) return;
                 setApp(data);
                 setCanEdit(editable);
@@ -170,7 +205,7 @@ const DocumentCheckPage = () => {
             }
         })();
         return () => { cancelled = true; };
-    }, [applicationId, ciMode, loadCiData]);
+    }, [applicationId, ciMode, loadCiData, loadManual]);
 
     useEffect(() => {
         if (docIds.length === 0) return;
@@ -217,9 +252,9 @@ const DocumentCheckPage = () => {
     const showEarlier = showsEarlier(view, selectedParty);
     const earlierDoc = showEarlier ? selectedParty.earlier.find((d) => d.id === earlierId) ?? selectedParty.earlier[0] : null;
     const viewDoc = showEarlier ? earlierDoc : doc;
-    const check = doc ? checks[doc.id] : null;
+    const check = doc && !doc.manual ? checks[doc.id] : null;
     const took = readingTime(check);
-    const status = docStatus(check);
+    const status = doc?.manual ? manualStatus(Boolean(manualSaves[doc.id])) : docStatus(check);
     const unreadable = ['OCR_FAILED', 'AI_FAILED'].includes(status.key); // final: the worker already retried once
     const principal = getParties(app, ['PRINCIPAL'])[0] ?? null;
     const ctx = selectedParty ? {
@@ -362,7 +397,7 @@ const DocumentCheckPage = () => {
                     <FileText size={22} aria-hidden="true" />
                     <p><Terms text={ciMode
                         ? 'No NFIS or TU reports have been uploaded for this application yet. Upload them on the CI request page.'
-                        : 'No IDs, COE / ITR, payslips or bank statements have been uploaded for this application.'} /></p>
+                        : 'No documents have been uploaded for this application yet.'} /></p>
                 </section>
             ) : (
                 <>
@@ -370,7 +405,7 @@ const DocumentCheckPage = () => {
                     <nav className="lf-tabs dc-people" aria-label="Borrowers">
                         {parties.map((pp) => {
                             const { party } = pp;
-                            const docs = ciMode ? slotsOf(pp) : pp.docs;
+                            const docs = ciMode ? slotsOf(pp) : pp.docs.filter((d) => !d.manual);
                             const done = ciMode ? docs.filter((sl) => slotDone(party.id, sl.checkType)).length
                                 : docs.filter((d) => isConfirmed(d.id)).length;
                             return (
@@ -378,9 +413,11 @@ const DocumentCheckPage = () => {
                                     aria-current={party.id === selectedParty?.party.id ? 'true' : undefined}>
                                     <span className="dc-person" aria-hidden="true"><UserRound size={15} /></span>
                                     <span className="who">{nameOf(party)} <span className="role">· {partyLabel(party)}</span></span>
-                                    <b className={done === docs.length ? 'all' : undefined}>
-                                        {done}/{docs.length}<span className="sr-only"> {ciMode ? 'filled in' : 'confirmed'}</span>
-                                    </b>
+                                    {docs.length > 0 && (
+                                        <b className={done === docs.length ? 'all' : undefined}>
+                                            {done}/{docs.length}<span className="sr-only"> {ciMode ? 'filled in' : 'confirmed'}</span>
+                                        </b>
+                                    )}
                                 </button>
                             );
                         })}
@@ -412,7 +449,7 @@ const DocumentCheckPage = () => {
                                                     onClick={() => { setEarlierId(d.id); setPage(1); }}>
                                                     <FileText size={18} className="ic" aria-hidden="true" />
                                                     <span className="txt">
-                                                        <b>{docLabel(d.document_type)}</b>
+                                                        <b>{labelOf(d)}</b>
                                                         <span className="file">{d.file_name}</span>
                                                         <span className="note">
                                                             Uploaded <time dateTime={d.uploaded_at} title={fullWhen(d.uploaded_at)}>{formatExact(d.uploaded_at)}</time>
@@ -428,9 +465,9 @@ const DocumentCheckPage = () => {
                                 <>
                             <ul className="dc-doclist">
                                 {selectedParty.docs.map((d) => {
-                                    const s = docStatus(checks[d.id]);
+                                    const s = d.manual ? manualStatus(Boolean(manualSaves[d.id])) : docStatus(checks[d.id]);
                                     const active = d.id === doc?.id;
-                                    const problem = docHasProblem(checks[d.id], isExpired);
+                                    const problem = !d.manual && docHasProblem(checks[d.id], isExpired);
                                     return (
                                         <li key={d.id}>
                                             <button type="button" onClick={() => openDoc(d.id)} aria-current={active ? 'true' : undefined}
@@ -441,9 +478,9 @@ const DocumentCheckPage = () => {
                                                 </span>
                                                 {problem && <span className="sr-only">The AI flagged a problem. </span>}
                                                 <span className="txt">
-                                                    <b>{docLabel(d.document_type)}</b>
+                                                    <b>{labelOf(d)}</b>
                                                     <span className="note">
-                                                        Uploaded <time dateTime={d.uploaded_at} title={fullWhen(d.uploaded_at)}>{formatExact(d.uploaded_at)}</time>
+                                                        {d.manual && 'Typed by hand · '}Uploaded <time dateTime={d.uploaded_at} title={fullWhen(d.uploaded_at)}>{formatExact(d.uploaded_at)}</time>
                                                     </span>
                                                 </span>
                                                 <StatusChip status={s} />
@@ -456,7 +493,10 @@ const DocumentCheckPage = () => {
                                 <div className="dc-filemark">
                                     <FileMark key={`mark-${doc.id}`} applicationId={app.id} marks={marks} autoOpen={false}
                                         unreadable={unreadable} confirmLeave={leaveEdits}
-                                        file={{ documentId: doc.id, applicantId: selectedParty.party.id, requirementType: doc.document_type, label: docLabel(doc.document_type) }} />
+                                        file={{
+                                            documentId: doc.id, applicantId: selectedParty.party.id,
+                                            requirementType: doc.document_type === 'OTHER' ? null : doc.document_type, label: labelOf(doc),
+                                        }} />
                                 </div>
                             )}
                                 </>
@@ -474,7 +514,8 @@ const DocumentCheckPage = () => {
                         <section className="lf-card dc-pane dc-fields" aria-labelledby="dc-fields-title">
                             <div className="lf-cardhead">
                                 <div className="dc-headleft">
-                                    <h2 id="dc-fields-title">{ciMode && doc ? <Terms text={`${CI_LABELS[doc.document_type]?.split(' ')[0] ?? ''} results for ${nameOf(selectedParty.party)}`} /> : 'Extracted information'}</h2>
+                                    <h2 id="dc-fields-title">{ciMode && doc ? <Terms text={`${CI_LABELS[doc.document_type]?.split(' ')[0] ?? ''} results for ${nameOf(selectedParty.party)}`} />
+                                        : (showEarlier ? earlierDoc?.manual : doc?.manual) ? 'Details' : 'Extracted information'}</h2>
                                     {!showEarlier && took && (
                                         <span className="dc-took" title={`Took ${took}, from the start of the OCR to the end of the AI extraction`}>
                                             <Clock size={13} className="dc-took-ic" aria-hidden="true" />
@@ -489,11 +530,24 @@ const DocumentCheckPage = () => {
                                 )}
                             </div>
                             {showEarlier ? (
-                                <p className="lf-empty">
-                                    This is an earlier version. A new file replaced it, so it is not counted or confirmed.
-                                    Switch back to Current to read and confirm the files that count.
-                                </p>
+                                earlierDoc?.manual ? (
+                                    <div className="dc-fields-body">
+                                        <ManualDetails key={earlierDoc.id} file={earlierDoc} label={labelOf(earlierDoc)}
+                                            saves={manualSaves[earlierDoc.id] ?? []} canType={false} names={manual.names} onSaved={loadManual} />
+                                    </div>
+                                ) : (
+                                    <p className="lf-empty">
+                                        This is an earlier version. A new file replaced it, so it is not counted or confirmed.
+                                        Switch back to Current to read and confirm the files that count.
+                                    </p>
+                                )
                             ) : !doc ? <p className="lf-empty">Pick a document on the left.</p>
+                                : doc.manual ? (
+                                    <div className="dc-fields-body">
+                                        <ManualDetails key={doc.id} file={doc} label={labelOf(doc)} saves={manualSaves[doc.id] ?? []}
+                                            canType={manual.canSave} names={manual.names} onSaved={loadManual} onDirtyChange={setDirty} />
+                                    </div>
+                                )
                                 : ciMode ? (
                                     <div className="dc-fields-body">
                                         <CiReportForm key={`${selectedParty.party.id}:${doc.check_type}:${savedStamp}`}
@@ -559,8 +613,6 @@ const DocumentCheckPage = () => {
                 </>
             )}
 
-            {/* SPA, SEC / DTI / Mayor's permit and Other files: typed by hand, no AI (not for the CI's reports) */}
-            {!ciMode && app && <ManualValuesCard app={app} />}
         </div>
     );
 };

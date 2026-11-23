@@ -8,7 +8,8 @@ const check = ({ data, error }) => {
     return data;
 };
 
-// The SPA / SEC / Other files of an application (current and replaced), the saves for them and the savers' names
+// The SPA / SEC / Other files of an application (current and replaced), the saves for them, the savers' names and
+// the requested name of each "Other" file ({ [document_id]: label })
 export const fetchManualData = async (applicationId) => {
     const [files, saves, canSave] = await Promise.all([
         supabase.from('documents')
@@ -19,8 +20,16 @@ export const fetchManualData = async (applicationId) => {
             .eq('application_id', applicationId).order('id', { ascending: false }).then(check),
         supabase.rpc('manual_values_can_save', { p_application_id: applicationId }).then(check),
     ]);
-    const names = await fetchStaffNames((saves ?? []).map((s) => s.saved_by));
-    return { files: files ?? [], saves: saves ?? [], canSave: Boolean(canSave), names };
+    // "Other" files come from a document request: their name is what the AO asked for (e.g. "Proof of billing")
+    const otherIds = (files ?? []).filter((f) => f.document_type === 'OTHER').map((f) => f.id);
+    const [names, uploads] = await Promise.all([
+        fetchStaffNames((saves ?? []).map((s) => s.saved_by)),
+        otherIds.length === 0 ? [] : supabase.from('document_request_uploads')
+            .select('document_id, document_request_items ( label )').in('document_id', otherIds).then(check),
+    ]);
+    const labels = Object.fromEntries((uploads ?? []).filter((u) => u.document_request_items?.label)
+        .map((u) => [u.document_id, u.document_request_items.label]));
+    return { files: files ?? [], saves: saves ?? [], canSave: Boolean(canSave), names, labels };
 };
 
 // The local OCR text of a file, if it was read (requested SPA / SEC / Other uploads are; original ones aren't).
