@@ -154,6 +154,10 @@
 .ap-app b { color: var(--navy); font-size: 1rem; font-weight: 700; }
 .ap-app small { color: var(--muted); font-size: 0.84rem; }
 .ap-nowrap { white-space: nowrap; }  /* a date never breaks inside itself */
+/* status cell: the status pill and the "Clarification requested" pill stacked, left edges lined up, same size */
+.ap .ap-status { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; min-width: 0; }
+.ap .ap-status .ct-badge { gap: 0.35rem; }
+.ap .ap-status .ct-badge svg { flex: none; }
 .ap .ct-register .amt { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .ap-rowlink {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 2.75rem; padding: 0.45rem 1.1rem;
@@ -215,9 +219,84 @@
 .ap-guide-list b { color: var(--ink); font-size: 0.95rem; font-weight: 600; }
 .ap-guide-list small { color: var(--muted); font-size: 0.84rem; line-height: 1.45; }
 
-/* the documents request card (documentRequests/applicantRequestCard.jsx) on this look */
+/* plain cards on a submitted application (kycClarify/applicantClarifyCard.jsx) on this look */
 .ap .ct-card .ct-card-head .ct-mono { color: var(--lf-text-3); font-family: inherit; font-size: 0.86rem; font-weight: 600; }
 .ap .ct-card .ct-sheet-body > p { margin: 0 0 0.6rem; line-height: 1.55; }
+
+/* ---------- submitted application tabs (applicationForm/applicationTabs.jsx): "Your application" | "Documents" ----------
+   The tabs sit right under the page header; the panel lays its cards out like the page (same gap). */
+.ap-tabs {
+  display: flex; flex-wrap: wrap; gap: 0.3rem; justify-self: start; max-width: 100%; padding: 0.3rem;
+  border: 1px solid var(--lf-glass-rim); border-radius: 999px; background: var(--lf-glass); box-shadow: var(--lf-glass-shadow);
+  -webkit-backdrop-filter: var(--lf-glass-blur); backdrop-filter: var(--lf-glass-blur);
+}
+.ap .ap-tabs button {
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; margin: 0; padding: 0.45rem 1.15rem;
+  border: 0; border-radius: 999px; background: none; box-shadow: none; color: var(--lf-text-3); font-size: 0.95rem; font-weight: 600; cursor: pointer;
+}
+.ap .ap-tabs button:hover { background: var(--lf-wash); color: var(--navy); }
+.ap .ap-tabs button[aria-selected='true'] { background: var(--lf-blue-grad); color: #fff; box-shadow: 0 10px 20px -14px rgba(20, 41, 95, 0.9); }
+.ap .ap-tabs button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+.ap-tabs b {
+  min-width: 1.4rem; padding: 0 0.4rem; border-radius: 999px; font-size: 0.75rem; font-weight: 800; line-height: 1.4rem; text-align: center;
+  background: var(--lf-warn-bg); color: var(--lf-warn); box-shadow: inset 0 0 0 1px var(--lf-warn-line);
+}
+.ap-tabs button[aria-selected='true'] b { background: #fff; color: var(--lf-orange); box-shadow: none; }
+.ap-tabpanel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-content: start; min-width: 0; border-radius: 22px; }
+.ap-tabpanel > * { min-width: 0; }
+.ap-tabpanel > section.ct-card { margin-bottom: 0 !important; }  /* the question cards set an inline bottom margin */
+.ap-tabpanel:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.3); outline-offset: 4px; }
+
+/* ---------- Documents tab (documentRequests/applicantRequestCard.jsx): a request per card, documents as .ap-doc ---------- */
+.dq-list { display: grid; gap: 1rem; min-width: 0; }
+.ap .dq-card { overflow: hidden; }
+.dq-head {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem 1rem;
+  padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--lf-hair);
+}
+.dq-head-icon { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 14px; }
+.dq-card.open .dq-head-icon { background: var(--lf-warn-bg); color: var(--lf-warn); box-shadow: inset 0 0 0 1px var(--lf-warn-line); }
+.dq-card.sent .dq-head-icon { background: var(--lf-ok-bg); color: var(--lf-ok); box-shadow: inset 0 0 0 1px var(--lf-ok-line); }
+.ap .dq-head h2 { margin: 0; color: var(--navy); font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+.dq-head p { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+.dq-head p b { color: var(--lf-text-2); font-weight: 600; }
+.dq-body { display: grid; gap: 1rem; padding: 1.25rem 1.4rem 1.4rem; }
+
+/* the Account Officer's message: a quote with who it is from */
+.ap .dq-msg { margin: 0; padding: 0.85rem 1.1rem; border-radius: 14px; background: var(--lf-accent-bg); box-shadow: inset 4px 0 0 var(--lf-accent); }
+.dq-msg figcaption { color: var(--lf-accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.dq-msg blockquote { margin: 0.3rem 0 0; padding: 0; border: 0; }
+.dq-msg blockquote p { margin: 0; color: var(--ink); font-size: 1rem; line-height: 1.55; white-space: pre-line; }
+
+.dq-progress { display: grid; gap: 0.5rem; }
+.dq-meter { height: 0.5rem; overflow: hidden; border-radius: 999px; background: var(--lf-track); }
+.dq-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--lf-bar-grad); }
+.dq-rules { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+
+/* drop area: the whole box is the file picker's label; drag-and-drop is extra, never the only way */
+:is(.ap, .lf-formcard) .dq-drop {
+  position: relative; display: flex; align-items: center; gap: 0.75rem; min-height: 3.5rem; margin: 0 0 0 2.5rem; padding: 0.75rem 1rem;
+  border: 1.5px dashed var(--lf-hollow); border-radius: 14px; background: var(--lf-block-bg); color: var(--lf-text-2); cursor: pointer;
+}
+.dq-drop:hover, .dq-drop.over { border-color: var(--lf-accent); background: var(--lf-accent-bg); }
+.dq-drop:has(.dq-input:focus-visible) { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+.dq-drop:has(.dq-input:disabled) { cursor: not-allowed; opacity: 0.6; }
+.dq-drop.busy { opacity: 1; border-style: solid; border-color: var(--lf-accent); }
+.dq-input { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); opacity: 0; }
+.dq-drop-icon { flex: none; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--lf-accent-bg); color: var(--lf-accent); }
+.dq-drop-text { min-width: 0; font-size: 0.95rem; line-height: 1.4; }
+.dq-drop-text b { color: var(--lf-accent); font-weight: 700; }
+.dq-drop.busy .dq-drop-icon svg { animation: dq-bob 1s ease-in-out infinite; }
+@keyframes dq-bob { 50% { transform: translateY(-3px); } }
+
+.dq-error { padding: 0.7rem 0.9rem; border-radius: 12px; background: #fdecea; font-size: 0.92rem; }
+.dq-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1.25rem;
+  padding-top: 1rem; border-top: 1px solid var(--lf-hair);
+}
+.dq-foot-note { flex: 1 1 18rem; margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+.dq-foot-note.warn { color: var(--lf-warn); font-weight: 600; }
+.ap .dq-send { flex: none; }
 
 /* ---------- wizard: sticky sidebar | the step ---------- */
 .ct-main > .ap-wizard { grid-template-columns: 19.5rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
@@ -513,6 +592,13 @@
   :is(.ap, .lf-formcard) .ap-filebtn, .ap .ap-certify { transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
 }
 
+@media (prefers-reduced-motion: reduce) { .dq-drop.busy .dq-drop-icon svg { animation: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .ap .ap-tabs button, .dq-drop { transition: background-color 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s; }
+  .dq-meter > span { transition: width 0.5s var(--lf-ease); }
+  .ap-tabpanel { animation: ap-fade 0.25s var(--lf-ease) both; }
+}
+
 /* ---------- smaller screens ---------- */
 @media (max-width: 1100px) {
   /* the sidebar moves above the step: who | progress | loan summary across, the steps in a grid below */
@@ -554,6 +640,13 @@
   .ap .ct-actions button[type='submit'] { flex: 1; min-width: 0; padding-inline: 1.1rem; white-space: normal; text-align: center; line-height: 1.25; }
   .ap-viewhead { grid-template-columns: auto minmax(0, 1fr); }
   .ap-viewhead > .ct-badge { grid-column: 2; justify-self: start; margin: 0; }
+  .ap .ap-tabs { justify-self: stretch; }
+  .ap .ap-tabs button { flex: 1 1 0; justify-content: center; padding-inline: 0.75rem; }
+  .dq-head { grid-template-columns: auto minmax(0, 1fr); padding: 1rem 1.1rem; }
+  .dq-head > .ap-chip { grid-column: 2; justify-self: start; }
+  .dq-body { padding: 1.1rem 1.1rem 1.2rem; }
+  :is(.ap, .lf-formcard) .dq-drop { margin-left: 0; }
+  .ap .dq-send { width: 100%; }
   :is(.ap, .lf-formcard) .ap-doc-head { grid-template-columns: 1.75rem minmax(0, 1fr); }
   :is(.ap, .lf-formcard) .ap-doc-head .ap-chip { grid-column: 2; justify-self: start; }
   :is(.ap, .lf-formcard) :is(.ap-files, .ap-upload) { padding-left: 0; }

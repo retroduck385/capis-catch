@@ -4,14 +4,13 @@
 // applicant goes. The profile is reached from the top bar's menu.
 // Styled by applicationForm/applicantPages.css (.ap), the same glass look as the staff pages; the columns fill the panel.
 import { useEffect, useState } from 'react';
-import { ArrowRight, Bell, Check, FilePen, FileText, FileUp, House, IdCard, Send, UserRound, Wallet } from 'lucide-react';
+import { ArrowRight, Bell, Check, FilePen, FileText, FileUp, House, IdCard, MessageCircleQuestion, Send, UserRound, Wallet } from 'lucide-react';
 import { UserAuth } from '../context/authContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchProfile, listMyVisibleApplications } from './applicationForm/api';
 import { formatPeso } from './applicationForm/options';
 import { isProfileComplete } from './applicationForm/validators';
 import ApplicantStatusLabel from './notifications/applicantStatusLabel';
-import ApplicantRequestCard from './documentRequests/applicantRequestCard';
 import { fetchMyClarifications } from './kycClarify/api';
 import './kycClarify/kycClarify.css';
 import { Ghost, RegisterSkeleton } from '../components/skeleton';
@@ -123,8 +122,6 @@ const ApplicantHomePage = () => {
                         <House className="ap-hero-art" size={190} strokeWidth={1.1} aria-hidden="true" />
                     </section>
 
-                    <ApplicantRequestCard />
-
                     <div className="ap-stats">
                         {stats.map(([label, value, Icon]) => (
                             <StatTile key={label} label={label} value={value} Icon={Icon} loaded={loaded} />
@@ -159,9 +156,13 @@ const ApplicantHomePage = () => {
                                                     <span className="ap-nowrap">{formatDay(draft ? a.created_at : a.submitted_at)}</span>
                                                 </small>
                                             </span>
-                                            <span>
+                                            <span className="ap-status">
                                                 <span className={`ct-badge ${draft ? 'warm' : 'plain'}`}><ApplicantStatusLabel application={a} /></span>
-                                                {asked.has(a.id) && <span className="kq-badge">Clarification requested</span>}
+                                                {asked.has(a.id) && (
+                                                    <span className="ct-badge warm">
+                                                        <MessageCircleQuestion size={14} aria-hidden="true" />Clarification requested
+                                                    </span>
+                                                )}
                                             </span>
                                             <span className="amt">{a.loan_amount ? formatPeso(a.loan_amount) : ''}</span>
                                             <Link className={`ap-rowlink${draft ? ' primary' : ''}`} to={`/applicationFormPage?id=${a.id}`}>

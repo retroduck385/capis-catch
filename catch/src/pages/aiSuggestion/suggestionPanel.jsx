@@ -167,7 +167,7 @@ const SuggestionPanel = ({ applicationId, canEdit, dirty, justification, onUseDr
     return (
         <Section id="fp-ai" title="AI suggestion for the credit result" className="mrac ai-panel">
             <p className="fp-note">
-                <Terms text="The AI gets the saved figures (borrowers by role, no names, addresses or contact details; the Condition score as a sub-total only), the CI results, V. Exceptions as typed (don't put names there), and the policy recommender's findings with your reviews: edited ones as you wrote them, dismissed ones left out, ones you haven't reviewed marked as unconfirmed. It suggests; it never sets the credit result." />
+                <Terms text="Uses the saved figures, CI results, V. Exceptions and your reviewed policy findings. No names or contact details are sent, so keep them out of V. Exceptions. You still set the credit result." />
             </p>
 
             {canEdit && (

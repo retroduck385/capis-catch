@@ -2,17 +2,19 @@
 // who marked what (document_file_marks in 20261116_findings_and_file_marks.sql). Only the assigned Account Officer
 // and the assigned Credit Officer can mark; everyone who can open the file reads. Applicants never see any of it.
 // "Needs a new copy" opens a modal (newCopyDialog.jsx): say what is wrong, and the assigned AO can send the
-// applicant a request for that file's category right there. A file marked earlier still offers ask.jsx.
+// applicant a request for that file's category right there (the only way to ask from here: no separate
+// "Ask the applicant for a new copy" button).
 // Look (DESIGN.md, "Document check"): a compact disclosure. The summary row always shows the latest mark as a chip
-// with who / when; the rest (comment, Ask the applicant, marking, history) opens on demand. It starts open only when
+// with who / when; the rest (comment, marking, history) opens on demand. It starts open only when
 // the file still needs something from the viewer (not marked yet and they can mark, or a new copy is needed).
+// "See requests and replies" opens a read-only popup (fileHistoryDialog.jsx) of every request for this file's part.
 // Used on the Document check and in the loan folder's "Ask the applicant for documents" box. Styles: fileMark.css.
 import { useId, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, History } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, History, MessagesSquare } from 'lucide-react';
 import { ROLE_LABELS } from '../../roles';
 import { markFile } from './api';
-import AskApplicantButton from './ask';
 import NewCopyDialog from './newCopyDialog';
+import FileHistoryDialog from './fileHistoryDialog';
 import Byline from '../../components/byline';
 import './fileMark.css';
 
@@ -33,15 +35,15 @@ const MarkedBy = ({ row, names }) => (
 
 // marks: useFileMarks() of the application (useFileMarks.js)
 // file: { documentId, applicantId, requirementType (null = not a checklist document), label }
-// unreadable: the file could not be read (OCR failed), so "Ask the applicant" is offered even before a mark
-// confirmLeave: optional, returns false to stay on the page (Document check: unsaved edits of the AI's values)
+// unreadable: the file could not be read (OCR failed), so the box starts open even before a mark
 // autoOpen = false: start closed even when the file needs something (an earlier, closed request)
-const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave, className = '', autoOpen = true }) => {
+const FileMark = ({ applicationId, file, marks, unreadable = false, className = '', autoOpen = true }) => {
     const id = useId();
     const [comment, setComment] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
     const [asking, setAsking] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
     const rows = marks.byDoc[file.documentId] ?? [];
     const latest = rows.at(-1) ?? null;
     const askAgain = latest?.mark === 'NEEDS_NEW_COPY' || (unreadable && latest?.mark !== 'CLEARED');
@@ -80,15 +82,11 @@ const FileMark = ({ applicationId, file, marks, unreadable = false, confirmLeave
                 <div id={bodyId} className="fm-body">
                     {latest?.comment && <p className="fm-comment">{latest.comment}</p>}
 
-                    {askAgain && (
-                        <AskApplicantButton applicationId={applicationId} confirmLeave={confirmLeave} plain className="lf-ask-btn"
-                            ask={{
-                                items: [{ applicant_id: file.applicantId, requirement_type: file.requirementType, label: file.label }],
-                                note: latest?.mark === 'NEEDS_NEW_COPY' ? latest.comment : '',
-                                from: `the file marked "Needs a new copy" (${file.label})`,
-                            }}>
-                            Ask the applicant for a new copy
-                        </AskApplicantButton>
+                    <button type="button" className="fm-link" aria-haspopup="dialog" onClick={() => setShowHistory(true)}>
+                        <MessagesSquare size={15} aria-hidden="true" />See requests and replies for this document
+                    </button>
+                    {showHistory && (
+                        <FileHistoryDialog applicationId={applicationId} file={file} onClose={() => setShowHistory(false)} />
                     )}
 
                     {marks.canMark && (

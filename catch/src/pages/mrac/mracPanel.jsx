@@ -16,7 +16,8 @@ import { Term } from '../../components/term';
 // Kept for older imports; the components now live in mracResult.jsx
 export { Citation, Citations } from './mracResult';
 
-const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddException, onAddTerm }) => {
+// onRequest / onRun / stale: the page's "changed since the last check" mark (useMracStale.js)
+const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddException, onAddTerm, onRequest, onRun, stale = false }) => {
     const [run, setRun] = useState(null);
     const [busy, setBusy] = useState(false);
     const [progress, setProgress] = useState(null);
@@ -27,10 +28,14 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
     useEffect(() => {
         let cancelled = false;
         fetchLatestMracCheck(app.id)
-            .then((latest) => { if (!cancelled) setRun(latest); })
+            .then((latest) => {
+                if (cancelled) return;
+                setRun(latest);
+                onRun?.(latest);
+            })
             .catch(() => {}); // a missing history shouldn't block the page
         return () => { cancelled = true; };
-    }, [app.id]);
+    }, [app.id]); // eslint-disable-line react-hooks/exhaustive-deps -- onRun: only for the first load
 
     // The CO's decisions on the findings of the shown run, and who made them (same pattern as useFileMarks)
     const [reviewVersion, setReviewVersion] = useState(0);
@@ -59,9 +64,12 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
             const inputs = await fetchProfileInputs(app);
             const facts = buildMracFacts({ app, computed, score, pricing, exceptions, ci: inputs.ci });
             const profile = buildPolicyProfile({ app, computed, score, exceptions, facts, ...inputs });
+            onRequest?.();
             const id = await requestMracCheck(app.id, facts, profile);
             setProgress('Waiting for the policy worker');
-            setRun(await waitForMracRun(id, { onProgress: (r) => r.progress && setProgress(r.progress) }));
+            const done = await waitForMracRun(id, { onProgress: (r) => r.progress && setProgress(r.progress) });
+            setRun(done);
+            onRun?.(done);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -88,6 +96,12 @@ const MracPanel = ({ app, computed, score, pricing, exceptions, canEdit, onAddEx
                 {canEdit && !busy && <small>Uses the figures on screen, including unsaved changes. Takes a minute or two.</small>}
                 {busy && progress && <small role="status">{progress}…</small>}
             </div>
+            {stale && result && !busy && (
+                <p className="mrac-stale" role="note">
+                    <span className="mrac-stale-mark" aria-hidden="true">!</span>
+                    The Financial Package or credit score changed after this check. Check again to update it.
+                </p>
+            )}
             {error && <p className="mrac-err" role="alert">{error}</p>}
             {run?.status === 'FAILED' && !error && <p className="mrac-err">The last check failed: {run.error}</p>}
             {!run && !busy && <p className="fp-empty">No check has been run for this application yet.</p>}

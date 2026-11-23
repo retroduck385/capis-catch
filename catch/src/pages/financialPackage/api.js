@@ -76,3 +76,25 @@ export const fetchAssignedAo = (applicationId) => fetchAssignee(applicationId, '
 // payload shape: see save_financial_package() in the migration
 export const saveFinancialPackage = async (applicationId, payload) =>
     check(await supabase.rpc('save_financial_package', { p_application_id: applicationId, p_fp: payload }));
+
+// Adds one exception and/or one term to the SAVED Financial Package from outside the FP page (the credit score's policy
+// check). Reads the latest save and sends it back with the change, so nothing else moves: unchanged rows don't touch the
+// audit trail, and "pricing" is left out so the rate stays as saved. Calls run one after another (see the caller).
+// Needs a saved FP. -> the FP as fetchFinancialPackage() returns it, after the change
+export const addToFinancialPackage = async (record, { exception = null, term = null }) => {
+    const ids = getParties(record, BORROWER_ROLES).map((p) => p.id);
+    const saved = await fetchFinancialPackage(record.id, ids);
+    if (!saved.pkg) throw new Error('Save the Financial Package first, then add to it from here.');
+    const pkg = { ...saved.pkg };
+    if (term) pkg.terms_and_conditions = [pkg.terms_and_conditions?.trimEnd(), `- ${term}`].filter(Boolean).join('\n');
+    await saveFinancialPackage(record.id, {
+        package: pkg,
+        parties: saved.parties,
+        exceptions: exception ? [...saved.exceptions, exception] : saved.exceptions,
+        deposit_checks: saved.depositChecks,
+        loan_checks: saved.loanChecks,
+        trade_checks: saved.tradeChecks,
+        titles: saved.titles,
+    });
+    return fetchFinancialPackage(record.id, ids);
+};

@@ -7,7 +7,7 @@
 --     document, the CO's Credit Result Deferred, a reviewer return), the assigned AO sends the applicant a request:
 --     a short message (1-300 characters, no links) plus the specific documents needed, per borrower.
 --     open_document_request(app, message, items). Only while the file is in Intake, Credit Investigation, Credit
---     Evaluation or Review; never in Approval or Decided (approvers only approve or disapprove). One request at a time.
+--     Evaluation or Review; never in Approval or Decided (approvers only approve or disapprove). One request at a time (several since 20261205).
 --   * The message is an applicant notice (outcome DOCUMENTS_NEEDED, request_id set): append-only like every
 --     notice, same link check, and its SMS / email go through applicant_notice_deliveries (the notice-service worker
 --     needs no change). In-app at once: APPLICANT_DOCUMENTS_NEEDED. SMS / email say what is needed and which
@@ -76,8 +76,8 @@ create table if not exists public.document_requests (
          and (closed_at is null) = (closed_by is null)),
   check ((sent_at is not null) = (status = 'SENT' or coalesce(closed_as, '') = 'RECEIVED'))
 );
-create unique index if not exists one_open_document_request
-  on public.document_requests (application_id) where status <> 'CLOSED';
+-- One request at a time was dropped in 20261205_several_document_requests.sql (its one_open_document_request index
+-- is no longer created here, so a re-run doesn't fail on a file with several requests in progress).
 create index if not exists document_requests_application on public.document_requests (application_id, id);
 
 -- The documents asked for: one borrower each; a checklist type, or "Other" with a label

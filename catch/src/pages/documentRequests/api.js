@@ -35,7 +35,7 @@ export const fileUrl = async (path) =>
 export const fetchCanOpen = async (applicationId) =>
     check(await supabase.rpc('document_request_can_open', { p_application_id: applicationId })) ?? false;
 
-// The request the applicant still owes or has just sent, if any (staff read; null = none in progress)
+// A request the applicant still owes or has just sent, if any (staff read; null = none in progress)
 export const fetchOpenRequest = async (applicationId) =>
     (check(await supabase.from('document_requests').select('id, status, opened_at, sent_at')
         .eq('application_id', applicationId).neq('status', 'CLOSED')) ?? [])[0] ?? null;
@@ -88,7 +88,7 @@ export const fileProblem = (file) => {
     return null;
 };
 
-// My requests that are not closed yet (one per application at most)
+// My requests that are not closed yet (several per application can be open)
 export const fetchMyRequests = async () => check(await supabase.rpc('my_document_requests'));
 
 // Uploads into {user_id}/{application_id}/requests/{request_id}/ and adds it to the item.

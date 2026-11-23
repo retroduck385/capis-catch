@@ -24,6 +24,15 @@ export const answerClarification = async (threadId, body) =>
 export const withdrawClarification = async (threadId) =>
     check(await supabase.rpc('withdraw_kyc_clarification', { p_clarification_id: threadId }));
 
+// Close a question because the answer settled it: records the section as Verified (the AO's usual direct insert into
+// kyc_checks); the close_kyc_clarification_on_verified trigger closes the open thread and tells the applicant.
+// No SQL change: a closed thread is either verified (this) or withdrawn (above).
+export const closeClarification = async (thread) =>
+    check(await supabase.from('kyc_checks').insert({
+        application_id: thread.application_id, section: thread.section, result: 'VERIFIED',
+        remarks: 'Question closed after the applicant\'s reply.',
+    }));
+
 // Every thread of the file, open and closed (closed ones are read-only history), oldest first
 export const fetchThreads = async (applicationId) =>
     check(await supabase.rpc('kyc_clarification_threads', { p_application_id: applicationId })) ?? [];
@@ -31,6 +40,10 @@ export const fetchThreads = async (applicationId) =>
 // ---------- Applicant ----------
 // My open threads (a closed one is no longer listed)
 export const fetchMyClarifications = async () => check(await supabase.rpc('my_kyc_clarifications')) ?? [];
+
+// The applicant's closed questions on one application, newest first (20261206_applicant_clarification_history.sql)
+export const fetchMyClarificationHistory = async (applicationId) =>
+    check(await supabase.rpc('my_kyc_clarification_history', { p_application_id: applicationId })) ?? [];
 
 // A reply: the file (optional) goes to {user_id}/{application_id}/clarifications/{thread_id}/ first; if the reply is
 // refused, the file is removed again so nothing is left over

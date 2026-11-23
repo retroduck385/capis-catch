@@ -1,6 +1,6 @@
 // "Needs a new copy" (newCopyDialog.jsx): save the mark, then (send = true) send the applicant the request.
 // The two steps are separate database calls, so the mark can be saved while the request fails (for example a
-// request is already waiting for the applicant). Then:
+// document is already on a request still open). Then:
 //   - the page's File status is refreshed at once (onMarked), so the mark shows as saved;
 //   - the message says the mark was saved and only the request was not sent;
 //   - trying again only sends the request: the mark is not saved a second time (alreadyMarked).

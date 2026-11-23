@@ -37,7 +37,6 @@
   border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08)); color: var(--ink, #0f1b33); font-size: 0.9rem;
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
-.fm-body > .lf-ask-btn { justify-self: start; }
 .fm-form { display: grid; gap: 0.5rem; }
 .fm-label { margin: 0; color: var(--ink, #0f1b33); font-size: 0.88rem; font-weight: 600; }
 .fm-label small { color: var(--muted, #475569); font-size: 0.8rem; font-weight: 500; }
@@ -102,7 +101,7 @@
 .fm-pick-txt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; min-width: 0; font-size: 0.9rem; }
 .fm-party { color: var(--muted, #475569); font-size: 0.82rem; }
 .fm-channels { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; margin: 0; color: var(--muted, #475569); font-size: 0.8rem; }
-.fm-channels::before { content: 'Goes to the applicant by'; }
+.fm-channels::before { content: 'Sent by'; }
 .fm-channels span { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 600; }
 .fm-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; padding-top: 0.25rem; }
 .ct .fm-dbtn {
@@ -131,3 +130,97 @@
 [data-theme='dark'] .lf-folder .lf-paper .fm-err { color: #b42318; }
 [data-theme='dark'] .lf-folder .fm-history > summary:focus-visible,
 [data-theme='dark'] .lf-folder .fm-head:focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
+
+/* "See requests and replies" link and its popup (fileHistoryDialog.jsx, in the shared InfoModal). Each request is an
+   inset card with a 4px left stripe (request box tones: blue waiting, orange documents back, green received, slate
+   withdrawn) holding the .lf-tl timeline: Sent → reminders → the applicant's files → Closed or a dashed Waiting step. */
+.ct .fm-link {
+  display: inline-flex; align-items: center; gap: 0.4rem; justify-self: start; min-height: 2.25rem; margin: 0; padding: 0.2rem 0;
+  border: 0; background: transparent; box-shadow: none; color: var(--lf-accent, #1e3f97); font: inherit; font-size: 0.86rem;
+  font-weight: 700; text-decoration: underline; text-decoration-color: rgba(30, 63, 151, 0.35); text-underline-offset: 3px; cursor: pointer;
+}
+.ct .fm-link:hover { background: transparent; color: var(--lf-accent, #1e3f97); text-decoration-color: currentColor; }
+.ct .fm-link:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; border-radius: 4px; }
+.fm-chip.info { background: var(--lf-accent-bg, #e8edf9); border-color: rgba(30, 63, 151, 0.22); color: var(--lf-accent, #1e3f97); }
+.fm-chip.err { background: #fdecec; border-color: #f5c2c2; color: #b42318; }
+
+.info-modal.fm-hist-modal {
+  width: min(44rem, calc(100vw - 2rem));
+  --tone: var(--lf-accent, #1e3f97); --tone-bg: var(--lf-accent-bg, #e8edf9); --tone-line: rgba(30, 63, 151, 0.22);
+}
+.fm-hist-modal .info-modal-body { padding-bottom: 1.1rem; }
+.fm-hist-empty {
+  margin: 0; padding: 1rem; border: 1.5px dashed var(--lf-none-line, #d5dbe6); border-radius: 16px;
+  color: var(--muted, #475569); font-size: 0.9rem; text-align: center;
+}
+.fm-hist-cards { display: grid; gap: 0.85rem; margin: 0; padding: 0; list-style: none; }
+.fm-hist-card {
+  --stripe: var(--lf-accent, #1e3f97);
+  margin: 0; padding: 0.9rem 1rem 1rem 1.15rem; border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.09)); border-radius: 16px;
+  background: var(--lf-sub-bg, rgba(20, 41, 95, 0.025)); box-shadow: inset 4px 0 0 var(--stripe);
+}
+.fm-hist-card.back { --stripe: var(--lf-orange, #c2410c); }
+.fm-hist-card.ok { --stripe: var(--lf-ok, #15714a); }
+.fm-hist-card.none { --stripe: var(--lf-none-line, #c3cbd8); }
+.fm-hist-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; margin-bottom: 0.85rem; }
+.fm-hist-card-head h3 { margin: 0; color: var(--navy, #14295f); font-size: 0.98rem; font-weight: 700; }
+
+/* timeline steps: the .lf-tl look, centred heads (bylines have an avatar), and tones per step */
+.fm-tl .lf-tl-head { align-items: center; }
+.fm-tl .lf-tl-dot { top: 0.3rem; }
+.fm-tl.rem { --tl: #475569; --tl-bg: #eef1f6; }
+.fm-tl.in { --tl: #c2410c; --tl-bg: #fff1e2; }
+.fm-tl.ok { --tl: #15714a; --tl-bg: #e6f5ed; }
+.fm-tl.del { --tl: #475569; --tl-bg: #eef1f6; }
+.fm-tl.wait { --tl: #94a3b8; --tl-bg: transparent; }
+.fm-tl.wait .lf-tl-dot { border-style: dashed; border-width: 2px; }
+.fm-tl.wait .lf-tl-act { padding-left: 0; color: var(--muted, #475569); }
+.fm-tl-body { display: grid; gap: 0.55rem; margin-top: 0.5rem; min-width: 0; }
+.fm-hist-verb { color: var(--muted, #475569); font-size: 0.86rem; }
+.fm-hist-when { color: var(--muted, #475569); font-size: 0.84rem; white-space: nowrap; }
+
+.fm-hist-quote {
+  margin: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08));
+  background: var(--lf-control-hover, #fff); color: var(--ink, #0f1b33); font-size: 0.92rem; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.fm-hist-quote .k, .fm-hist-asked .k {
+  color: var(--muted, #475569); font-size: 0.76rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.fm-hist-quote.note .k { display: block; margin-bottom: 0.15rem; }
+.fm-hist-asked { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin: 0; font-size: 0.9rem; }
+.fm-hist-asked b { color: var(--ink, #0f1b33); }
+
+/* delivery: one quiet row per channel, the status as a short chip (no long pills that wrap) */
+.fm-hist-deliv { display: grid; gap: 0.3rem; margin: 0; padding: 0; list-style: none; font-size: 0.86rem; }
+.fm-hist-deliv li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; margin: 0; color: var(--muted, #475569); }
+.fm-hist-deliv li > svg { flex: none; }
+.fm-hist-deliv .to { color: var(--ink, #0f1b33); font-weight: 600; }
+.fm-hist-deliv .addr { color: var(--muted, #475569); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.fm-hist-files { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.fm-hist-files li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem; margin: 0; min-width: 0; }
+.ct .fm-hist-file {
+  display: inline-flex; align-items: center; gap: 0.4rem; max-width: 100%; min-height: 2.25rem; margin: 0; padding: 0.25rem 0.75rem;
+  border: 1px solid var(--lf-block-line, #c9d3ea); border-radius: 999px; background: var(--lf-control-hover, #fff); box-shadow: none;
+  color: var(--lf-accent, #1e3f97); font: inherit; font-size: 0.86rem; font-weight: 600; text-align: left; cursor: pointer;
+}
+.ct .fm-hist-file svg { flex: none; }
+.ct .fm-hist-file .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct .fm-hist-file:hover { border-color: var(--lf-accent, #1e3f97); background: var(--lf-accent-bg, #e8edf9); color: var(--lf-accent, #1e3f97); }
+.ct .fm-hist-file:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.fm-hist-next { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0; color: var(--muted, #475569); font-size: 0.84rem; }
+.fm-hist-next svg { flex: none; }
+
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-hist-quote,
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-hist-file { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.12); }
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-hist-card { background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.1); }
+[data-theme='dark'] .lf-folder .fm-hist-modal .lf-tl-dot { background: #131c38; }
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-hist-file { color: #a9c0ff; }
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-tl:is(.rem, .del) { --tl: #a3b0cc; --tl-bg: rgba(255, 255, 255, 0.07); }
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-tl.in { --tl: #fdba74; --tl-bg: rgba(251, 146, 60, 0.16); }
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-tl.ok { --tl: #86efac; --tl-bg: rgba(74, 222, 128, 0.14); }
+[data-theme='dark'] .lf-folder .fm-hist-modal .fm-tl.wait { --tl: #8f9cba; --tl-bg: transparent; }
+/* on a light paper panel the tokens stay light, so the popup does too (like .fm-dialog) */
+[data-theme='dark'] .lf-folder .lf-paper .info-modal.fm-hist-modal { background: #fff; border-color: rgba(20, 41, 95, 0.08); }
+[data-theme='dark'] .lf-folder .lf-paper .fm-hist-modal :is(.fm-hist-quote, .fm-hist-file, .fm-hist-card) { background: #fff; border-color: rgba(20, 41, 95, 0.09); }

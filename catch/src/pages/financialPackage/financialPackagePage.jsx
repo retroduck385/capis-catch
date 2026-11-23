@@ -38,8 +38,10 @@ import {
     fetchAssignedAo, fetchBankStatements, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveFinancialPackage,
 } from './api';
 import { depositRows } from './depositChecks';
+import { kycLoanRows } from './loanChecks';
 import MessagesPanel from '../messages/messagesPanel';
 import MracPanel from '../mrac/mracPanel';
+import { useMracStale } from '../mrac/useMracStale';
 import { useActiveSection } from '../review/useActiveSection';
 import { computeFp, percent } from './compute';
 import '../loanFolder/loanFolder.css';
@@ -183,6 +185,7 @@ const FinancialPackagePage = () => {
     const [canEdit, setCanEdit] = useState(false);
     const [aoName, setAoName] = useState(null);
     const [audit, setAudit] = useState([]);
+    const [fullLog, setFullLog] = useState([]); // the whole audit log (the policy check's "changed since" mark)
     const [names, setNames] = useState({});
     const [dirty, setDirty] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -212,9 +215,11 @@ const FinancialPackagePage = () => {
         setSavedScore(Object.fromEntries(savedFp.creditScore.map((r) => [r.criterion, r])));
         setRouting({ tier: savedFp.pkg?.approval_tier ?? null, rows: reviewRows, names: staff });
         setAudit(fpLog);
+        setFullLog(log);
         setNames(staff);
         setAoName(aoId ? staff[aoId] ?? 'Account Officer' : null);
         setDirty(false);
+        return log;
     }, []);
 
     useEffect(() => {
@@ -242,6 +247,8 @@ const FinancialPackagePage = () => {
         [app, form]);
     // Saved credit score (scored on its own page)
     const score = useMemo(() => (rules ? totalCreditScore(rules, savedScore) : null), [rules, savedScore]);
+    // The orange "!" on the Policy check button: FP / score data changed after the last check
+    const mrac = useMracStale({ appId: applicationId, log: fullLog, dirty, current: form });
     // The navigator's highlight; a click keeps its section lit even when the page can't scroll it to the top
     const pageIds = PAGE_IDS[page];
     const [activeRaw, pickSection] = useActiveSection(pageIds, Boolean(app && form && rules));
@@ -331,6 +338,11 @@ const FinancialPackagePage = () => {
     const onList = (key) => (rows) => change({ ...form, [key]: rows });
     const onTitle = (kind, field, value) =>
         change({ ...form, titles: { ...form.titles, [kind]: { ...form.titles[kind], [field]: value } } });
+    // A suggestion added from the policy check: the check already saw everything else, so it stays up to date
+    const addFromCheck = (next) => {
+        mrac.accepted(next);
+        change(next);
+    };
     const resetTerms = () => onPkg('terms_and_conditions', templateFor(app, form.pricing));
     // The score and VII. Approval pages read the saved FP (income basis, rate, appraised value, credit result),
     // so unsaved edits would be lost
@@ -345,6 +357,7 @@ const FinancialPackagePage = () => {
             return;
         }
         setSaving(true);
+        const wasFresh = !mrac.stale;
         try {
             setError(null);
             // boxes the chosen credit result hides are emptied (creditResultFields.js; the page said so first)
@@ -352,7 +365,7 @@ const FinancialPackagePage = () => {
             // Interest rate / fixing period live on loan_applications, so refetch it or the form reverts to the old values
             const record = await fetchApplication(app.id);
             setApp(record);
-            await loadFp(record);
+            mrac.covered(wasFresh, await loadFp(record));
             setSaved(true);
         } catch (err) {
             setError(err.message);
@@ -368,6 +381,13 @@ const FinancialPackagePage = () => {
     const copyFromTu = () => {
         change({ ...form, loan_checks: [...form.loan_checks, ...tuRows.map((r) => ({ _key: crypto.randomUUID(), ...r }))] });
         setCopyNote(`${tuRows.length} row${tuRows.length === 1 ? '' : 's'} added from TU. Not saved yet.`);
+    };
+    // XI. "Fill from KYC": the declared existing loans not in XI. yet
+    const newKycLoanRows = kycLoanRows(kycLoans, form?.loan_checks ?? []);
+    const fillKycLoans = () => {
+        change({ ...form, loan_checks: [...form.loan_checks, ...newKycLoanRows.map((r) => ({ _key: crypto.randomUUID(), ...r }))] });
+        setCopyNote(`${newKycLoanRows.length} loan${newKycLoanRows.length === 1 ? '' : 's'} added from the KYC. `
+            + 'Fill in the balance and dates from Loandex, then Save.');
     };
     // X. "Fill from KYC and bank statements": the accounts not in X. yet (bank statements only once the AO confirmed them)
     const confirmedStatements = (statements ?? []).filter((s) => s.confirmed);
@@ -560,8 +580,10 @@ const FinancialPackagePage = () => {
             <div ref={bodyRef} className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
                 {sidePanel.hidden ? (
                 <PanelRail panel={sidePanel} label="sections">
-                    <button type="button" className="sp-rail-btn" aria-haspopup="dialog" onClick={openMrac} title="Policy check (MRAC)">
-                        <ShieldCheck size={18} aria-hidden="true" /><span className="sr-only">Policy check (MRAC)</span>
+                    <button type="button" className="sp-rail-btn" aria-haspopup="dialog" onClick={openMrac} title={mrac.stale ? 'Policy check (MRAC): changed since the last check' : 'Policy check (MRAC)'}>
+                        <ShieldCheck size={18} aria-hidden="true" />
+                        <span className="sr-only">Policy check (MRAC){mrac.stale && ', changed since the last check'}</span>
+                        {mrac.stale && <span className="fp-stale" title="Changed since the last check" aria-hidden="true">!</span>}
                     </button>
                 </PanelRail>
                 ) : (
@@ -592,6 +614,8 @@ const FinancialPackagePage = () => {
                             <button type="button" className="fp-navkey-btn" aria-haspopup="dialog" onClick={openMrac}>
                                 <ShieldCheck size={16} aria-hidden="true" />
                                 <span>Policy check (MRAC)</span>
+                                {mrac.stale && <span className="sr-only">, changed since the last check</span>}
+                                {mrac.stale && <span className="fp-stale" title="Changed since the last check" aria-hidden="true">!</span>}
                             </button>
                         </div>
                     </nav>
@@ -617,9 +641,11 @@ const FinancialPackagePage = () => {
                     <div className="fp-dialogbody">
                         <MracPanel app={app} computed={computed} score={score} pricing={form.pricing}
                             exceptions={form.exceptions} canEdit={canEdit}
-                            onAddException={(row) => onList('exceptions')([...form.exceptions, { _key: crypto.randomUUID(), ...row }])}
-                            onAddTerm={(text) => onPkg('terms_and_conditions',
-                                [form.pkg.terms_and_conditions?.trimEnd(), `- ${text}`].filter(Boolean).join('\n'))} />
+                            onRequest={mrac.onRequest} onRun={mrac.onRun} stale={mrac.stale}
+                            onAddException={(row) => addFromCheck({
+                                ...form, exceptions: [...form.exceptions, { _key: crypto.randomUUID(), ...row }] })}
+                            onAddTerm={(text) => addFromCheck({ ...form, pkg: { ...form.pkg, terms_and_conditions:
+                                [form.pkg.terms_and_conditions?.trimEnd(), `- ${text}`].filter(Boolean).join('\n') } })} />
                     </div>
                 </dialog>
 
@@ -700,6 +726,18 @@ const FinancialPackagePage = () => {
                                 {kycLoans.length === 0 ? 'none.' : kycLoans.map((l) =>
                                     `${partyLabel(l.party)}: ${l.loan_type} with ${l.lending_institution}, ₱${formatMoney(l.monthly_payment)} / month`).join('; ')}
                             </p>
+                            {!disabled && (
+                                <div className="fp-copytu">
+                                    <button type="button" className="fp-add" disabled={newKycLoanRows.length === 0} onClick={fillKycLoans}>
+                                        Fill from KYC ({newKycLoanRows.length === 0 ? 'nothing new'
+                                            : `${newKycLoanRows.length} loan${newKycLoanRows.length === 1 ? '' : 's'}`})
+                                    </button>
+                                    <span className="fp-note">
+                                        Adds each existing loan the borrowers declared in the <Term k="KYC" />: lender, loan type and
+                                        monthly payment. Fill in the balance and dates from Loandex, then Save.
+                                    </span>
+                                </div>
+                            )}
                             {!disabled && tuRows !== null && (
                                 <div className="fp-copytu">
                                     <button type="button" className="fp-add" disabled={tuRows.length === 0} onClick={copyFromTu}>
@@ -709,9 +747,9 @@ const FinancialPackagePage = () => {
                                         Adds the borrowers' loans from the Credit Investigator's TU accounts, open and closed (not credit cards).
                                         Closed ones say so in the remarks. Check them, then Save.
                                     </span>
-                                    {copyNote && <span role="status" className="fp-note">{copyNote}</span>}
                                 </div>
                             )}
+                            {!disabled && copyNote && <span role="status" className="fp-note">{copyNote}</span>}
                         </RowsSection>
                         <RowsSection id="fp-xii" title="XII. Trade Checking (if applicable)" config={TRADE_CHECK_FIELDS} rows={form.trade_checks}
                             onChange={onList('trade_checks')} disabled={disabled} />

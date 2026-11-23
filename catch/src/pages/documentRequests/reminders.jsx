@@ -16,7 +16,8 @@ const whenPH = (iso) => new Date(iso).toLocaleString('en-PH', {
 const Reminders = ({ status, requestId, current = false }) => {
     if (!status) return null;
     const rows = status.reminders.filter((r) => r.request_id === requestId);
-    const next = current ? status.next : null;
+    // one next reminder per open request (20261205); older databases gave one 'next' for the file
+    const next = current ? (status.next_by_request ? status.next_by_request[requestId] ?? null : status.next) : null;
     if (rows.length === 0 && !next) return null;
     return (
         <ul className="dr-reminders" aria-label="Reminders to the applicant">

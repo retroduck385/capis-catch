@@ -4,23 +4,27 @@
 // (decisionSupport/briefDialog.jsx) and its credit score categories (review/scoreCategoryDialog.jsx).
 // Also the Financial Package's TU report popup (financialPackage/tuReport.jsx), widened through className.
 // link: { to, label } opens the full page in a new tab. Tones are the .lf ones (.ok / .warn / .bad / .none).
+// focusBody: on open, focus goes to the body (arrow keys scroll it) instead of the first button, so a long read-only
+// list doesn't open with a focus ring on ✕ (documentRequests/fileHistoryDialog.jsx).
 // Styles: infoModal.css (.info-modal).
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, X } from 'lucide-react';
 import './infoModal.css';
 
-const InfoModal = ({ Icon, tone = 'none', eyebrow, title, note, link, onClose, className = '', children }) => {
+const InfoModal = ({ Icon, tone = 'none', eyebrow, title, note, link, onClose, className = '', focusBody = false, children }) => {
     const ref = useRef(null);
+    const bodyRef = useRef(null);
     const close = () => ref.current?.close();
 
     useEffect(() => {
         const d = ref.current;
         if (d && !d.open) d.showModal();
-    }, []);
+        if (focusBody) bodyRef.current?.focus();
+    }, [focusBody]);
 
     return (
-        <dialog ref={ref} className={`info-modal ${tone}${className ? ` ${className}` : ''}`}aria-label={eyebrow ? `${title} (${eyebrow})` : title}
+        <dialog ref={ref} className={`info-modal ${tone}${className ? ` ${className}` : ''}`} aria-label={eyebrow ? `${title} (${eyebrow})` : title}
             onClose={onClose}
             onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
             <header className="info-modal-head">
@@ -31,7 +35,7 @@ const InfoModal = ({ Icon, tone = 'none', eyebrow, title, note, link, onClose, c
                 </button>
             </header>
 
-            <div className="info-modal-body">{children}</div>
+            <div ref={bodyRef} className="info-modal-body" tabIndex={focusBody ? -1 : undefined}>{children}</div>
 
             <footer className="info-modal-foot">
                 {note && <span>{note}</span>}

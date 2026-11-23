@@ -3,14 +3,16 @@
 // request for that file's category, and only that one: the applicant can upload only that document in reply
 // (other categories are asked from the loan folder's box). Same database calls as the loan folder's
 // "Ask the applicant for documents" box (preview_document_request / open_document_request), so the same rules apply:
-// only the assigned AO sends, one request at a time, no links. Anyone else (the CO, or the AO while a request is
-// still open) only saves the mark, and the modal says why. Styles: fileMark.css (.fm-dialog).
+// only the assigned AO sends, no links, and a document still owed on an open request isn't asked again. When the AO
+// can send, saving always sends (there is no "save without asking"). Anyone else (the CO, or the AO when this document
+// is already on an open request) only saves the mark, and the modal says why. Styles: fileMark.css (.fm-dialog).
 // If the mark is saved but the request fails, File status is refreshed at once (onMarked) and the modal says the
 // mark was saved; trying again only sends the request (newCopySave.js).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Bell, FileText, Mail, Send, Smartphone } from 'lucide-react';
 import { fetchRequestContext, markFile, openRequest, previewRequest } from './api';
 import { refreshCanAsk } from './askStore';
+import { openRequestsOf } from './openRequests';
 import { saveNewCopy } from './newCopySave';
 
 const keyOf = (r) => `${r.applicant_id}:${r.requirement_type}`;
@@ -44,9 +46,13 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
         return () => { cancelled = true; };
     }, [applicationId]);
 
-    const canSend = Boolean(ctx?.can_open);
     const thisKey = keyOf({ applicant_id: file.applicantId, requirement_type: file.requirementType });
     const row = file.requirementType ? (ctx?.suggestions?.checklist ?? []).find((r) => keyOf(r) === thisKey) : null;
+    // this document is already on a request still waiting or sent back (the database refuses asking twice)
+    const alreadyAsked = openRequestsOf(ctx).some((req) => req.items.some((i) => (row
+        ? keyOf(i) === thisKey
+        : !i.requirement_type && i.applicant_id === file.applicantId && i.label.toLowerCase() === file.label.slice(0, 80).toLowerCase())));
+    const canSend = Boolean(ctx?.can_open) && !alreadyAsked;
     // exactly one item: this file's checklist category, or (a file outside the checklist) an "Other" with its name
     const items = useMemo(() => [row
         ? { applicant_id: row.applicant_id, requirement_type: row.requirement_type }
@@ -64,7 +70,12 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
         return () => { cancelled = true; clearTimeout(timer); };
     }, [canSend, applicationId, message, items]);
 
-    const close = () => { if (!busy) onClose(); };
+    // the mark is already saved (the request failed): closing finishes like a save without sending
+    const close = () => {
+        if (busy) return;
+        if (marked) onDone(false);
+        else onClose();
+    };
 
     const submit = async (send) => {
         if (!marked && !comment.trim()) {
@@ -83,7 +94,7 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
             alreadyMarked: marked,
         });
         if (result.marked) setMarked(true);
-        if (send) refreshCanAsk(applicationId);   // sent, or refused because a request is waiting: the buttons follow
+        if (send) refreshCanAsk(applicationId);   // sent, or refused (e.g. already on an open request): the buttons follow
         if (!result.error) {
             onDone(send);
             return;
@@ -93,14 +104,14 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
     };
 
     const whyNot = ctx && !canSend
-        ? (ctx.current ? 'A request is already waiting for the applicant. Close it in the loan folder before asking again.' : ctx.why_not)
+        ? (alreadyAsked ? 'This document is already on a request that is still open (see the loan folder).' : ctx.why_not)
         : null;
     const sendDisabled = busy || Boolean(problem) || !message.trim();
 
     return (
         <dialog ref={ref} className="fm-dialog" aria-labelledby="fm-dialog-title"
             onCancel={(e) => { if (busy) e.preventDefault(); }}
-            onClose={onClose}
+            onClose={() => (marked ? onDone(false) : onClose())}
             onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
             <div className="fm-dialog-body">
                 <header className="fm-dialog-head">
@@ -113,14 +124,13 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
 
                 <div className="fm-field">
                     <label htmlFor="fm-dialog-comment" className="fm-label">
-                        Staff only, not sent: what is wrong with this file <small>(required)</small>
+                        What&apos;s wrong with this file <small>(staff only)</small>
                     </label>
-                    <input id="fm-dialog-comment" className="fm-input" value={comment} maxLength={500} autoFocus readOnly={marked}
+                    <input id="fm-dialog-comment" className="fm-input" value={comment} maxLength={500} autoFocus readOnly={marked} aria-required="true"
                         onChange={(e) => { setComment(e.target.value); setCommentError(false); }}
                         placeholder="e.g. Blurry, the last page is cut off"
                         aria-invalid={commentError || undefined} aria-describedby={commentError ? 'fm-dialog-comment-err' : undefined} />
                     {commentError && <p id="fm-dialog-comment-err" className="fm-err">Say what is wrong with the file.</p>}
-                    <p className="fm-note">For staff. The applicant never sees this box.</p>
                 </div>
 
                 {loadError && <p className="fm-err" role="alert">{loadError}</p>}
@@ -135,14 +145,12 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
                                 <FileText size={16} aria-hidden="true" />
                                 <span className="fm-pick-txt"><b>{row?.label ?? file.label}</b>{row?.party && <span className="fm-party">{row.party}</span>}</span>
                             </p>
-                            <p className="fm-note">They can upload only this document in reply. To ask for other documents, use the loan folder.</p>
                         </div>
 
                         <div className="fm-field">
-                            <label htmlFor="fm-dialog-message" className="fm-label">Sent to the applicant: what we need</label>
-                            <p id="fm-dialog-message-hint" className="fm-note">This is the only text the applicant gets. It starts with a standard line; rewrite it if they need more detail.</p>
+                            <label htmlFor="fm-dialog-message" className="fm-label">Message to the applicant</label>
                             <textarea id="fm-dialog-message" className="fm-input" rows={3} value={message} maxLength={ctx.max_length}
-                                onChange={(e) => setMessage(e.target.value)} aria-describedby="fm-dialog-message-hint fm-dialog-count"
+                                onChange={(e) => setMessage(e.target.value)} aria-describedby="fm-dialog-count"
                                 aria-invalid={Boolean(problem && message.trim()) || undefined} />
                             <p id="fm-dialog-count" className="fm-counter">{message.length} / {ctx.max_length}</p>
                             {problem && message.trim() && <p className="fm-err" role="alert">{problem}</p>}
@@ -160,16 +168,9 @@ const NewCopyDialog = ({ applicationId, file, initialComment = '', onClose, onDo
                 <div className="fm-dialog-actions">
                     <button type="button" className="fm-dbtn quiet" disabled={busy} onClick={close}>Cancel</button>
                     {canSend ? (
-                        <>
-                            <button type="button" className="fm-dbtn" disabled={busy} onClick={() => submit(false)}
-                                title={marked ? 'The mark is saved. Close without sending the request'
-                                    : 'Record the problem for staff without contacting the applicant yet'}>
-                                {marked ? 'Close without sending' : 'Save without asking'}
-                            </button>
-                            <button type="button" className="fm-dbtn primary" disabled={sendDisabled} onClick={() => submit(true)}>
-                                <Send size={15} aria-hidden="true" />{busy ? 'Sending...' : marked ? 'Try sending again' : 'Save and send request'}
-                            </button>
-                        </>
+                        <button type="button" className="fm-dbtn primary" disabled={sendDisabled} onClick={() => submit(true)}>
+                            <Send size={15} aria-hidden="true" />{busy ? 'Sending...' : marked ? 'Try sending again' : 'Save and send request'}
+                        </button>
                     ) : (
                         <button type="button" className="fm-dbtn primary" disabled={busy || (!ctx && !loadError)} onClick={() => submit(false)}>
                             {busy ? 'Saving...' : 'Save'}

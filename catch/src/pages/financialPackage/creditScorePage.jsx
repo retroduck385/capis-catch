@@ -6,10 +6,10 @@
 // Look (DESIGN.md, "Credit score and VII. Approval"): the Financial Package's .lf-fp look (root lf-cs): header with a
 // mode tag and fact chips, the steps card, the figures as tiles, criterion cards. Styles: creditScore.css (.lf-cs).
 import { CreditScoreSkeleton } from '../../components/skeleton';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-    AlertTriangle, ArrowRight, BadgeCheck, ChevronDown, Gauge, History, Info, ListChecks, Lock, PenLine, Save, ShieldCheck, Users, Wallet,
+    AlertTriangle, ArrowRight, BadgeCheck, ChevronDown, Gauge, History, Info, ListChecks, Lock, PenLine, Save, ShieldCheck, Users, Wallet, X,
 } from 'lucide-react';
 import { fetchCiFindingFlagCount, fetchCiResults } from '../ciRequest/api';
 import { needsAttention } from '../ciRequest/options';
@@ -28,12 +28,14 @@ import { scoreHistory } from './scoreHistory';
 import { ReturnNotice } from '../review/returnNotice';
 import { PanelHide, PanelRail } from '../../components/sidePanel';
 import { useSidePanel } from '../../components/useSidePanel';
-import { fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveCreditScore } from './api';
+import { addToFinancialPackage, fetchCoCanEdit, fetchCreditScoreRules, fetchFinancialPackage, saveCreditScore } from './api';
 import { computeFp } from './compute';
 import { suggestCreditScore, totalCreditScore } from './creditScore';
 import { CreditScoreSection } from './creditScoreSection';
 import { scrollToSection, useActiveSection } from '../review/useActiveSection';
 import MessagesPanel from '../messages/messagesPanel';
+import MracPanel from '../mrac/mracPanel';
+import { useMracStale } from '../mrac/useMracStale';
 import '../loanFolder/loanFolder.css';
 import './financialPackage.css';
 import '../review/review.css';
@@ -65,6 +67,7 @@ const CreditScorePage = () => {
     const [canEdit, setCanEdit] = useState(false);
     const [sent, setSent] = useState(false); // sent for review (the CO's step 3)
     const [audit, setAudit] = useState([]);
+    const [fullLog, setFullLog] = useState([]); // the whole audit log (the policy check's "changed since" mark)
     const [scoreRows, setScoreRows] = useState([]);   // saved credit_score_entries (ids -> criterion for the history)
     const [names, setNames] = useState({});
     const [dirty, setDirty] = useState(false);
@@ -75,6 +78,9 @@ const CreditScorePage = () => {
     const [ciFindings, setCiFindings] = useState(false); // a CI result is "With findings" or a CI flagged findings
     const [ci, setCi] = useState(null);                 // the CI results (Character suggestions: ciFacts.js)
     const [activeId, pickSection] = useActiveSection(TOC_IDS, Boolean(app && scores && rules));
+    const mracRef = useRef(null);            // the policy check modal (stays mounted, so its result survives closing)
+    const fpQueue = useRef(Promise.resolve()); // adds to the FP one at a time, so a quick second click can't drop the first
+    const [fpNote, setFpNote] = useState(null); // { tone, text } after adding to the FP from the policy check
 
     // CI results: the findings note, and the NFIS / loan history / returned checks suggestions. A failed load just
     // leaves them out (the Character items then wait for the CI)
@@ -102,9 +108,11 @@ const CreditScorePage = () => {
         setFp(savedFp);
         setScores(Object.fromEntries(savedFp.creditScore.map((r) => [r.criterion, formOf(r)])));
         setAudit(scoreLog);
+        setFullLog(log);
         setScoreRows(savedFp.creditScore);
         setNames(await fetchStaffNames(scoreLog.map((e) => e.changed_by)));
         setDirty(false);
+        return log;
     }, []);
 
     useEffect(() => {
@@ -129,13 +137,19 @@ const CreditScorePage = () => {
     }, [applicationId, loadScore]);
 
     // FP figures (DBR, gross income, LCR, ...) from what's saved in the FP
-    const suggestions = useMemo(() => {
-        if (!app || !fp || !rules) return null;
+    const pricing = useMemo(() => (app ? { interest_rate: app.interest_rate, fixing_period: app.fixing_period } : null), [app]);
+    const computed = useMemo(() => {
+        if (!app || !fp) return null;
         const details = Object.fromEntries(fp.parties.map((r) => [r.applicant_id, r]));
-        const computed = computeFp(app, details, fp.pkg ?? {}, { interest_rate: app.interest_rate });
+        return computeFp(app, details, fp.pkg ?? {}, pricing);
+    }, [app, fp, pricing]);
+    const suggestions = useMemo(() => {
+        if (!app || !fp || !rules || !computed) return null;
         return suggestCreditScore(app, computed, { loan_checks: fp.loanChecks, deposit_checks: fp.depositChecks }, rules.criteria, ci);
-    }, [app, fp, rules, ci]);
+    }, [app, fp, rules, ci, computed]);
     const totals = useMemo(() => (rules && scores ? totalCreditScore(rules, scores) : null), [rules, scores]);
+    // The orange "!" on the Policy check button: FP / score data changed after the last check
+    const mrac = useMracStale({ appId: applicationId, log: fullLog, dirty, current: scores });
 
     if (loading) return <CreditScoreSkeleton />;
     if (error && !scores) {
@@ -163,12 +177,13 @@ const CreditScorePage = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
+        const wasFresh = !mrac.stale;
         try {
             setError(null);
             await saveCreditScore(app.id, Object.entries(scores)
                 .filter(([, s]) => s.band)
                 .map(([criterion, s]) => ({ criterion, ...toRow(s) })));
-            await loadScore(app);
+            mrac.covered(wasFresh, await loadScore(app));
             setSaved(true);
         } catch (err) {
             setError(err.message);
@@ -204,6 +219,25 @@ const CreditScorePage = () => {
     ];
 
     const historyLines = scoreHistory(audit, rules, scoreRows);
+
+    // The policy check, as on the Financial Package. It runs on the score on screen (unsaved picks too) and the saved FP.
+    // "+ Add" saves straight into the saved FP (V. Exception/s, the terms); only the FP is touched, not the score.
+    const openMrac = () => { const d = mracRef.current; if (d && !d.open) d.showModal(); };
+    const addToFp = (change, done) => {
+        const wasFresh = !mrac.stale;   // the check's own suggestion doesn't put it out of date
+        fpQueue.current = fpQueue.current.then(async () => {
+            try {
+                setFp(await addToFinancialPackage(app, change));
+                const log = await fetchAuditLog(app.id);
+                setFullLog(log);
+                mrac.covered(wasFresh, log);
+                setFpNote({ tone: 'ok', text: `${done} Saved to the Financial Package.` });
+            } catch (err) {
+                setFpNote({ tone: 'err', text: `Couldn't add it to the Financial Package: ${err.message}` });
+            }
+        });
+    };
+    const fpSaved = Boolean(fp.pkg);
 
     const goTo = (id) => (e) => {
         e.preventDefault();
@@ -309,7 +343,16 @@ const CreditScorePage = () => {
             </p>
 
             <div className={`lf-body edit${sidePanel.hidden ? ' side-hidden' : ''}`}>
-                {sidePanel.hidden ? <PanelRail panel={sidePanel} label="sections" /> : (
+                {sidePanel.hidden ? (
+                    <PanelRail panel={sidePanel} label="sections">
+                        <button type="button" className="sp-rail-btn" aria-haspopup="dialog" onClick={openMrac}
+                            title={mrac.stale ? 'Policy check (MRAC): changed since the last check' : 'Policy check (MRAC)'}>
+                            <ShieldCheck size={18} aria-hidden="true" />
+                            <span className="sr-only">Policy check (MRAC){mrac.stale && ', changed since the last check'}</span>
+                            {mrac.stale && <span className="fp-stale" title="Changed since the last check" aria-hidden="true">!</span>}
+                        </button>
+                    </PanelRail>
+                ) : (
                 <nav className="lf-card lf-nav fp-nav" aria-label="Credit score sections">
                     <PanelHide panel={sidePanel} label="sections" />
                     <div><p className="fp-navgroup fp-navstep">Step 2: Credit score</p></div>
@@ -320,8 +363,46 @@ const CreditScorePage = () => {
                             </li>
                         ))}
                     </ul>
+                    {/* Same box as the Financial Package's navigator: the policy check opens as a modal */}
+                    <div className="fp-navkey" role="group" aria-labelledby="cs-navkey-title">
+                        <p id="cs-navkey-title" className="fp-navkey-title">Key to the decision</p>
+                        <button type="button" className="fp-navkey-btn" aria-haspopup="dialog" onClick={openMrac}>
+                            <ShieldCheck size={16} aria-hidden="true" />
+                            <span>Policy check (MRAC)</span>
+                            {mrac.stale && <span className="sr-only">, changed since the last check</span>}
+                            {mrac.stale && <span className="fp-stale" title="Changed since the last check" aria-hidden="true">!</span>}
+                        </button>
+                    </div>
                 </nav>
                 )}
+
+                <dialog ref={mracRef} className="fp-dialog" aria-label="Policy check (MRAC)"
+                    onClick={(e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }}>
+                    <button type="button" className="fp-dialogclose" aria-label="Close the policy check"
+                        onClick={() => mracRef.current?.close()}>
+                        <X size={18} aria-hidden="true" />
+                    </button>
+                    <div className="fp-dialogbody">
+                        {canEdit && !fpSaved && (
+                            <p className="lf-note warn cs-mracnote" role="note">
+                                <AlertTriangle size={16} aria-hidden="true" />
+                                <span>Save the Financial Package first to add exceptions or terms from here.</span>
+                            </p>
+                        )}
+                        {fpNote && (
+                            <p className={`lf-note cs-mracnote${fpNote.tone === 'err' ? ' warn' : ''}`}
+                                role={fpNote.tone === 'err' ? 'alert' : 'status'}>
+                                {fpNote.tone === 'err' ? <AlertTriangle size={16} aria-hidden="true" /> : <BadgeCheck size={16} aria-hidden="true" />}
+                                <span>{fpNote.text}</span>
+                            </p>
+                        )}
+                        <MracPanel app={app} computed={computed} score={totals} pricing={pricing}
+                            onRequest={mrac.onRequest} onRun={mrac.onRun} stale={mrac.stale}
+                            exceptions={fp.exceptions} canEdit={canEdit}
+                            onAddException={fpSaved ? (row) => addToFp({ exception: row }, 'Added to V. Exception/s.') : undefined}
+                            onAddTerm={fpSaved ? (text) => addToFp({ term: text }, 'Added to VI. Terms and conditions.') : undefined} />
+                    </div>
+                </dialog>
 
                 <div className="lf-main fp-main">
                     <CreditScoreSection rules={rules} suggestions={suggestions} scores={scores} totals={totals}

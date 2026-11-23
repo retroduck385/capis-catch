@@ -196,3 +196,14 @@
 .mrac-rec-body { padding: 0 0.95rem 0.95rem 1.85rem; }
 .mrac-rec-body > .mrac-rec-text:first-child { margin-top: 0; }
 .mrac-rules { margin-top: 0.75rem; }
+
+/* "changed after this check" (the same orange "!" as the Policy check button) */
+.mrac-stale {
+  display: flex; align-items: center; gap: 0.5rem; margin: 0.6rem 0 0; padding: 0.5rem 0.75rem; border-radius: 10px;
+  background: var(--lf-warn-bg, #fff1e2); color: var(--lf-warn, #a8480b); font-weight: 600;
+}
+.mrac-stale-mark {
+  display: inline-grid; place-items: center; flex: none; width: 1.15rem; height: 1.15rem; border-radius: 999px;
+  background: #ea580c; color: #fff; font-size: 0.75rem; font-weight: 800; line-height: 1;
+}
+[data-theme='dark'] .mrac-stale-mark { background: #fb923c; color: #1a1200; }

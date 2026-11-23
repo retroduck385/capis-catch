@@ -602,19 +602,12 @@
 .lf-sechead-main { display: grid; gap: 0.3rem; min-width: 0; }
 .lf-folder .lf-sechead h2 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; color: var(--navy); }
 .lf-folder .lf-sechead .lf-eyebrow { font-size: 0.85rem; }
-.lf-pager { display: flex; gap: 0.5rem; }
 .lf-folder .lf-iconbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; min-width: 2.75rem; min-height: 2.75rem; padding: 0;
   border-radius: 999px; border: 1px solid var(--lf-control-rim); background: var(--lf-control); box-shadow: var(--lf-shadow-sm);
   color: var(--navy); font-size: 0.9rem; font-weight: 600;
 }
 .lf-folder .lf-iconbtn:hover:not(:disabled) { background: var(--lf-control-hover); color: var(--navy); }
-/* Next section: orange, the one "go on to what's waiting" control here (white on #c2410c: 5.2:1) */
-.lf-folder .lf-iconbtn.next {
-  padding: 0 0.7rem 0 1.05rem; background: var(--lf-orange); border-color: var(--lf-orange); color: #fff;
-  box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75);
-}
-.lf-folder .lf-iconbtn.next:hover:not(:disabled) { background: #9a3412; border-color: #9a3412; color: #fff; }
 .lf-folder .lf-iconbtn:disabled { opacity: 0.45; box-shadow: none; }
 
 .lf-secgrid { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; grid-template-areas: 'form rail'; gap: 1rem; align-items: start; }
@@ -668,7 +661,7 @@
 .lf-folder .lf-check-foot > button { flex: 1 1 0; min-width: 0; padding-inline: 0.9rem; white-space: nowrap; }
 .lf-check-done { display: flex; align-items: center; gap: 0.4rem; margin: 0; color: var(--lf-ok); font-size: 0.88rem; font-weight: 600; }
 .lf-check-done svg { flex: none; }
-/* Next section: the orange pill (white text on it: 5.2:1), the same orange as the Document check's next-step button */
+/* Next: the orange pill (white text on it: 5.2:1), the same orange as the Document check's next-step button */
 .lf-folder .lf-check-foot .lf-check-next {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; min-height: 2.75rem; border: 0; border-radius: 999px;
   background: var(--lf-orange); color: #fff; font-weight: 700; box-shadow: 0 10px 20px -12px rgba(154, 52, 18, 0.75);
@@ -824,8 +817,6 @@
   }
   .lf-folder :is(.lf-btn, a.lf-btn):hover, .lf-folder .lf-iconbtn:hover:not(:disabled) { transform: translateY(-1px); }
   .lf-folder .lf-iconbtn svg { transition: transform 0.2s var(--lf-ease); }
-  .lf-folder .lf-iconbtn.prev:hover:not(:disabled) svg { transform: translateX(-2px); }
-  .lf-folder .lf-iconbtn.next:hover:not(:disabled) svg { transform: translateX(2px); }
 
   .lf-folder .lf-tile, .lf-folder .lf-kyc-item, .lf-folder .lf-step > :is(a, button) {
     transition: transform 0.2s var(--lf-ease), box-shadow 0.2s, background-color 0.2s, border-color 0.2s;
@@ -939,6 +930,35 @@
 .lf-folder .lf-check .lf-cardhead h3 { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; flex: 1 1 10rem; min-width: 0; margin: 0; }
 .lf-folder .lf-check .lf-cardhead h3 .lf-comment { position: static; margin: 0; }
 .lf-folder .lf-check .lf-cardhead > .lf-chip { flex: none; margin-left: auto; }
+
+/* KYC check (round 4): calmer rail.
+   Title + comment button on one row (the status chip moved into the Latest result box) */
+.lf-folder .lf-check .lf-check-head { flex-wrap: nowrap; }
+.lf-folder .lf-check .lf-check-head h3 { flex: 1 1 auto; white-space: nowrap; }
+.lf-folder .lf-check .lf-check-head .lf-comment { position: static; flex: none; margin: 0; }
+.lf-check-latest-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.lf-check-latest-head > span { color: var(--lf-text-3); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.lf-folder .lf-check-latest { gap: 0.5rem; padding: 0.75rem 0.85rem; }
+.lf-folder .lf-check-latest .lf-kyc-remark { background: var(--lf-inset); }
+/* The choices: the whole card is the radio (the input stays for keyboard and screen readers, drawn as nothing);
+   the coloured icon is the marker, and the chosen card fills with its tone */
+.lf-folder .lf-choice { position: relative; min-height: 3.5rem; }
+.lf-folder .lf-choice input { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: inherit; opacity: 0; }
+.lf-folder .lf-choice input:checked::after { content: none; }
+.lf-folder .lf-choice .mark { width: 1.35rem; height: 1.35rem; }
+.lf-folder .lf-choice:has(input:checked) b { color: var(--tone); }
+/* a question is open: the second option is a way down to it, not a dead radio */
+.lf-folder button.lf-choice-open {
+  display: flex; align-items: center; gap: 0.65rem; width: 100%; margin: 0; text-align: left; cursor: pointer;
+  border: 1.5px dashed var(--tone-line); background: var(--tone-bg); color: var(--ink); box-shadow: none;
+}
+.lf-folder button.lf-choice-open:hover { border-style: solid; border-color: var(--tone); background: var(--tone-bg); color: var(--ink); }
+.lf-folder button.lf-choice-open b { color: var(--tone); }
+.lf-folder button.lf-choice-open > span { flex: 1 1 auto; }
+.lf-folder button.lf-choice-open .go { flex: none; color: var(--tone); }
+.lf-folder button.lf-choice-open:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+/* the question card under the check */
+.lf-folder .lf-rail .kq-aocard { margin-top: 0.75rem; scroll-margin-top: 0.75rem; }
 
 /* The section form's Save: a white secondary button (the KYC check's Record check stays the primary action) */
 .lf-folder .lf-formcard .ct-actions button[type='submit'] {

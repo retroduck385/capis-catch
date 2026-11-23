@@ -1,92 +1,126 @@
-// The AO's view of one KYC section's clarification threads (loan folder): the open thread with an Answer box, and the
-// closed ones as read-only history. Marking the section Verified (the KYC check panel, unchanged) closes the open one.
+// The AO's view of one KYC section's clarification threads (loan folder): the open thread with an Answer box and the
+// ways to finish it, and the closed ones as read-only history.
 // threads: kyc_clarification_threads() rows for this section, oldest first. canAnswer: the assigned AO (the database
-// checks it again). canWithdraw: the assigned AO while the file is in Intake or Credit Investigation (withdrawing
-// closes the thread and tells the applicant with the same neutral line). onChanged: reload the threads after a change.
+// checks it again). canWithdraw: the assigned AO while the file is in Intake or Credit Investigation; the same AO can
+// also Close the question (it records the section as Verified, which closes the thread; complete = the section can be
+// Verified). Withdrawing closes it without a result. Either way the applicant gets the same neutral line.
+// onChanged: reload the threads and checks after a change.
+// draft / onDraft (optional): the answer being typed, kept by the caller (aoQuestionCard.jsx keeps it while its popup
+// is closed); without them the box keeps its own.
 import { useId, useState } from 'react';
-import { CircleHelp, Send } from 'lucide-react';
-import { answerClarification, withdrawClarification } from './api';
+import { CheckCircle2, Clock, MessageCircleReply, Send, Undo2 } from 'lucide-react';
+import { answerClarification, closeClarification, withdrawClarification } from './api';
 import { REPLY_MAX } from './sections';
 import ThreadView from './threadView';
 import { formatDay } from '../../components/people';
 
-const AoThread = ({ threads, canAnswer, canWithdraw = false, onChanged }) => {
+const AoThread = ({ threads, canAnswer, canWithdraw = false, complete = true, onChanged, draft, onDraft }) => {
     const open = threads.find((t) => t.status === 'OPEN') ?? null;
     const past = threads.filter((t) => t.status === 'CLOSED').reverse();
-    const [text, setText] = useState('');
-    const [busy, setBusy] = useState(false);
+    const [ownText, setOwnText] = useState('');
+    const text = draft ?? ownText;
+    const setText = onDraft ?? setOwnText;
+    const [busy, setBusy] = useState(null);   // 'send' | 'close' | 'withdraw' while saving
     const [error, setError] = useState(null);
     const id = useId();
     if (!open && past.length === 0) return null;
 
-    const send = async (e) => {
+    const run = async (kind, action) => {
+        setBusy(kind);
+        setError(null);
+        try {
+            await action();
+            await onChanged();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const send = (e) => {
         e.preventDefault();
         if (!text.trim()) { setError('Write your answer.'); return; }
-        setBusy(true);
-        setError(null);
-        try {
+        run('send', async () => {
             await answerClarification(open.id, text.trim());
             setText('');
-            await onChanged();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setBusy(false);
-        }
+        });
     };
 
-    const withdraw = async () => {
-        if (!window.confirm('Withdraw this question? The applicant is told it is closed and can no longer reply.')) return;
-        setBusy(true);
-        setError(null);
-        try {
-            await withdrawClarification(open.id);
-            await onChanged();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setBusy(false);
-        }
+    const close = () => {
+        if (!window.confirm(`Close this question? ${open.section_label} is marked Verified and the applicant is told the question is closed.`)) return;
+        run('close', () => closeClarification(open));
     };
 
-    const replied = open?.messages.some((m) => m.from === 'APPLICANT');
+    const withdraw = () => {
+        if (!window.confirm('Withdraw this question? It closes without a result, and the applicant is told it is closed.')) return;
+        run('withdraw', () => withdrawClarification(open.id));
+    };
+
+    const replies = open ? open.messages.filter((m) => m.from === 'APPLICANT').length : 0;
+    const canClose = canWithdraw;
     return (
         <div className="kq-ao">
             {open && (
                 <>
-                    <p className={`kq-status open`}>
-                        <CircleHelp size={15} aria-hidden="true" />
-                        {replied ? 'Question open: the applicant replied' : 'Question open: waiting for the applicant'}
+                    <p className={`kq-state ${replies ? 'replied' : 'waiting'}`}>
+                        {replies
+                            ? <MessageCircleReply size={18} aria-hidden="true" />
+                            : <Clock size={18} aria-hidden="true" />}
+                        <span>
+                            <b>{replies ? 'The applicant replied' : 'Waiting for the applicant'}</b>
+                            <small>{replies ? 'Answer them, or close the question if it is settled.' : 'You can still add to the question below.'}</small>
+                        </span>
                     </p>
                     <ThreadView thread={open} viewer="STAFF" />
+
                     {canAnswer && (
-                        <form className="kq-form" onSubmit={send}>
-                            <label htmlFor={id}>Answer the applicant <small>(in-app only)</small></label>
-                            <textarea id={id} rows={2} maxLength={REPLY_MAX} value={text}
+                        <form className="kq-form kq-answer" onSubmit={send}>
+                            <div className="kq-labelrow">
+                                <label htmlFor={id}>Answer the applicant</label>
+                                <span className="kq-counter">{text.length} / {REPLY_MAX}</span>
+                            </div>
+                            <textarea id={id} rows={2} maxLength={REPLY_MAX} value={text} disabled={Boolean(busy)}
+                                aria-describedby={`${id}-hint`} placeholder="Write a reply"
                                 onChange={(e) => { setText(e.target.value); setError(null); }} />
-                            <p className="kq-counter">{text.length} / {REPLY_MAX}</p>
-                            {error && <p className="kq-err" role="alert">{error}</p>}
-                            <div className="kq-row">
-                                <button type="submit" className="lf-btn" disabled={busy}>
-                                    <Send size={15} aria-hidden="true" />{busy ? 'Sending...' : 'Send answer'}
+                            <div className="kq-answer-foot">
+                                <small id={`${id}-hint`} className="kq-hint">In the app only, no SMS or email.</small>
+                                <button type="submit" className="kq-send" disabled={Boolean(busy)}>
+                                    <Send size={15} aria-hidden="true" />{busy === 'send' ? 'Sending...' : 'Send answer'}
                                 </button>
-                                {canWithdraw && (
-                                    <button type="button" className="lf-btn quiet" disabled={busy} onClick={withdraw}>Withdraw question</button>
-                                )}
-                                <span className="kq-note">Mark the section Verified when it is settled: that closes the question.</span>
                             </div>
                         </form>
                     )}
-                    {!canAnswer && canWithdraw && (
-                        <div className="kq-row">
-                            <button type="button" className="lf-btn quiet" disabled={busy} onClick={withdraw}>Withdraw question</button>
+
+                    {(canClose || canWithdraw) && (
+                        <div className="kq-finish" role="group" aria-labelledby={`${id}-finish`}>
+                            <p id={`${id}-finish`} className="kq-finish-title">Done with this question?</p>
+                            <div className="kq-finish-btns">
+                                {canClose && (
+                                    <button type="button" className="kq-close" disabled={Boolean(busy) || !complete}
+                                        aria-describedby={`${id}-finish-hint`} onClick={close}>
+                                        <CheckCircle2 size={16} aria-hidden="true" />{busy === 'close' ? 'Closing...' : 'Close question'}
+                                    </button>
+                                )}
+                                {canWithdraw && (
+                                    <button type="button" className="kq-withdraw" disabled={Boolean(busy)}
+                                        aria-describedby={`${id}-finish-hint`} onClick={withdraw}>
+                                        <Undo2 size={16} aria-hidden="true" />{busy === 'withdraw' ? 'Withdrawing...' : 'Withdraw'}
+                                    </button>
+                                )}
+                            </div>
+                            <p id={`${id}-finish-hint`} className="kq-hint">
+                                {complete
+                                    ? <><b>Close</b> marks this section Verified. <b>Withdraw</b> closes it without a result.</>
+                                    : <>This section is incomplete, so it can&apos;t be marked Verified yet. Complete it first, or withdraw the question.</>}
+                            </p>
                         </div>
                     )}
-                    {!canAnswer && error && <p className="kq-err" role="alert">{error}</p>}
+                    {error && <p className="kq-err" role="alert">{error}</p>}
                 </>
             )}
             {past.length > 0 && (
-                <details className="kq-history">
+                <details className="kq-history" open={!open || undefined}>
                     <summary>Earlier questions on this section ({past.length}, closed)</summary>
                     {past.map((t) => (
                         <div key={t.id} className="kq-past">

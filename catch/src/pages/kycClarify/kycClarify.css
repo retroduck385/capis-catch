@@ -1,36 +1,256 @@
 /* KYC clarification threads (threadView, aoThread, applicantClarifyCard). Uses the page's tokens when present
    (--lf-* on staff pages, --line / --muted / --ink on applicant pages) with light fallbacks. */
-.kq-thread { display: grid; gap: 0.6rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.kq-thread { display: grid; gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
 .kq-msg {
-  padding: 0.6rem 0.75rem; border: 1px solid var(--lf-hair, var(--line, rgba(20, 41, 95, 0.12)));
-  border-radius: 10px; background: var(--lf-wash, #f7f9fd);
+  display: grid; gap: 0.3rem; margin: 0; padding: 0.7rem 0.85rem 0.75rem; min-width: 0;
+  border: 1px solid var(--lf-hair, var(--line, rgba(20, 41, 95, 0.12))); border-radius: 12px; background: var(--lf-wash, #f7f9fd);
 }
-.kq-msg.from-applicant { background: var(--lf-inset, #fff); border-left: 3px solid var(--lf-blue, #2453c9); }
-.kq-msg.from-ao { border-left: 3px solid var(--lf-orange, #d9822b); }
-.kq-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem; margin: 0 0 0.2rem; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.82rem; }
-.kq-meta b { color: var(--lf-text, var(--ink, #14295f)); font-weight: 700; }
-.kq-meta time { margin-left: auto; }
-.kq-body { margin: 0; color: var(--lf-text, var(--ink, #14295f)); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
-.kq-file {
-  display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.4rem; padding: 0.2rem 0.55rem;
-  border: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.16)); border-radius: 999px; background: #fff;
-  color: var(--lf-blue, #2453c9); font-size: 0.85rem; font-weight: 600; cursor: pointer; overflow-wrap: anywhere;
+.kq-msg.from-ao { box-shadow: inset 3px 0 0 var(--lf-orange, #d9822b); }
+.kq-msg.from-applicant { background: var(--lf-inset, #fff); box-shadow: inset 3px 0 0 var(--lf-accent, #2453c9); }
+/* who on the left (wraps inside itself), the time on the right, always on the first line */
+.kq-meta { display: flex; align-items: baseline; gap: 0.75rem; margin: 0; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.82rem; }
+.kq-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.35rem; flex: 1 1 auto; min-width: 0; }
+.kq-who b { color: var(--ink, #14295f); font-size: 0.86rem; font-weight: 700; }
+.kq-meta time { flex: none; margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kq-body { margin: 0; color: var(--ink, #14295f); font-size: 0.95rem; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+
+/* an attached file: a small card, the name on one line (cut with ... ; the full name is the tooltip) */
+.ct button.kq-attachment, .kq-attachment {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 2.75rem; margin: 0.2rem 0 0; padding: 0.4rem 0.75rem 0.4rem 0.4rem;
+  border: 1px solid var(--lf-block-line, rgba(20, 41, 95, 0.14)); border-radius: 10px; background: var(--lf-control, #fff);
+  box-shadow: none; color: var(--lf-accent, #1e3f97); font-size: 0.88rem; font-weight: 600; text-align: left; cursor: pointer;
 }
-.kq-err { margin: 0.4rem 0 0; color: #b42318; font-size: 0.88rem; }
+.ct button.kq-attachment:hover, .kq-attachment:hover { border-color: var(--lf-accent, #1e3f97); background: var(--lf-accent-bg, #eef3fd); color: var(--lf-accent, #1e3f97); }
+.kq-attachment-ic { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: 8px; background: var(--lf-accent-bg, #eef3fd); }
+.kq-attachment-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kq-attachment-go { flex: none; opacity: 0.7; }
+
+.kq-err { margin: 0; color: #b42318; font-size: 0.88rem; font-weight: 500; }
 .kq-note { margin: 0.4rem 0 0; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.86rem; }
+.kq-hint { margin: 0; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.82rem; line-height: 1.45; }
+.kq-hint b { color: var(--lf-text-2, var(--ink, #14295f)); font-weight: 600; }
 .kq-form { display: grid; gap: 0.4rem; margin-top: 0.75rem; }
-.kq-form label { font-weight: 600; font-size: 0.9rem; color: var(--lf-text, var(--ink, #14295f)); }
+.kq-form label { font-weight: 600; font-size: 0.9rem; color: var(--ink, #14295f); }
 .kq-form textarea { width: 100%; min-height: 4.5rem; }
-.kq-counter { justify-self: end; margin: 0; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.8rem; }
-.kq-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
-.kq-history { margin-top: 0.75rem; }
+.kq-counter { margin: 0; color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.8rem; }
+.kq-history { margin-top: 0.25rem; }
 .kq-history > summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--lf-text-2, var(--ink, #14295f)); }
-.kq-past { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--lf-hair, rgba(20, 41, 95, 0.16)); }
-.kq-status { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; font-weight: 600; color: var(--lf-text-2, #33415c); }
-.kq-status.open { color: var(--lf-orange, #b45309); }
+.kq-past { display: grid; gap: 0.5rem; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--lf-hair, rgba(20, 41, 95, 0.16)); }
+.kq-past .kq-note { margin: 0; }
+
+/* ---------- the AO's question card (aoThread, loan folder rail) ---------- */
+.kq-ao { display: grid; gap: 0.85rem; min-width: 0; }
+.kq-aocard:focus { outline: none; }
+.kq-aocard:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+/* where the question stands: blue when the applicant replied (your move), orange while waiting */
+.kq-state {
+  display: flex; align-items: flex-start; gap: 0.6rem; margin: 0; padding: 0.65rem 0.8rem; border-radius: 12px;
+  border: 1px solid var(--tone-line); background: var(--tone-bg); color: var(--tone);
+}
+.kq-state.replied { --tone: var(--lf-accent, #1e3f97); --tone-bg: var(--lf-accent-bg, #eef3fd); --tone-line: var(--lf-block-line, rgba(30, 63, 151, 0.25)); }
+.kq-state.waiting { --tone: var(--lf-warn, #a8480b); --tone-bg: var(--lf-warn-bg, #fff1e2); --tone-line: var(--lf-warn-line, #f7cfa4); }
+.kq-state svg { flex: none; margin-top: 0.1rem; }
+.kq-state > span { display: grid; gap: 0.1rem; min-width: 0; }
+.kq-state b { font-size: 0.92rem; font-weight: 700; }
+.kq-state small { color: var(--lf-text-2, var(--ink, #14295f)); font-size: 0.82rem; line-height: 1.4; }
+
+/* the rail's summary card (aoQuestionCard): state + latest message, and a button that opens the conversation popup */
+.kq-aosum .kq-state { width: 100%; }
+.kq-aosum-last { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; }
+.kq-aosum-last > span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kq-aosum-last time { flex: none; color: var(--lf-text-3, #4c5a73); font-variant-numeric: tabular-nums; }
+.kq-aosum-none { margin: 0; }
+.ct .kq-aosum-open {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; width: 100%; min-height: 2.75rem; margin: 0; padding: 0.5rem 1rem;
+  border: 1.5px solid var(--lf-block-line, rgba(20, 41, 95, 0.18)); border-radius: 999px; background: var(--lf-control, #fff); box-shadow: none;
+  color: var(--lf-accent, #1e3f97); font-size: 0.92rem; font-weight: 700; cursor: pointer;
+}
+.ct .kq-aosum-open:hover { border-color: var(--lf-accent, #1e3f97); background: var(--lf-accent-bg, #eef3fd); color: var(--lf-accent, #1e3f97); }
+.ct .kq-aosum-open.primary { border-color: transparent; background: var(--lf-blue-grad, linear-gradient(135deg, #14295f, #1e3f97)); color: #fff; }
+.ct .kq-aosum-open.primary:hover { color: #fff; filter: brightness(1.12); }
+.ct .kq-aosum-open:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+.kq-aosum-open svg:last-child { opacity: 0.8; }
+@media (prefers-reduced-motion: no-preference) { .ct .kq-aosum-open { transition: background-color 0.15s, border-color 0.15s, filter 0.15s; } }
+
+/* the conversation popup (InfoModal .kq-modal): room for the thread, answer box and Close / Withdraw */
+.info-modal.kq-modal { width: min(44rem, calc(100vw - 2rem)); }
+.kq-modal .kq-ao { gap: 1rem; }
+.kq-modal .kq-answer textarea { min-height: 6rem; }
+
+.kq-ao .kq-answer { gap: 0.45rem; margin: 0; }
+.kq-answer textarea { min-height: 4.5rem; margin: 0; resize: vertical; }
+.kq-answer-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.75rem; }
+
+/* the three small buttons share one shape; Send is tinted blue, Close green, Withdraw quiet */
+.ct :is(.kq-send, .kq-close, .kq-withdraw) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 2.5rem; margin: 0; padding: 0.4rem 0.95rem;
+  border: 1.5px solid var(--tone-line); border-radius: 999px; background: var(--tone-bg); box-shadow: none;
+  color: var(--tone); font-size: 0.9rem; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer;
+}
+.kq-send { --tone: var(--lf-accent, #1e3f97); --tone-bg: var(--lf-accent-bg, #eef3fd); --tone-line: transparent; }
+.kq-close { --tone: var(--lf-ok, #15714a); --tone-bg: var(--lf-ok-bg, #e6f5ed); --tone-line: var(--lf-ok-line, #b6e0c8); }
+.kq-withdraw { --tone: var(--lf-text-2, #33415c); --tone-bg: transparent; --tone-line: var(--lf-block-line, rgba(20, 41, 95, 0.18)); }
+.ct :is(.kq-send, .kq-close, .kq-withdraw):hover:not(:disabled) { border-color: var(--tone); background: var(--tone-bg); color: var(--tone); filter: brightness(0.97); }
+.ct .kq-withdraw:hover:not(:disabled) { background: var(--lf-wash, #f1f4fa); }
+.ct :is(.kq-send, .kq-close, .kq-withdraw):disabled { opacity: 0.5; cursor: not-allowed; }
+.ct :is(.kq-send, .kq-close, .kq-withdraw):focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+.kq-send svg, .kq-close svg, .kq-withdraw svg { flex: none; }
+
+/* "Done with this question?": Close and Withdraw side by side, set apart from the answer box */
+.kq-finish { display: grid; gap: 0.5rem; padding-top: 0.85rem; border-top: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.1)); }
+.kq-finish-title { margin: 0; color: var(--ink, #14295f); font-size: 0.88rem; font-weight: 700; }
+.kq-finish-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.kq-finish-btns > button { flex: 1 1 8rem; }
+@media (pointer: coarse) { .ct :is(.kq-send, .kq-close, .kq-withdraw) { min-height: 2.75rem; } }
+@media (prefers-reduced-motion: no-preference) {
+  .ct :is(.kq-send, .kq-close, .kq-withdraw, .kq-attachment) { transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
+}
 .kq-card { scroll-margin-top: calc(var(--ct-head, 4.5rem) + 1rem); }
 .kq-card.focus { box-shadow: 0 0 0 3px rgba(217, 130, 43, 0.35); }
-.kq-badge {
-  display: inline-flex; align-items: center; margin-left: 0.4rem; padding: 0.1rem 0.5rem; border-radius: 999px;
-  background: #fff4e5; color: #9a4b00; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+
+/* "Show the ... part": the application block that was asked about gets an orange ring and tint for a few seconds
+   (the class is added and removed by applicantClarifications.jsx); it pulses twice, then fades out on removal. */
+.ap .sum-block, .ap [id^='sum-'] { transition: box-shadow 0.6s ease, background-color 0.6s ease; }
+.ap .kq-target, .ap .sum-block.kq-target {
+  border-color: var(--lf-orange, #d9822b);
+  background-color: var(--lf-warn-bg, #fff1e2);
+  box-shadow: 0 0 0 3px rgba(217, 130, 43, 0.45);
+  outline: none;
 }
+.ap .kq-target:focus-visible { outline: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .ap .kq-target { animation: kq-pulse 1.1s ease-out 2; }
+}
+@keyframes kq-pulse {
+  0% { box-shadow: 0 0 0 3px rgba(217, 130, 43, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(217, 130, 43, 0); }
+  100% { box-shadow: 0 0 0 3px rgba(217, 130, 43, 0.45); }
+}
+
+/* ---------- applicant past questions (applicantClarifyHistory): a bar that opens a popup ---------- */
+.ct .kq-histbar {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0.85rem; width: 100%; min-height: 4rem;
+  margin: 0; padding: 0.75rem 1.1rem 0.75rem 0.9rem; border: 1px solid var(--lf-glass-rim, rgba(20, 41, 95, 0.12)); border-radius: 18px;
+  background: var(--lf-glass, rgba(255, 255, 255, 0.78)); box-shadow: var(--lf-glass-shadow, none); color: var(--ink, #0f1b33);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.ct .kq-histbar:hover { background: var(--lf-glass-hi, #fff); border-color: var(--lf-glass-rim, rgba(20, 41, 95, 0.12)); color: var(--ink, #0f1b33); }
+.ct .kq-histbar:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.45); outline-offset: 2px; }
+.kq-histbar-icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 14px; background: var(--lf-accent-bg, #eef3fd); color: var(--lf-accent, #1e3f97); }
+.kq-histbar-text { display: grid; gap: 0.1rem; min-width: 0; }
+.kq-histbar-text b { color: var(--navy, #14295f); font-size: 0.98rem; font-weight: 700; }
+.kq-histbar-text small { color: var(--muted, #475569); font-size: 0.86rem; }
+.kq-histbar-count {
+  min-width: 1.6rem; padding: 0 0.45rem; border-radius: 999px; background: var(--lf-accent-bg, #eef3fd); color: var(--lf-accent, #1e3f97);
+  font-size: 0.8rem; font-weight: 800; line-height: 1.6rem; text-align: center;
+}
+.kq-histbar-go { color: var(--lf-text-3, #4c5a73); }
+@media (prefers-reduced-motion: no-preference) {
+  .ct .kq-histbar { transition: background-color 0.15s, transform 0.2s ease; }
+  .ct .kq-histbar:hover { transform: translateY(-1px); }
+  .kq-histbar-go { transition: transform 0.2s ease; }
+  .kq-histbar:hover .kq-histbar-go { transform: translateX(3px); }
+}
+/* the popup on applicant pages: blue tone (the staff .lf tone classes aren't on this page) */
+.ap .kq-modal { --tone: var(--lf-accent, #1e3f97); --tone-bg: var(--lf-accent-bg, #eef3fd); --tone-line: transparent; }
+.kq-histlist { display: grid; gap: 1.25rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+.kq-histitem { display: grid; gap: 0.6rem; min-width: 0; }
+.kq-histitem + .kq-histitem { padding-top: 1.25rem; border-top: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08)); }
+.kq-histhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; }
+.ct .kq-histhead h3 { margin: 0; padding: 0; border: 0; color: var(--navy, #14295f); font-size: 1.02rem; font-weight: 700; }
+.kq-histchip {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 1.6rem; padding: 0.1rem 0.7rem; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+}
+.kq-histchip.closed { background: var(--lf-ok-bg, #e6f5ed); color: var(--lf-ok, #15714a); box-shadow: inset 0 0 0 1px var(--lf-ok-line, #b6e0c8); }
+.kq-histchip.withdrawn { background: var(--lf-none-bg, #eef1f6); color: var(--lf-none, #475569); box-shadow: inset 0 0 0 1px var(--lf-none-line, #d5dbe6); }
+.kq-histnote { margin: 0; }
+
+/* ---------- applicant reply card (applicantClarifyCard): a dropdown ---------- */
+.ap .kq-fold { overflow: hidden; }
+.kq-fold > details > summary { list-style: none; }
+.kq-fold > details > summary::-webkit-details-marker { display: none; }
+.kq-sum {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0.6rem 1rem;
+  min-height: 4.5rem; padding: 1rem 1.25rem 1rem 1.4rem; cursor: pointer;
+}
+.kq-sum:hover { background: var(--lf-wash, rgba(20, 41, 95, 0.04)); }
+.kq-sum:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: -3px; border-radius: 22px; }
+.kq-fold details[open] > .kq-sum { border-bottom: 1px solid var(--lf-hair, rgba(20, 41, 95, 0.08)); }
+.kq-sum-icon { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 14px; background: var(--lf-accent-bg, #eef3fd); color: var(--lf-accent, #1e3f97); }
+.kq-fold.your-turn .kq-sum-icon { background: var(--lf-warn-bg, #fff1e2); color: var(--lf-warn, #a8480b); box-shadow: inset 0 0 0 1px var(--lf-warn-line, #f7cfa4); }
+.kq-sum-text { display: grid; gap: 0.1rem; min-width: 0; }
+.kq-sum-eyebrow { color: var(--lf-text-3, #4c5a73); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.ct .kq-sum h2, .ap .kq-sum h2 { margin: 0; padding: 0; border: 0; color: var(--navy, #14295f); font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; }
+.kq-sum-last { display: flex; align-items: baseline; gap: 0.6rem; min-width: 0; color: var(--muted, #475569); font-size: 0.9rem; }
+.kq-sum-quote { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kq-sum-last time { flex: none; color: var(--lf-text-3, #4c5a73); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.kq-fold details[open] .kq-sum-last { display: none; }  /* open: the thread itself shows the messages */
+.kq-sum-chip {
+  display: inline-flex; align-items: center; min-height: 1.75rem; padding: 0.15rem 0.75rem; border-radius: 999px;
+  font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+}
+.kq-sum-chip.warn { background: var(--lf-warn-bg, #fff1e2); color: var(--lf-warn, #a8480b); box-shadow: inset 0 0 0 1px var(--lf-warn-line, #f7cfa4); }
+.kq-sum-chip.info { background: var(--lf-accent-bg, #eef3fd); color: var(--lf-accent, #1e3f97); }
+.kq-chev { flex: none; color: var(--lf-text-3, #4c5a73); }
+.kq-fold details[open] .kq-chev { transform: rotate(180deg); }
+.kq-fold-body { padding: 1.15rem 1.4rem 1.4rem; }
+.kq-fold-body .kq-thread { margin-top: 0; }
+@media (max-width: 640px) {
+  .kq-sum { grid-template-columns: auto minmax(0, 1fr) auto; padding: 0.9rem 1rem; }
+  .kq-sum-chip { grid-column: 2; grid-row: 2; justify-self: start; white-space: normal; }
+  .kq-chev { grid-column: 3; grid-row: 1; }
+  .kq-fold-body { padding: 1rem 1rem 1.15rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .kq-sum { transition: background-color 0.15s; }
+  .kq-chev { transition: transform 0.2s ease; }
+  .kq-fold details[open] .kq-fold-body { animation: kq-open 0.22s ease-out both; }
+}
+@keyframes kq-open { from { opacity: 0; transform: translateY(-4px); } }
+
+.kq-intro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1rem; margin-bottom: 0.75rem; }
+.kq-intro .kq-note { flex: 1 1 22rem; margin: 0; font-size: 0.95rem; line-height: 1.5; }
+.kq-reply { gap: 0.5rem; margin-top: 1.25rem; }
+.kq-labelrow { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.kq-labelrow .kq-counter { font-variant-numeric: tabular-nums; }
+.kq-reply textarea { margin-top: 0; resize: vertical; }
+
+/* shared look for the two small secondary buttons */
+.ct .kq-showpart, .ct .kq-attach {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.5rem; margin: 0; padding: 0.4rem 1rem;
+  border: 1.5px solid var(--lf-block-line, rgba(20, 41, 95, 0.18)); border-radius: 999px;
+  background: var(--lf-control, #fff); box-shadow: none; color: var(--lf-accent, #1e3f97);
+  font-size: 0.92rem; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: pointer;
+}
+.ct .kq-showpart:hover:not(:disabled), .ct .kq-attach:hover:not(:disabled) {
+  border-color: var(--lf-accent, #1e3f97); background: var(--lf-accent-bg, #eef3fd); color: var(--lf-accent, #1e3f97);
+}
+.ct .kq-attach:disabled { opacity: 0.55; cursor: not-allowed; }
+.kq-showpart svg, .kq-attach svg, .kq-chosen svg { flex: none; }
+
+/* the chosen file: a chip with name, size and a remove button */
+.kq-chosen {
+  display: flex; align-items: center; gap: 0.6rem; margin-top: 0.25rem; padding: 0.45rem 0.45rem 0.45rem 0.85rem;
+  border: 1px solid var(--lf-block-line, rgba(20, 41, 95, 0.16)); border-radius: 12px; background: var(--lf-block-bg, #f7f9fd);
+  color: var(--lf-accent, #1e3f97);
+}
+.kq-chosen-name { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--ink, #14295f); font-size: 0.92rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.kq-chosen-size { flex: none; color: var(--muted, #5a6478); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.ct .kq-chosen-remove {
+  display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; min-height: 0; margin: 0; padding: 0;
+  border: 0; border-radius: 999px; background: transparent; box-shadow: none; color: var(--muted, #5a6478); cursor: pointer;
+}
+.ct .kq-chosen-remove:hover:not(:disabled) { background: rgba(180, 35, 24, 0.08); color: #b42318; }
+
+/* bottom row: Attach (with its hint) on the left, Send on the right; stacks on narrow screens */
+.kq-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; margin-top: 0.5rem; }
+.kq-attach-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; min-width: 0; }
+.kq-hint { color: var(--lf-text-3, var(--muted, #5a6478)); font-size: 0.85rem; }
+.kq-actions .ct-primary { margin: 0; }
+@media (pointer: coarse) { .ct .kq-showpart, .ct .kq-attach { min-height: 2.75rem; } .ct .kq-chosen-remove { width: 2.75rem; height: 2.75rem; } }
+@media (max-width: 560px) { .kq-actions .ct-primary { width: 100%; justify-content: center; } }
+@media (prefers-reduced-motion: no-preference) {
+  .ct .kq-showpart, .ct .kq-attach, .ct .kq-chosen-remove { transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
+}
+[data-theme='dark'] .lf-folder .kq-err { color: #fca5a5; }

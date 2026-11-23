@@ -108,3 +108,6 @@
 
 [data-theme='dark'] .lf-folder .cs-crit.ok, [data-theme='dark'] .lf-folder .cs-crit.warn { border-color: var(--lf-sub-line); }
 [data-theme='dark'] .ct .lf-folder .cs-use { border-color: rgba(169, 192, 255, 0.4); }
+
+/* policy check modal: the "save the FP first" / "added" notes above the panel */
+.lf-folder.lf-cs .fp-dialogbody > .cs-mracnote { margin: 1rem 3.5rem 0 1.25rem; }

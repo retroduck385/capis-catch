@@ -134,6 +134,9 @@
 
 /* the new request */
 .dr-form { display: grid; gap: 1.25rem; }
+/* "New request" heading with Cancel, when other requests are open above it */
+.dr-form-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.dr-form-head .dr-h { margin: 0; }
 .dr-channels { display: grid; gap: 0.45rem; }
 .dr-channels-label { color: var(--lf-text-3, #4c5a73); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
 .dr-suggestions { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
@@ -145,12 +148,22 @@
 .dr-source { color: var(--muted, #475569); font-size: 0.78rem; font-weight: 600; white-space: normal; }
 /* Documents needed: one sub-panel per person (principal, spouse, co-borrowers), headed by who it is */
 .dr-party-groups { display: grid; gap: 0.75rem; }
+/* each person is a dropdown (<details>): the summary row is the toggle */
 .dr-party-group {
-  display: grid; gap: 0.55rem; min-width: 0; padding: 0.75rem 0.85rem 0.85rem; border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.09));
+  min-width: 0; border: 1px solid var(--lf-sub-line, rgba(20, 41, 95, 0.09));
   border-radius: 16px; background: var(--lf-sub-bg, rgba(20, 41, 95, 0.035));
 }
-.dr-party-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.5rem; margin: 0; color: var(--navy, #14295f); font-size: 0.92rem; font-weight: 700; }
-.dr-party-head > svg { flex: none; color: var(--lf-accent, #1e3f97); }
+.dr-party-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.5rem; min-height: 3rem; margin: 0; padding: 0.6rem 0.85rem;
+  border-radius: 16px; color: var(--navy, #14295f); font-size: 0.92rem; font-weight: 700; cursor: pointer; list-style: none;
+}
+.dr-party-head::-webkit-details-marker { display: none; }
+.dr-party-head:hover { background: var(--lf-inset, rgba(255, 255, 255, 0.62)); }
+.dr-party-head:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.35); outline-offset: 2px; }
+.dr-party-head > svg:first-child { flex: none; color: var(--lf-accent, #1e3f97); }
+.dr-party-group[open] > .dr-party-head { border-radius: 16px 16px 0 0; }
+.dr-party-group[open] > .dr-party-head .dr-chev { transform: rotate(180deg); }
+.dr-party-group > .dr-picks { padding: 0.15rem 0.85rem 0.85rem; }
 .dr-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
 .dr-picks li { margin: 0; }
 .dr-pick {
@@ -164,6 +177,10 @@
 .dr-pick-txt { display: grid; flex: 1; min-width: 0; line-height: 1.3; }
 .dr-pick-txt b { color: var(--ink, #0f1b33); font-size: 0.92rem; font-weight: 700; }
 .dr-pick .dr-count { margin-left: 0; }
+/* already on an open request: can't be picked again */
+.dr-pick.asked { cursor: default; opacity: 0.72; }
+.dr-pick.asked:hover { background: var(--lf-inset, rgba(255, 255, 255, 0.62)); border-color: rgba(20, 41, 95, 0.14); }
+.dr-pick.asked .dr-chip { flex: none; }
 .dr-other { display: grid; grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr) auto; align-items: center; gap: 0.5rem; }
 .dr-other-who .ct-select { margin-top: 0; }
 .ct .dr-other-who .ct-select-btn { min-height: 2.75rem; border-radius: 12px; }
@@ -228,9 +245,9 @@
 
 @media (prefers-reduced-motion: no-preference) {
   @keyframes dr-in { from { opacity: 0; transform: translateY(-4px); } }
-  .dr[open] > .dr-body, .dr-history[open] > .dr-past-list, .dr-past details[open] > .dr-past-body { animation: dr-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .dr[open] > .dr-body, .dr-history[open] > .dr-past-list, .dr-party-group[open] > .dr-picks, .dr-past details[open] > .dr-past-body { animation: dr-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .dr-chev { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
-  .dr-head, .dr-history-head, .dr-past-head, .ct .dr-btn, .ct .dr-add, .ct .dr-icon-btn, .ct .dr-file-btn, .dr-pick { transition: background-color 0.18s, border-color 0.18s, color 0.18s, filter 0.18s; }
+  .dr-head, .dr-history-head, .dr-past-head, .dr-party-head, .ct .dr-btn, .ct .dr-add, .ct .dr-icon-btn, .ct .dr-file-btn, .dr-pick { transition: background-color 0.18s, border-color 0.18s, color 0.18s, filter 0.18s; }
 }
 
 [data-theme='dark'] .lf-folder .dr-chip.err { background: rgba(248, 113, 113, 0.14); border-color: rgba(248, 113, 113, 0.4); color: #fca5a5; }
@@ -239,9 +256,9 @@
 [data-theme='dark'] .lf-folder :is(.dr-pick, .ct .dr-btn) { border-color: rgba(255, 255, 255, 0.16); }
 [data-theme='dark'] .lf-folder .dr-confirm, [data-theme='dark'] .lf-folder .dr-strip.info { border-color: rgba(126, 162, 255, 0.3); }
 [data-theme='dark'] .lf-folder .dr-pick input { accent-color: #7ea2ff; }
-[data-theme='dark'] .lf-folder :is(.dr-head, .dr-history-head, .dr-past-head):focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
+[data-theme='dark'] .lf-folder :is(.dr-head, .dr-history-head, .dr-past-head, .dr-party-head):focus-visible { outline-color: rgba(169, 192, 255, 0.7); }
 [data-theme='dark'] .lf-folder .dr-past { border-color: rgba(255, 255, 255, 0.1); }
 [data-theme='dark'] .lf-folder .dr-past:not(.ok) { --past-bar: rgba(203, 213, 225, 0.45); }
 [data-theme='dark'] .lf-folder .dr-past .dr-item { background: rgba(255, 255, 255, 0.05); }
 [data-theme='dark'] .lf-folder .dr-past-head:hover { background: rgba(255, 255, 255, 0.04); }
-[data-theme='dark'] .lf-folder .dr-history-head:hover { background: rgba(255, 255, 255, 0.04); }
+[data-theme='dark'] .lf-folder :is(.dr-history-head, .dr-party-head):hover { background: rgba(255, 255, 255, 0.04); }

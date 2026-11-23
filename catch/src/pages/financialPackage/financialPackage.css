@@ -628,3 +628,13 @@
 .lf-folder .fp-tu-files button[aria-pressed='true'] { border-color: var(--lf-accent); background: var(--lf-accent-bg); color: var(--lf-accent); }
 .lf-folder .fp-tu-files button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
 @media (max-width: 40rem) { .info-modal.fp-tu-modal { width: calc(100vw - 1rem); height: calc(100dvh - 1rem); } }
+
+/* Policy check button: an orange "!" when FP / score data changed after the last check (mrac/useMracStale.js) */
+.lf-folder.lf-fp .fp-navkey-btn > span:not(.fp-stale) { flex: 1; }
+.lf-folder.lf-fp .fp-stale {
+  display: inline-grid; place-items: center; flex: none; width: 1.15rem; height: 1.15rem; border-radius: 999px;
+  background: #ea580c; color: #fff; font-size: 0.75rem; font-weight: 800; line-height: 1;
+}
+.lf-folder.lf-fp .sp-rail-btn { position: relative; }
+.lf-folder.lf-fp .sp-rail-btn .fp-stale { position: absolute; top: -0.3rem; right: -0.3rem; box-shadow: 0 0 0 2px var(--lf-control, #fff); }
+[data-theme='dark'] .lf-folder.lf-fp .fp-stale { background: #fb923c; color: #1a1200; }

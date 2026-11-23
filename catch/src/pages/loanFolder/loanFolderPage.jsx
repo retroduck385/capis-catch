@@ -11,7 +11,7 @@
 import { LoanFolderSkeleton } from '../../components/skeleton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FolderOpen, History, LayoutList, Lock,
+    ArrowRight, CalendarDays, ChevronDown, FolderOpen, History, LayoutList, Lock,
     PencilLine, Scale, ScanText, Send,
 } from 'lucide-react';
 import { DSS_ROLES } from '../../roles';
@@ -39,6 +39,7 @@ import SendNoticePanel from '../applicantNotices/sendNoticePanel';
 import RequestPanel from '../documentRequests/requestPanel';
 import { fetchThreads } from '../kycClarify/api';
 import AoThread from '../kycClarify/aoThread';
+import AoQuestionCard from '../kycClarify/aoQuestionCard';
 import { openSectionsText, stageBlockNote } from '../kycClarify/sections';
 import { PanelHide, PanelRail } from '../../components/sidePanel';
 import { useSidePanel } from '../../components/useSidePanel';
@@ -430,7 +431,6 @@ const LoanFolderPage = () => {
 
     const Component = section?.Component;
     const at = section ? sections.indexOf(section) : -1;
-    const prev = sections[at - 1];
     const next = sections[at + 1];
 
     const sectionView = section && (
@@ -443,17 +443,6 @@ const LoanFolderPage = () => {
                         {!section.complete && <span className="lf-tag">Incomplete</span>}
                     </p>
                     <h2>{section.title}</h2>
-                </div>
-                <div className="lf-pager">
-                    <button type="button" className="lf-iconbtn prev" disabled={!prev} onClick={() => prev && open(prev.key)}
-                        aria-label={prev ? `Previous section: ${prev.title}` : 'Previous section'} title={prev?.title}>
-                        <ChevronLeft size={18} aria-hidden="true" />
-                    </button>
-                    <button type="button" className="lf-iconbtn next" onClick={() => open(next?.key ?? REQUEST_CI)}
-                        aria-label={next ? `Next section: ${next.title}` : 'Next: Request CI'} title={next?.title ?? tt('Request CI (NFIS & TU)')}>
-                        <span className="txt">{next ? 'Next' : 'Request CI'}</span>
-                        <ChevronRight size={18} aria-hidden="true" />
-                    </button>
                 </div>
             </header>
             <div className="lf-secgrid">
@@ -470,13 +459,10 @@ const LoanFolderPage = () => {
                         openThread={Boolean(openThreadFor(section.key))}
                         onRecorded={handleRecorded}
                         onNext={() => open(next?.key ?? REQUEST_CI)}
-                        nextLabel={next ? 'Next section' : 'Request CI'} />
+                        nextLabel={next ? 'Next' : 'Request CI'} />
                     {threadsFor(section.key).length > 0 && (
-                        <section className="lf-card lf-check kq-card" aria-label="Question to the applicant">
-                            <div className="lf-cardhead"><h3>Question to the applicant</h3></div>
-                            <AoThread key={`thread-${section.key}`} threads={threadsFor(section.key)} canAnswer canWithdraw={canEdit}
-                                onChanged={loadTrail} />
-                        </section>
+                        <AoQuestionCard key={`thread-${section.key}`} section={section.key} sectionLabel={section.title}
+                            threads={threadsFor(section.key)} canWithdraw={canEdit} complete={section.complete} onChanged={loadTrail} />
                     )}
                 </aside>
                 <div className="lf-card lf-formcard lf-paper">

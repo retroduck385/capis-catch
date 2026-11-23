@@ -11,6 +11,7 @@ import { isAskUsed, markAskUsed, withoutAsk } from './askOnce';
 import FileMark from './fileMark';
 import { useFileMarks } from './useFileMarks';
 import { useReadStates } from './useReadStates';
+import { openRequestsOf } from './openRequests';
 import { UNREADABLE_TEXT } from '../documentCheck/api';
 import { Terms } from '../../components/term';
 import Byline from '../../components/byline';
@@ -20,12 +21,13 @@ import './requestPanel.css';
 
 // "Ask the applicant for documents" (the deferral loop): the assigned Account Officer sends a short message plus the
 // specific documents needed, in-app, by SMS and by email (no links). The applicant uploads them and sends them back;
-// the AO checks them and closes the request. Every file is read on its own: IDs, COE / ITR, payslips and bank
+// the AO checks them and closes the request. Several requests can be open at once (each with its own message,
+// uploads, reminders and close); a document still owed on one of them can't be asked again. Every file is read on its own: IDs, COE / ITR, payslips and bank
 // statements by OCR + the AI document check like any upload; Other, SPA and permits by OCR only (no AI). Each file
 // shows whether it could be read (useReadStates.js).
 // Everyone who can open the file sees the current request read-only.
 // A disclosure card in the staff look (DESIGN.md, "Ask the applicant"), closed by default so it doesn't push the loan
-// folder down; the summary row shows where the current request stands. It opens by itself when the applicant has sent
+// folder down; the summary row shows where the open requests stand. It opens by itself when the applicant has sent
 // documents back to check, or when an "Ask the applicant" button prefilled it. Styles: requestPanel.css (--lf-* tokens,
 // so it follows dark mode).
 
@@ -41,6 +43,7 @@ const DELIVERY = {
 };
 
 const keyOf = (r) => `${r.applicant_id}:${r.requirement_type}`;
+const otherKeyOf = (o) => `${o.applicant_id}:other:${String(o.label).trim().toLowerCase()}`;
 // The checklist grouped by person, in the order it comes (principal, spouse, co-borrowers): [{ applicantId, party, rows }]
 const byParty = (rows) => rows.reduce((groups, r) => {
     const last = groups[groups.length - 1];
@@ -127,16 +130,19 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     const [others, setOthers] = useState([]);          // [{ applicant_id, label }]
     const [preview, setPreview] = useState(null);
     const [confirming, setConfirming] = useState(false);
-    const [closing, setClosing] = useState(false);
+    const [closing, setClosing] = useState(null);       // id of the open request being closed / withdrawn
     const [note, setNote] = useState('');
     const [busy, setBusy] = useState(false);
     const [done, setDone] = useState(null);
     const [error, setError] = useState(null);
     const [expanded, setExpanded] = useState(null);    // null = not toggled yet: open only if documents came back
     const [applied, setApplied] = useState(null);       // the "Ask the applicant" click already put into the box
+    const [composing, setComposing] = useState(false);  // the new-request form, while other requests are open
+    const [partyOpen, setPartyOpen] = useState({});      // { applicantId: open } once the AO opens / closes a person
     const marks = useFileMarks(applicationId);
     const [reminders, setReminders] = useState(null);  // document_reminder_status(); null = not loaded / not run yet
-    const reads = useReadStates(ctx ? uploadIds([ctx.current, ...(ctx.history ?? [])].filter(Boolean)) : []);
+    const openReqs = useMemo(() => openRequestsOf(ctx), [ctx]);
+    const reads = useReadStates(ctx ? uploadIds([...openReqs, ...(ctx.history ?? [])]) : []);
     const boxRef = useRef(null);
     // Set by an "Ask the applicant" button (ask.jsx): documents to tick and a note to prefill
     const location = useLocation();
@@ -166,14 +172,18 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
     }, [applicationId, ctx]);
 
     const checklist = useMemo(() => ctx?.suggestions?.checklist ?? [], [ctx]);
+    // Documents already on an open request: not asked again (the database refuses it too)
+    const asked = useMemo(() => new Set(openReqs.flatMap((r) => r.items.map((i) => (i.requirement_type ? keyOf(i) : otherKeyOf(i))))),
+        [openReqs]);
     // Missing documents start ticked
     const selected = useMemo(
         () => picked ?? new Set(checklist.filter((r) => r.uploaded < r.needed).map(keyOf)),
         [picked, checklist]);
     const items = useMemo(() => [
-        ...checklist.filter((r) => selected.has(keyOf(r))).map((r) => ({ applicant_id: r.applicant_id, requirement_type: r.requirement_type })),
+        ...checklist.filter((r) => selected.has(keyOf(r)) && !asked.has(keyOf(r)))
+            .map((r) => ({ applicant_id: r.applicant_id, requirement_type: r.requirement_type })),
         ...others.map((o) => ({ applicant_id: o.applicant_id, requirement_type: null, label: o.label })),
-    ], [checklist, selected, others]);
+    ], [checklist, selected, asked, others]);
 
     const formVisible = Boolean(ctx?.can_open);
 
@@ -194,6 +204,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         setConfirming(false);
         setDone(null);
         setExpanded(true);
+        setComposing(true);
     }
     // ...then mark the click as used and drop it from the history state, and bring the box into view
     const askSeen = applied?.at ?? null;
@@ -227,7 +238,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         return () => { cancelled = true; clearTimeout(timer); };
     }, [formVisible, applicationId, message, items]);
 
-    if (!ctx || (!ctx.current && ctx.history.length === 0 && !ctx.is_assigned_ao)) return null;
+    if (!ctx || (openReqs.length === 0 && ctx.history.length === 0 && !ctx.is_assigned_ao)) return null;
 
     const view = async (path) => {
         try { window.open(await fileUrl(path), '_blank', 'noopener'); } catch (err) { setError(err.message); }
@@ -243,7 +254,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         setError(null);
         try {
             await openRequest(applicationId, message, items);
-            setMessage(''); setPicked(null); setOthers([]); setConfirming(false); setDone('Request sent to the applicant.');
+            setMessage(''); setPicked(null); setOthers([]); setConfirming(false); setComposing(false); setDone('Request sent to the applicant.');
             await load();
         } catch (err) {
             setError(err.message);
@@ -252,19 +263,14 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         }
     };
 
-    // askAgain: keep the same documents ticked for the next request
-    const close = async (askAgain) => {
+    // Close (documents received) or withdraw. To ask for a file again, use its "Needs a new copy" (newCopyDialog.jsx).
+    const close = async (cur) => {
         setBusy(true);
         setError(null);
         try {
-            const cur = ctx.current;
             const as = await closeRequest(cur.id, note);
-            setNote(''); setClosing(false);
+            setNote(''); setClosing(null);
             setDone(as === 'RECEIVED' ? 'Request closed. The applicant was told the documents were received.' : 'Request withdrawn.');
-            if (askAgain) {
-                setPicked(new Set(cur.items.filter((i) => i.requirement_type).map(keyOf)));
-                setOthers(cur.items.filter((i) => !i.requirement_type).map((i) => ({ applicant_id: i.applicant_id, label: i.label })));
-            }
             await load();
         } catch (err) {
             setError(err.message);
@@ -273,20 +279,28 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
         }
     };
 
-    const cur = ctx.current;
     const problem = preview?.problem;
     const parties = ctx.suggestions?.parties ?? [];
     const partyOptions = parties.map((p) => ({ value: String(p.applicant_id), label: p.party }));
-    const open = expanded ?? cur?.status === 'SENT';
+    const back = openReqs.filter((r) => r.status === 'SENT').length;
+    const waiting = openReqs.length - back;
+    const open = expanded ?? back > 0;
+    // with requests open, the form waits behind "Ask for other documents" so the open ones stay in view
+    const showForm = ctx.can_open && (openReqs.length === 0 || composing);
 
     return (
         <details ref={boxRef} open={open} onToggle={(e) => setExpanded(e.currentTarget.open)} className="dr">
             <summary className="dr-head">
                 <span className="dr-ic" aria-hidden="true"><MailQuestion size={18} /></span>
                 <h3>Ask the applicant for documents</h3>
-                {cur && (cur.status === 'SENT'
-                    ? <span className="dr-chip warn"><AlertTriangle size={13} aria-hidden="true" />Documents back: check them</span>
-                    : <span className="dr-chip info"><Clock size={13} aria-hidden="true" />Waiting for the applicant</span>)}
+                {back > 0 && (
+                    <span className="dr-chip warn"><AlertTriangle size={13} aria-hidden="true" />
+                        {back === 1 ? 'Documents back: check them' : `${back} requests back: check them`}</span>
+                )}
+                {waiting > 0 && (
+                    <span className="dr-chip info"><Clock size={13} aria-hidden="true" />
+                        {waiting === 1 ? 'Waiting for the applicant' : `${waiting} waiting for the applicant`}</span>
+                )}
                 {ctx.history.length > 0 && <span className="dr-chip none">{ctx.history.length} earlier</span>}
                 <ChevronDown size={20} className="dr-chev" aria-hidden="true" />
             </summary>
@@ -295,11 +309,12 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                 {done && <p role="status" className="dr-strip ok"><CheckCircle2 size={16} aria-hidden="true" /><span>{done}</span></p>}
                 {error && <p role="alert" className="dr-err">{error}</p>}
 
-                {cur && (
-                    <section className={`dr-current${cur.status === 'SENT' ? ' back' : ''}`} aria-label="Current request">
+                {openReqs.map((cur) => (
+                    <section key={cur.id} className={`dr-current${cur.status === 'SENT' ? ' back' : ''}`}
+                        aria-label={openReqs.length > 1 ? `Open request: ${cur.items.map((i) => i.label).join(', ')}` : 'Open request'}>
                         <div className="dr-current-head">
                             <p className="dr-current-title">{STATUS_TEXT[cur.status]}</p>
-                            <button type="button" className="dr-icon-btn" onClick={load} aria-label="Refresh the request" title="Refresh">
+                            <button type="button" className="dr-icon-btn" onClick={load} aria-label="Refresh the requests" title="Refresh">
                                 <RefreshCw size={16} aria-hidden="true" />
                             </button>
                         </div>
@@ -310,37 +325,48 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                         <RequestView req={cur} onView={view} marks={marks} reads={reads} />
                         <Reminders status={reminders} requestId={cur.id} current={cur.status === 'OPEN'} />
 
-                        {ctx.is_assigned_ao && (!closing ? (
+                        {ctx.is_assigned_ao && (closing !== cur.id ? (
                             <div className="dr-acts">
                                 {cur.status === 'SENT'
-                                    ? <button type="button" className="dr-primary" onClick={() => setClosing(true)}><CheckCircle2 size={16} aria-hidden="true" />Close: documents received</button>
-                                    : <button type="button" className="dr-btn" onClick={() => setClosing(true)}><X size={16} aria-hidden="true" />Withdraw request</button>}
+                                    ? <button type="button" className="dr-primary" onClick={() => { setNote(''); setClosing(cur.id); }}><CheckCircle2 size={16} aria-hidden="true" />Close: documents received</button>
+                                    : <button type="button" className="dr-btn" onClick={() => { setNote(''); setClosing(cur.id); }}><X size={16} aria-hidden="true" />Withdraw request</button>}
                             </div>
                         ) : (
-                            <div role="alertdialog" aria-labelledby="doc-close-confirm" className="dr-confirm">
-                                <p id="doc-close-confirm" className="dr-confirm-title">
+                            <div role="alertdialog" aria-labelledby={`doc-close-confirm-${cur.id}`} className="dr-confirm">
+                                <p id={`doc-close-confirm-${cur.id}`} className="dr-confirm-title">
                                     {cur.status === 'SENT'
                                         ? 'Close this request? The applicant is told in the app that the documents were received.'
-                                        : 'Withdraw this request? The applicant is told in the app that no documents are needed for now.'}
+                                        : 'Withdraw this request? The applicant is told in the app that these documents are no longer needed.'}
                                 </p>
-                                <label htmlFor="doc-close-note" className="dr-label">Note for the file <small>(optional, staff only)</small></label>
-                                <input id="doc-close-note" className="dr-input" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+                                <label htmlFor={`doc-close-note-${cur.id}`} className="dr-label">Note for the file <small>(optional, staff only)</small></label>
+                                <input id={`doc-close-note-${cur.id}`} className="dr-input" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
                                 <div className="dr-acts">
-                                    <button type="button" className="dr-primary" disabled={busy} onClick={() => close(false)}>{busy ? 'Closing...' : 'Yes, close'}</button>
-                                    {cur.status === 'SENT' && (
-                                        <button type="button" className="dr-btn" disabled={busy} onClick={() => close(true)}>Close and ask again</button>
-                                    )}
-                                    <button type="button" className="dr-btn quiet" disabled={busy} onClick={() => setClosing(false)}>Cancel</button>
+                                    <button type="button" className="dr-primary" disabled={busy} onClick={() => close(cur)}>{busy ? 'Closing...' : 'Yes, close'}</button>
+                                    <button type="button" className="dr-btn quiet" disabled={busy} onClick={() => setClosing(null)}>Cancel</button>
                                 </div>
                             </div>
                         ))}
                     </section>
+                ))}
+
+                {ctx.is_assigned_ao && !ctx.can_open && <p className="dr-note">{ctx.why_not}</p>}
+
+                {ctx.can_open && !showForm && (
+                    <div className="dr-acts">
+                        <button type="button" className="dr-btn" onClick={() => { setDone(null); setComposing(true); }}>
+                            <Plus size={16} aria-hidden="true" />Ask for other documents
+                        </button>
+                    </div>
                 )}
 
-                {!cur && ctx.is_assigned_ao && !ctx.can_open && <p className="dr-note">{ctx.why_not}</p>}
-
-                {ctx.can_open && (
+                {showForm && (
                     <section className="dr-form" aria-label="New request">
+                        {openReqs.length > 0 && (
+                            <div className="dr-form-head">
+                                <h4 className="dr-h">New request</h4>
+                                <button type="button" className="dr-btn quiet small" onClick={() => { setComposing(false); setConfirming(false); }}>Cancel</button>
+                            </div>
+                        )}
                         {applied && (
                             <p role="status" className="dr-strip info">
                                 <MailQuestion size={16} aria-hidden="true" />
@@ -356,7 +382,7 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
 
                         {/* where it goes: three channels, any that can't be used say so */}
                         <div className="dr-channels">
-                            <span className="dr-channels-label">Goes to the applicant by</span>
+                            <span className="dr-channels-label">Sent by</span>
                             <ul className="dr-chips">
                                 <li className="dr-chip ok"><Bell size={13} aria-hidden="true" />In the app</li>
                                 <li className={`dr-chip ${ctx.sms_to ? 'ok' : 'warn'}`}>
@@ -366,12 +392,11 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                                     <Mail size={13} aria-hidden="true" />{ctx.email_to ? `Email to ${ctx.email_to}` : 'Email skipped: no valid address'}
                                 </li>
                             </ul>
-                            <p className="dr-muted">No links are allowed. The applicant can upload only the documents you pick.</p>
                         </div>
 
                         {ctx.suggestions.texts.length > 0 && (
                             <div className="dr-group">
-                                <h4 className="dr-h">Why the file is deferred <small>internal: rewrite it for the applicant</small></h4>
+                                <h4 className="dr-h">Why the file is deferred</h4>
                                 <ul className="dr-suggestions">
                                     {ctx.suggestions.texts.map((s, i) => (
                                         <li key={i} className="dr-suggestion">
@@ -389,35 +414,47 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                         <fieldset className="dr-group">
                             <legend className="dr-h">Documents needed</legend>
                             {checklist.length === 0 && <p className="dr-muted">No checklist documents on this file. Add an &quot;Other&quot; document below.</p>}
-                            {/* one block per person, so it's clear whose documents are whose */}
+                            {/* one dropdown per person, so it's clear whose documents are whose; a person starts open
+                                only when something of theirs is missing or ticked */}
                             <div className="dr-party-groups">
                                 {byParty(checklist).map((g) => {
-                                    const missing = g.rows.filter((r) => r.uploaded < r.needed).length;
-                                    const headId = `dr-party-${g.applicantId}`;
+                                    const missing = g.rows.filter((r) => r.uploaded < r.needed && !asked.has(keyOf(r))).length;
+                                    const picks = g.rows.filter((r) => selected.has(keyOf(r)) && !asked.has(keyOf(r))).length;
+                                    const groupOpen = partyOpen[g.applicantId] ?? (missing > 0 || picks > 0);
                                     return (
-                                        <div key={g.applicantId} className="dr-party-group" role="group" aria-labelledby={headId}>
-                                            <p className="dr-party-head">
+                                        <details key={g.applicantId} className="dr-party-group" open={groupOpen}
+                                            onToggle={(e) => {
+                                                const now = e.currentTarget.open;
+                                                if (now !== groupOpen) setPartyOpen((m) => ({ ...m, [g.applicantId]: now }));
+                                            }}>
+                                            <summary className="dr-party-head">
                                                 <User size={15} aria-hidden="true" />
-                                                <span id={headId}>{capitalized(g.party)}</span>
+                                                <span>{capitalized(g.party)}</span>
                                                 {missing > 0
                                                     ? <span className="dr-chip warn">{missing} missing</span>
                                                     : <span className="dr-chip ok"><CheckCircle2 size={13} aria-hidden="true" />All uploaded</span>}
-                                            </p>
+                                                {picks > 0 && <span className="dr-chip info">{picks} picked</span>}
+                                                <ChevronDown size={18} className="dr-chev" aria-hidden="true" />
+                                            </summary>
                                             <ul className="dr-picks">
                                                 {g.rows.map((r) => {
                                                     const short = r.uploaded < r.needed;
+                                                    const isAsked = asked.has(keyOf(r));
                                                     return (
                                                         <li key={keyOf(r)}>
-                                                            <label className="dr-pick">
-                                                                <input type="checkbox" checked={selected.has(keyOf(r))} onChange={() => toggle(r)} />
+                                                            <label className={`dr-pick${isAsked ? ' asked' : ''}`}>
+                                                                <input type="checkbox" checked={!isAsked && selected.has(keyOf(r))} disabled={isAsked}
+                                                                    onChange={() => toggle(r)} />
                                                                 <span className="dr-pick-txt"><b>{r.label}</b></span>
-                                                                <span className={`dr-count${short ? ' short' : ' all'}`}>{r.uploaded} / {r.needed}<span className="sr-only"> uploaded</span></span>
+                                                                {isAsked
+                                                                    ? <span className="dr-chip info"><Clock size={13} aria-hidden="true" />Already asked</span>
+                                                                    : <span className={`dr-count${short ? ' short' : ' all'}`}>{r.uploaded} / {r.needed}<span className="sr-only"> uploaded</span></span>}
                                                             </label>
                                                         </li>
                                                     );
                                                 })}
                                             </ul>
-                                        </div>
+                                        </details>
                                     );
                                 })}
                             </div>
@@ -441,10 +478,9 @@ const RequestPanel = ({ applicationId, reloadKey }) => {
                         </fieldset>
 
                         <div className="dr-group">
-                            <label htmlFor="doc-request-message" className="dr-h">What we need</label>
-                            <p id="doc-request-hint" className="dr-muted">Plain words for the applicant. The documents are listed after it.</p>
+                            <label htmlFor="doc-request-message" className="dr-h">Message to the applicant</label>
                             <textarea id="doc-request-message" className="dr-input" value={message} maxLength={ctx.max_length} rows={3}
-                                onChange={(e) => setMessage(e.target.value)} aria-describedby="doc-request-hint doc-request-count"
+                                onChange={(e) => setMessage(e.target.value)} aria-describedby="doc-request-count"
                                 aria-invalid={Boolean(problem && message.trim())} />
                             <p id="doc-request-count" className="dr-counter">{message.length} / {ctx.max_length}</p>
                             {problem && message.trim() && <p role="alert" className="dr-err">{problem}</p>}
