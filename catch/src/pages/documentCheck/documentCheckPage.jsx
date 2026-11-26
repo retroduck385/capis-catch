@@ -21,7 +21,8 @@ import {
     ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
 import { UserAuth } from '../../context/authContext';
-import { fetchApplication, getParties, one } from '../applicationForm/api';
+import { fetchApplication, getAddress, getParties, one } from '../applicationForm/api';
+import { kycFieldLink } from '../loanFolder/kycTargets';
 import { formatDay, formatExact, fullWhen } from '../../components/people';
 import { readingTime } from './duration';
 import { isExpired } from './compare';
@@ -261,8 +262,11 @@ const DocumentCheckPage = () => {
         party: selectedParty.party,
         employment: one(selectedParty.party.employment_info),
         presentAddress: joinAddress(presentAddressOf(selectedParty.party, principal)),
+        sameAsPrincipal: Boolean(getAddress(selectedParty.party, 'PRESENT')?.same_as_principal),
         loanAmount: app.loan_amount ?? null,
     } : null;
+    // the arrow on each value: where it is edited in the loan folder (loanFolder/kycTargets.js)
+    const fieldLink = selectedParty ? (def) => kycFieldLink(def, selectedParty.party, app.id) : null;
     const ciCheckType = ciMode && doc ? doc.check_type : null;
     const ci = ciCheckType ? {
         check: ciData.checks.find((c) => c.applicant_id === selectedParty.party.id && c.check_type === ciCheckType) ?? null,
@@ -564,7 +568,7 @@ const DocumentCheckPage = () => {
                                         <ExtractionPanel key={`${check.run.id}-${check.run.confirmed_at ?? ''}`}
                                             doc={doc} defs={docDefs} check={check} ctx={ctx} canEdit={canEdit} names={names}
                                             focusedId={focused?.id} onFocusField={focusField} onConfirmed={refreshAll}
-                                            onDirtyChange={setDirty} ci={ci} />
+                                            onDirtyChange={setDirty} ci={ci} fieldLink={fieldLink} onLeave={guardLink} />
                                     </div>
                                 ) : (
                                     <div className="dc-wait">

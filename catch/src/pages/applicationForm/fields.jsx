@@ -29,7 +29,7 @@ export const Field = ({ name, label, value, onChange, error, required, type = 't
     if (type === 'checkbox') {
         return (
             <label className="ct-check">
-                <input type="checkbox" checked={!!value} disabled={disabled}
+                <input id={name} type="checkbox" checked={!!value} disabled={disabled}
                     onChange={(e) => onChange(name, e.target.checked)} />
                 {text}
             </label>

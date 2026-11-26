@@ -29,6 +29,7 @@ import { fetchAuditLog, fetchCanEdit, fetchKycChecks, fetchStaffNames } from './
 import AoSteps from './aoSteps';
 import ChangeHistory from './changeHistory';
 import KycCheckPanel from './kycCheckPanel';
+import SectionDocuments from './sectionDocuments';
 import { StepSaveLabel } from '../applicationForm/stepSaveLabel';
 import { KycBoard, KycProgress, StatusIcon } from './kycOverview';
 import { RESULT_LABELS, kycCounts, statusOf } from './options';
@@ -81,6 +82,7 @@ const LoanFolderPage = () => {
     const [docProgress, setDocProgress] = useState(null); // assigned AO only: step 1's { total, confirmed }
     const [currentKey, setCurrentKey] = useState(OVERVIEW);
     const [openedHash, setOpenedHash] = useState('');
+    const [pendingField, setPendingField] = useState(null); // { ids }: the Document check's arrow, field to flash
     const [saved, setSaved] = useState(false);
     const [kycFilter, setKycFilter] = useState('ALL'); // shared by the KYC ring's legend and the section board
     const [loading, setLoading] = useState(true);
@@ -159,12 +161,37 @@ const LoanFolderPage = () => {
         }
     }, [currentKey]);
 
+    // The Document check's arrow (&field=<id>[,<fallback>]#kyc-<section>, kycTargets.js): once the section has
+    // rendered, scroll to the first of those form fields that exists, flash it and put the cursor in it
+    useEffect(() => {
+        if (!pendingField) return undefined;
+        const timer = setTimeout(() => {
+            setPendingField(null);
+            // fields.jsx gives a dropdown the id with every "s" run turned into "_", so try that spelling too
+            const el = pendingField.ids.flatMap((id) => [id, id.replace(/s+/g, '_')])
+                .map((id) => document.getElementById(id)).find(Boolean);
+            const box = el?.closest('.ct-field, .ct-check') ?? el?.closest('fieldset') ?? null;
+            if (!box) return;
+            box.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' });
+            box.classList.remove('lf-flash');
+            void box.offsetWidth;   // restart the animation if the same field is flashed twice
+            box.classList.add('lf-flash');
+            (el.matches('input, textarea, button') ? el : el.querySelector('input, textarea, button'))?.focus({ preventScroll: true });
+        }, 120);
+        return () => clearTimeout(timer);
+    }, [pendingField, currentKey]);
+
     // A message's topic chip (#kyc-<section>) opens that section for the editing AO: once per link, when the file
     // has loaded (state adjusted while rendering, not in an effect)
     if (app && canEdit && hash !== openedHash) {
         setOpenedHash(hash);
         const key = hash.startsWith('#kyc-') ? hash.slice(5) : null;
-        if (key && sectionsFor(app).some((s) => s.key === key)) { setCurrentKey(key); setSaved(false); }
+        if (key && sectionsFor(app).some((s) => s.key === key)) {
+            setCurrentKey(key);
+            setSaved(false);
+            const field = searchParams.get('field');
+            if (field) setPendingField({ ids: field.split(',').filter(Boolean) });
+        }
     }
 
     if (loading) return <LoanFolderSkeleton />;
@@ -444,6 +471,8 @@ const LoanFolderPage = () => {
                     </p>
                     <h2>{section.title}</h2>
                 </div>
+                {/* the files of the person this section is about, in a popup (none for loan, references ...) */}
+                <SectionDocuments app={app} sectionKey={section.key} sectionTitle={section.title} />
             </header>
             <div className="lf-secgrid">
                 <aside className="lf-rail" aria-label="KYC check">

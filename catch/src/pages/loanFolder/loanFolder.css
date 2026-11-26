@@ -965,3 +965,58 @@
   background: #fff; border: 1.5px solid var(--navy, #14295f); color: var(--navy, #14295f); font-weight: 700;
 }
 .lf-folder .lf-formcard .ct-actions button[type='submit']:hover:not(:disabled) { background: #f1f4fa; border-color: var(--navy, #14295f); color: var(--navy, #14295f); }
+
+/* ---------- Document check arrow lands here: the field flashes (loanFolderPage.jsx, kycTargets.js) ---------- */
+@keyframes lf-flash {
+  0%, 35% { background: var(--lf-accent-bg); box-shadow: 0 0 0 3px var(--lf-accent); }
+  100% { background: transparent; box-shadow: 0 0 0 3px transparent; }
+}
+.lf-folder .lf-flash { border-radius: 10px; animation: lf-flash 2.4s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .lf-folder .lf-flash { animation: none; box-shadow: 0 0 0 3px var(--lf-accent); }
+}
+
+/* ---------- section Documents popup (sectionDocuments.jsx): file pills, viewer | what the AI read ---------- */
+.lf-folder .sd-open { flex: none; }
+.info-modal.sd-modal { width: min(76rem, calc(100vw - 2rem)); height: calc(100dvh - 2rem); }
+.sd-modal .info-modal-body { display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1rem; }
+.sd-lists, .sd-files { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.lf-folder .sd-lists button, .lf-folder .sd-files button {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.25rem; margin: 0; padding: 0.3rem 0.85rem;
+  border: 1px solid var(--lf-control-rim, #d5dbe6); border-radius: 999px; background: var(--lf-control, #fff); box-shadow: none;
+  color: var(--lf-text-2, #2b3a5c); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.lf-folder .sd-lists button { min-height: 2rem; font-size: 0.8rem; }
+.lf-folder :is(.sd-lists, .sd-files) button:hover { background: var(--lf-control-hover, #f4f6fa); }
+.lf-folder :is(.sd-lists, .sd-files) button[aria-pressed='true'] { border-color: var(--lf-accent); background: var(--lf-accent-bg); color: var(--lf-accent); }
+.lf-folder :is(.sd-lists, .sd-files) button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+.sd-work { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(17rem, 1fr); gap: 1rem; flex: 1; min-height: 0; }
+.sd-viewer { display: flex; min-height: 20rem; min-width: 0; }
+.sd-side { display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; overflow-y: auto; padding-right: 0.15rem; }
+.sd-side h3 { margin: 0; color: var(--navy, #14295f); font-size: 0.95rem; font-weight: 700; }
+.sd-state { display: flex; align-items: flex-start; gap: 0.4rem; margin: 0; padding: 0.5rem 0.7rem; border-radius: 10px; font-size: 0.84rem; font-weight: 600; }
+.sd-state svg { flex: none; margin-top: 0.1rem; }
+.sd-state.ok { background: rgba(21, 128, 61, 0.09); color: #166534; }
+.sd-state.warn { background: rgba(161, 98, 7, 0.1); color: #854d0e; }
+.sd-values { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.lf-folder .sd-values button {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.5rem; width: 100%; margin: 0; padding: 0.55rem 0.75rem;
+  border: 1px solid var(--lf-inset-rim, #e3e7ef); border-radius: 12px; background: var(--lf-inset, #f7f8fb); box-shadow: none;
+  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.lf-folder .sd-values button:hover { background: var(--lf-inset-hover, #f0f3f8); }
+.lf-folder .sd-values button.on { border-color: var(--lf-accent); box-shadow: 0 0 0 1px var(--lf-accent); }
+.lf-folder .sd-values button:focus-visible { outline: 3px solid rgba(30, 63, 151, 0.4); outline-offset: 2px; }
+.sd-values .k { flex-basis: 100%; color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.sd-values .v { color: var(--ink); font-size: 0.92rem; font-weight: 600; overflow-wrap: anywhere; }
+.sd-values .app { flex-basis: 100%; color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+.sd-table { font-size: 0.82rem; }
+[data-theme='dark'] .sd-state.ok { background: rgba(74, 222, 128, 0.12); color: #bbf7d0; }
+[data-theme='dark'] .sd-state.warn { background: rgba(253, 224, 71, 0.12); color: #fef08a; }
+@media (max-width: 56rem) {
+  .info-modal.sd-modal { width: calc(100vw - 1rem); height: calc(100dvh - 1rem); }
+  .sd-work { grid-template-columns: minmax(0, 1fr); }
+  .sd-viewer { height: 60vh; flex: none; }
+  .sd-side { overflow: visible; }
+  .sd-modal .info-modal-body { overflow-y: auto; }
+}

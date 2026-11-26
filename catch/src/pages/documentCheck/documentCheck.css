@@ -241,6 +241,15 @@
 [data-theme='dark'] .dc-doc .dc-probdot { background: #fca5a5; }
 .dc-field-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.45rem; }
 .dc-field-label { margin-right: 0.15rem; color: var(--ink); font-size: 0.92rem; font-weight: 700; }
+/* arrow to the loan folder section where this value is edited (kycTargets.js); pushed to the card's right end */
+.lf-folder .dc-field-go {
+    display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; margin-left: auto; flex: none;
+    border: 1px solid var(--lf-inset-rim); border-radius: 999px; background: var(--lf-accent-bg);
+    color: var(--lf-accent); text-decoration: none; transition: background-color 0.15s, transform 0.15s;
+}
+.lf-folder .dc-field-go:hover { background: var(--lf-inset-hover); transform: translate(1px, -1px); }
+.lf-folder .dc-field-go:focus-visible { outline: 2px solid var(--lf-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .lf-folder .dc-field-go, .lf-folder .dc-field-go:hover { transition: none; transform: none; } }
 .dc-app { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; color: var(--ink); font-size: 0.9rem; }
 .dc-app span { color: var(--muted); font-weight: 500; }
 .dc-app span::after { content: ':'; }

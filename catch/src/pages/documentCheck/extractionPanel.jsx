@@ -5,8 +5,13 @@
 // summary, and confirms (confirm_ci_extraction); that saves the CI result. Nothing is copied to the application.
 // Look: .dc-* in documentCheck.css (inset field cards, Keep / Update pills, the table frame). Status chips use the
 // page's tones: a difference or an expired ID is amber (it needs a look), a wrong format is the form red.
+// Arrow on a value card (fieldLink): opens the loan folder section where that value is edited, with the field
+// highlighted (loanFolder/kycTargets.js). onLeave guards unsaved edits here before the page changes.
+// Address (20261207_address_keep_update.sql): Update copies the whole line into the present address's Street part and
+// empties the other parts, so the AO is told to finish barangay / city / province / ZIP in the loan folder.
 import { useEffect, useId, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, CircleHelp, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, ArrowUpRight, CheckCircle2, ChevronDown, CircleHelp, Lock } from 'lucide-react';
 import SelectMenu from '../../components/selectMenu';
 import Byline from '../../components/byline';
 import { CI_RESULTS } from '../ciRequest/options';
@@ -90,7 +95,11 @@ const ValueInput = ({ def, value, onChange, onFocus, readOnly, compact }) => {
 };
 
 // ci = null for application documents; for CI reports { check: saved ci_checks row | null, label: "TU for <name>" }
-const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onFocusField, onConfirmed, onDirtyChange, ci = null }) => {
+// the address part is the one def whose Update fills only part of a record (the Street box), see the header comment
+const isAddress = (def) => def.target_table === 'addresses';
+
+const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onFocusField, onConfirmed, onDirtyChange, ci = null,
+    fieldLink = null, onLeave = null }) => {
     const { run, fields } = check;
     const confirmed = Boolean(run.confirmed_at);
     const editable = canEdit && !confirmed;
@@ -159,6 +168,8 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
         ciResult === 'WITH_FINDINGS' && !ciSummary.trim() && 'Write a summary of the findings.',
     ].filter(Boolean);
     const toCopy = header.filter((h) => h.needs && choices[h.field.id] === 'UPDATE');
+    const addressCopied = toCopy.find((h) => isAddress(h.def)) ?? null;
+    const addressLink = addressCopied && fieldLink ? fieldLink(addressCopied.def) : null;
     const corrected = fields.filter((f) => (values[f.id] ?? '') !== (f.extracted_value ?? ''));
 
     const setValue = (id, v) => {
@@ -285,7 +296,11 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
     };
 
     // Keep / Update: what each choice does, shown under the pills once one is picked (not only in a tooltip)
-    const explainChoice = (key, status, def, value, appValue) => (status === 'NOT_ON_DOCUMENT'
+    const explainChoice = (key, status, def, value, appValue) => (isAddress(def) && key === 'UPDATE'
+        ? `${status === 'NOT_ON_DOCUMENT' ? 'Type the address as it appears on the document in the box above. ' : ''}`
+            + `The whole line goes into the Street box of the present address and the other parts are emptied${ctx.sameAsPrincipal ? '; "Same as principal" is switched off for this person' : ''}. `
+            + 'Fill in barangay, city, province and ZIP in the loan folder afterwards.'
+        : status === 'NOT_ON_DOCUMENT'
         ? (key === 'KEEP'
             ? `Keep what the applicant entered (${displayValue(appValue, def.data_type)}). The document doesn't show it.`
             : 'Type the value as it appears on the document in the box above; it then replaces the application value.')
@@ -378,6 +393,12 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                         )}
                                     </>
                                 ) : <p>Nothing will be copied to the application.</p>}
+                                {addressCopied && (
+                                    <p className="dc-flag">
+                                        The address goes into the Street box only. Afterwards the {addressLink?.sectionTitle ?? 'Address'} section
+                                        in the loan folder needs barangay, city, province and ZIP filled in before it can be verified.
+                                    </p>
+                                )}
                                 <p className="dc-muted">After this the values can&apos;t be changed. Changes are recorded in the change history.</p>
                                 <div className="dc-acts">
                                     <button type="button" className="lf-primary" disabled={saving} onClick={handleConfirm}>
@@ -450,12 +471,21 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                 // Keep: the box shows the application's value (read only). Display only: what the
                                 // document says (value) stays the staged reading, and nothing is copied (apply_to_record false).
                                 const kept = needs && editable && choices[field.id] === 'KEEP';
+                                const link = !ci && fieldLink ? fieldLink(def) : null;
                                 return (
                                 <div key={field.id} onClick={() => onFocusField(field)}
                                     className={`dc-field sev-${tone}${focusedId === field.id ? ' on' : ''}`}>
                                     <div className="dc-field-top">
                                         <span className="dc-field-label">{def.label}</span>
                                         {chipsFor(def, field, value, status)}
+                                        {link && (
+                                            <Link to={link.to} className="dc-field-go"
+                                                title={`Open ${def.label} in the loan folder (${link.sectionTitle})`}
+                                                aria-label={`Open ${def.label} in the loan folder, ${link.sectionTitle} section`}
+                                                onClick={(e) => { e.stopPropagation(); onLeave?.(e); }}>
+                                                <ArrowUpRight size={15} aria-hidden="true" />
+                                            </Link>
+                                        )}
                                     </div>
                                     <ValueInput def={def} value={kept ? (appValue ?? '') : value} readOnly={!editable || kept}
                                         onChange={(v) => setValue(field.id, v)} onFocus={() => onFocusField(field)} />
@@ -503,6 +533,14 @@ const ExtractionPanel = ({ doc, defs, check, ctx, canEdit, names, focusedId, onF
                                         </p>
                                     )}
                                     {confirmed && field.apply_to_record && <p className="dc-good dc-small">Copied to the application</p>}
+                                    {confirmed && field.apply_to_record && isAddress(def) && link && (
+                                        <p className="dc-muted dc-small">
+                                            Copied into the Street box.{' '}
+                                            <Link to={link.to} className="lf-linkbtn" onClick={(e) => { e.stopPropagation(); onLeave?.(e); }}>
+                                                Fill in the other address parts
+                                            </Link>
+                                        </p>
+                                    )}
                                 </div>
                                 );
                             })}
