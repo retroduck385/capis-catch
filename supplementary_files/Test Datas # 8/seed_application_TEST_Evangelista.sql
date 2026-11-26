@@ -6,7 +6,7 @@
 --   * Sets the account's master profile to Ramon (the wizard needs a complete profile). Set v_set_profile := false
 --     to keep the current one.
 --   * ON PURPOSE: the spouse's date of birth is 1980-03-18 (her ID says 03/08/1980) -> the AO picks Update from the ID
---     in Scenario 3. Co-borrower 2's ID shows his old Muntinlupa address -> Scenario 3's clarification question.
+--     in Scenario 2. Co-borrower 2's ID shows his old Muntinlupa address -> Scenario 3's clarification question.
 --   * NOT done here: the uploads (Storage can't be seeded from SQL) and the submit.
 -- After running: log in as the applicant, open the draft, click Save and continue through each step (the wizard keeps
 -- "steps visited" in the browser, not the DB), then upload the files in step 11 (leave out Co-borrower 2's payslips).
