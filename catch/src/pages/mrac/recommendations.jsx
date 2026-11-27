@@ -107,6 +107,9 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
         if (group === 'condition') onAddTerm?.(edited.text);
     });
     const acceptLabel = { exception: '+ Add to V. Exception/s', condition: '+ Add to terms and conditions', obtain: 'Noted, will follow up' }[group];
+    // Already in V. Exception/s (the recommender matched a saved row to this clause or its rule): nothing to add again
+    const recorded = group === 'exception' && f.recorded;
+    const confirm = () => decide('ACCEPTED');
 
     const [decisionLabel, decisionTone] = review ? DECISIONS[review.decision] ?? [review.decision, 'plain'] : [];
     return (
@@ -117,7 +120,8 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
                 <span className="chips">
                     {f.rule_codes?.length > 0 && <span className="mrac-chip plain" title="A deterministic rule checked this too">Rule {f.rule_codes.join(', ')}</span>}
                     {review && <span className={`mrac-chip ${decisionTone}`}>{decisionLabel}</span>}
-                    {!review && canEdit && <span className="mrac-chip warn">To decide</span>}
+                    {!review && recorded && <span className="mrac-chip ok" title="A saved row in V. Exception/s already covers this">In V. Exception/s</span>}
+                    {!review && !recorded && canEdit && <span className="mrac-chip warn">To decide</span>}
                 </span>
             </summary>
             <div className="mrac-rec-body">
@@ -134,14 +138,20 @@ const Finding = ({ f, group, run, review, names, canEdit, onAddException, onAddT
                 {[f.document, pages(f)].filter(Boolean).join(' · ')}
                 {f.brought_in_by?.length > 0 && <> · Checked because: {f.brought_in_by.join('; ')}</>}
             </p>
+            {recorded && !review && (
+                <p className="mrac-rec-note">Your V. Exception/s already has a row for this. Nothing to add; check that its mitigant still holds.</p>
+            )}
             {f.notes?.map((n) => <p key={n} className="mrac-rec-note">{n}</p>)}
             <Clause f={f} />
 
             {review && <Decision review={review} names={names} />}
             {canEdit && !review && mode === null && (
                 <div className="mrac-rec-buttons">
-                    <button type="button" className="fp-btn mrac-b-blue" disabled={busy} onClick={accept}>{acceptLabel}</button>
-                    {group !== 'obtain' && (
+                    {recorded
+                        ? <button type="button" className="fp-btn mrac-b-blue" disabled={busy} onClick={confirm}
+                            title="Records that you agree, without adding a second row">Confirm</button>
+                        : <button type="button" className="fp-btn mrac-b-blue" disabled={busy} onClick={accept}>{acceptLabel}</button>}
+                    {group !== 'obtain' && !recorded && (
                         <button type="button" className="fp-btn mrac-b-orange" disabled={busy} onClick={() => setMode('edit')}>Edit, then add</button>
                     )}
                     <button type="button" className="fp-btn mrac-b-white" disabled={busy} onClick={() => setMode('dismiss')}>Dismiss</button>
@@ -206,7 +216,7 @@ const Recommendations = ({ run, reviews = {}, names = {}, canEdit = false, onAdd
         );
     }
     const counts = rec.counts ?? {};
-    const open = (g) => (rec.groups[g] ?? []).filter((f) => !reviews[f.chunk_key]).length;
+    const open = (g) => (rec.groups[g] ?? []).filter((f) => !reviews[f.chunk_key] && !(g === 'exception' && f.recorded)).length;
     const props = { run, names, canEdit, onAddException, onAddTerm, onReviewed };
 
     return (

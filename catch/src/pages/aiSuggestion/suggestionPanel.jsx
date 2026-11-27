@@ -25,6 +25,7 @@ const TONE = { ENDORSED: 'ok', NOT_ENDORSED: 'bad', DEFERRED: 'warn' };
 const REVIEW_CHIPS = {
     ACCEPTED: ['Finding accepted', 'ok'],
     EDITED: ['Finding edited by you', 'ok'],
+    RECORDED: ['Already in V. Exception/s', 'ok'],
     NOT_REVIEWED: ['Finding not reviewed yet', 'warn'],
 };
 

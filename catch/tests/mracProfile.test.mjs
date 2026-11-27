@@ -37,7 +37,7 @@ const app = {
 };
 const computed = {
     incomes: [
-        { party: principal, basis: { value: 'PAYSLIP' }, basic: 81000, other: 5000, gross: 86000 },
+        { party: principal, basis: { value: 'PAYSLIP', factor: 0.9 }, declared: 90000, basic: 81000, other: 5000, gross: 86000 },
         { party: ofwCob, basis: { value: 'COE' }, basic: 44000, other: 0, gross: 44000 },
     ],
     existing: 12000, totalGross: 130000, amortization: 38333.24, dbr: 0.387, collateralValue: 6000000, appraised: 6000000, lcr: 0.808,
@@ -51,8 +51,16 @@ const fileMarks = [
     { document_id: 501, mark: 'NEEDS_NEW_COPY' }, { document_id: 501, mark: 'CLEARED' },     // latest mark wins
     { document_id: 502, mark: 'NEEDS_NEW_COPY', comment: 'Ana, page 2 is blurry' },
 ];
+// Confirmed Document-check readings (fetchConfirmedReadings): the COEC and both payslip files of the principal
+const readings = {
+    501: { employment_status: ['Regular'], monthly_basic_salary: ['₱85,000.00'], monthly_gross_income: ['90,000'] },
+    // semi-monthly: two payslips in July, two in August -> per month = the sum / 2 months
+    502: { pay_date: ['2026-07-15', '2026-07-30', '2026-08-15', '2026-08-30'], basic_pay: ['42500', '42500', '42500', '42500'],
+        gross_pay: ['45000', '45000', '45000', '45000'], total_deductions: ['5,000.50', '4,999.50', '5000', '5000'],
+        net_pay: ['40000', '40000', '40000', '40000'] },
+};
 const profile = buildPolicyProfile({ app, computed, score: { total: 71, complete: true, riskRating: 'Low', recommendation: 'For Approval' },
-    ci, ciFlagged: true, fileMarks, openDocumentRequest: true,
+    ci, ciFlagged: true, fileMarks, openDocumentRequest: true, readings,
     exceptions: [{ policy: 'Age limit', exception_recommendation: 'Allow 20 years', mitigant: 'Younger co-borrower' }, { policy: null }],
     facts: { age_at_maturity: 58, dbr_standalone: 0.58 } });
 const sent = JSON.stringify(profile);
@@ -61,7 +69,7 @@ test('nothing personal goes out: names, birth date, contacts, addresses, IDs, em
     for (const secret of ['Ana', 'Santos', 'Dela Cruz', 'Ramon', '1988-04-12', '09175550101', 'ana.sample@mail.test', '123-456-789',
         '34-0000000-1', 'Sampaguita', 'Abroad Rd', 'Synthetic Manufacturing', 'Overseas Co', 'Synthetic Savings', 'Synthetic Bank',
         '0001-2345', '02 8555 0101', 'HL-2026-000123', 'Lot 7 Block 3', '004-2026000123', 'Synthetic Land', 'Synthetic Developers',
-        'Juan Referrer', 'past due', 'has no record', 'blurry', 'ana_coe.pdf', 'FEMALE', 'OWNED', 'American', 'dependents']) {
+        'Juan Referrer', 'past due', 'has no record', 'blurry', 'ana_coe.pdf', 'FEMALE', 'American', 'dependents']) {
         assert.ok(!sent.includes(secret), `"${secret}" must not be sent`);
     }
 });
@@ -98,10 +106,11 @@ test('borrowers by role, with what policies turn on: citizenship, abroad, employ
 });
 
 test('documents: required per borrower, files on file, latest staff mark per file', () => {
+    assert.deepEqual(profile.documents.borrowers[0].other_documents, []);
     assert.deepEqual(profile.documents.borrowers[0].required, [
-        { requirement: 'COE_ITR', files: 1, cleared: 1, needs_new_copy: 0 },
-        { requirement: 'PAYSLIPS_REMITTANCES', files: 2, cleared: 0, needs_new_copy: 1 },
-        { requirement: 'VALID_ID_PASSPORT', files: 0, cleared: 0, needs_new_copy: 0 },
+        { requirement: 'COE_ITR', files: 1, confirmed: 1, cleared: 1, needs_new_copy: 0 },
+        { requirement: 'PAYSLIPS_REMITTANCES', files: 2, confirmed: 1, cleared: 0, needs_new_copy: 1 },
+        { requirement: 'VALID_ID_PASSPORT', files: 0, confirmed: 0, cleared: 0, needs_new_copy: 0 },
     ]);
     assert.equal(profile.documents.open_request_to_applicant, true);
 });
@@ -109,6 +118,7 @@ test('documents: required per borrower, files on file, latest staff mark per fil
 test('loan, CI per role, totals and score', () => {
     assert.equal(profile.loan.from_developer, true);
     assert.equal(profile.loan.referral_channel, 'Developer');
+    assert.equal(profile.loan.financing, 'END_USER');
     assert.equal(profile.loan.collateral_basis, 'APPRAISED_VALUE');
     const results = profile.ci.borrowers.map(({ role, nfis, tu, bras }) => ({ role, nfis, tu, bras }));
     // the CI's records and accounts (ciFacts.js): none here, and no report dates
@@ -122,7 +132,8 @@ test('loan, CI per role, totals and score', () => {
     assert.equal(profile.ci.findings_flagged, true);
     assert.equal(profile.totals.dbr_principal_only, 0.58);
     assert.equal(profile.totals.principal_age_at_maturity, 58);
-    assert.deepEqual(profile.credit_score, { total: 71, complete: true, risk_rating: 'Low', recommendation: 'For Approval' });
+    assert.deepEqual(profile.credit_score, { total: 71, complete: true, risk_rating: 'Low', recommendation: 'For Approval',
+        character_bands: null });
     assert.equal(profile.exceptions.length, 1);
 });
 
@@ -160,4 +171,66 @@ test('CI records reach the policy check by role only: kind, age, balance, RAAC r
     const text = JSON.stringify(profile);
     for (const secret of ['Sample Bank', 'Civil Case', 'free text']) assert.equal(text.includes(secret), false, secret);
     assert.equal(PERSONAL_KEY.test(Object.keys(rec).join(' ')), false);
+});
+
+test('home ownership as a category only; a co-borrower on "same as principal" gets the principal\'s', () => {
+    const p = party(31, 'PRINCIPAL', { addresses: [{ address_type: 'PRESENT', building_street: '9 Real St', home_ownership: 'RENTED', monthly_rent: 14000, date_move_in: '2019-01-01' }] });
+    const c = party(32, 'CO_BORROWER', { addresses: [{ address_type: 'PRESENT', same_as_principal: true }] });
+    const odd = party(33, 'SPOUSE', { addresses: [{ address_type: 'PRESENT', home_ownership: 'MANSION' }] });
+    const out = buildPolicyProfile({ app: { applicants: [p, c, odd] }, computed: { incomes: [{ party: p }, { party: c }, { party: odd }] } });
+    assert.deepEqual(out.borrowers.map((b) => b.home_ownership), ['RENTED', 'RENTED', null]);
+    const text = JSON.stringify(out);
+    for (const secret of ['14000', '9 Real St', '2019-01-01']) assert.equal(text.includes(secret), false, secret);
+});
+
+test('income: the FP computation and the confirmed COEC / payslip figures', () => {
+    const [p, c] = profile.borrowers;
+    assert.equal(p.home_ownership, 'OWNED');
+    assert.equal(p.income_basis_factor, 0.9);
+    assert.equal(p.declared_gross_income, 90000);
+    assert.equal(p.basic_income, 81000);
+    assert.equal(p.other_income, 5000);
+    assert.deepEqual(p.income_documents, {
+        coec_confirmed: true, employment_status: 'Regular', coec_monthly_basic_salary: 85000, coec_monthly_gross_income: 90000,
+        payslips_confirmed: 4, payslip_months: 2, payslip_monthly_basic_pay: 85000, payslip_monthly_gross_pay: 90000,
+        payslip_monthly_deductions: 10000, payslip_monthly_net_pay: 80000,
+    });
+    assert.equal(c.income_documents.coec_confirmed, false, 'nothing confirmed for the co-borrower');
+    assert.equal(c.income_documents.coec_monthly_basic_salary, null);
+    assert.equal(JSON.stringify(profile).includes('2026-07-15'), false, 'pay dates are not sent');
+});
+
+test('payslips without pay dates: counted, but no monthly figure (pay frequency unknown)', () => {
+    const p = party(41, 'PRINCIPAL');
+    const out = buildPolicyProfile({ app: { applicants: [p] }, computed: { incomes: [{ party: p }] },
+        readings: { 502: { basic_pay: ['30000', '30000'], gross_pay: ['32000', '32000'] } } });
+    const docs = out.borrowers[0].income_documents;
+    assert.equal(docs.payslips_confirmed, 2);
+    assert.equal(docs.payslip_months, null);
+    assert.equal(docs.payslip_monthly_gross_pay, null);
+});
+
+test('the CO\'s Character score picks go to the policy check as band labels', () => {
+    const p = party(51, 'PRINCIPAL');
+    const score = { total: 60, complete: true, characterBands: { NFIS: 'With cancelled card but fully settled', LOAN_HISTORY: null } };
+    const out = buildPolicyProfile({ app: { applicants: [p] }, computed: { incomes: [{ party: p }] }, score });
+    assert.deepEqual(out.credit_score.character_bands, { NFIS: 'With cancelled card but fully settled', LOAN_HISTORY: null });
+});
+
+test('extra documents asked for by name: by role, names replaced, full-payment proofs marked, no details', () => {
+    const p = party(61, 'PRINCIPAL');
+    const sp = party(62, 'SPOUSE', { first_name: 'Liza', middle_name: 'Mae', last_name: 'Evangelista' });
+    const out = buildPolicyProfile({ app: { applicants: [p, sp] }, computed: { incomes: [{ party: p }, { party: sp }] },
+        extraDocuments: [
+            { applicant_id: 61, document_type: 'OTHER', label: 'PSA Marriage Certificate', has_details: true },
+            { applicant_id: 62, document_type: 'OTHER', label: 'Certificate of Full Payment for Liza Evangelista', has_details: true },
+            { applicant_id: 62, document_type: 'SPA', label: null, has_details: false },
+        ] });
+    assert.deepEqual(out.documents.borrowers[0].other_documents,
+        [{ document: 'PSA Marriage Certificate', details_saved: true, shows_full_payment: false }]);
+    assert.deepEqual(out.documents.borrowers[1].other_documents, [
+        { document: 'Certificate of Full Payment for Spouse Spouse', details_saved: true, shows_full_payment: true },
+        { document: 'Special power of attorney', details_saved: false, shows_full_payment: false },
+    ]);
+    assert.equal(/Liza|Evangelista/.test(JSON.stringify(out)), false);
 });

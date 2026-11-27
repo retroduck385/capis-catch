@@ -153,6 +153,17 @@ class BuildRequestTests(unittest.TestCase):
                          ["NOT_REVIEWED"] * 4)
         self.assertEqual(sent["dismissed"], [])
 
+    def test_exception_already_in_the_fp_is_recorded_not_unreviewed(self):
+        import copy
+        result = copy.deepcopy(RESULT)
+        exc = result["recommendations"]["groups"]["exception"][0]
+        exc["recorded"] = True
+        sent = advise.build_request(INPUT, result, None)
+        self.assertEqual(next(f for f in sent["findings"] if f["chunk_key"] == exc["chunk_key"])["review"], "RECORDED")
+        # a review on this run still wins
+        sent = advise.build_request(INPUT, result, {exc["chunk_key"]: {"decision": "DISMISSED"}})
+        self.assertNotIn(exc["chunk_key"], [f["chunk_key"] for f in sent["findings"]])
+
     def test_recommender_missing_is_refused(self):
         for recs in (None, {"status": "UNAVAILABLE", "reason": "no API key"}):
             with self.assertRaisesRegex(ValueError, "Run the policy check again"):

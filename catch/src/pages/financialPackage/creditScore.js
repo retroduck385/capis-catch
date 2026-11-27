@@ -221,6 +221,11 @@ export const totalCreditScore = (rules, scores) => {
     const complete = scored === rules.criteria.length && scored > 0;
     return {
         byCategory, total, scored, count: rules.criteria.length, complete, pointsOf,
+        // The CO's picks for the Character criteria (loan history, deposit handling, NFIS) as band labels, for the
+        // policy check: e.g. NFIS "With cancelled card but fully settled" is the CO's reading of the settlement proof.
+        // Never the Condition picks (gender, civil status, dependents ...).
+        characterBands: Object.fromEntries(rules.criteria.filter((c) => c.category === 'CHARACTER').map((c) => [c.code,
+            rules.bands.find((b) => b.criterion === c.code && b.code === scores[c.code]?.band)?.label ?? null])),
         description: complete ? lookup(DESCRIPTIONS, total) : null,
         riskRating: complete ? lookup(RISK_RATINGS, total) : null,
         recommendation: complete ? lookup(RECOMMENDATIONS, total) : null,

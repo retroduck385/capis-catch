@@ -81,6 +81,17 @@ class RulesTests(unittest.TestCase):
 
 
 class ServiceTests(unittest.TestCase):
+    def test_probationary_borrower_fails_the_employment_status_rule(self):
+        # mrac_employment_facts(): a confirmed COEC says Probationary -> an exception for the CO, not a pass
+        r = check(dict(FACTS("clean"), non_regular_borrowers=1,
+                       employment_statuses="principal borrower: Regular; co-borrower 2: Probationary"), CRITERIA, RETR)
+        emp = next(c for c in r["criteria"] if c["code"] == "RAAC-EMP-REGULAR")
+        self.assertEqual((emp["status"], r["overall"]), ("fail", "FAIL"))
+        self.assertIn("RAAC-EMP-REGULAR", [s["criterion"] for s in r["suggested_exceptions"]])
+        # no confirmed status yet and nobody non-regular: needs review, never a silent pass
+        r = check(dict(FACTS("clean"), non_regular_borrowers=None), CRITERIA, RETR)
+        self.assertEqual(next(c for c in r["criteria"] if c["code"] == "RAAC-EMP-REGULAR")["status"], "needs_review")
+
     def test_clean_facts_pass(self):
         r = check(FACTS("clean"), CRITERIA, RETR)
         self.assertEqual((r["overall"], r["has_deviation_suggested"]), ("PASS", False))

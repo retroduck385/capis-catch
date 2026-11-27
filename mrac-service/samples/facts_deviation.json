@@ -17,6 +17,8 @@
  "scorecard_total": 52,
  "scorecard_complete": true,
  "has_replevin_or_foreclosure": false,
+ "non_regular_borrowers": 0,
+ "employment_statuses": "principal borrower: Regular",
  "existing_exception_count": 0,
  "property_type": "Condominium"
 }

@@ -307,6 +307,22 @@
     "notes": null
   },
   {
+    "code": "RAAC-EMP-REGULAR",
+    "label": "Locally employed borrowers are regular / permanent",
+    "section": "Capacity",
+    "check_type": "auto",
+    "field": "non_regular_borrowers",
+    "op": "<=",
+    "threshold": 0,
+    "applies_when": [],
+    "options": {},
+    "hard_stop": false,
+    "enabled": false,
+    "search_hint": "employment status and tenure",
+    "source_chunk_key": "RAAC-HL-07-EMPLOYMENT-STATUS-TENURE",
+    "notes": "Fact from each locally employed borrower's confirmed COEC employment status (mrac_employment_facts, merged in by request_mrac_check). Switched on in 20261208_mrac_employment_status.sql."
+  },
+  {
     "code": "RAAC-BUSINESS-REG",
     "label": "Business registration",
     "section": "Capacity",

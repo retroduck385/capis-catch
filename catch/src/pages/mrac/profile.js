@@ -11,6 +11,8 @@
 // recommender can find document rules (marriage certificate, CENOMAR, spousal consent). The recommender is told never
 // to use it as a judgment of the borrower, and the database accepts it only as borrowers[].civil_status with one of
 // those values.
+// Home ownership (Josh, 2026-11-27) goes out the same way: as a category only (OWNED / RENTED / LIVING_WITH_RELATIVES /
+// OTHER), never the address, rent or length of stay, because the RAAC tests it (Residence ownership).
 import { roleOf, yearsBetween } from '../aiSuggestion/buildInput.js';
 import { ciSlots, raacNfis, undisclosedLoans, validityRows, yearsSince } from '../ciRequest/ciFacts.js';
 
@@ -21,6 +23,69 @@ const num = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Nu
 const text = (v) => (v === null || v === undefined || String(v).trim() === '' ? null : String(v).trim());
 const one = (x) => (Array.isArray(x) ? x[0] ?? null : x ?? null);
 const present = (party) => party?.addresses?.find((a) => a.address_type === 'PRESENT') ?? null;
+const HOME_OWNERSHIP = new Set(['OWNED', 'RENTED', 'LIVING_WITH_RELATIVES', 'OTHER']);
+// "₱58,500.00" -> 58500; anything that isn't a number -> null
+const amount = (v) => {
+    const n = Number(String(v ?? '').replace(/[^0-9.-]/g, ''));
+    return text(v) === null || Number.isNaN(n) ? null : n;
+};
+const round2 = (n) => Math.round(n * 100) / 100;
+// "2026-07-15" / "07/15/2026" -> "2026-07"
+const monthOf = (v) => {
+    const s = text(v);
+    if (!s) return null;
+    const iso = s.match(/^(\d{4})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}`;
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+// A requested document's name with any party's name in it replaced by the role ("Certificate of Full Payment")
+const EXTRA_TYPES = { SPA: 'Special power of attorney', SEC_DTI_MAYORS_PERMIT: 'SEC / DTI / Mayor\'s permit' };
+const FULL_PAYMENT = /full[\s-]*payment|fully[\s-]*paid|zero[\s-]*balance|certificate of (settlement|clearance)/i;
+const docName = (doc, parties) => {
+    let name = text(doc.label) ?? EXTRA_TYPES[doc.document_type] ?? 'Other document';
+    for (const p of parties) {
+        for (const part of [p.first_name, p.middle_name, p.last_name].map(text).filter((x) => x && x.length > 1)) {
+            name = name.replace(new RegExp(part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), roleOf(p));
+        }
+    }
+    return name.slice(0, 120);
+};
+
+// The income documents a person confirmed in the Document check (readings: fetchConfirmedReadings in api.js)
+const incomeDocuments = (party, readings) => {
+    const docsOf = (type) => (party.application_requirements ?? []).filter((r) => r.requirement_type === type)
+        .flatMap((r) => r.documents ?? []).map((d) => readings[d.id]).filter(Boolean);
+    const coe = docsOf('COE_ITR').find((r) => r.monthly_basic_salary || r.monthly_gross_income || r.employment_status) ?? null;
+    // one row per payslip, across the borrower's confirmed payslip files
+    const slips = docsOf('PAYSLIPS_REMITTANCES').flatMap((r) => {
+        const n = Math.max(0, ...Object.values(r).map((v) => v.length));
+        return Array.from({ length: n }, (_, i) => ({ month: monthOf(r.pay_date?.[i] ?? r.period_end?.[i]),
+            basic: amount(r.basic_pay?.[i]), gross: amount(r.gross_pay?.[i]), deductions: amount(r.total_deductions?.[i]),
+            net: amount(r.net_pay?.[i]) }));
+    }).filter((s) => s.basic !== null || s.gross !== null);
+    // Payslips can be semi-monthly, so the figures are per MONTH: the sum over the months the payslips cover
+    // (null when a pay date is missing, rather than guessing the pay frequency)
+    const months = new Set(slips.map((s) => s.month));
+    const dated = slips.length > 0 && !months.has(null);
+    const monthly = (key) => {
+        const nums = slips.map((s) => s[key]).filter((n) => n !== null);
+        return dated && nums.length ? round2(nums.reduce((a, b) => a + b, 0) / months.size) : null;
+    };
+    return {
+        coec_confirmed: Boolean(coe),
+        employment_status: text(coe?.employment_status?.[0]),
+        coec_monthly_basic_salary: amount(coe?.monthly_basic_salary?.[0]),
+        coec_monthly_gross_income: amount(coe?.monthly_gross_income?.[0]),
+        payslips_confirmed: slips.length,
+        payslip_months: dated ? months.size : null,
+        payslip_monthly_basic_pay: monthly('basic'),
+        payslip_monthly_gross_pay: monthly('gross'),
+        payslip_monthly_deductions: monthly('deductions'),
+        payslip_monthly_net_pay: monthly('net'),
+    };
+};
 
 // Free-text citizenship -> true / false / null (not stated)
 const filipino = (v) => (text(v) === null ? null : /filipin|pilipin|philippine/i.test(v));
@@ -35,9 +100,10 @@ const latestMarks = (marks) => {
 // app: the application record (fetchApplication); computed: computeFp(); score: totalCreditScore();
 // ci: { checks } from fetchCiResults; ciFlagged: a CI flagged findings; fileMarks: document_file_marks rows;
 // openDocumentRequest: an AO request to the applicant is still open; exceptions: the FP's V. Exception/s rows;
-// facts: buildMracFacts() (for the principal's age at maturity and stand-alone DBR).
+// facts: buildMracFacts() (for the principal's age at maturity and stand-alone DBR); readings: the confirmed AI
+// readings per document id (fetchConfirmedReadings).
 export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [] }, ciFlagged = false, fileMarks = [],
-    openDocumentRequest = false, exceptions = [], facts = {} }) => {
+    openDocumentRequest = false, exceptions = [], facts = {}, readings = {}, extraDocuments = [] }) => {
     const collateral = one(app.collateral_details);
     const referral = one(app.referral_details);
     const parties = app.applicants ?? [];
@@ -51,6 +117,12 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
     const tuRows = undisclosedLoans(slots);
     const validity = validityRows(slots);
     const marks = latestMarks(fileMarks);
+    const principal = parties.find((p) => p.role === 'PRINCIPAL');
+    // a spouse / co-borrower on "Same as principal" lives in the principal's home
+    const home = (party) => {
+        const a = present(party);
+        return a?.same_as_principal && party.role !== 'PRINCIPAL' ? present(principal) : a;
+    };
 
     return {
         schema: 1,
@@ -65,6 +137,9 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
             collateral_basis: computed.appraised !== null && computed.appraised !== undefined ? 'APPRAISED_VALUE' : 'SELLING_PRICE',
             lcr: num(computed.lcr),
             from_developer: Boolean(text(referral?.developer_name)),
+            // CATCH reads a developer-referred loan as end-user financing (same rule as the NFIS LCR caps, ciFacts.js)
+            financing: endUser ? 'END_USER' : 'REGULAR',
+            loan_to_tcp: num(app.loan_amount) && tcp ? num(app.loan_amount) / tcp : null,
             referral_channel: text(referral?.channel),
         },
         borrowers: borrowers.map((party) => {
@@ -72,6 +147,7 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
             const i = income[party.id] ?? {};
             const loans = party.existing_loans ?? [];
             const address = present(party);
+            const ownership = home(party)?.home_ownership;
             return {
                 role: roleOf(party),
                 relationship_to_principal: party.role === 'CO_BORROWER' ? text(party.relationship_to_principal) : null,
@@ -81,8 +157,15 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
                 lives_abroad: address && address.living_in_ph === false ? true : address ? false : null,
                 employment_type: job?.employment_type ?? null,
                 tenure_years: job && job.employment_type !== 'UNEMPLOYED' ? yearsBetween(job.employment_date, app.submitted_at) : null,
+                home_ownership: HOME_OWNERSHIP.has(ownership) ? ownership : null,
+                // FP income: declared gross (application) x the basis factor (COE 80%, payslip 90%) = basic, + other
                 income_basis: i.basis?.value ?? null,
+                income_basis_factor: num(i.basis?.factor),
+                declared_gross_income: num(i.declared),
+                basic_income: num(i.basic),
+                other_income: num(i.other),
                 gross_income: num(i.gross),
+                income_documents: incomeDocuments(party, readings),
                 existing_loans: loans.map((l) => ({ type: text(l.loan_type), monthly_payment: num(l.monthly_payment),
                     over_6_months: l.term_over_6_months ?? null })),
             };
@@ -104,6 +187,8 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
             complete: Boolean(score.complete),
             risk_rating: score.riskRating ?? null,
             recommendation: score.recommendation ?? null,
+            // the CO's Character picks (band labels); null when not scored
+            character_bands: score.characterBands ?? null,
         },
         // The CI results by role: each NFIS record as its kind, age, balance and RAAC reading (never the reporting
         // institution, case number, who filed it or the CI's remarks); TU as counts and the worst lateness
@@ -143,9 +228,16 @@ export const buildPolicyProfile = ({ app, computed, score = {}, ci = { checks: [
                     return {
                         requirement: r.requirement_type,
                         files: docs.length,
+                        // confirmed: the AI reading of the file was checked and confirmed by a person (Document check)
+                        confirmed: docs.filter((d) => readings[d.id]).length,
                         cleared: docs.filter((d) => marks[d.id] === 'CLEARED').length,
                         needs_new_copy: docs.filter((d) => marks[d.id] === 'NEEDS_NEW_COPY').length,
                     };
+                }),
+                // asked for by name outside the checklist; shows_full_payment = a settlement / full-payment proof
+                other_documents: extraDocuments.filter((d) => d.applicant_id === p.id).map((d) => {
+                    const name = docName(d, parties);
+                    return { document: name, details_saved: Boolean(d.has_details), shows_full_payment: FULL_PAYMENT.test(name) };
                 }),
             })),
             open_request_to_applicant: Boolean(openDocumentRequest),

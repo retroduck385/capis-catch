@@ -186,6 +186,65 @@ class VerifyTests(unittest.TestCase):
         self.assertEqual((kept[0]["status"], kept[0]["action"]), ("not_met", "exception"))
         self.assertIn("Status set from rule RAAC-DBR", kept[0]["notes"][0])
 
+    def test_paths_the_judge_writes_with_the_application_prefix_or_a_skipped_level(self):
+        self.assertTrue(resolve("application.rule_results", PROFILE, FACTS)[0])
+        self.assertEqual(resolve("application.facts.dbr", PROFILE, FACTS), (True, 0.46))
+        self.assertEqual(resolve("application.borrowers[1].employment_type", PROFILE, FACTS), (True, "OFW"))
+        profile = {"borrowers": [{"role": "Co-borrower 2", "income_documents": {"employment_status": "Probationary"}}]}
+        self.assertEqual(resolve("borrowers[0].employment_status", profile, FACTS), (True, "Probationary"))
+        self.assertFalse(resolve("borrowers[0].date_of_birth", profile, FACTS)[0])
+
+    def test_a_failed_rule_keeps_its_exception_even_when_the_wording_fails_a_check(self):
+        raw = [finding("RAAC-HL-11-DBR", "not_met", "exception", "shall not exceed 40% of the gross monthly income",
+                       "DBR is 46%, above the 40% limit.", ["borrowers[0].made_up_field"],
+                       {"policy": "DBR at most 40%", "recommendation": "Allow DBR 46%", "mitigant": ""})]
+        kept, unverified = verify(raw, self.cands, PROFILE, FACTS, RESULTS)
+        self.assertEqual(unverified, [])
+        self.assertEqual((kept[0]["status"], kept[0]["action"]), ("not_met", "exception"))
+        self.assertIn("could not verify", kept[0]["notes"][-1])
+        self.assertIn("made_up_field", kept[0]["notes"][-1])
+
+    def test_figures_from_the_credit_officers_exception_rows_count(self):
+        profile = {**PROFILE, "exceptions": [{"policy": "Probationary co-borrower", "recommendation": "Allow",
+                                              "mitigant": "Without him DBR is 30.47%; equity PHP 1,100,000 already paid"}]}
+        raw = [finding("RAAC-HL-01-AGE", "met", "note", "not more than 65 years old at loan maturity",
+                       "Met. The CO notes DBR 30.47% without the co-borrower and ₱1,100,000.00 equity.", ["facts.age_at_maturity"])]
+        kept, unverified = verify(raw, self.cands, profile, FACTS, RESULTS)
+        self.assertEqual(unverified, [], unverified)
+        kept, unverified = verify(raw, self.cands, PROFILE, FACTS, RESULTS)      # without the row: still caught
+        self.assertIn("30.47%", unverified[0]["problems"][0])
+
+    def test_one_card_per_problem_and_recorded_exceptions(self):
+        from mrac.recommender import fold_exceptions
+        card = lambda key, rules, text: {"chunk_key": key, "rule_codes": rules, "heading_path": key, "document": "d",
+                                         "finding": text, "exception": {"policy": "", "recommendation": ""}, "notes": []}
+        rule = card("RAAC-HL-07-EMPLOYMENT-STATUS-TENURE", ["RAAC-EMP-REGULAR"], "Co-borrower 2 is probationary.")
+        general = card("CCD-VII-0001", [], "The RAAC-EMP-REGULAR test fails, so the evaluation does not follow the RAAC.")
+        other = card("CCD-VII-0099", [], "Collateral is outside the approved area.")
+        out = fold_exceptions([rule, general, other], {"exceptions": []})
+        self.assertEqual([f["chunk_key"] for f in out], ["RAAC-HL-07-EMPLOYMENT-STATUS-TENURE", "CCD-VII-0099"])
+        self.assertEqual(out[0]["also_cited"][0]["chunk_key"], "CCD-VII-0001")
+        self.assertFalse(out[0]["recorded"])
+        # the CO's row names the clause by its short id: recorded; an unrelated clause stays to decide
+        rows = {"exceptions": [{"policy": "RAAC-HL-07 Employment status/tenure", "mitigant": "same line of work"}]}
+        out = fold_exceptions([card("RAAC-HL-07-EMPLOYMENT-STATUS-TENURE", ["RAAC-EMP-REGULAR"], "x"), other], rows)
+        self.assertEqual([f["recorded"] for f in out], [True, False])
+        rows = {"exceptions": [{"policy": "RAAC-HL-070 something else"}]}
+        self.assertFalse(fold_exceptions([card("RAAC-HL-07-X", [], "x")], rows)[0]["recorded"])
+
+    def test_a_passing_rule_settles_only_its_own_part_of_a_clause(self):
+        # judged not met on other facts (TU): stays not met, with a note
+        raw = [finding("RAAC-HL-11-DBR", "not_met", "exception", "shall not exceed 40% of the gross monthly income",
+                       "The TU report shows late payments.", ["ci.borrowers[0].tu"])]
+        kept, _ = verify(raw, self.cands, PROFILE, {**FACTS, "dbr": 0.30}, [evaluate(DBR, {**FACTS, "dbr": 0.30})])
+        self.assertEqual(kept[0]["status"], "not_met")
+        self.assertIn("passes for its part", kept[0]["notes"][0])
+        # judged not met on the rule's own figure: the rule wins
+        raw = [finding("RAAC-HL-11-DBR", "not_met", "exception", "shall not exceed 40% of the gross monthly income",
+                       "DBR is too high.", ["facts.dbr"])]
+        kept, _ = verify(raw, self.cands, PROFILE, {**FACTS, "dbr": 0.30}, [evaluate(DBR, {**FACTS, "dbr": 0.30})])
+        self.assertEqual(kept[0]["status"], "met")
+
     def test_duplicates_are_not_kept_twice(self):
         f = finding("CPM-IX-0094", "condition", "condition", "The MRI shall be primarily on the principal borrower", "MRI.")
         kept, unverified = verify([f, f], self.cands, PROFILE, FACTS, RESULTS)

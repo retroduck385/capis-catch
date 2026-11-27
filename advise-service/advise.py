@@ -40,12 +40,18 @@ You get:
 - input: the confirmed figures of the file. Borrowers appear by role only. Money is in Philippine pesos; dbr and lcr are ratios (0.35 = 35%). ci.file_checks are counts from the credit investigation (null = not all CI results are in yet). In input.ci, each borrower's nfis and tu result is NO_ADVERSE_FINDINGS, WITH_FINDINGS, INCONCLUSIVE or null (not recorded). INCONCLUSIVE means the Credit Investigator found discrepancies with the application form or could not verify the information: treat it as data to verify (list it in missing_data), not as a finding against the borrower.
 - rules: the bank's automatic rule checks on the same figures (value, requirement, status pass / fail / needs_review).
 - findings: what the bank's policy recommender found for this file, already checked against the policy text. Each has a chunk_key, a group (exception = a policy is not met and needs an approved exception; obtain = information or documents to get first; condition = a term or condition to attach; met = a policy the file meets; rule = the clause behind a rule check), the requirement, the finding, a suggested action, a verbatim quote and a short excerpt of the clause.
-  Each finding in exception / obtain / condition carries the Credit Officer's review: ACCEPTED (the Credit Officer agrees), EDITED (the Credit Officer rewrote it: the text shown is theirs and wins over the policy recommender) or NOT_REVIEWED (not checked by the Credit Officer yet: you may use it, but treat it as unconfirmed).
+  Each finding in exception / obtain / condition carries the Credit Officer's review: ACCEPTED (the Credit Officer agrees), EDITED (the Credit Officer rewrote it: the text shown is theirs and wins over the policy recommender) RECORDED (an exception the Credit Officer already wrote into the Financial Package's V. Exception/s: treat it as confirmed) or NOT_REVIEWED (not checked by the Credit Officer yet: you may use it, but treat it as unconfirmed).
 - dismissed: findings the Credit Officer judged not to apply. Do not raise them again.
 - approval: whether the file needs approval with an exception, and why.
 
 Answer with:
-- suggested_result: ENDORSED, NOT_ENDORSED or DEFERRED. Use DEFERRED when information or documents needed for a decision are missing or must be clarified first (open obtain findings, missing figures). Use NOT_ENDORSED when a policy is clearly not met and the file shows no mitigant for it, or the policy says it is never allowed. Use ENDORSED when the file meets policy, or every exception has a mitigant (then say it goes to the approving authority for exceptions).
+- suggested_result: ENDORSED, NOT_ENDORSED or DEFERRED. Decide this way:
+  1. Sort every open obtain finding (not dismissed) into one of two kinds:
+     - DECISIVE: without it the decision cannot be made, because it could change capacity, character or collateral: income or employment not verified at all, an adverse credit finding with no settlement, explanation or mitigant on file, no collateral value, identity not confirmed, a key figure missing (loan amount, DBR, LCR).
+     - ROUTINE: what the bank normally collects before release or at a later stage, or a check that confirms what the file already shows: signed forms and consents, insurance (MRI, fire), title, tax and building documents, the signed score sheet, desk and field CI that the Reviewer requests after the Credit Officer's evaluation, a disclosure gap to correct in the application (e.g. an undeclared account that is current), a policy threshold the policy text does not state. An obtain finding the Credit Officer ACCEPTED ("will follow up") is being handled: treat it as routine.
+  2. DEFERRED only if at least one DECISIVE item remains. Cite it in the reasons.
+  3. NOT_ENDORSED when a policy is clearly not met and the file shows no mitigant for it, or the policy says it is never allowed.
+  4. Otherwise ENDORSED: the file meets policy, or every exception is RECORDED / ACCEPTED / EDITED or has a mitigant in the file (say it goes to the approving authority for exceptions). Put the ROUTINE items as conditions in the draft justification and in missing_data. Routine items alone are never a reason to defer.
 - reasons: 2 to 5 short reasons (one or two sentences each). Every reason must cite exactly one finding by its chunk_key, and the finding must support the reason. Do not make a reason you cannot tie to a finding.
 - draft_justification: a short paragraph (60 to 140 words) the Credit Officer could edit into the "Justification and Remarks" of the credit result. Plain, factual, with the key figures, the exceptions and their mitigants, and the main conditions. No names, no invented facts.
 - missing_data: information or documents that are missing or should be verified before deciding (empty if none).
@@ -240,7 +246,9 @@ def findings_for_model(recommendations, reviews):
                 continue
             item = _clean({
                 "chunk_key": key, "group": group,
-                "review": (review.get("decision") or "NOT_REVIEWED") if group in TO_REVIEW else None,
+                # RECORDED: no review on this run, but the CO already has this exception in V. Exception/s
+                "review": (review.get("decision") or ("RECORDED" if f.get("recorded") else "NOT_REVIEWED"))
+                if group in TO_REVIEW else None,
                 "requirement": (f.get("requirement") or "").strip(), "finding": (f.get("finding") or "").strip(),
                 "suggested_action": (f.get("suggested_action") or "").strip(),
                 "exception": _clean(f.get("exception") or {}) if group == "exception" else None,

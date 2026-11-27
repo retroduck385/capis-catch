@@ -215,19 +215,23 @@ def quote_in(quote: str, text: str) -> bool:
 
 
 def resolve(path: str, profile: dict, facts: dict):
-    """'borrowers[1].employment_type', 'loan.amount', 'facts.dbr' or 'dbr' -> (True, value) / (False, None)."""
+    """'borrowers[1].employment_type', 'loan.amount', 'facts.dbr' or 'dbr' -> (True, value) / (False, None).
+    The judge often prefixes 'application.' (the payload's key), also before facts / rule_results. A last key that sits
+    one level deeper ('borrowers[3].employment_status' for borrowers[3].income_documents.employment_status) counts:
+    the check is there to catch invented data, not a skipped level."""
     path = (path or "").strip()
     if not path:
         return False, None
+    if path.startswith("application."):
+        path = path[12:]
     if re.match(r"^(rule_results|application_traits)(\b|\[|\.)", path):
         return True, None                              # other parts of what the judge was given
     if path.startswith("facts."):
         key = path[6:]
         return (key in facts), facts.get(key)
-    if path.startswith("application."):
-        path = path[12:]
     cur = profile
-    for part in re.findall(r"[^.\[\]]+|\[\d+\]", path):
+    parts = re.findall(r"[^.\[\]]+|\[\d+\]", path)
+    for n, part in enumerate(parts):
         if part.startswith("["):
             i = int(part[1:-1])
             if not isinstance(cur, list) or i >= len(cur):
@@ -236,6 +240,10 @@ def resolve(path: str, profile: dict, facts: dict):
         elif isinstance(cur, dict) and part in cur:
             cur = cur[part]
         else:
+            if n == len(parts) - 1 and isinstance(cur, dict):
+                nested = [v[part] for v in cur.values() if isinstance(v, dict) and part in v]
+                if len(nested) == 1:
+                    return True, nested[0]
             break
     else:
         return True, cur
@@ -294,6 +302,10 @@ def _known_numbers(profile: dict, facts: dict, results: list[dict], text: str, p
                 v = float(raw.replace(",", ""))
                 vals += [v, v * 100] if (r.get("field") in ("dbr", "lcr", "dbr_standalone") or 0 < abs(v) < 1.5) else [v]
     vals += [n for n, _ in numbers_in(text)]
+    # figures the Credit Officer wrote in V. Exception/s (a mitigant's "DBR 30.47% without him", "equity PHP 1,100,000"):
+    # the judge may repeat them, they are the CO's own statement, not invented
+    co_text = " ".join(str(x or "") for e in profile.get("exceptions") or [] if isinstance(e, dict) for x in e.values())
+    vals += [n for n, _ in numbers_in(co_text)]
     vals += [float(p) for p in pages if str(p).isdigit()]
     return vals
 
@@ -329,6 +341,18 @@ def verify(raw: list[dict], candidates: list[dict], profile: dict | None, facts:
         problems, notes = [], []
 
         expected, linked = _expected_from_rules(key, results)
+        # A passing rule settles only its own part of a clause. When the judge says not met / needs info and relies
+        # on facts beyond the rule's field (e.g. the NFIS clause: the replevin rule passes, the TU part is not met),
+        # its status stands; it is overridden only when it contradicts the rule on the rule's own figures.
+        if expected == "met" and status in ("not_met", "needs_info"):
+            rule_fields = {str(r.get("field") or "").lower() for r in linked}
+            leaf = lambda p: re.split(r"[.\]]", p.strip().lower().rstrip("]"))[-1]
+            beyond = [p for p in f.get("facts_used") or [] if p and leaf(p) not in rule_fields
+                      and not p.strip().lower().startswith(("rule_results", "application.rule_results"))]
+            if beyond:
+                notes.append(f"Rule {', '.join(r['code'] for r in linked)} passes for its part; "
+                             "this is about another part of the clause.")
+                expected = None
         if expected and status != expected:
             notes.append(f"Status set from rule {', '.join(r['code'] for r in linked)} (the judge said {status}).")
             status = expected
@@ -358,7 +382,13 @@ def verify(raw: list[dict], candidates: list[dict], profile: dict | None, facts:
         stray = [show(v, kind) for v, kind in numbers_in(prose) if not _matches(v, kind, known)]
         if stray:
             problems.append(f"numbers not in the application or the clause: {', '.join(stray)}")
-        if problems:
+        if problems and expected == "not_met":
+            # A failed rule is authoritative: the exception never disappears because the AI's wording failed a
+            # check. It stays an exception card; the note tells the CO what in the wording to check.
+            notes.append(f"CATCH could not verify all of the AI's wording ({'; '.join(problems)}). The exception "
+                         f"itself comes from rule {', '.join(r['code'] for r in linked)}: check the text before using it.")
+            kept.append(_finding(c, f, status, action, notes, [r["code"] for r in linked]))
+        elif problems:
             unverified.append({**_finding(c, f, status, action, notes), "problems": problems})
         else:
             kept.append(_finding(c, f, status, action, notes, [r["code"] for r in linked]))
@@ -381,6 +411,52 @@ def _finding(c: dict, f: dict, status: str, action: str, notes: list[str], rule_
 
 
 # ---------------------------------------------------------------- grouping
+_SHORT_KEY = re.compile(r"^([A-Z]+-[A-Z]+-\d+)")      # RAAC-HL-07-EMPLOYMENT-STATUS-TENURE -> RAAC-HL-07
+
+
+def _mentions(text: str, name: str) -> bool:
+    return re.search(rf"(?<![A-Z0-9-]){re.escape(name)}(?![0-9])", text) is not None
+
+
+def _names(f: dict) -> set[str]:
+    """How a text can refer to this finding: its clause key, the clause's short id, its rule codes."""
+    out = {f["chunk_key"].upper(), *(c.upper() for c in f.get("rule_codes") or [])}
+    m = _SHORT_KEY.match(f["chunk_key"].upper())
+    if m:
+        out.add(m.group(1))
+    return out
+
+
+def _exception_text(f: dict) -> str:
+    exc = f.get("exception") or {}
+    return " ".join(str(x or "") for x in (f.get("finding"), exc.get("policy"), exc.get("recommendation"))).upper()
+
+
+def fold_exceptions(exceptions: list[dict], profile: dict | None) -> list[dict]:
+    """One card per problem, and say which are already in V. Exception/s.
+    - A general clause raised as an exception only because a rule failed (e.g. "the evaluation must follow the RAAC",
+      citing RAAC-EMP-REGULAR) folds into that rule's own exception card instead of asking the CO twice.
+    - recorded = a V. Exception/s row the CO saved names this clause (key or short id like RAAC-HL-07) or its rule."""
+    rule_cards = [f for f in exceptions if f.get("rule_codes")]
+    out = []
+    for f in exceptions:
+        if not f.get("rule_codes"):
+            text = _exception_text(f)
+            card = next((c for c in rule_cards if any(_mentions(text, n) for n in _names(c))), None)
+            if card is not None:
+                card.setdefault("also_cited", []).append(
+                    {"chunk_key": f["chunk_key"], "heading_path": f["heading_path"], "document": f["document"]})
+                card["notes"] = [*card.get("notes", []),
+                                 f"Also raised under {f['heading_path']} ({f['document']}): same problem, shown once here."]
+                continue
+        out.append(f)
+    rows = [" ".join(str(v or "") for v in e.values()).upper()
+            for e in (profile or {}).get("exceptions") or [] if isinstance(e, dict)]
+    for f in out:
+        f["recorded"] = any(_mentions(r, n) for r in rows for n in _names(f))
+    return out
+
+
 def assemble(kept: list[dict], unverified: list[dict], candidates: list[dict], trait_map: dict[str, str],
              profile: dict | None, approval_clauses: list[dict], meta: dict) -> dict:
     groups = {g: [] for g in GROUPS}
@@ -397,6 +473,7 @@ def assemble(kept: list[dict], unverified: list[dict], candidates: list[dict], t
             groups["condition"].append(f)
         else:
             groups["met"].append(f)
+    groups["exception"] = fold_exceptions(groups["exception"], profile)
     recorded = [e for e in (profile or {}).get("exceptions") or [] if any(e.values())]
     reasons = [f["requirement"] or f["heading_path"] for f in groups["exception"]]
     if recorded:

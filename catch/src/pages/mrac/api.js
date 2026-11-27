@@ -31,15 +31,70 @@ export const requestMracCheck = async (applicationId, facts, profile = null) => 
 // What the profile needs beyond the FP page's own data. Each part is optional: a missing table or a failed read
 // leaves that part empty instead of blocking the check.
 export const fetchProfileInputs = async (app) => {
-    const ids = getParties(app, BORROWER_ROLES).map((p) => p.id);
+    const parties = getParties(app, BORROWER_ROLES);
+    const ids = parties.map((p) => p.id);
+    const docIds = parties.flatMap((p) => (p.application_requirements ?? []).flatMap((r) => (r.documents ?? []).map((d) => d.id)));
     const soft = (promise, fallback) => promise.catch(() => fallback);
-    const [ci, flags, fileMarks, openRequest] = await Promise.all([
+    const [ci, flags, fileMarks, openRequest, readings, extraDocuments] = await Promise.all([
         soft(fetchCiResults(ids), { checks: [], documents: [] }),
         soft(fetchCiFindingFlagCount(app.id), 0),
         soft(fetchFileMarks(app.id), []),
         soft(fetchOpenRequest(app.id), null),
+        soft(fetchConfirmedReadings(docIds), {}),
+        soft(fetchExtraDocuments(app.id), []),
     ]);
-    return { ci, ciFlagged: flags > 0, fileMarks, openDocumentRequest: Boolean(openRequest) };
+    return { ci, ciFlagged: flags > 0, fileMarks, openDocumentRequest: Boolean(openRequest), readings, extraDocuments };
+};
+
+// Files outside the checklist that the AO asked for by name (marriage / birth certificate, Certificate of Full
+// Payment ...): [{ applicant_id, label, has_details }]. Only the requested name and whether the AO saved details
+// (Document check "+ Add detail"); never the details themselves (registry numbers, dates).
+const fetchExtraDocuments = async (applicationId) => {
+    const docs = unwrap(await supabase.from('documents').select('id, applicant_id, document_type')
+        .eq('application_id', applicationId).in('document_type', ['OTHER', 'SPA', 'SEC_DTI_MAYORS_PERMIT'])
+        .is('superseded_by', null)) ?? [];
+    if (docs.length === 0) return [];
+    const ids = docs.map((d) => d.id);
+    const [uploads, saves] = await Promise.all([
+        supabase.from('document_request_uploads').select('document_id, document_request_items ( label )').in('document_id', ids).then(unwrap),
+        supabase.from('document_manual_values').select('document_id, entries').in('document_id', ids).order('id').then(unwrap),
+    ]);
+    const label = Object.fromEntries((uploads ?? []).map((u) => [u.document_id, u.document_request_items?.label ?? null]));
+    const latest = {};
+    for (const s of saves ?? []) latest[s.document_id] = s.entries;      // oldest first: the last one wins
+    return docs.map((d) => ({ applicant_id: d.applicant_id, document_type: d.document_type, label: label[d.id] ?? null,
+        has_details: (latest[d.id] ?? []).length > 0 }));
+};
+
+// The income figures a person confirmed in the Document check (COEC and payslips), so the policy check can test the
+// COEC / net-income clauses. Only CONFIRMED readings (human-in-the-loop); never names, TINs or employee numbers.
+// (pay_date / period_end only to count the months the payslips cover; they are not sent)
+const READING_FIELDS = ['employment_status', 'monthly_basic_salary', 'monthly_gross_income', 'basic_pay', 'gross_pay',
+    'total_deductions', 'net_pay', 'pay_date', 'period_end'];
+
+// { [documentId]: { [field_key]: [value by item_no] } } for each document whose latest AI reading was confirmed
+const fetchConfirmedReadings = async (documentIds) => {
+    if (documentIds.length === 0) return {};
+    const ocrRuns = unwrap(await supabase.from('ocr_runs').select('id, document_id').in('document_id', documentIds)) ?? [];
+    if (ocrRuns.length === 0) return {};
+    const docOfOcr = Object.fromEntries(ocrRuns.map((r) => [r.id, r.document_id]));
+    const runs = unwrap(await supabase.from('extraction_runs').select('id, ocr_run_id, confirmed_at')
+        .in('ocr_run_id', ocrRuns.map((r) => r.id)).not('confirmed_at', 'is', null).order('confirmed_at')) ?? [];
+    const latest = {};        // document id -> its most recently confirmed run
+    for (const r of runs) latest[docOfOcr[r.ocr_run_id]] = r.id;
+    const runIds = Object.values(latest);
+    if (runIds.length === 0) return {};
+    const fields = unwrap(await supabase.from('extraction_fields').select('run_id, field_key, item_no, extracted_value, final_value')
+        .in('run_id', runIds).in('field_key', READING_FIELDS)) ?? [];
+    const docOfRun = Object.fromEntries(Object.entries(latest).map(([doc, run]) => [run, Number(doc)]));
+    const out = Object.fromEntries(runIds.map((run) => [docOfRun[run], {}]));
+    for (const f of fields) {
+        const value = f.final_value ?? f.extracted_value;
+        if (value === null || value === undefined || String(value).trim() === '') continue;
+        const doc = out[docOfRun[f.run_id]];
+        (doc[f.field_key] ??= [])[f.item_no] = value;
+    }
+    return out;
 };
 
 // Any staff member. Returns the run id.
